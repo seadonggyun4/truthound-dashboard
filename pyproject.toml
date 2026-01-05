@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "truthound-dashboard"
-version = "0.3.0"
+version = "1.0.0"
 description = "Open-source data quality dashboard - GX Cloud alternative"
 readme = "README.md"
-license = "MIT"
+license = "Apache-2.0"
 requires-python = ">=3.11"
 authors = [{ name = "Truthound Team", email = "team@truthound.dev" }]
 keywords = ["data-quality", "dashboard", "truthound", "validation", "monitoring"]
@@ -16,7 +16,7 @@ classifiers = [
     "Framework :: FastAPI",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
