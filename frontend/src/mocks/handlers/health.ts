@@ -12,7 +12,7 @@ export const healthHandlers = [
 
     return HttpResponse.json({
       status: 'healthy',
-      version: '1.0.0-demo',
+      version: '1.0.1-demo',
       timestamp: new Date().toISOString(),
       mock: true,
     })
