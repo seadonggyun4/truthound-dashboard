@@ -99,51 +99,6 @@ export default function Layout() {
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="border-t p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">v0.3.0</span>
-            <div className="flex items-center gap-1">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title={currentLang?.nativeName}
-                  >
-                    <Globe className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {SUPPORTED_LANGUAGES.map((lang) => (
-                    <DropdownMenuItem
-                      key={lang.code}
-                      onClick={() => handleLanguageChange(lang.code)}
-                      className="flex items-center justify-between gap-2"
-                    >
-                      <span>{lang.nativeName}</span>
-                      {currentLanguage === lang.code && (
-                        <Check className="h-4 w-4 text-primary" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                title="Toggle theme"
-              >
-                {theme === 'dark' ? (
-                  <Sun className="h-4 w-4" />
-                ) : (
-                  <Moon className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
       </aside>
 
       {/* Main content */}
@@ -162,6 +117,45 @@ export default function Layout() {
             <Menu className="h-5 w-5" />
           </Button>
           <div className="flex-1" />
+          <div className="flex items-center gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title={currentLang?.nativeName}
+                >
+                  <Globe className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <DropdownMenuItem
+                    key={lang.code}
+                    onClick={() => handleLanguageChange(lang.code)}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <span>{lang.nativeName}</span>
+                    {currentLanguage === lang.code && (
+                      <Check className="h-4 w-4 text-primary" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              title="Toggle theme"
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </header>
 
         {/* Page content */}
