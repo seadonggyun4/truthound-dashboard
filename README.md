@@ -1,3 +1,5 @@
+<img width="300" height="300" alt="Truthound_icon" src="https://github.com/user-attachments/assets/90d9e806-8895-45ec-97dc-f8300da4d997" />
+
 # truthound-dashboard
 
 [![PyPI version](https://badge.fury.io/py/truthound-dashboard.svg)](https://pypi.org/project/truthound-dashboard/)
