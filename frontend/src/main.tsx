@@ -6,13 +6,25 @@ import { ThemeProvider } from './components/theme-provider'
 import { Toaster } from './components/ui/toaster'
 import './index.css'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <ThemeProvider defaultTheme="system" storageKey="truthound-theme">
-        <App />
-        <Toaster />
-      </ThemeProvider>
-    </BrowserRouter>
-  </React.StrictMode>
-)
+async function enableMocking(): Promise<void> {
+  // Only enable in mock mode
+  if (import.meta.env.VITE_MOCK_API !== 'true') {
+    return
+  }
+
+  const { initMockWorker } = await import('./mocks')
+  await initMockWorker()
+}
+
+enableMocking().then(() => {
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <BrowserRouter>
+        <ThemeProvider defaultTheme="dark" storageKey="truthound-theme">
+          <App />
+          <Toaster />
+        </ThemeProvider>
+      </BrowserRouter>
+    </React.StrictMode>
+  )
+})

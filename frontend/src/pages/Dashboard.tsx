@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   Database,
   CheckCircle2,
@@ -12,8 +13,11 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { listSources, type Source } from '@/api/client'
 import { formatDate } from '@/lib/utils'
+import { AnimatedNumber } from '@/components/AnimatedNumber'
+import { GlassCard } from '@/components/GlassCard'
 
 export default function Dashboard() {
+  const { t } = useTranslation()
   const [sources, setSources] = useState<Source[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -58,8 +62,8 @@ export default function Dashboard() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <XCircle className="h-12 w-12 text-destructive" />
-        <p className="text-muted-foreground">Failed to load dashboard data</p>
-        <Button onClick={loadSources}>Retry</Button>
+        <p className="text-muted-foreground">{t('dashboard.loadError')}</p>
+        <Button onClick={loadSources}>{t('common.retry')}</Button>
       </div>
     )
   }
@@ -68,85 +72,119 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold">{t('nav.dashboard')}</h1>
         <p className="text-muted-foreground">
-          Data quality overview and monitoring
+          {t('dashboard.subtitle')}
         </p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sources</CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalSources}</div>
-            <p className="text-xs text-muted-foreground">
-              Configured data sources
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Passed</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {passedSources}
+        <GlassCard
+          className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20"
+          glowColor="#fd9e4b"
+        >
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-xl bg-primary/20 flex items-center justify-center">
+                <Database className="h-7 w-7 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">{t('dashboard.totalSources')}</p>
+                <p className="text-3xl font-bold">
+                  <AnimatedNumber value={totalSources} duration={1200} />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('dashboard.configuredSources')}
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Validation passed
-            </p>
           </CardContent>
-        </Card>
+        </GlassCard>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Failed</CardTitle>
-            <XCircle className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {failedSources}
+        <GlassCard
+          className="bg-gradient-to-br from-green-500/10 via-green-500/5 to-transparent border-green-500/20"
+          glowColor="#22c55e"
+        >
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-green-500/10 blur-2xl" />
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-xl bg-green-500/20 flex items-center justify-center">
+                <CheckCircle2 className="h-7 w-7 text-green-500" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">{t('dashboard.passed')}</p>
+                <p className="text-3xl font-bold text-green-500">
+                  <AnimatedNumber value={passedSources} duration={1200} />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('dashboard.validationPassed')}
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Validation failed
-            </p>
           </CardContent>
-        </Card>
+        </GlassCard>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              {pendingSources}
+        <GlassCard
+          className="bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent border-red-500/20"
+          glowColor="#ef4444"
+        >
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-red-500/10 blur-2xl" />
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-xl bg-red-500/20 flex items-center justify-center">
+                <XCircle className="h-7 w-7 text-red-500" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">{t('dashboard.failed')}</p>
+                <p className="text-3xl font-bold text-red-500">
+                  <AnimatedNumber value={failedSources} duration={1200} />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('dashboard.validationFailed')}
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Not yet validated
-            </p>
           </CardContent>
-        </Card>
+        </GlassCard>
+
+        <GlassCard
+          className="bg-gradient-to-br from-yellow-500/10 via-yellow-500/5 to-transparent border-yellow-500/20"
+          glowColor="#eab308"
+        >
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-yellow-500/10 blur-2xl" />
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-xl bg-yellow-500/20 flex items-center justify-center">
+                <AlertTriangle className="h-7 w-7 text-yellow-500" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">{t('dashboard.pending')}</p>
+                <p className="text-3xl font-bold text-yellow-500">
+                  <AnimatedNumber value={pendingSources} duration={1200} />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('dashboard.notValidated')}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </GlassCard>
       </div>
 
       {/* Recent Sources */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Recent Sources</CardTitle>
+            <CardTitle>{t('dashboard.recentSources')}</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Your configured data sources
+              {t('dashboard.recentSourcesDesc')}
             </p>
           </div>
           <Button asChild variant="outline" size="sm">
             <Link to="/sources">
-              View All
+              {t('dashboard.viewAll')}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
@@ -156,10 +194,10 @@ export default function Dashboard() {
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Database className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <p className="text-muted-foreground mb-4">
-                No data sources configured yet
+                {t('dashboard.noSources')}
               </p>
               <Button asChild>
-                <Link to="/sources">Add Your First Source</Link>
+                <Link to="/sources">{t('dashboard.addFirstSource')}</Link>
               </Button>
             </div>
           ) : (
@@ -177,7 +215,7 @@ export default function Dashboard() {
                     <div>
                       <p className="font-medium">{source.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {source.type} • Last validated:{' '}
+                        {source.type} • {t('dashboard.lastValidated')}:{' '}
                         {formatDate(source.last_validated_at)}
                       </p>
                     </div>
@@ -186,14 +224,16 @@ export default function Dashboard() {
                     {source.latest_validation_status && (
                       <Badge
                         variant={
-                          source.latest_validation_status === 'success'
+                          source.latest_validation_status === 'success' || source.latest_validation_status === 'passed'
                             ? 'success'
                             : source.latest_validation_status === 'failed'
                             ? 'destructive'
+                            : source.latest_validation_status === 'warning'
+                            ? 'warning'
                             : 'secondary'
                         }
                       >
-                        {source.latest_validation_status}
+                        {t(`validation.${source.latest_validation_status}`)}
                       </Badge>
                     )}
                     <ArrowRight className="h-4 w-4 text-muted-foreground" />

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 interface UseApiState<T> {
   data: T | null
@@ -24,16 +24,20 @@ export function useApi<T>(
     error: null,
   })
 
+  // Use ref to store latest fetcher to avoid infinite loops
+  const fetcherRef = useRef(fetcher)
+  fetcherRef.current = fetcher
+
   const fetchData = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true, error: null }))
     try {
-      const data = await fetcher()
+      const data = await fetcherRef.current()
       setState({ data, loading: false, error: null })
     } catch (error) {
       setState({ data: null, loading: false, error: error as Error })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetcher, ...deps])
+  }, deps)
 
   useEffect(() => {
     fetchData()

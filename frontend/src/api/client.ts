@@ -512,6 +512,196 @@ export async function runScheduleNow(
   return request(`/schedules/${id}/run`, { method: 'POST' })
 }
 
+// ============================================================================
+// Notifications (Phase 3)
+// ============================================================================
+
+export interface NotificationChannel {
+  id: string
+  name: string
+  type: 'slack' | 'email' | 'webhook'
+  is_active: boolean
+  config_summary: string
+  created_at: string
+  updated_at: string
+}
+
+export interface NotificationRule {
+  id: string
+  name: string
+  condition: string
+  condition_config?: Record<string, unknown>
+  channel_ids: string[]
+  source_ids?: string[]
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface NotificationLog {
+  id: string
+  channel_id: string
+  rule_id?: string
+  event_type: string
+  status: 'pending' | 'sent' | 'failed'
+  message_preview: string
+  error_message?: string
+  created_at: string
+  sent_at?: string
+}
+
+export interface NotificationStats {
+  period_hours: number
+  total: number
+  by_status: Record<string, number>
+  by_channel: Record<string, number>
+  success_rate: number
+}
+
+// Notification Channels
+export async function listNotificationChannels(params?: {
+  offset?: number
+  limit?: number
+  active_only?: boolean
+  channel_type?: string
+}): Promise<{ success: boolean; data: NotificationChannel[]; count: number }> {
+  return request('/notifications/channels', { params })
+}
+
+export async function getNotificationChannel(
+  id: string
+): Promise<{ success: boolean; data: NotificationChannel }> {
+  return request(`/notifications/channels/${id}`)
+}
+
+export async function createNotificationChannel(data: {
+  name: string
+  type: string
+  config: Record<string, unknown>
+  is_active?: boolean
+}): Promise<{ success: boolean; data: NotificationChannel }> {
+  return request('/notifications/channels', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateNotificationChannel(
+  id: string,
+  data: {
+    name?: string
+    config?: Record<string, unknown>
+    is_active?: boolean
+  }
+): Promise<{ success: boolean; data: NotificationChannel }> {
+  return request(`/notifications/channels/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteNotificationChannel(
+  id: string
+): Promise<{ success: boolean }> {
+  return request(`/notifications/channels/${id}`, { method: 'DELETE' })
+}
+
+export async function testNotificationChannel(
+  id: string
+): Promise<{ success: boolean; message: string; error?: string }> {
+  return request(`/notifications/channels/${id}/test`, { method: 'POST' })
+}
+
+export async function getNotificationChannelTypes(): Promise<{
+  success: boolean
+  data: Record<string, Record<string, unknown>>
+}> {
+  return request('/notifications/channels/types')
+}
+
+// Notification Rules
+export async function listNotificationRules(params?: {
+  offset?: number
+  limit?: number
+  active_only?: boolean
+  condition?: string
+}): Promise<{ success: boolean; data: NotificationRule[]; count: number }> {
+  return request('/notifications/rules', { params })
+}
+
+export async function getNotificationRule(
+  id: string
+): Promise<{ success: boolean; data: NotificationRule }> {
+  return request(`/notifications/rules/${id}`)
+}
+
+export async function createNotificationRule(data: {
+  name: string
+  condition: string
+  channel_ids: string[]
+  condition_config?: Record<string, unknown>
+  source_ids?: string[]
+  is_active?: boolean
+}): Promise<{ success: boolean; data: NotificationRule }> {
+  return request('/notifications/rules', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateNotificationRule(
+  id: string,
+  data: {
+    name?: string
+    condition?: string
+    channel_ids?: string[]
+    condition_config?: Record<string, unknown>
+    source_ids?: string[]
+    is_active?: boolean
+  }
+): Promise<{ success: boolean; data: NotificationRule }> {
+  return request(`/notifications/rules/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteNotificationRule(
+  id: string
+): Promise<{ success: boolean }> {
+  return request(`/notifications/rules/${id}`, { method: 'DELETE' })
+}
+
+export async function getNotificationRuleConditions(): Promise<{
+  success: boolean
+  data: string[]
+}> {
+  return request('/notifications/rules/conditions')
+}
+
+// Notification Logs
+export async function listNotificationLogs(params?: {
+  offset?: number
+  limit?: number
+  channel_id?: string
+  status?: string
+  hours?: number
+}): Promise<{ success: boolean; data: NotificationLog[]; count: number }> {
+  return request('/notifications/logs', { params })
+}
+
+export async function getNotificationLog(
+  id: string
+): Promise<{ success: boolean; data: NotificationLog & { message: string; event_data?: unknown } }> {
+  return request(`/notifications/logs/${id}`)
+}
+
+export async function getNotificationStats(params?: {
+  hours?: number
+}): Promise<{ success: boolean; data: NotificationStats }> {
+  return request('/notifications/logs/stats', { params })
+}
+
 // API client helper for direct requests
 export const apiClient = {
   get: <T>(endpoint: string) => request<T>(endpoint),

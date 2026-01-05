@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   Database,
   Plus,
@@ -18,11 +19,14 @@ import {
 } from '@/api/client'
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 export default function Sources() {
+  const { t } = useTranslation()
   const [sources, setSources] = useState<Source[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+  const { confirm, ConfirmDialog } = useConfirm()
 
   const loadSources = useCallback(async () => {
     try {
@@ -31,33 +35,39 @@ export default function Sources() {
       setSources(response.data)
     } catch {
       toast({
-        title: 'Error',
-        description: 'Failed to load sources',
+        title: t('common.error'),
+        description: t('sources.loadError'),
         variant: 'destructive',
       })
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [toast, t])
 
   useEffect(() => {
     loadSources()
   }, [loadSources])
 
   async function handleDelete(id: string) {
-    if (!confirm('Are you sure you want to delete this source?')) return
+    const confirmed = await confirm({
+      title: t('sources.deleteSource'),
+      description: t('sources.confirmDelete'),
+      confirmText: t('common.delete'),
+      variant: 'destructive',
+    })
+    if (!confirmed) return
 
     try {
       await deleteSource(id)
       setSources((prev) => prev.filter((s) => s.id !== id))
       toast({
-        title: 'Success',
-        description: 'Source deleted successfully',
+        title: t('common.success'),
+        description: t('sources.deleteSuccess'),
       })
-    } catch (err) {
+    } catch {
       toast({
-        title: 'Error',
-        description: 'Failed to delete source',
+        title: t('common.error'),
+        description: t('sources.deleteFailed'),
         variant: 'destructive',
       })
     }
@@ -66,8 +76,8 @@ export default function Sources() {
   async function handleValidate(id: string) {
     try {
       toast({
-        title: 'Validation Started',
-        description: 'Running validation...',
+        title: t('sources.validationStarted'),
+        description: t('sources.runningValidation'),
       })
       const result = await runValidation(id, {})
       setSources((prev) =>
@@ -78,14 +88,14 @@ export default function Sources() {
         )
       )
       toast({
-        title: result.passed ? 'Validation Passed' : 'Validation Failed',
-        description: `Found ${result.total_issues} issues`,
+        title: result.passed ? t('sources.validationPassed') : t('sources.validationFailed'),
+        description: t('sources.foundIssues', { count: result.total_issues }),
         variant: result.passed ? 'default' : 'destructive',
       })
-    } catch (err) {
+    } catch {
       toast({
-        title: 'Error',
-        description: 'Failed to run validation',
+        title: t('common.error'),
+        description: t('sources.validationError'),
         variant: 'destructive',
       })
     }
@@ -104,14 +114,14 @@ export default function Sources() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Data Sources</h1>
+          <h1 className="text-3xl font-bold">{t('nav.sources')}</h1>
           <p className="text-muted-foreground">
-            Manage your data sources and validations
+            {t('sources.subtitle')}
           </p>
         </div>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          Add Source
+          {t('sources.addSource')}
         </Button>
       </div>
 
@@ -120,13 +130,13 @@ export default function Sources() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Database className="h-16 w-16 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No sources yet</h3>
+            <h3 className="text-lg font-semibold mb-2">{t('sources.noSourcesYet')}</h3>
             <p className="text-muted-foreground text-center mb-4">
-              Add your first data source to start monitoring data quality
+              {t('sources.noSourcesDesc')}
             </p>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Add Your First Source
+              {t('sources.addFirstSource')}
             </Button>
           </CardContent>
         </Card>
@@ -151,7 +161,7 @@ export default function Sources() {
                         <Badge variant="outline">{source.type}</Badge>
                         <span>•</span>
                         <span>
-                          Last validated: {formatDate(source.last_validated_at)}
+                          {t('sources.lastValidated')}: {formatDate(source.last_validated_at)}
                         </span>
                       </div>
                       {source.description && (
@@ -166,14 +176,16 @@ export default function Sources() {
                     {source.latest_validation_status && (
                       <Badge
                         variant={
-                          source.latest_validation_status === 'success'
+                          source.latest_validation_status === 'success' || source.latest_validation_status === 'passed'
                             ? 'success'
                             : source.latest_validation_status === 'failed'
                             ? 'destructive'
+                            : source.latest_validation_status === 'warning'
+                            ? 'warning'
                             : 'secondary'
                         }
                       >
-                        {source.latest_validation_status}
+                        {t(`validation.${source.latest_validation_status}`)}
                       </Badge>
                     )}
 
@@ -183,7 +195,7 @@ export default function Sources() {
                       onClick={() => handleValidate(source.id)}
                     >
                       <Play className="mr-2 h-4 w-4" />
-                      Validate
+                      {t('sources.validate')}
                     </Button>
 
                     <Button variant="ghost" size="icon" asChild>
@@ -206,6 +218,8 @@ export default function Sources() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog />
     </div>
   )
 }
