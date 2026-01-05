@@ -7,5 +7,12 @@ A GX Cloud alternative that provides:
 - Real-time monitoring dashboard
 """
 
-__version__ = "0.1.0"
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("truthound-dashboard")
+except PackageNotFoundError:
+    # Package not installed (e.g., running from source without pip install -e)
+    __version__ = "0.0.0.dev"
+
 __all__ = ["__version__"]
