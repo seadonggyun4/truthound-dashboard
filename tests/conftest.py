@@ -17,7 +17,8 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from truthound_dashboard.config import Settings, reset_settings
-from truthound_dashboard.db import Base, get_session_factory
+from truthound_dashboard.db import Base, get_session_factory, reset_connection
+from truthound_dashboard.db import database as db_module
 from truthound_dashboard.main import create_app
 
 
@@ -42,6 +43,9 @@ def test_settings() -> Settings:
 @pytest_asyncio.fixture
 async def db_engine():
     """Create an in-memory test database engine."""
+    # Reset any existing connection first
+    reset_connection()
+
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
         echo=False,
@@ -53,6 +57,7 @@ async def db_engine():
     yield engine
 
     await engine.dispose()
+    reset_connection()
 
 
 @pytest_asyncio.fixture
@@ -76,15 +81,19 @@ async def async_client(db_engine) -> AsyncGenerator[AsyncClient, None]:
     This fixture creates a test client that can be used to make
     requests to the API without starting the actual server.
     """
-    app = create_app()
+    # Inject test engine into the global database module
+    # This ensures the app uses our in-memory test database
+    db_module._engine = db_engine
+    db_module._session_factory = get_session_factory(db_engine)
 
-    # Override database initialization
-    async with db_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    app = create_app()
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
+
+    # Reset after test
+    reset_connection()
 
 
 # Sample data factories
