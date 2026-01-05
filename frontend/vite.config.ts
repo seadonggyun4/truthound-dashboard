@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   resolve: {
     alias: {
@@ -19,8 +19,9 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../src/truthound_dashboard/static',
+    // Use 'dist' for demo/production builds (Netlify), otherwise use static folder for backend
+    outDir: mode === 'production' ? 'dist' : '../src/truthound_dashboard/static',
     emptyOutDir: true,
     sourcemap: false,
   },
-})
+}))
