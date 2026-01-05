@@ -1,46 +1,46 @@
 # Features
 
-Truthound Dashboard의 모든 기능을 상세히 설명합니다.
+This document provides detailed descriptions of all Truthound Dashboard features.
 
 ## Data Sources
 
-다양한 데이터 소스를 연결하고 관리할 수 있습니다.
+Connect and manage various data sources.
 
-### 지원 소스 타입
+### Supported Source Types
 
-| Type | Description | Config |
-|------|-------------|--------|
-| **File** | 로컬 CSV, Parquet 파일 | `path` |
-| **PostgreSQL** | PostgreSQL 데이터베이스 | `host`, `port`, `database`, `username`, `password`, `table` |
-| **MySQL** | MySQL 데이터베이스 | `host`, `port`, `database`, `username`, `password`, `table` |
-| **Snowflake** | Snowflake 데이터 웨어하우스 | `account`, `warehouse`, `database`, `schema`, `table` |
+| Type | Description | Config Fields |
+|------|-------------|---------------|
+| **File** | Local CSV, Parquet files | `path` |
+| **PostgreSQL** | PostgreSQL database | `host`, `port`, `database`, `username`, `password`, `table` |
+| **MySQL** | MySQL database | `host`, `port`, `database`, `username`, `password`, `table` |
+| **Snowflake** | Snowflake data warehouse | `account`, `warehouse`, `database`, `schema`, `table` |
 | **BigQuery** | Google BigQuery | `project`, `dataset`, `table`, `credentials_json` |
 
-### 소스 관리
+### Source Management
 
-- **추가/수정/삭제**: 데이터 소스 CRUD 작업
-- **연결 테스트**: 소스 연결 상태 확인
-- **테이블 목록**: 데이터베이스 소스의 테이블 조회
-- **활성화/비활성화**: 소스 on/off 관리
+- **CRUD Operations**: Add, update, and delete data sources
+- **Connection Testing**: Verify source connectivity
+- **Table Listing**: Browse database tables
+- **Activation Control**: Enable or disable sources
 
 ---
 
 ## Schema Management
 
-데이터 스키마를 자동으로 학습하거나 수동으로 편집할 수 있습니다.
+Automatically learn or manually edit data schemas.
 
 ### Auto Schema Generation (th.learn)
 
-`th.learn`을 사용하여 데이터를 분석하고 스키마를 자동 생성합니다.
+Analyze data to automatically generate schemas using `th.learn`.
 
-**학습되는 정보:**
-- 컬럼 이름 및 데이터 타입
-- Nullable 여부 (null 값 존재 시)
-- Unique 여부 (모든 값이 고유할 때)
-- 수치형 컬럼: min, max 값
-- 문자열 컬럼: 카디널리티가 낮으면 allowed_values
+**Information Captured:**
+- Column names and data types
+- Nullable status (when null values exist)
+- Unique constraints (when all values are unique)
+- Numeric columns: min and max values
+- String columns: allowed values for low-cardinality fields
 
-**예시 결과:**
+**Example Output:**
 ```yaml
 columns:
   order_id:
@@ -67,38 +67,38 @@ columns:
 
 ### Manual Schema Editing
 
-UI에서 YAML 형식으로 스키마를 직접 편집할 수 있습니다.
+Edit schemas directly in YAML format through the UI.
 
-**편집 가능한 속성:**
-- `dtype`: 데이터 타입 (int64, float64, object, datetime64, bool)
-- `nullable`: null 허용 여부
-- `unique`: 고유 값 강제 여부
-- `min_value` / `max_value`: 수치 범위
-- `allowed_values`: 허용 값 목록
-- `regex`: 정규표현식 패턴
+**Editable Properties:**
+- `dtype`: Data type (int64, float64, object, datetime64, bool)
+- `nullable`: Allow null values
+- `unique`: Enforce unique values
+- `min_value` / `max_value`: Numeric range
+- `allowed_values`: List of allowed values
+- `regex`: Regular expression pattern
 
 ---
 
 ## Validation
 
-데이터 품질 검증을 실행하고 결과를 확인합니다.
+Execute data quality validations and review results.
 
 ### Validators
 
-truthound에서 제공하는 검증기:
+Validators provided by truthound:
 
 | Validator | Description |
 |-----------|-------------|
-| `not_null` | Null 값 검사 |
-| `unique` | 중복 값 검사 |
-| `dtype` | 데이터 타입 검사 |
-| `in_range` | 수치 범위 검사 |
-| `in_set` | 허용 값 목록 검사 |
-| `regex` | 정규표현식 패턴 검사 |
+| `not_null` | Check for null values |
+| `unique` | Check for duplicate values |
+| `dtype` | Verify data types |
+| `in_range` | Validate numeric ranges |
+| `in_set` | Validate against allowed values |
+| `regex` | Pattern matching |
 
 ### Validation Result
 
-검증 결과는 다음 정보를 포함합니다:
+Validation results include:
 
 ```json
 {
@@ -124,75 +124,75 @@ truthound에서 제공하는 검증기:
 
 | Severity | Description |
 |----------|-------------|
-| **Critical** | 즉시 조치 필요 (예: 필수 컬럼 null) |
-| **High** | 심각한 데이터 품질 문제 |
-| **Medium** | 주의가 필요한 문제 |
-| **Low** | 경미한 문제 |
+| **Critical** | Requires immediate attention (e.g., null in required column) |
+| **High** | Significant data quality issue |
+| **Medium** | Issue requiring attention |
+| **Low** | Minor issue |
 
 ---
 
 ## Validation History
 
-시간에 따른 데이터 품질 변화를 추적합니다.
+Track data quality changes over time.
 
 ### Features
 
-- **트렌드 차트**: 검증 결과 시각화
-- **실패 빈도 분석**: 자주 실패하는 검증 식별
-- **필터링**: 상태별, 기간별 필터
-- **상세 조회**: 각 검증 결과 상세 확인
+- **Trend Charts**: Visualize validation results
+- **Failure Analysis**: Identify frequently failing validations
+- **Filtering**: Filter by status and date range
+- **Detail View**: Examine individual validation results
 
 ### Use Cases
 
-1. **품질 모니터링**: 데이터 품질 추세 파악
-2. **문제 추적**: 특정 시점의 품질 저하 원인 분석
-3. **보고서 작성**: 기간별 품질 현황 리포트
+1. **Quality Monitoring**: Track data quality trends
+2. **Issue Tracking**: Analyze causes of quality degradation
+3. **Reporting**: Generate periodic quality reports
 
 ---
 
 ## Data Profiling
 
-데이터의 통계적 특성을 분석합니다.
+Analyze statistical characteristics of data.
 
 ### Profile Information
 
-**전체 통계:**
-- 행 수 (row_count)
-- 컬럼 수 (column_count)
-- 파일 크기 (size_bytes)
+**Overall Statistics:**
+- Row count
+- Column count
+- File size (bytes)
 
-**컬럼별 통계:**
-- Null 개수 및 비율
-- Unique 값 개수 및 비율
-- 수치형: min, max, mean, std
-- 문자열: Top N 값 및 빈도
+**Per-Column Statistics:**
+- Null count and percentage
+- Unique value count and percentage
+- Numeric: min, max, mean, std
+- String: Top N values and frequencies
 
 ### Visualization
 
-- 데이터 타입 분포 차트
-- Null 비율 히트맵
-- 수치형 컬럼 분포
-- 카테고리 컬럼 빈도
+- Data type distribution charts
+- Null percentage heatmap
+- Numeric column distributions
+- Categorical value frequencies
 
 ---
 
 ## Drift Detection
 
-두 데이터셋을 비교하여 변화를 감지합니다.
+Compare two datasets to detect changes.
 
 ### Use Cases
 
-1. **버전 비교**: 어제 vs 오늘 데이터 비교
-2. **환경 비교**: Production vs Staging 비교
-3. **모델 모니터링**: Training vs Serving 데이터 비교
+1. **Version Comparison**: Compare yesterday vs. today data
+2. **Environment Comparison**: Production vs. Staging
+3. **Model Monitoring**: Training vs. Serving data
 
 ### Drift Types
 
 | Type | Description |
 |------|-------------|
-| **Schema Drift** | 컬럼 추가/삭제/타입 변경 |
-| **Distribution Drift** | 값 분포 변화 |
-| **Volume Drift** | 행 수 변화 |
+| **Schema Drift** | Column additions, deletions, or type changes |
+| **Distribution Drift** | Value distribution changes |
+| **Volume Drift** | Row count changes |
 
 ### Comparison Result
 
@@ -218,60 +218,60 @@ truthound에서 제공하는 검증기:
 
 ## Scheduled Validations
 
-Cron 기반으로 자동 검증을 스케줄링합니다.
+Configure automated validation runs using cron expressions.
 
 ### Cron Expression
 
-표준 Cron 표현식을 지원합니다:
+Standard cron expression format:
 
 ```
-분 시 일 월 요일
-*  *  *  *  *
+minute hour day month weekday
+*      *    *   *     *
 ```
 
-**예시:**
+**Examples:**
 | Expression | Description |
 |------------|-------------|
-| `0 9 * * *` | 매일 오전 9시 |
-| `0 */6 * * *` | 6시간마다 |
-| `0 0 * * 1` | 매주 월요일 자정 |
-| `0 0 1 * *` | 매월 1일 자정 |
-| `*/30 * * * *` | 30분마다 |
+| `0 9 * * *` | Daily at 9 AM |
+| `0 */6 * * *` | Every 6 hours |
+| `0 0 * * 1` | Every Monday at midnight |
+| `0 0 1 * *` | First day of each month |
+| `*/30 * * * *` | Every 30 minutes |
 
 ### Schedule Management
 
-- **생성**: 새 스케줄 추가
-- **수정**: 스케줄 설정 변경
-- **삭제**: 스케줄 제거
-- **일시정지/재개**: 스케줄 on/off
-- **즉시 실행**: 수동으로 즉시 실행
+- **Create**: Add new schedules
+- **Update**: Modify schedule settings
+- **Delete**: Remove schedules
+- **Pause/Resume**: Toggle schedule activation
+- **Run Now**: Execute immediately
 
 ### Failure Notification
 
-스케줄 검증 실패 시 설정된 채널로 알림을 발송합니다.
+Receive notifications via configured channels when scheduled validations fail.
 
 ---
 
 ## Notifications
 
-검증 실패 시 다양한 채널로 알림을 받을 수 있습니다.
+Receive alerts through various channels when validations fail.
 
 ### Supported Channels
 
 #### Slack
 
-Webhook URL을 사용하여 Slack 채널에 알림을 발송합니다.
+Send notifications to Slack channels via webhook URL.
 
-**설정:**
+**Configuration:**
 ```json
 {
   "webhook_url": "https://hooks.slack.com/services/xxx/yyy/zzz"
 }
 ```
 
-**메시지 형식:**
+**Message Format:**
 ```
-🚨 Validation Failed
+Validation Failed
 
 Source: Sales Data
 Severity: Critical
@@ -281,9 +281,9 @@ Validation ID: val123
 
 #### Email
 
-SMTP를 통해 이메일 알림을 발송합니다.
+Send email notifications via SMTP.
 
-**설정:**
+**Configuration:**
 ```json
 {
   "smtp_host": "smtp.gmail.com",
@@ -298,9 +298,9 @@ SMTP를 통해 이메일 알림을 발송합니다.
 
 #### Webhook
 
-커스텀 HTTP 엔드포인트로 JSON 페이로드를 전송합니다.
+Send JSON payloads to custom HTTP endpoints.
 
-**설정:**
+**Configuration:**
 ```json
 {
   "url": "https://api.example.com/webhook",
@@ -310,7 +310,7 @@ SMTP를 통해 이메일 알림을 발송합니다.
 }
 ```
 
-**페이로드 형식:**
+**Payload Format:**
 ```json
 {
   "event": "validation_failed",
@@ -324,14 +324,14 @@ SMTP를 통해 이메일 알림을 발송합니다.
 
 ### Notification Rules
 
-조건에 따라 알림을 트리거하는 규칙을 설정합니다.
+Configure rules to trigger notifications based on conditions.
 
 | Condition | Description |
 |-----------|-------------|
-| `validation_failed` | 검증 실패 시 |
-| `critical_issues` | Critical 이슈 발생 시 |
-| `high_issues` | High 이슈 발생 시 |
-| `schedule_failed` | 스케줄 실행 실패 시 |
+| `validation_failed` | When validation fails |
+| `critical_issues` | When critical issues occur |
+| `high_issues` | When high severity issues occur |
+| `schedule_failed` | When scheduled execution fails |
 
 ---
 
@@ -339,24 +339,24 @@ SMTP를 통해 이메일 알림을 발송합니다.
 
 ### Dark Mode
 
-시스템 설정을 따르거나 수동으로 테마를 선택할 수 있습니다.
+Select theme manually or follow system settings.
 
 - Light Mode
 - Dark Mode
-- System (자동)
+- System (automatic)
 
 ### Internationalization (i18n)
 
-다국어를 지원합니다:
+Multiple languages supported:
 
 - English (en)
-- 한국어 (ko)
+- Korean (ko)
 
-브라우저 언어를 자동 감지하거나 수동으로 변경할 수 있습니다.
+Language is auto-detected from browser settings or can be changed manually.
 
 ### Responsive Design
 
-다양한 화면 크기에 최적화되어 있습니다:
+Optimized for various screen sizes:
 
 - Desktop (1024px+)
 - Tablet (768px - 1023px)
@@ -368,26 +368,26 @@ SMTP를 통해 이메일 알림을 발송합니다.
 
 ### Connection Encryption
 
-데이터베이스 연결 정보(비밀번호 등)는 암호화되어 저장됩니다.
+Database connection credentials (passwords, etc.) are encrypted at rest.
 
-- Fernet 대칭키 암호화
-- 기기별 고유 키 자동 생성
-- 민감한 필드 자동 감지 및 암호화
+- Fernet symmetric encryption
+- Device-specific keys auto-generated
+- Automatic detection and encryption of sensitive fields
 
 ### Rate Limiting
 
-API 요청은 기본적으로 분당 120개로 제한됩니다.
+API requests are limited to 120 per minute by default.
 
 ### Security Headers
 
-모든 응답에 보안 헤더가 포함됩니다:
+All responses include security headers:
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: DENY`
 - `X-XSS-Protection: 1; mode=block`
 
 ### Optional Authentication
 
-필요 시 비밀번호 보호를 활성화할 수 있습니다.
+Enable password protection when needed.
 
 ---
 
@@ -395,20 +395,20 @@ API 요청은 기본적으로 분당 120개로 제한됩니다.
 
 ### Large Dataset Handling
 
-대용량 데이터셋은 자동으로 샘플링됩니다:
-- 100MB 이상 파일: 자동 샘플링
-- 기본 샘플 크기: 100,000행
-- 설정으로 조정 가능
+Large datasets are automatically sampled:
+- Files over 100MB: automatic sampling
+- Default sample size: 100,000 rows
+- Configurable via settings
 
 ### Caching
 
-자주 조회되는 데이터는 캐싱됩니다:
-- 소스 목록: 30초 TTL
-- 프로파일 결과: 5분 TTL
+Frequently accessed data is cached:
+- Source list: 30-second TTL
+- Profile results: 5-minute TTL
 
 ### Database Maintenance
 
-자동 정리 작업이 스케줄됩니다:
-- 90일 이상 된 검증 결과 삭제
-- 30일 이상 된 알림 로그 삭제
-- 주간 VACUUM 실행
+Automatic cleanup tasks are scheduled:
+- Delete validation results older than 90 days
+- Delete notification logs older than 30 days
+- Weekly VACUUM execution

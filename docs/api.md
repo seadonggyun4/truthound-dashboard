@@ -1,6 +1,6 @@
 # API Reference
 
-Truthound Dashboard REST API 문서입니다.
+This document describes the Truthound Dashboard REST API.
 
 ## Base URL
 
@@ -52,13 +52,13 @@ http://localhost:8765/api/v1
 
 ### GET /health
 
-서버 상태 확인
+Check server status.
 
 **Response:**
 ```json
 {
   "status": "ok",
-  "version": "1.0.0"
+  "version": "1.0.1"
 }
 ```
 
@@ -68,7 +68,7 @@ http://localhost:8765/api/v1
 
 ### GET /sources
 
-모든 데이터 소스 목록 조회
+Retrieve all data sources.
 
 **Response:**
 ```json
@@ -90,7 +90,7 @@ http://localhost:8765/api/v1
 
 ### POST /sources
 
-새 데이터 소스 생성
+Create a new data source.
 
 **Request:**
 ```json
@@ -104,7 +104,7 @@ http://localhost:8765/api/v1
 ```
 
 **Source Types:**
-- `file` - 로컬 파일 (CSV, Parquet)
+- `file` - Local file (CSV, Parquet)
 - `postgresql` - PostgreSQL
 - `mysql` - MySQL
 - `snowflake` - Snowflake
@@ -172,11 +172,11 @@ http://localhost:8765/api/v1
 
 ### GET /sources/{id}
 
-특정 소스 조회
+Retrieve a specific source.
 
 ### PUT /sources/{id}
 
-소스 정보 수정
+Update source information.
 
 **Request:**
 ```json
@@ -188,11 +188,11 @@ http://localhost:8765/api/v1
 
 ### DELETE /sources/{id}
 
-소스 삭제
+Delete a source.
 
 ### POST /sources/{id}/test
 
-소스 연결 테스트
+Test source connection.
 
 **Response:**
 ```json
@@ -210,7 +210,7 @@ http://localhost:8765/api/v1
 
 ### GET /sources/{id}/schema
 
-소스의 학습된 스키마 조회
+Retrieve the learned schema for a source.
 
 **Response:**
 ```json
@@ -237,7 +237,7 @@ http://localhost:8765/api/v1
 
 ### PUT /sources/{id}/schema
 
-스키마 저장 (수동 편집)
+Save schema (manual edit).
 
 **Request:**
 ```json
@@ -248,9 +248,9 @@ http://localhost:8765/api/v1
 
 ### POST /sources/{id}/learn
 
-스키마 자동 생성 (th.learn)
+Generate schema automatically (th.learn).
 
-데이터를 분석하여 스키마를 자동으로 생성합니다.
+Analyzes data to automatically generate a schema.
 
 **Response:**
 ```json
@@ -286,7 +286,7 @@ http://localhost:8765/api/v1
 
 ### POST /sources/{id}/validate
 
-검증 실행 (th.check)
+Run validation (th.check).
 
 **Request:**
 ```json
@@ -298,9 +298,9 @@ http://localhost:8765/api/v1
 ```
 
 **Parameters:**
-- `validators` (optional): 실행할 검증기 목록
-- `schema_path` (optional): 사용할 스키마 파일 경로
-- `auto_schema` (optional): true이면 스키마 자동 생성 후 검증
+- `validators` (optional): List of validators to run
+- `schema_path` (optional): Path to schema file
+- `auto_schema` (optional): If true, auto-generate schema before validation
 
 **Response:**
 ```json
@@ -337,11 +337,11 @@ http://localhost:8765/api/v1
 
 ### GET /validations/{id}
 
-검증 결과 상세 조회
+Retrieve validation result details.
 
 ### GET /sources/{id}/validations
 
-소스의 검증 히스토리 조회
+Retrieve validation history for a source.
 
 **Query Parameters:**
 - `page` (default: 1)
@@ -376,7 +376,7 @@ http://localhost:8765/api/v1
 
 ### POST /sources/{id}/profile
 
-데이터 프로파일링 실행 (th.profile)
+Run data profiling (th.profile).
 
 **Response:**
 ```json
@@ -420,7 +420,7 @@ http://localhost:8765/api/v1
 
 ### GET /sources/{id}/profile
 
-가장 최근 프로파일 결과 조회
+Retrieve the most recent profile result.
 
 ---
 
@@ -428,7 +428,7 @@ http://localhost:8765/api/v1
 
 ### POST /drift/compare
 
-두 데이터셋 비교 (th.compare)
+Compare two datasets (th.compare).
 
 **Request:**
 ```json
@@ -438,7 +438,7 @@ http://localhost:8765/api/v1
 }
 ```
 
-또는:
+Or:
 ```json
 {
   "source_path": "/data/v1.csv",
@@ -477,7 +477,7 @@ http://localhost:8765/api/v1
 
 ### GET /drift/{id}
 
-드리프트 비교 결과 조회
+Retrieve drift comparison result.
 
 ---
 
@@ -485,7 +485,7 @@ http://localhost:8765/api/v1
 
 ### GET /schedules
 
-모든 스케줄 목록 조회
+Retrieve all schedules.
 
 **Response:**
 ```json
@@ -509,7 +509,7 @@ http://localhost:8765/api/v1
 
 ### POST /schedules
 
-새 스케줄 생성
+Create a new schedule.
 
 **Request:**
 ```json
@@ -522,34 +522,34 @@ http://localhost:8765/api/v1
 ```
 
 **Cron Expression Examples:**
-- `0 9 * * *` - 매일 오전 9시
-- `0 */6 * * *` - 6시간마다
-- `0 0 * * 1` - 매주 월요일 자정
-- `0 0 1 * *` - 매월 1일 자정
+- `0 9 * * *` - Daily at 9 AM
+- `0 */6 * * *` - Every 6 hours
+- `0 0 * * 1` - Every Monday at midnight
+- `0 0 1 * *` - First day of each month at midnight
 
 ### GET /schedules/{id}
 
-스케줄 상세 조회
+Retrieve schedule details.
 
 ### PUT /schedules/{id}
 
-스케줄 수정
+Update a schedule.
 
 ### DELETE /schedules/{id}
 
-스케줄 삭제
+Delete a schedule.
 
 ### POST /schedules/{id}/pause
 
-스케줄 일시정지
+Pause a schedule.
 
 ### POST /schedules/{id}/resume
 
-스케줄 재개
+Resume a schedule.
 
 ### POST /schedules/{id}/run
 
-스케줄 즉시 실행
+Run a schedule immediately.
 
 ---
 
@@ -557,7 +557,7 @@ http://localhost:8765/api/v1
 
 ### GET /notifications/channels
 
-알림 채널 목록 조회
+Retrieve notification channels.
 
 **Response:**
 ```json
@@ -578,7 +578,7 @@ http://localhost:8765/api/v1
 
 ### POST /notifications/channels
 
-새 알림 채널 생성
+Create a new notification channel.
 
 **Slack Channel:**
 ```json
@@ -624,11 +624,11 @@ http://localhost:8765/api/v1
 
 ### DELETE /notifications/channels/{id}
 
-채널 삭제
+Delete a channel.
 
 ### POST /notifications/channels/{id}/test
 
-테스트 알림 발송
+Send a test notification.
 
 **Response:**
 ```json
@@ -640,7 +640,7 @@ http://localhost:8765/api/v1
 
 ### GET /notifications/rules
 
-알림 규칙 목록 조회
+Retrieve notification rules.
 
 **Response:**
 ```json
@@ -662,7 +662,7 @@ http://localhost:8765/api/v1
 
 ### POST /notifications/rules
 
-새 알림 규칙 생성
+Create a new notification rule.
 
 **Request:**
 ```json
@@ -675,18 +675,18 @@ http://localhost:8765/api/v1
 ```
 
 **Condition Types:**
-- `validation_failed` - 검증 실패 시
-- `critical_issues` - Critical 심각도 이슈 발생 시
-- `high_issues` - High 심각도 이슈 발생 시
-- `schedule_failed` - 스케줄 실행 실패 시
+- `validation_failed` - When validation fails
+- `critical_issues` - When critical severity issues occur
+- `high_issues` - When high severity issues occur
+- `schedule_failed` - When scheduled execution fails
 
 ### DELETE /notifications/rules/{id}
 
-규칙 삭제
+Delete a rule.
 
 ### GET /notifications/logs
 
-알림 발송 로그 조회
+Retrieve notification delivery logs.
 
 **Query Parameters:**
 - `limit` (default: 50)
@@ -714,21 +714,21 @@ http://localhost:8765/api/v1
 
 | Code | Description |
 |------|-------------|
-| `SOURCE_NOT_FOUND` | 데이터 소스를 찾을 수 없음 |
-| `VALIDATION_ERROR` | 검증 실행 중 오류 발생 |
-| `CONNECTION_ERROR` | 데이터베이스 연결 실패 |
-| `SCHEDULE_ERROR` | 스케줄 작업 실패 |
-| `NOTIFICATION_ERROR` | 알림 발송 실패 |
-| `RATE_LIMIT_EXCEEDED` | 요청 한도 초과 |
-| `INTERNAL_ERROR` | 내부 서버 오류 |
+| `SOURCE_NOT_FOUND` | Data source not found |
+| `VALIDATION_ERROR` | Error during validation execution |
+| `CONNECTION_ERROR` | Database connection failed |
+| `SCHEDULE_ERROR` | Scheduled task failed |
+| `NOTIFICATION_ERROR` | Notification delivery failed |
+| `RATE_LIMIT_EXCEEDED` | Request limit exceeded |
+| `INTERNAL_ERROR` | Internal server error |
 
 ---
 
 ## Rate Limiting
 
-기본적으로 분당 120개 요청으로 제한됩니다.
+By default, requests are limited to 120 per minute.
 
-Rate limit 초과 시:
+When rate limit is exceeded:
 ```json
 {
   "success": false,
@@ -743,13 +743,13 @@ Rate limit 초과 시:
 
 ## Authentication (Optional)
 
-인증이 활성화된 경우 모든 요청에 Basic Auth 헤더가 필요합니다:
+When authentication is enabled, all API requests require Basic Auth headers:
 
 ```bash
 curl -u :password http://localhost:8765/api/v1/health
 ```
 
-환경 변수로 인증 활성화:
+Enable authentication via environment variables:
 ```bash
 TRUTHOUND_AUTH_ENABLED=true
 TRUTHOUND_AUTH_PASSWORD=your-secret-password

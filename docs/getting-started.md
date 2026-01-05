@@ -1,55 +1,57 @@
 # Getting Started
 
-이 가이드에서는 Truthound Dashboard를 설치하고 첫 번째 데이터 검증을 실행하는 방법을 설명합니다.
+This guide describes how to install Truthound Dashboard and run your first data validation.
 
 ## Requirements
 
-- Python 3.11 이상
-- pip (Python 패키지 관리자)
+- Python 3.11 or higher
+- pip (Python package manager)
 
 ## Installation
 
-### PyPI에서 설치 (권장)
+### Install from PyPI (Recommended)
 
 ```bash
 pip install truthound-dashboard
 ```
 
-### 개발 버전 설치
+This command automatically installs [truthound](https://github.com/seadonggyun4/truthound) as a dependency.
+
+### Install Development Version
 
 ```bash
-git clone https://github.com/truthound/truthound-dashboard
+git clone https://github.com/seadonggyun4/truthound-dashboard
 cd truthound-dashboard
 pip install -e ".[dev]"
 ```
 
 ## Quick Start
 
-### 1. 대시보드 시작
+### 1. Start the Dashboard
 
 ```bash
 truthound serve
 ```
 
-브라우저가 자동으로 열리며 `http://localhost:8765`에서 대시보드에 접근할 수 있습니다.
+The browser opens automatically and the dashboard is accessible at `http://localhost:8765`.
 
-### 2. 데이터 소스 추가
+### 2. Add a Data Source
 
-1. 좌측 메뉴에서 **Data Sources** 클릭
-2. **Add Source** 버튼 클릭
-3. 소스 정보 입력:
-   - **Name**: 소스 이름 (예: "Sales Data")
-   - **Type**: 파일 또는 데이터베이스 유형 선택
-   - **Config**: 연결 정보 입력
+1. Click **Data Sources** in the left menu
+2. Click the **Add Source** button
+3. Enter source information:
+   - **Name**: Source name (e.g., "Sales Data")
+   - **Type**: Select file or database type
+   - **Config**: Enter connection details
 
-**파일 소스 예시:**
+**File Source Example:**
 ```json
 {
   "path": "/path/to/your/data.csv"
 }
 ```
 
-**PostgreSQL 예시:**
+**PostgreSQL Example:**
 ```json
 {
   "host": "localhost",
@@ -61,107 +63,107 @@ truthound serve
 }
 ```
 
-### 3. 스키마 자동 생성
+### 3. Generate Schema Automatically
 
-1. 생성한 소스의 **Schema** 탭 클릭
-2. **Learn Schema** 버튼 클릭
-3. 데이터를 분석하여 자동으로 스키마가 생성됩니다
+1. Click the **Schema** tab for the created source
+2. Click the **Learn Schema** button
+3. The schema is generated automatically by analyzing the data
 
-생성된 스키마에는 다음이 포함됩니다:
-- 컬럼별 데이터 타입
-- Nullable 여부
-- Unique 여부
-- 수치형 컬럼의 min/max 값
-- 카디널리티가 낮은 컬럼의 허용 값 목록
+The generated schema includes:
+- Column data types
+- Nullable status
+- Unique constraints
+- Min/max values for numeric columns
+- Allowed values for low-cardinality columns
 
-### 4. 검증 실행
+### 4. Run Validation
 
-1. 소스 상세 페이지에서 **Validate** 버튼 클릭
-2. 검증이 완료되면 결과를 확인할 수 있습니다
+1. Click the **Validate** button on the source detail page
+2. Review the results after validation completes
 
-**검증 결과 항목:**
-- **passed**: 검증 통과 여부
-- **total_issues**: 발견된 총 이슈 수
-- **has_critical**: Critical 심각도 이슈 존재 여부
-- **has_high**: High 심각도 이슈 존재 여부
-- **issues**: 상세 이슈 목록
+**Validation Result Fields:**
+- **passed**: Whether validation passed
+- **total_issues**: Total number of issues found
+- **has_critical**: Whether critical severity issues exist
+- **has_high**: Whether high severity issues exist
+- **issues**: Detailed issue list
 
-### 5. 스케줄 설정 (선택)
+### 5. Configure Schedules (Optional)
 
-정기적으로 검증을 실행하려면:
+To run validations periodically:
 
-1. **Schedules** 메뉴로 이동
-2. **Add Schedule** 클릭
-3. Cron 표현식으로 스케줄 설정
+1. Navigate to the **Schedules** menu
+2. Click **Add Schedule**
+3. Set the schedule using a cron expression
 
-**Cron 표현식 예시:**
-- `0 9 * * *` - 매일 오전 9시
-- `0 */6 * * *` - 6시간마다
-- `0 0 * * 1` - 매주 월요일 자정
+**Cron Expression Examples:**
+- `0 9 * * *` - Daily at 9 AM
+- `0 */6 * * *` - Every 6 hours
+- `0 0 * * 1` - Every Monday at midnight
 
-### 6. 알림 설정 (선택)
+### 6. Configure Notifications (Optional)
 
-검증 실패 시 알림을 받으려면:
+To receive alerts when validation fails:
 
-1. **Notifications** 메뉴로 이동
-2. **Add Channel** 클릭하여 Slack/Email/Webhook 채널 추가
-3. **Add Rule** 클릭하여 알림 규칙 설정
+1. Navigate to the **Notifications** menu
+2. Click **Add Channel** to add a Slack/Email/Webhook channel
+3. Click **Add Rule** to configure notification rules
 
 ## CLI Options
 
 ```bash
-# 기본 실행 (포트 8765)
+# Default execution (port 8765)
 truthound serve
 
-# 커스텀 포트
+# Custom port
 truthound serve --port 9000
 
-# 외부 접근 허용
+# Allow external access
 truthound serve --host 0.0.0.0
 
-# 브라우저 자동 열기 비활성화
+# Disable automatic browser opening
 truthound serve --no-browser
 
-# 개발 모드 (핫 리로드)
+# Development mode (hot reload)
 truthound serve --reload
 
-# 데이터 디렉토리 지정
+# Specify data directory
 truthound serve --data-dir /path/to/data
 ```
 
 ## Data Directory
 
-Truthound Dashboard는 기본적으로 `~/.truthound` 디렉토리에 데이터를 저장합니다:
+Truthound Dashboard stores data in `~/.truthound` by default:
 
 ```
 ~/.truthound/
-├── dashboard.db    # SQLite 데이터베이스
-├── logs/           # 로그 파일
-└── .key            # 암호화 키 (자동 생성)
+├── dashboard.db    # SQLite database
+├── logs/           # Log files
+└── .key            # Encryption key (auto-generated)
 ```
 
 ## Next Steps
 
-- [Features](./features.md) - 전체 기능 살펴보기
-- [API Reference](./api.md) - REST API 사용하기
-- [Configuration](./configuration.md) - 상세 설정 옵션
+- [Features](./features.md) - Explore all features
+- [API Reference](./api.md) - Use the REST API
+- [Configuration](./configuration.md) - Detailed configuration options
 
 ## Troubleshooting
 
-### 포트가 이미 사용 중인 경우
+### Port Already in Use
 
 ```bash
 truthound serve --port 9000
 ```
 
-### 데이터베이스 초기화
+### Database Reset
 
 ```bash
 rm -rf ~/.truthound
 truthound serve
 ```
 
-### 로그 확인
+### View Logs
 
 ```bash
 cat ~/.truthound/logs/dashboard.log
