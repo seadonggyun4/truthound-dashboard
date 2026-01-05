@@ -32,7 +32,9 @@ class ColumnSchema(BaseSchema):
 
     # Statistics
     null_ratio: float | None = Field(default=None, description="Ratio of null values")
-    unique_ratio: float | None = Field(default=None, description="Ratio of unique values")
+    unique_ratio: float | None = Field(
+        default=None, description="Ratio of unique values"
+    )
     mean: float | None = Field(default=None, description="Mean value (numeric)")
     std: float | None = Field(default=None, description="Standard deviation (numeric)")
 
@@ -56,7 +58,7 @@ class SchemaUpdateRequest(BaseSchema):
     )
 
 
-class SchemaResponse(IDMixin, TimestampMixin):
+class SchemaResponse(BaseSchema, IDMixin, TimestampMixin):
     """Full schema response."""
 
     source_id: str = Field(..., description="Parent source ID")
@@ -81,7 +83,7 @@ class SchemaResponse(IDMixin, TimestampMixin):
     is_active: bool = Field(default=True, description="Whether this schema is active")
 
     @classmethod
-    def from_model(cls, schema: Any) -> "SchemaResponse":
+    def from_model(cls, schema: Any) -> SchemaResponse:
         """Create response from model.
 
         Args:

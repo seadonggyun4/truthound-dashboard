@@ -13,7 +13,6 @@ from truthound_dashboard.core import DriftService
 from truthound_dashboard.schemas import (
     DriftCompareRequest,
     DriftComparisonListResponse,
-    DriftComparisonResponse,
 )
 
 from .deps import SessionDep
@@ -71,7 +70,9 @@ async def compare_datasets(
                 "drift_percentage": comparison.drift_percentage,
                 "result": comparison.result_json,
                 "config": comparison.config,
-                "created_at": comparison.created_at.isoformat() if comparison.created_at else None,
+                "created_at": (
+                    comparison.created_at.isoformat() if comparison.created_at else None
+                ),
             },
         }
     except ValueError as e:
@@ -88,7 +89,9 @@ async def compare_datasets(
 )
 async def list_comparisons(
     service: DriftServiceDep,
-    baseline_source_id: str | None = Query(None, description="Filter by baseline source"),
+    baseline_source_id: str | None = Query(
+        None, description="Filter by baseline source"
+    ),
     current_source_id: str | None = Query(None, description="Filter by current source"),
     limit: int = Query(20, ge=1, le=100, description="Maximum results"),
 ) -> DriftComparisonListResponse:
@@ -166,7 +169,11 @@ async def get_comparison(
             "drift_percentage": comparison.drift_percentage,
             "result": comparison.result_json,
             "config": comparison.config,
-            "created_at": comparison.created_at.isoformat() if comparison.created_at else None,
-            "updated_at": comparison.updated_at.isoformat() if comparison.updated_at else None,
+            "created_at": (
+                comparison.created_at.isoformat() if comparison.created_at else None
+            ),
+            "updated_at": (
+                comparison.updated_at.isoformat() if comparison.updated_at else None
+            ),
         },
     }

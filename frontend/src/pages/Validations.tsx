@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -22,18 +22,13 @@ export default function Validations() {
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  useEffect(() => {
-    if (id) {
-      loadValidation()
-    }
-  }, [id])
-
-  async function loadValidation() {
+  const loadValidation = useCallback(async () => {
+    if (!id) return
     try {
       setLoading(true)
-      const data = await getValidation(id!)
+      const data = await getValidation(id)
       setValidation(data)
-    } catch (err) {
+    } catch {
       toast({
         title: 'Error',
         description: 'Failed to load validation details',
@@ -42,7 +37,11 @@ export default function Validations() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, toast])
+
+  useEffect(() => {
+    loadValidation()
+  }, [loadValidation])
 
   if (loading) {
     return (
@@ -244,9 +243,9 @@ export default function Validations() {
                                   {issue.details}
                                 </p>
                               )}
-                              {(issue.expected || issue.actual) && (
+                              {(issue.expected !== undefined || issue.actual !== undefined) && (
                                 <div className="flex gap-4 mt-2 text-sm">
-                                  {issue.expected && (
+                                  {issue.expected !== undefined && (
                                     <span>
                                       Expected:{' '}
                                       <code className="bg-muted px-1 rounded">
@@ -254,7 +253,7 @@ export default function Validations() {
                                       </code>
                                     </span>
                                   )}
-                                  {issue.actual && (
+                                  {issue.actual !== undefined && (
                                     <span>
                                       Actual:{' '}
                                       <code className="bg-muted px-1 rounded">

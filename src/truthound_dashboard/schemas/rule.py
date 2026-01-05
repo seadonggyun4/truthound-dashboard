@@ -5,11 +5,10 @@ This module defines schemas for custom validation rules API operations.
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 
 import yaml
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_validator
 
 from .base import BaseSchema, IDMixin, ListResponseWrapper, TimestampMixin
 
@@ -128,7 +127,7 @@ class RuleResponse(RuleBase, IDMixin, TimestampMixin):
     )
 
     @classmethod
-    def from_model(cls, rule: Any) -> "RuleResponse":
+    def from_model(cls, rule: Any) -> RuleResponse:
         """Create response from model with computed fields.
 
         Args:
@@ -152,7 +151,7 @@ class RuleResponse(RuleBase, IDMixin, TimestampMixin):
         )
 
 
-class RuleListItem(IDMixin, TimestampMixin):
+class RuleListItem(BaseSchema, IDMixin, TimestampMixin):
     """Rule list item (without full YAML content)."""
 
     source_id: str
@@ -163,7 +162,7 @@ class RuleListItem(IDMixin, TimestampMixin):
     column_count: int = 0
 
     @classmethod
-    def from_model(cls, rule: Any) -> "RuleListItem":
+    def from_model(cls, rule: Any) -> RuleListItem:
         """Create list item from model.
 
         Args:

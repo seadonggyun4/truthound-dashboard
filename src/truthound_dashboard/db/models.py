@@ -16,7 +16,16 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin, UUIDMixin
@@ -47,34 +56,34 @@ class Source(Base, UUIDMixin, TimestampMixin):
     last_validated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Relationships
-    schemas: Mapped[list["Schema"]] = relationship(
+    schemas: Mapped[list[Schema]] = relationship(
         "Schema",
         back_populates="source",
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    rules: Mapped[list["Rule"]] = relationship(
+    rules: Mapped[list[Rule]] = relationship(
         "Rule",
         back_populates="source",
         cascade="all, delete-orphan",
         lazy="selectin",
         order_by="desc(Rule.created_at)",
     )
-    validations: Mapped[list["Validation"]] = relationship(
+    validations: Mapped[list[Validation]] = relationship(
         "Validation",
         back_populates="source",
         cascade="all, delete-orphan",
         lazy="selectin",
         order_by="desc(Validation.created_at)",
     )
-    profiles: Mapped[list["Profile"]] = relationship(
+    profiles: Mapped[list[Profile]] = relationship(
         "Profile",
         back_populates="source",
         cascade="all, delete-orphan",
         lazy="selectin",
         order_by="desc(Profile.created_at)",
     )
-    schedules: Mapped[list["Schedule"]] = relationship(
+    schedules: Mapped[list[Schedule]] = relationship(
         "Schedule",
         back_populates="source",
         cascade="all, delete-orphan",
@@ -87,26 +96,26 @@ class Source(Base, UUIDMixin, TimestampMixin):
         return self.config.get("path") or self.config.get("connection_string")
 
     @property
-    def latest_schema(self) -> "Schema | None":
+    def latest_schema(self) -> Schema | None:
         """Get the most recent schema."""
         if self.schemas:
             return max(self.schemas, key=lambda s: s.created_at)
         return None
 
     @property
-    def latest_validation(self) -> "Validation | None":
+    def latest_validation(self) -> Validation | None:
         """Get the most recent validation."""
         if self.validations:
             return self.validations[0]
         return None
 
     @property
-    def active_rules(self) -> list["Rule"]:
+    def active_rules(self) -> list[Rule]:
         """Get all active rules for this source."""
         return [r for r in self.rules if r.is_active]
 
     @property
-    def active_rule(self) -> "Rule | None":
+    def active_rule(self) -> Rule | None:
         """Get the active rule for this source (most recent)."""
         active = self.active_rules
         return active[0] if active else None
@@ -160,7 +169,7 @@ class Rule(Base, UUIDMixin, TimestampMixin):
     version: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Relationships
-    source: Mapped["Source"] = relationship("Source", back_populates="rules")
+    source: Mapped[Source] = relationship("Source", back_populates="rules")
 
     @property
     def column_rules(self) -> dict[str, Any]:
@@ -224,7 +233,7 @@ class Schema(Base, UUIDMixin, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relationships
-    source: Mapped["Source"] = relationship("Source", back_populates="schemas")
+    source: Mapped[Source] = relationship("Source", back_populates="schemas")
 
     @property
     def columns(self) -> list[str]:
@@ -300,7 +309,7 @@ class Validation(Base, UUIDMixin):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Relationships
-    source: Mapped["Source"] = relationship("Source", back_populates="validations")
+    source: Mapped[Source] = relationship("Source", back_populates="validations")
 
     @property
     def issues(self) -> list[dict[str, Any]]:
@@ -373,7 +382,7 @@ class Profile(Base, UUIDMixin, TimestampMixin):
     size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Relationships
-    source: Mapped["Source"] = relationship("Source", back_populates="profiles")
+    source: Mapped[Source] = relationship("Source", back_populates="profiles")
 
     @property
     def columns(self) -> list[dict[str, Any]]:
@@ -411,13 +420,15 @@ class Schedule(Base, UUIDMixin, TimestampMixin):
     )
     cron_expression: Mapped[str] = mapped_column(String(100), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    notify_on_failure: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    notify_on_failure: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     next_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     config: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     # Relationships
-    source: Mapped["Source"] = relationship("Source", back_populates="schedules")
+    source: Mapped[Source] = relationship("Source", back_populates="schedules")
 
     def pause(self) -> None:
         """Pause this schedule."""
@@ -472,12 +483,12 @@ class DriftComparison(Base, UUIDMixin, TimestampMixin):
     config: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     # Relationships
-    baseline_source: Mapped["Source"] = relationship(
+    baseline_source: Mapped[Source] = relationship(
         "Source",
         foreign_keys=[baseline_source_id],
         backref="baseline_comparisons",
     )
-    current_source: Mapped["Source"] = relationship(
+    current_source: Mapped[Source] = relationship(
         "Source",
         foreign_keys=[current_source_id],
         backref="current_comparisons",

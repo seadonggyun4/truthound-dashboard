@@ -4,7 +4,6 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from truthound_dashboard.core.services import SourceRepository, SourceService
-from truthound_dashboard.db import Source
 
 
 @pytest.mark.asyncio

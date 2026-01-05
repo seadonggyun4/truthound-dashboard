@@ -31,8 +31,12 @@ router = APIRouter()
 async def list_sources(
     service: SourceServiceDep,
     offset: Annotated[int, Query(ge=0, description="Offset for pagination")] = 0,
-    limit: Annotated[int, Query(ge=1, le=100, description="Maximum items to return")] = 100,
-    active_only: Annotated[bool, Query(description="Only return active sources")] = True,
+    limit: Annotated[
+        int, Query(ge=1, le=100, description="Maximum items to return")
+    ] = 100,
+    active_only: Annotated[
+        bool, Query(description="Only return active sources")
+    ] = True,
 ) -> SourceListResponse:
     """List all data sources with pagination.
 

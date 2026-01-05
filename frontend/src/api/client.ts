@@ -512,4 +512,14 @@ export async function runScheduleNow(
   return request(`/schedules/${id}/run`, { method: 'POST' })
 }
 
+// API client helper for direct requests
+export const apiClient = {
+  get: <T>(endpoint: string) => request<T>(endpoint),
+  post: <T>(endpoint: string, data: unknown) =>
+    request<T>(endpoint, { method: 'POST', body: JSON.stringify(data) }),
+  put: <T>(endpoint: string, data: unknown) =>
+    request<T>(endpoint, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (endpoint: string) => request(endpoint, { method: 'DELETE' }),
+}
+
 export { ApiError }

@@ -42,8 +42,7 @@ class Base(DeclarativeBase):
             Dictionary representation of the model.
         """
         return {
-            column.name: getattr(self, column.name)
-            for column in self.__table__.columns
+            column.name: getattr(self, column.name) for column in self.__table__.columns
         }
 
 

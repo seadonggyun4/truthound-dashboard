@@ -15,10 +15,11 @@ Services handle:
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from datetime import datetime, timedelta
-from typing import Any, Literal, Sequence
+from typing import Any, Literal
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from truthound_dashboard.db import (
@@ -34,9 +35,6 @@ from truthound_dashboard.db import (
 
 from .truthound_adapter import (
     CheckResult,
-    CompareResult,
-    LearnResult,
-    ProfileResult,
     get_adapter,
 )
 
@@ -64,7 +62,7 @@ class SourceRepository(BaseRepository[Source]):
         return await self.list(
             offset=offset,
             limit=limit,
-            filters=[Source.is_active == True],
+            filters=[Source.is_active],
         )
 
     async def get_by_name(self, name: str) -> Source | None:
@@ -76,9 +74,7 @@ class SourceRepository(BaseRepository[Source]):
         Returns:
             Source or None if not found.
         """
-        result = await self.session.execute(
-            select(Source).where(Source.name == name)
-        )
+        result = await self.session.execute(select(Source).where(Source.name == name))
         return result.scalar_one_or_none()
 
 
@@ -99,7 +95,7 @@ class SchemaRepository(BaseRepository[Schema]):
         result = await self.session.execute(
             select(Schema)
             .where(Schema.source_id == source_id)
-            .where(Schema.is_active == True)
+            .where(Schema.is_active)
             .order_by(Schema.created_at.desc())
             .limit(1)
         )
@@ -112,9 +108,7 @@ class SchemaRepository(BaseRepository[Schema]):
             source_id: Source ID.
         """
         result = await self.session.execute(
-            select(Schema)
-            .where(Schema.source_id == source_id)
-            .where(Schema.is_active == True)
+            select(Schema).where(Schema.source_id == source_id).where(Schema.is_active)
         )
         schemas = result.scalars().all()
         for schema in schemas:
@@ -145,7 +139,7 @@ class RuleRepository(BaseRepository[Rule]):
         """
         filters = [Rule.source_id == source_id]
         if active_only:
-            filters.append(Rule.is_active == True)
+            filters.append(Rule.is_active)
 
         return await self.list(
             limit=limit,
@@ -165,7 +159,7 @@ class RuleRepository(BaseRepository[Rule]):
         result = await self.session.execute(
             select(Rule)
             .where(Rule.source_id == source_id)
-            .where(Rule.is_active == True)
+            .where(Rule.is_active)
             .order_by(Rule.created_at.desc())
             .limit(1)
         )
@@ -181,9 +175,7 @@ class RuleRepository(BaseRepository[Rule]):
             Number of rules deactivated.
         """
         result = await self.session.execute(
-            select(Rule)
-            .where(Rule.source_id == source_id)
-            .where(Rule.is_active == True)
+            select(Rule).where(Rule.source_id == source_id).where(Rule.is_active)
         )
         rules = result.scalars().all()
         for rule in rules:
@@ -897,7 +889,7 @@ class ScheduleRepository(BaseRepository[Schedule]):
         return await self.list(
             offset=offset,
             limit=limit,
-            filters=[Schedule.is_active == True],
+            filters=[Schedule.is_active],
         )
 
     async def get_for_source(
@@ -1174,13 +1166,15 @@ class HistoryService:
         for date, vals in sorted(buckets.items()):
             passed_count = sum(1 for v in vals if v.passed)
             success_rate = (passed_count / len(vals) * 100) if vals else 0
-            trend.append({
-                "date": date,
-                "success_rate": round(success_rate, 2),
-                "run_count": len(vals),
-                "passed_count": passed_count,
-                "failed_count": len(vals) - passed_count,
-            })
+            trend.append(
+                {
+                    "date": date,
+                    "success_rate": round(success_rate, 2),
+                    "run_count": len(vals),
+                    "passed_count": passed_count,
+                    "failed_count": len(vals) - passed_count,
+                }
+            )
 
         return trend
 

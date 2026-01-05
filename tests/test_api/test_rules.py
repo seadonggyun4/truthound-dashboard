@@ -2,7 +2,6 @@
 
 import pytest
 
-
 SAMPLE_RULES_YAML = """columns:
   user_id:
     not_null: true
@@ -106,9 +105,7 @@ async def test_get_active_rule(async_client, source_with_id):
     )
 
     # Get active rule
-    response = await async_client.get(
-        f"/api/v1/sources/{source_with_id}/rules/active"
-    )
+    response = await async_client.get(f"/api/v1/sources/{source_with_id}/rules/active")
 
     assert response.status_code == 200
     data = response.json()
@@ -119,9 +116,7 @@ async def test_get_active_rule(async_client, source_with_id):
 @pytest.mark.asyncio
 async def test_get_active_rule_none(async_client, source_with_id):
     """Test getting active rule when none exists."""
-    response = await async_client.get(
-        f"/api/v1/sources/{source_with_id}/rules/active"
-    )
+    response = await async_client.get(f"/api/v1/sources/{source_with_id}/rules/active")
 
     assert response.status_code == 200
     assert response.json() is None
@@ -216,9 +211,7 @@ async def test_update_rule_yaml(async_client, source_with_id):
 async def test_update_rule_not_found(async_client):
     """Test updating non-existent rule returns 404."""
     update_data = {"name": "Updated Name"}
-    response = await async_client.put(
-        "/api/v1/rules/nonexistent-id", json=update_data
-    )
+    response = await async_client.put("/api/v1/rules/nonexistent-id", json=update_data)
 
     assert response.status_code == 404
 
@@ -316,9 +309,7 @@ async def test_list_rules_with_pagination(async_client, source_with_id):
         )
 
     # Test with limit
-    response = await async_client.get(
-        f"/api/v1/sources/{source_with_id}/rules?limit=3"
-    )
+    response = await async_client.get(f"/api/v1/sources/{source_with_id}/rules?limit=3")
 
     assert response.status_code == 200
     data = response.json()

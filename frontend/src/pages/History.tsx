@@ -42,8 +42,8 @@ export default function History() {
       try {
         setLoading(true)
         const [sourceData, historyRes] = await Promise.all([
-          getSource(sourceId),
-          getValidationHistory(sourceId, { period, granularity }),
+          getSource(sourceId!),
+          getValidationHistory(sourceId!, { period, granularity }),
         ])
         setSource(sourceData)
         setHistoryData(historyRes.data)

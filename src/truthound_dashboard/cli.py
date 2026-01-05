@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import webbrowser
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -43,7 +43,7 @@ def version_callback(value: bool) -> None:
 @app.callback()
 def main(
     version: Annotated[
-        Optional[bool],
+        bool | None,
         typer.Option(
             "--version",
             "-v",
@@ -68,7 +68,7 @@ def serve(
         typer.Option("--host", "-h", help="Host to bind server to"),
     ] = "127.0.0.1",
     data_dir: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option(
             "--data-dir",
             "-d",
@@ -200,7 +200,7 @@ def register_commands(typer_app: typer.Typer) -> None:
             typer.Option("--host", help="Host to bind"),
         ] = "127.0.0.1",
         data_dir: Annotated[
-            Optional[Path],
+            Path | None,
             typer.Option("--data-dir", "-d", help="Data directory path"),
         ] = None,
         no_browser: Annotated[

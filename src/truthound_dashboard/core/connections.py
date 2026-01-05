@@ -253,7 +253,10 @@ async def test_connection(source_type: str, config: dict[str, Any]) -> dict[str,
         errors = builder.validate_config(config)
 
         if errors:
-            return {"success": False, "error": f"Configuration errors: {'; '.join(errors)}"}
+            return {
+                "success": False,
+                "error": f"Configuration errors: {'; '.join(errors)}",
+            }
 
         connection_string = builder.build(config)
 

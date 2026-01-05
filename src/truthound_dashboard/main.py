@@ -15,9 +15,9 @@ Example:
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,7 +30,7 @@ from truthound_dashboard.db import init_db
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager.
 
     Handles startup and shutdown events:
@@ -113,7 +113,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     """
 
     @app.exception_handler(ValueError)
-    async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+    async def value_error_handler(_request: Request, exc: ValueError) -> JSONResponse:
         """Handle ValueError as 400 Bad Request."""
         return JSONResponse(
             status_code=400,
@@ -122,7 +122,7 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(FileNotFoundError)
     async def file_not_found_handler(
-        request: Request, exc: FileNotFoundError
+        _request: Request, exc: FileNotFoundError
     ) -> JSONResponse:
         """Handle FileNotFoundError as 404 Not Found."""
         return JSONResponse(

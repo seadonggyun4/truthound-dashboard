@@ -5,7 +5,17 @@ This module configures the main API router and includes all sub-routers.
 
 from fastapi import APIRouter
 
-from . import drift, health, history, profile, rules, schedules, schemas, sources, validations
+from . import (
+    drift,
+    health,
+    history,
+    profile,
+    rules,
+    schedules,
+    schemas,
+    sources,
+    validations,
+)
 
 api_router = APIRouter()
 

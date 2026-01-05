@@ -17,12 +17,16 @@ class DriftCompareRequest(BaseModel):
 
     baseline_source_id: str = Field(..., description="Baseline source ID")
     current_source_id: str = Field(..., description="Current source ID to compare")
-    columns: list[str] | None = Field(None, description="Columns to compare (None = all)")
+    columns: list[str] | None = Field(
+        None, description="Columns to compare (None = all)"
+    )
     method: Literal["auto", "ks", "psi", "chi2", "js"] = Field(
         "auto", description="Drift detection method"
     )
     threshold: float | None = Field(None, ge=0, le=1, description="Custom threshold")
-    sample_size: int | None = Field(None, ge=100, description="Sample size for large datasets")
+    sample_size: int | None = Field(
+        None, ge=100, description="Sample size for large datasets"
+    )
 
 
 class ColumnDriftResult(BaseModel):
@@ -51,9 +55,13 @@ class DriftResult(BaseModel):
     baseline_rows: int = Field(..., description="Number of baseline rows")
     current_rows: int = Field(..., description="Number of current rows")
     has_drift: bool = Field(..., description="Whether any drift was detected")
-    has_high_drift: bool = Field(..., description="Whether high-severity drift was detected")
+    has_high_drift: bool = Field(
+        ..., description="Whether high-severity drift was detected"
+    )
     total_columns: int = Field(..., description="Total columns compared")
-    drifted_columns: list[str] = Field(default_factory=list, description="Columns with drift")
+    drifted_columns: list[str] = Field(
+        default_factory=list, description="Columns with drift"
+    )
     columns: list[ColumnDriftResult] = Field(
         default_factory=list, description="Per-column results"
     )
@@ -72,15 +80,21 @@ class DriftComparisonResponse(BaseModel, IDMixin, TimestampMixin):
     baseline_source_id: str = Field(..., description="Baseline source ID")
     current_source_id: str = Field(..., description="Current source ID")
     has_drift: bool = Field(..., description="Whether drift was detected")
-    has_high_drift: bool = Field(..., description="Whether high-severity drift was detected")
+    has_high_drift: bool = Field(
+        ..., description="Whether high-severity drift was detected"
+    )
     total_columns: int | None = Field(None, description="Total columns compared")
-    drifted_columns: int | None = Field(None, description="Number of columns with drift")
+    drifted_columns: int | None = Field(
+        None, description="Number of columns with drift"
+    )
     drift_percentage: float = Field(0, description="Percentage of columns with drift")
     result: DriftResult | None = Field(None, description="Full drift result")
     config: dict[str, Any] | None = Field(None, description="Comparison configuration")
 
     # Optional source details
-    baseline: DriftSourceSummary | None = Field(None, description="Baseline source info")
+    baseline: DriftSourceSummary | None = Field(
+        None, description="Baseline source info"
+    )
     current: DriftSourceSummary | None = Field(None, description="Current source info")
 
 

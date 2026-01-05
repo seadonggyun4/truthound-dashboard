@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Database,
   Plus,
-  MoreVertical,
   Trash2,
   Play,
   FileText,
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -25,16 +24,12 @@ export default function Sources() {
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  useEffect(() => {
-    loadSources()
-  }, [])
-
-  async function loadSources() {
+  const loadSources = useCallback(async () => {
     try {
       setLoading(true)
       const response = await listSources()
       setSources(response.data)
-    } catch (err) {
+    } catch {
       toast({
         title: 'Error',
         description: 'Failed to load sources',
@@ -43,7 +38,11 @@ export default function Sources() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    loadSources()
+  }, [loadSources])
 
   async function handleDelete(id: string) {
     if (!confirm('Are you sure you want to delete this source?')) return

@@ -1,9 +1,8 @@
 """Database model tests."""
 
-import pytest
 from datetime import datetime
 
-from truthound_dashboard.db import Source, Schema, Validation
+from truthound_dashboard.db import Schema, Source, Validation
 
 
 def test_source_model_creation():

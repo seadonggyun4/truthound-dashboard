@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Database,
@@ -37,24 +37,19 @@ export default function SourceDetail() {
   const [validating, setValidating] = useState(false)
   const { toast } = useToast()
 
-  useEffect(() => {
-    if (id) {
-      loadData()
-    }
-  }, [id])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
+    if (!id) return
     try {
       setLoading(true)
       const [sourceData, schemaData, validationsData] = await Promise.all([
-        getSource(id!),
-        getSourceSchema(id!),
-        listSourceValidations(id!),
+        getSource(id),
+        getSourceSchema(id),
+        listSourceValidations(id),
       ])
       setSource(sourceData)
       setSchema(schemaData)
       setValidations(validationsData.data)
-    } catch (err) {
+    } catch {
       toast({
         title: 'Error',
         description: 'Failed to load source details',
@@ -63,7 +58,11 @@ export default function SourceDetail() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, toast])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   async function handleValidate() {
     if (!id) return

@@ -96,7 +96,7 @@ class SourceResponse(SourceBase, IDMixin, TimestampMixin):
     )
 
     @classmethod
-    def from_model(cls, source: Any) -> "SourceResponse":
+    def from_model(cls, source: Any) -> SourceResponse:
         """Create response from model with computed fields.
 
         Args:
@@ -117,9 +117,7 @@ class SourceResponse(SourceBase, IDMixin, TimestampMixin):
             last_validated_at=source.last_validated_at,
             has_schema=source.latest_schema is not None,
             latest_validation_status=(
-                source.latest_validation.status
-                if source.latest_validation
-                else None
+                source.latest_validation.status if source.latest_validation else None
             ),
         )
 

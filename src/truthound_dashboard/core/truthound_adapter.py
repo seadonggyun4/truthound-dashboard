@@ -454,7 +454,11 @@ class TruthoundAdapter:
                 "column": col.column,
                 "dtype": col.dtype,
                 "drifted": col.result.drifted,
-                "level": col.result.level.value if hasattr(col.result.level, "value") else str(col.result.level),
+                "level": (
+                    col.result.level.value
+                    if hasattr(col.result.level, "value")
+                    else str(col.result.level)
+                ),
                 "method": col.result.method,
                 "statistic": col.result.statistic,
                 "p_value": col.result.p_value,

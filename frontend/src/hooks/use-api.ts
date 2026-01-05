@@ -32,6 +32,7 @@ export function useApi<T>(
     } catch (error) {
       setState({ data: null, loading: false, error: error as Error })
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetcher, ...deps])
 
   useEffect(() => {

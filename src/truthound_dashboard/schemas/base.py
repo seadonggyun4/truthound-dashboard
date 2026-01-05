@@ -36,14 +36,14 @@ class BaseSchema(BaseModel):
     )
 
 
-class TimestampMixin(BaseModel):
+class TimestampMixin:
     """Mixin for timestamp fields in responses."""
 
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
 
 
-class IDMixin(BaseModel):
+class IDMixin:
     """Mixin for ID field in responses."""
 
     id: str = Field(..., description="Unique identifier")

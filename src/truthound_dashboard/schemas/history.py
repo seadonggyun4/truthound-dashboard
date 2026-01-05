@@ -14,7 +14,9 @@ class TrendDataPoint(BaseModel):
     """Single data point in trend analysis."""
 
     date: str = Field(..., description="Date string (format depends on granularity)")
-    success_rate: float = Field(..., ge=0, le=100, description="Success rate percentage")
+    success_rate: float = Field(
+        ..., ge=0, le=100, description="Success rate percentage"
+    )
     run_count: int = Field(..., ge=0, description="Number of validation runs")
     passed_count: int = Field(..., ge=0, description="Number of passed validations")
     failed_count: int = Field(..., ge=0, description="Number of failed validations")
@@ -45,7 +47,9 @@ class HistorySummary(BaseModel):
     total_runs: int = Field(..., ge=0, description="Total validation runs")
     passed_runs: int = Field(..., ge=0, description="Number of passed runs")
     failed_runs: int = Field(..., ge=0, description="Number of failed runs")
-    success_rate: float = Field(..., ge=0, le=100, description="Success rate percentage")
+    success_rate: float = Field(
+        ..., ge=0, le=100, description="Success rate percentage"
+    )
 
 
 class HistoryResponse(BaseModel):

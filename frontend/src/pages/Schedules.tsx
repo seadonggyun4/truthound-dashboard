@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -74,11 +74,7 @@ export default function Schedules() {
   const [formCron, setFormCron] = useState('0 0 * * *')
   const [formNotify, setFormNotify] = useState(true)
 
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     try {
       const [sourcesRes, schedulesRes] = await Promise.all([
         listSources(),
@@ -95,7 +91,11 @@ export default function Schedules() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   const handleCreate = async () => {
     if (!formName || !formSourceId || !formCron) {

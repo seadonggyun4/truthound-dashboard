@@ -59,7 +59,7 @@ class ProfileResponse(BaseSchema):
         return f"{size:.1f} PB"
 
     @classmethod
-    def from_result(cls, result: Any) -> "ProfileResponse":
+    def from_result(cls, result: Any) -> ProfileResponse:
         """Create response from adapter result.
 
         Args:

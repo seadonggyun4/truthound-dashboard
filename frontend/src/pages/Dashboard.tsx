@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { listSources, type Source } from '@/api/client'
-import { formatDate, getStatusColor } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 
 export default function Dashboard() {
   const [sources, setSources] = useState<Source[]>([])

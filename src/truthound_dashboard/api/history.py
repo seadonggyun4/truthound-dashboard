@@ -10,7 +10,6 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from truthound_dashboard.core import HistoryService
-from truthound_dashboard.schemas import HistoryResponse
 
 from .deps import SessionDep
 

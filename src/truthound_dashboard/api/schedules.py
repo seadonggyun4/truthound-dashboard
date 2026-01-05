@@ -14,7 +14,6 @@ from truthound_dashboard.schemas import (
     ScheduleActionResponse,
     ScheduleCreate,
     ScheduleListResponse,
-    ScheduleResponse,
     ScheduleUpdate,
 )
 
@@ -40,8 +39,12 @@ def _schedule_to_response(schedule) -> dict:
         "cron_expression": schedule.cron_expression,
         "is_active": schedule.is_active,
         "notify_on_failure": schedule.notify_on_failure,
-        "last_run_at": schedule.last_run_at.isoformat() if schedule.last_run_at else None,
-        "next_run_at": schedule.next_run_at.isoformat() if schedule.next_run_at else None,
+        "last_run_at": (
+            schedule.last_run_at.isoformat() if schedule.last_run_at else None
+        ),
+        "next_run_at": (
+            schedule.next_run_at.isoformat() if schedule.next_run_at else None
+        ),
         "config": schedule.config,
         "created_at": schedule.created_at.isoformat() if schedule.created_at else None,
         "updated_at": schedule.updated_at.isoformat() if schedule.updated_at else None,

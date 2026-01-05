@@ -27,7 +27,9 @@ class ValidationIssue(BaseSchema):
     """
 
     column: str = Field(..., description="Column where issue was found")
-    issue_type: str = Field(..., description="Type of issue", examples=["null_values", "type_mismatch"])
+    issue_type: str = Field(
+        ..., description="Type of issue", examples=["null_values", "type_mismatch"]
+    )
     count: int = Field(..., ge=0, description="Number of occurrences")
     severity: IssueSeverity = Field(..., description="Issue severity level")
     details: str | None = Field(default=None, description="Detailed description")
@@ -66,7 +68,9 @@ class ValidationSummary(BaseSchema):
     total_issues: int = Field(default=0, ge=0, description="Total issue count")
     critical_issues: int = Field(default=0, ge=0, description="Critical issue count")
     high_issues: int = Field(default=0, ge=0, description="High severity issue count")
-    medium_issues: int = Field(default=0, ge=0, description="Medium severity issue count")
+    medium_issues: int = Field(
+        default=0, ge=0, description="Medium severity issue count"
+    )
     low_issues: int = Field(default=0, ge=0, description="Low severity issue count")
 
 
@@ -99,11 +103,13 @@ class ValidationResponse(IDMixin, ValidationSummary):
         description="Validation duration in milliseconds",
     )
     started_at: datetime | None = Field(default=None, description="Start timestamp")
-    completed_at: datetime | None = Field(default=None, description="Completion timestamp")
+    completed_at: datetime | None = Field(
+        default=None, description="Completion timestamp"
+    )
     created_at: datetime = Field(..., description="Record creation timestamp")
 
     @classmethod
-    def from_model(cls, validation: Any) -> "ValidationResponse":
+    def from_model(cls, validation: Any) -> ValidationResponse:
         """Create response from model.
 
         Args:
@@ -115,8 +121,7 @@ class ValidationResponse(IDMixin, ValidationSummary):
         issues = []
         if validation.result_json and "issues" in validation.result_json:
             issues = [
-                ValidationIssue(**issue)
-                for issue in validation.result_json["issues"]
+                ValidationIssue(**issue) for issue in validation.result_json["issues"]
             ]
 
         return cls(
@@ -153,7 +158,7 @@ class ValidationListItem(IDMixin, ValidationSummary):
     created_at: datetime
 
     @classmethod
-    def from_model(cls, validation: Any) -> "ValidationListItem":
+    def from_model(cls, validation: Any) -> ValidationListItem:
         """Create list item from model.
 
         Args:

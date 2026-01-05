@@ -5,8 +5,6 @@ import {
   Plus,
   Save,
   Trash2,
-  Check,
-  X,
   FileCode,
   AlertCircle,
   Loader2,

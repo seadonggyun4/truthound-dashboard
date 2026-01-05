@@ -15,9 +15,10 @@ Example:
 
 from __future__ import annotations
 
-from typing import Any, Generic, Sequence, Type, TypeVar
+from collections.abc import Sequence
+from typing import Any, Generic, TypeVar
 
-from sqlalchemy import select, func, update, delete
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 
@@ -41,7 +42,7 @@ class BaseRepository(Generic[ModelT]):
         model: The model class for this repository.
     """
 
-    model: Type[ModelT]
+    model: type[ModelT]
 
     def __init__(self, session: AsyncSession) -> None:
         """Initialize repository with database session.

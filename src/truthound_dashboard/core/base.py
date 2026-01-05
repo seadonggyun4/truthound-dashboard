@@ -47,9 +47,7 @@ class BaseService(ABC, Generic[ModelT]):
         ...
 
     @abstractmethod
-    async def list(
-        self, *, offset: int = 0, limit: int = 100
-    ) -> list[ModelT]:
+    async def list(self, *, offset: int = 0, limit: int = 100) -> list[ModelT]:
         """List entities with pagination."""
         ...
 
@@ -173,7 +171,7 @@ class CRUDService(BaseService[ModelT], Generic[ModelT, CreateSchemaT, UpdateSche
             return data.model_dump(exclude_unset=True, exclude_none=True)  # type: ignore
         return {k: v for k, v in dict(data).items() if v is not None}  # type: ignore
 
-    def _build_filters(self, **filters: Any) -> list[Any]:
+    def _build_filters(self, **_filters: Any) -> list[Any]:
         """Build SQLAlchemy filter conditions.
 
         Override to customize filter building.
