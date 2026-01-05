@@ -52,8 +52,13 @@ class Source(Base, UUIDMixin, TimestampMixin):
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     config: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     last_validated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    def __init__(self, **kwargs: Any) -> None:
+        if "is_active" not in kwargs:
+            kwargs["is_active"] = True
+        super().__init__(**kwargs)
 
     # Relationships
     schemas: Mapped[list[Schema]] = relationship(
