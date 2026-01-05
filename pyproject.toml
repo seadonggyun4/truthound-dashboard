@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "truthound-dashboard"
-version = "0.1.0"
+version = "0.3.0"
 description = "Open-source data quality dashboard - GX Cloud alternative"
 readme = "README.md"
 license = "MIT"
@@ -36,6 +36,10 @@ dependencies = [
     "rich>=13.0.0",
     "pyyaml>=6.0.0",
     "apscheduler>=3.10.0",
+    "httpx>=0.26.0",
+    "aiosmtplib>=3.0.0",
+    "polars>=0.20.0",
+    "cryptography>=41.0.0",
 ]
 
 [project.optional-dependencies]
@@ -76,6 +80,7 @@ ignore = [
     "E501",   # line too long (handled by black)
     "B008",   # do not perform function calls in argument defaults
     "B904",   # raise without from inside except
+    "ARG002", # unused method argument (needed for interface consistency)
 ]
 
 [tool.ruff.isort]

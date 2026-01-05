@@ -9,6 +9,7 @@ from . import (
     drift,
     health,
     history,
+    notifications,
     profile,
     rules,
     schedules,
@@ -73,4 +74,10 @@ api_router.include_router(
 api_router.include_router(
     schedules.router,
     tags=["schedules"],
+)
+
+# Notification management endpoints (Phase 3)
+api_router.include_router(
+    notifications.router,
+    tags=["notifications"],
 )

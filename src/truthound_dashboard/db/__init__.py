@@ -23,6 +23,9 @@ from .database import (
 from .models import (
     AppSettings,
     DriftComparison,
+    NotificationChannel,
+    NotificationLog,
+    NotificationRule,
     Profile,
     Rule,
     Schedule,
@@ -55,6 +58,10 @@ __all__ = [
     "Schedule",
     "DriftComparison",
     "AppSettings",
+    # Notification models (Phase 3)
+    "NotificationChannel",
+    "NotificationRule",
+    "NotificationLog",
     # Repository
     "BaseRepository",
 ]

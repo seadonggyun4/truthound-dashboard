@@ -9,6 +9,9 @@ Models:
     - Rule: Custom validation rules for sources
     - Validation: Validation run results
     - AppSettings: Application-level settings
+    - NotificationChannel: Notification channel configuration
+    - NotificationRule: Notification trigger rules
+    - NotificationLog: Notification delivery log
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     DateTime,
+    Enum as SQLEnum,
     ForeignKey,
     Index,
     Integer,
@@ -536,3 +540,193 @@ class AppSettings(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
+
+
+# =============================================================================
+# Phase 3: Notification Models
+# =============================================================================
+
+
+class NotificationChannel(Base, UUIDMixin, TimestampMixin):
+    """Notification channel configuration model.
+
+    Represents a configured notification channel (Slack, Email, Webhook, etc.).
+    Uses a polymorphic pattern where channel-specific configuration is stored
+    in the 'config' JSON field.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        type: Channel type (slack, email, webhook, etc.).
+        name: Human-readable channel name.
+        config: JSON configuration specific to channel type.
+        is_active: Whether channel is active.
+
+    Example configs:
+        Slack: {"webhook_url": "https://hooks.slack.com/..."}
+        Email: {"smtp_host": "...", "smtp_port": 587, "recipients": [...]}
+        Webhook: {"url": "...", "headers": {...}, "method": "POST"}
+    """
+
+    __tablename__ = "notification_channels"
+
+    type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    config: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Relationships
+    logs: Mapped[list[NotificationLog]] = relationship(
+        "NotificationLog",
+        back_populates="channel",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    def activate(self) -> None:
+        """Activate this channel."""
+        self.is_active = True
+
+    def deactivate(self) -> None:
+        """Deactivate this channel."""
+        self.is_active = False
+
+    def get_config_summary(self) -> str:
+        """Get a safe summary of channel configuration (hides sensitive data)."""
+        if self.type == "slack":
+            url = self.config.get("webhook_url", "")
+            return f"Webhook: ...{url[-20:]}" if len(url) > 20 else f"Webhook: {url}"
+        elif self.type == "email":
+            recipients = self.config.get("recipients", [])
+            preview = ", ".join(recipients[:2])
+            suffix = "..." if len(recipients) > 2 else ""
+            return f"Recipients: {preview}{suffix}"
+        elif self.type == "webhook":
+            url = self.config.get("url", "")
+            return f"URL: {url[:50]}..." if len(url) > 50 else f"URL: {url}"
+        return "Configured"
+
+
+class NotificationRule(Base, UUIDMixin, TimestampMixin):
+    """Notification trigger rules model.
+
+    Defines when and how notifications should be triggered based on
+    validation events and conditions.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        name: Human-readable rule name.
+        condition: Trigger condition type.
+        condition_config: Additional condition configuration.
+        channel_ids: List of channel IDs to notify.
+        source_ids: Optional list of source IDs to filter (null = all sources).
+        is_active: Whether rule is active.
+
+    Condition types:
+        - validation_failed: Any validation failure
+        - critical_issues: Validation has critical issues
+        - high_issues: Validation has high severity issues
+        - schedule_failed: Scheduled validation failed
+        - drift_detected: Drift detected in comparison
+    """
+
+    __tablename__ = "notification_rules"
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    condition: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    condition_config: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True, default=dict
+    )
+    channel_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    source_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    def activate(self) -> None:
+        """Activate this rule."""
+        self.is_active = True
+
+    def deactivate(self) -> None:
+        """Deactivate this rule."""
+        self.is_active = False
+
+    def matches_source(self, source_id: str) -> bool:
+        """Check if this rule applies to a given source.
+
+        Args:
+            source_id: Source ID to check.
+
+        Returns:
+            True if rule applies to this source.
+        """
+        if self.source_ids is None:
+            return True  # Applies to all sources
+        return source_id in self.source_ids
+
+
+class NotificationLog(Base, UUIDMixin):
+    """Notification delivery log model.
+
+    Records all notification delivery attempts for auditing and debugging.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        channel_id: Reference to NotificationChannel.
+        rule_id: Optional reference to NotificationRule that triggered this.
+        event_type: Type of event that triggered notification.
+        event_data: JSON data about the triggering event.
+        status: Delivery status (pending, sent, failed).
+        error_message: Error message if delivery failed.
+        sent_at: Timestamp when notification was sent.
+    """
+
+    __tablename__ = "notification_logs"
+
+    # Composite index for efficient queries
+    __table_args__ = (
+        Index("idx_notification_logs_channel_created", "channel_id", "created_at"),
+        Index("idx_notification_logs_status", "status"),
+    )
+
+    channel_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("notification_channels.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    rule_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("notification_rules.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    event_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    event_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending", index=True
+    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # Relationships
+    channel: Mapped[NotificationChannel] = relationship(
+        "NotificationChannel", back_populates="logs"
+    )
+    rule: Mapped[NotificationRule | None] = relationship(
+        "NotificationRule", backref="logs"
+    )
+
+    def mark_sent(self) -> None:
+        """Mark notification as successfully sent."""
+        self.status = "sent"
+        self.sent_at = datetime.utcnow()
+
+    def mark_failed(self, error: str) -> None:
+        """Mark notification as failed with error message."""
+        self.status = "failed"
+        self.error_message = error
+        self.sent_at = datetime.utcnow()

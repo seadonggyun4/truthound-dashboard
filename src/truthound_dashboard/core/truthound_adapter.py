@@ -6,21 +6,33 @@ enabling non-blocking validation operations in the FastAPI application.
 The adapter uses ThreadPoolExecutor to run synchronous truthound
 functions without blocking the async event loop.
 
+Features:
+- Async wrappers for all truthound functions
+- Automatic sampling for large datasets (100MB+ files)
+- Configurable sample size and sampling methods
+
 Example:
     adapter = get_adapter()
     result = await adapter.check("/path/to/data.csv")
     schema = await adapter.learn("/path/to/data.csv")
+
+    # With auto-sampling for large files
+    result = await adapter.check_with_sampling("/path/to/large.csv")
 """
 
 from __future__ import annotations
 
 import asyncio
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import partial
+from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 
 @runtime_checkable
@@ -323,6 +335,141 @@ class TruthoundAdapter:
         result = await loop.run_in_executor(self._executor, func)
 
         return self._convert_compare_result(result)
+
+    async def check_with_sampling(
+        self,
+        data: str,
+        *,
+        validators: list[str] | None = None,
+        schema: str | None = None,
+        auto_schema: bool = False,
+        parallel: bool = False,
+        sample_size: int | None = None,
+        sampling_method: str | None = None,
+    ) -> CheckResult:
+        """Run data validation with automatic sampling for large datasets.
+
+        This method automatically samples large files (>100MB by default)
+        before running validation, which significantly improves performance
+        while maintaining validation accuracy for most use cases.
+
+        Args:
+            data: Data source path (CSV, Parquet, etc.).
+            validators: Optional list of validator names to run.
+            schema: Optional path to schema YAML file.
+            auto_schema: If True, auto-learns schema for validation.
+            parallel: If True, uses parallel execution.
+            sample_size: Number of rows to sample. Uses config default if not specified.
+            sampling_method: Sampling method ("random", "head", "stratified").
+
+        Returns:
+            CheckResult with validation results.
+
+        Note:
+            The result.row_count reflects the sampled row count when sampling
+            was performed. Check the sampling metadata for original row count.
+        """
+        from truthound_dashboard.core.sampling import SamplingMethod, get_sampler
+
+        sampler = get_sampler()
+
+        # Check if sampling is needed and perform if so
+        path = Path(data)
+        if path.exists() and sampler.needs_sampling(path):
+            # Determine sampling method
+            method = None
+            if sampling_method:
+                try:
+                    method = SamplingMethod(sampling_method)
+                except ValueError:
+                    logger.warning(f"Unknown sampling method: {sampling_method}")
+
+            # Perform sampling
+            sample_result = await sampler.auto_sample(
+                path,
+                n=sample_size,
+                method=method,
+            )
+
+            if sample_result.was_sampled:
+                logger.info(
+                    f"Sampled {sample_result.sampled_rows} rows from "
+                    f"{sample_result.original_rows} ({sample_result.size_reduction_pct:.1f}% reduction)"
+                )
+                data = sample_result.sampled_path
+
+        # Run validation on (possibly sampled) data
+        return await self.check(
+            data,
+            validators=validators,
+            schema=schema,
+            auto_schema=auto_schema,
+            parallel=parallel,
+        )
+
+    async def learn_with_sampling(
+        self,
+        source: str,
+        *,
+        infer_constraints: bool = True,
+        sample_size: int | None = None,
+    ) -> LearnResult:
+        """Learn schema from data with automatic sampling for large datasets.
+
+        Args:
+            source: Data source path.
+            infer_constraints: If True, infer constraints from statistics.
+            sample_size: Number of rows to sample. Uses config default if not specified.
+
+        Returns:
+            LearnResult with schema information.
+        """
+        from truthound_dashboard.core.sampling import get_sampler
+
+        sampler = get_sampler()
+
+        # Sample if needed
+        path = Path(source)
+        if path.exists() and sampler.needs_sampling(path):
+            sample_result = await sampler.auto_sample(path, n=sample_size)
+            if sample_result.was_sampled:
+                logger.info(
+                    f"Sampled {sample_result.sampled_rows} rows for schema learning"
+                )
+                source = sample_result.sampled_path
+
+        return await self.learn(source, infer_constraints=infer_constraints)
+
+    async def profile_with_sampling(
+        self,
+        source: str,
+        *,
+        sample_size: int | None = None,
+    ) -> ProfileResult:
+        """Run data profiling with automatic sampling for large datasets.
+
+        Args:
+            source: Data source path.
+            sample_size: Number of rows to sample. Uses config default if not specified.
+
+        Returns:
+            ProfileResult with profiling information.
+        """
+        from truthound_dashboard.core.sampling import get_sampler
+
+        sampler = get_sampler()
+
+        # Sample if needed
+        path = Path(source)
+        if path.exists() and sampler.needs_sampling(path):
+            sample_result = await sampler.auto_sample(path, n=sample_size)
+            if sample_result.was_sampled:
+                logger.info(
+                    f"Sampled {sample_result.sampled_rows} rows for profiling"
+                )
+                source = sample_result.sampled_path
+
+        return await self.profile(source)
 
     def _convert_check_result(self, result: Any) -> CheckResult:
         """Convert truthound Report to CheckResult.
