@@ -231,16 +231,14 @@ export interface RuleFactoryOptions {
   isActive?: boolean
 }
 
+// Backend NotificationRule conditions from models.py:
+// 'validation_failed', 'critical_issues', 'high_issues', 'schedule_failed', 'drift_detected'
 const CONDITIONS = [
-  'on_failure',
-  'on_critical',
-  'on_high',
-  'on_drift',
-  'on_success',
-  'always',
-  'on_warning',
-  'on_error',
-  'on_threshold',
+  'validation_failed',
+  'critical_issues',
+  'high_issues',
+  'schedule_failed',
+  'drift_detected',
 ]
 
 const RULE_NAMES = [
@@ -258,24 +256,16 @@ const RULE_NAMES = [
   'SLA Breach Warning',
 ]
 
-// Condition-specific configurations
+// Condition-specific configurations matching backend
 const CONDITION_CONFIGS: Record<string, () => Record<string, unknown> | undefined> = {
-  on_critical: () => ({ min_issues: randomInt(1, 5) }),
-  on_high: () => ({ min_issues: randomInt(1, 10) }),
-  on_warning: () => ({ min_issues: randomInt(5, 20) }),
-  on_threshold: () => ({
-    metric: randomChoice(['success_rate', 'issue_count', 'duration_ms']),
-    operator: randomChoice(['<', '>', '<=', '>=']),
-    value: randomInt(50, 95),
-  }),
-  on_drift: () => ({
+  validation_failed: () => undefined,
+  critical_issues: () => ({ min_issues: randomInt(1, 5) }),
+  high_issues: () => ({ min_issues: randomInt(1, 10) }),
+  schedule_failed: () => undefined,
+  drift_detected: () => ({
     drift_level: randomChoice(['medium', 'high']),
     min_columns: randomInt(1, 5),
   }),
-  on_failure: () => undefined,
-  on_success: () => undefined,
-  on_error: () => undefined,
-  always: () => undefined,
 }
 
 // Store reference to available channel IDs for rule creation
@@ -350,7 +340,7 @@ export function createDiverseRules(channelIds: string[], sourceIds?: string[]): 
   // 2. Rule with single channel
   rules.push(createNotificationRule({
     name: 'Single Channel Alert',
-    condition: 'on_failure',
+    condition: 'validation_failed',
     channelIds: [safeChannelId(0)],
     isActive: true,
   }))
@@ -358,7 +348,7 @@ export function createDiverseRules(channelIds: string[], sourceIds?: string[]): 
   // 3. Rule with multiple channels
   rules.push(createNotificationRule({
     name: 'Multi-Channel Alert',
-    condition: 'on_critical',
+    condition: 'critical_issues',
     channelIds: channelIds.slice(0, Math.min(4, channelIds.length)),
     isActive: true,
   }))
@@ -367,7 +357,7 @@ export function createDiverseRules(channelIds: string[], sourceIds?: string[]): 
   if (sourceIds && sourceIds.length > 0) {
     rules.push(createNotificationRule({
       name: 'Source-Specific Alert',
-      condition: 'on_failure',
+      condition: 'validation_failed',
       channelIds: [safeChannelId(0)],
       sourceIds: [sourceIds[0]],
       isActive: true,
@@ -375,7 +365,7 @@ export function createDiverseRules(channelIds: string[], sourceIds?: string[]): 
 
     rules.push(createNotificationRule({
       name: 'Multi-Source Alert',
-      condition: 'on_critical',
+      condition: 'critical_issues',
       channelIds: channelIds.length > 1 ? [safeChannelId(0), safeChannelId(1)] : [safeChannelId(0)],
       sourceIds: sourceIds.slice(0, 3),
       isActive: true,
@@ -385,7 +375,7 @@ export function createDiverseRules(channelIds: string[], sourceIds?: string[]): 
   // 5. Rule applying to all sources
   rules.push(createNotificationRule({
     name: 'Global Alert Rule',
-    condition: 'on_critical',
+    condition: 'critical_issues',
     channelIds: [safeChannelId(0)],
     sourceIds: undefined,
     isActive: true,
@@ -394,26 +384,24 @@ export function createDiverseRules(channelIds: string[], sourceIds?: string[]): 
   // 6. Inactive rules
   rules.push(createNotificationRule({
     name: 'Paused Alert Rule',
-    condition: 'on_failure',
+    condition: 'validation_failed',
     channelIds: [safeChannelId(0)],
     isActive: false,
   }))
 
   rules.push(createNotificationRule({
-    name: 'Disabled Success Notification',
-    condition: 'on_success',
+    name: 'Disabled Schedule Alert',
+    condition: 'schedule_failed',
     channelIds: [safeChannelId(0)],
     isActive: false,
   }))
 
-  // 7. Rule with custom condition config
+  // 7. Rule with custom condition config (high issues threshold)
   rules.push(createNotificationRule({
-    name: 'Threshold Alert (>90% failure)',
-    condition: 'on_threshold',
+    name: 'High Issues Alert (>5 issues)',
+    condition: 'high_issues',
     conditionConfig: {
-      metric: 'failure_rate',
-      operator: '>',
-      value: 90,
+      min_issues: 5,
     },
     channelIds: [safeChannelId(0)],
     isActive: true,

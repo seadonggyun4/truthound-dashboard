@@ -194,6 +194,7 @@ export const sourcesHandlers = [
   }),
 
   // Get supported source types
+  // Backend SourceType: 'file' | 'postgresql' | 'mysql' | 'snowflake' | 'bigquery'
   http.get(`${API_BASE}/sources/types/supported`, async () => {
     await delay(100)
 
@@ -201,39 +202,39 @@ export const sourcesHandlers = [
       success: true,
       data: [
         {
-          type: 'csv',
-          name: 'CSV File',
-          description: 'Comma-separated values file',
+          type: 'file',
+          name: 'File',
+          description: 'Local file (CSV, Parquet, JSON, Excel)',
           required_fields: ['path'],
-          optional_fields: ['delimiter', 'encoding', 'header'],
+          optional_fields: ['format', 'delimiter', 'encoding', 'header', 'sheet'],
         },
         {
-          type: 'parquet',
-          name: 'Parquet File',
-          description: 'Apache Parquet columnar format',
-          required_fields: ['path'],
-          optional_fields: [],
+          type: 'postgresql',
+          name: 'PostgreSQL',
+          description: 'PostgreSQL database connection',
+          required_fields: ['host', 'port', 'database', 'table'],
+          optional_fields: ['schema', 'user', 'password'],
         },
         {
-          type: 'excel',
-          name: 'Excel File',
-          description: 'Microsoft Excel spreadsheet',
-          required_fields: ['path'],
-          optional_fields: ['sheet', 'range'],
+          type: 'mysql',
+          name: 'MySQL',
+          description: 'MySQL database connection',
+          required_fields: ['host', 'port', 'database', 'table'],
+          optional_fields: ['user', 'password'],
         },
         {
-          type: 'json',
-          name: 'JSON File',
-          description: 'JSON or JSON Lines file',
-          required_fields: ['path'],
-          optional_fields: ['lines'],
+          type: 'snowflake',
+          name: 'Snowflake',
+          description: 'Snowflake data warehouse',
+          required_fields: ['account', 'warehouse', 'database', 'schema', 'table'],
+          optional_fields: ['user', 'password', 'role'],
         },
         {
-          type: 'database',
-          name: 'Database',
-          description: 'SQL Database connection',
-          required_fields: ['connection_string', 'table'],
-          optional_fields: ['schema', 'query'],
+          type: 'bigquery',
+          name: 'BigQuery',
+          description: 'Google BigQuery',
+          required_fields: ['project', 'dataset', 'table'],
+          optional_fields: ['location', 'credentials'],
         },
       ],
     })

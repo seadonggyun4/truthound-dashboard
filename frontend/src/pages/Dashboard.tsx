@@ -39,15 +39,16 @@ export default function Dashboard() {
   }
 
   // Calculate stats
+  // Backend validation status values: 'success' | 'failed' | 'error' | 'pending' | 'running' | null
   const totalSources = sources.length
   const passedSources = sources.filter(
     (s) => s.latest_validation_status === 'success'
   ).length
   const failedSources = sources.filter(
-    (s) => s.latest_validation_status === 'failed'
+    (s) => s.latest_validation_status === 'failed' || s.latest_validation_status === 'error'
   ).length
   const pendingSources = sources.filter(
-    (s) => !s.latest_validation_status || s.latest_validation_status === 'pending'
+    (s) => !s.latest_validation_status || s.latest_validation_status === 'pending' || s.latest_validation_status === 'running'
   ).length
 
   if (loading) {
@@ -224,11 +225,11 @@ export default function Dashboard() {
                     {source.latest_validation_status && (
                       <Badge
                         variant={
-                          source.latest_validation_status === 'success' || source.latest_validation_status === 'passed'
+                          source.latest_validation_status === 'success'
                             ? 'success'
-                            : source.latest_validation_status === 'failed'
+                            : source.latest_validation_status === 'failed' || source.latest_validation_status === 'error'
                             ? 'destructive'
-                            : source.latest_validation_status === 'warning'
+                            : source.latest_validation_status === 'pending' || source.latest_validation_status === 'running'
                             ? 'warning'
                             : 'secondary'
                         }

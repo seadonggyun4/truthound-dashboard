@@ -19,42 +19,47 @@ export interface SourceFactoryOptions {
   isActive?: boolean
   hasSchema?: boolean
   validated?: boolean
-  validationStatus?: 'passed' | 'failed' | 'warning' | null
+  // Backend uses: 'success' | 'failed' | 'error' | 'pending' | 'running' | null
+  // For latest_validation_status, typically completed validations: 'success' | 'failed' | null
+  validationStatus?: 'success' | 'failed' | null
 }
 
-const SOURCE_TYPES = ['csv', 'parquet', 'excel', 'json', 'database'] as const
+// Backend SourceType: 'file' | 'postgresql' | 'mysql' | 'snowflake' | 'bigquery'
+const SOURCE_TYPES = ['file', 'postgresql', 'mysql', 'snowflake', 'bigquery'] as const
 
 const SOURCE_CONFIGS: Record<string, () => Record<string, unknown>> = {
-  csv: () => ({
-    path: faker.system.filePath().replace(/\.[^.]+$/, '.csv'),
+  file: () => ({
+    path: faker.system.filePath().replace(/\.[^.]+$/, randomChoice(['.csv', '.parquet', '.json', '.xlsx'])),
+    format: randomChoice(['csv', 'parquet', 'json', 'excel']),
     delimiter: randomChoice([',', ';', '\t', '|']),
-    encoding: randomChoice(['utf-8', 'utf-16', 'iso-8859-1', 'cp1252']),
+    encoding: randomChoice(['utf-8', 'utf-16', 'iso-8859-1']),
     has_header: faker.datatype.boolean(0.9),
   }),
-  parquet: () => ({
-    path: faker.system.filePath().replace(/\.[^.]+$/, '.parquet'),
-    compression: randomChoice(['snappy', 'gzip', 'lz4', 'zstd', null]),
-  }),
-  excel: () => ({
-    path: faker.system.filePath().replace(/\.[^.]+$/, '.xlsx'),
-    sheet: randomChoice(['Sheet1', 'Data', 'Report', 'Export', faker.word.noun()]),
-    skip_rows: faker.datatype.boolean(0.2) ? faker.number.int({ min: 1, max: 5 }) : 0,
-  }),
-  json: () => ({
-    path: faker.system.filePath().replace(/\.[^.]+$/, '.json'),
-    nested: faker.datatype.boolean(0.3),
-    lines: faker.datatype.boolean(0.4),
-  }),
-  database: () => ({
-    connection_string: randomChoice([
-      'postgresql://localhost:5432/mydb',
-      'mysql://localhost:3306/analytics',
-      'sqlite:///data/local.db',
-      'mssql://server/database',
-      'snowflake://account/warehouse/db',
-    ]),
+  postgresql: () => ({
+    host: randomChoice(['localhost', 'db.example.com', 'postgres.internal']),
+    port: 5432,
+    database: faker.database.column(),
     table: faker.database.column(),
-    schema: randomChoice(['public', 'dbo', 'analytics', 'raw', null]),
+    schema: randomChoice(['public', 'analytics', 'raw', 'staging']),
+  }),
+  mysql: () => ({
+    host: randomChoice(['localhost', 'mysql.example.com', 'db.internal']),
+    port: 3306,
+    database: faker.database.column(),
+    table: faker.database.column(),
+  }),
+  snowflake: () => ({
+    account: faker.string.alphanumeric(8),
+    warehouse: randomChoice(['COMPUTE_WH', 'ANALYTICS_WH', 'ETL_WH']),
+    database: faker.database.column().toUpperCase(),
+    schema: randomChoice(['PUBLIC', 'RAW', 'ANALYTICS']),
+    table: faker.database.column().toUpperCase(),
+  }),
+  bigquery: () => ({
+    project: faker.string.alphanumeric(12),
+    dataset: faker.database.column(),
+    table: faker.database.column(),
+    location: randomChoice(['US', 'EU', 'asia-northeast1']),
   }),
 }
 
@@ -103,27 +108,25 @@ const SOURCE_NAMES = [
   'Weather Feed',
 ]
 
-const VALIDATION_STATUSES = ['passed', 'failed', 'warning', null] as const
-
 export function createSource(options: SourceFactoryOptions = {}): Source {
   const type = options.type ?? randomChoice([...SOURCE_TYPES])
-  const configGenerator = SOURCE_CONFIGS[type] ?? SOURCE_CONFIGS.csv
+  const configGenerator = SOURCE_CONFIGS[type] ?? SOURCE_CONFIGS.file
 
   const createdAt = createTimestamp(faker.number.int({ min: 7, max: 180 }))
   const validated = options.validated ?? faker.datatype.boolean(0.7)
 
   // Handle validationStatus: null means "explicitly no status", undefined means "generate randomly"
-  let validationStatus: 'passed' | 'failed' | 'warning' | undefined
+  let validationStatus: 'success' | 'failed' | undefined
   if (options.validationStatus === null) {
-    // Explicitly set to null - means no validation status
+    // Explicitly set to null - means no validation status (never validated)
     validationStatus = undefined
   } else if (options.validationStatus !== undefined) {
     // Explicitly set to a status value
     validationStatus = options.validationStatus
   } else if (validated) {
     // No explicit value - generate randomly for validated sources
-    const nonNullStatuses = VALIDATION_STATUSES.filter((s): s is 'passed' | 'failed' | 'warning' => s !== null)
-    validationStatus = randomChoice(nonNullStatuses)
+    // Weight towards success (70% success, 30% failed)
+    validationStatus = faker.datatype.boolean(0.7) ? 'success' : 'failed'
   }
   // If not validated and no explicit status, validationStatus remains undefined
 
@@ -152,13 +155,13 @@ export function createSources(count: number): Source[] {
 export function createDiverseSources(): Source[] {
   const sources: Source[] = []
 
-  // 1. One source for each type
+  // 1. One source for each type (file, postgresql, mysql, snowflake, bigquery)
   SOURCE_TYPES.forEach((type) => {
     sources.push(createSource({ type }))
   })
 
-  // 2. Sources with each validation status
-  const statuses: Array<'passed' | 'failed' | 'warning' | null> = ['passed', 'failed', 'warning', null]
+  // 2. Sources with each validation status (success, failed, null/never validated)
+  const statuses: Array<'success' | 'failed' | null> = ['success', 'failed', null]
   statuses.forEach((status) => {
     sources.push(createSource({
       validated: status !== null,
@@ -181,11 +184,11 @@ export function createDiverseSources(): Source[] {
   // 6. Edge cases - long names, special characters
   sources.push(createSource({
     name: 'Very Long Source Name That Should Test UI Truncation Behavior (2024-Q4-Final)',
-    type: 'csv',
+    type: 'file',
   }))
   sources.push(createSource({
     name: 'Source_with_underscores_and-dashes',
-    type: 'database',
+    type: 'postgresql',
   }))
 
   // 7. Add more random sources for volume
