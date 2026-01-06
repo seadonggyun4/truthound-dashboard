@@ -5,6 +5,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/truthound-dashboard.svg)](https://pypi.org/project/truthound-dashboard/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Powered by Intlayer](https://img.shields.io/badge/Powered%20by-Intlayer-yellow.svg)](https://intlayer.org)
 [![Downloads](https://img.shields.io/pepy/dt/truthound-dashboard?color=brightgreen)](https://pepy.tech/project/truthound-dashboard)
 
 A web-based data quality monitoring dashboard for [truthound](https://github.com/seadonggyun4/truthound).
@@ -104,6 +105,102 @@ The dashboard interface is accessible at `http://localhost:8765`.
 ### User Interface
 - Light and dark theme support
 - Internationalization: English, Korean
+- AI-powered translation for additional languages
+
+## Internationalization
+
+truthound-dashboard implements internationalization using [Intlayer](https://intlayer.org), a modern i18n framework that provides type-safe translations with component-level content declaration. This architecture enables seamless multi-language support while maintaining code maintainability.
+
+### Default Languages
+
+The application ships with English and Korean translations. These languages are immediately available without additional configuration.
+
+### Extending Language Support
+
+For projects requiring additional language support, the `translate` command enables AI-powered translation of the user interface.
+
+#### Supported AI Providers
+
+| Provider | Environment Variable | Models |
+|----------|---------------------|--------|
+| OpenAI | `OPENAI_API_KEY` | GPT-4o, GPT-4o-mini, GPT-4, GPT-3.5 |
+| Anthropic | `ANTHROPIC_API_KEY` | Claude Sonnet 4, Claude Opus 4 |
+| Mistral | `MISTRAL_API_KEY` | Mistral Large, Mistral Small |
+| Ollama | Not required | Llama 3.2, Mistral, Qwen (local execution) |
+
+#### Configuration
+
+API credentials are configured through environment variables. This approach ensures that sensitive credentials are not exposed in command history or application logs.
+
+**Temporary Session Configuration**
+
+```bash
+# OpenAI
+export OPENAI_API_KEY=sk-xxxxxxxxxxxx
+truthound translate -l fr -p openai
+
+# Anthropic
+export ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
+truthound translate -l fr -p anthropic
+
+# Mistral
+export MISTRAL_API_KEY=xxxxxxxxxxxx
+truthound translate -l fr -p mistral
+```
+
+**Persistent Configuration**
+
+```bash
+# Add to shell configuration file (~/.bashrc or ~/.zshrc)
+echo 'export OPENAI_API_KEY=sk-xxxxxxxxxxxx' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**Inline Configuration**
+
+```bash
+OPENAI_API_KEY=sk-xxx truthound translate -l fr -p openai
+```
+
+#### Usage Examples
+
+```bash
+# Translate to French using OpenAI
+truthound translate -l fr -p openai
+
+# Translate to multiple languages
+truthound translate -l ja,zh,de,fr -p anthropic
+
+# Use local Ollama (no API key required)
+truthound translate -l fr -p ollama
+
+# Auto-detect available provider
+truthound translate -l fr
+
+# Preview files without making changes
+truthound translate -l fr --dry-run
+
+# List available providers and their status
+truthound translate --list-providers
+
+# List supported language codes
+truthound translate --list-languages
+```
+
+#### Security Considerations
+
+| Aspect | Risk Level | Description |
+|--------|------------|-------------|
+| Network transmission | None | API keys are used locally and transmitted only to the selected provider |
+| Source code exposure | None | Credentials are injected via environment variables |
+| Build artifact inclusion | None | Only translated content is persisted; credentials are not stored |
+| API communication | Standard | Requests are made directly to provider endpoints using user credentials |
+
+#### Supported Languages
+
+The translation system supports 36 languages including: Arabic, Bulgarian, Chinese, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, Greek, Hebrew, Hindi, Hungarian, Indonesian, Italian, Japanese, Korean, Latvian, Lithuanian, Malay, Norwegian, Polish, Portuguese, Romanian, Russian, Slovak, Slovenian, Spanish, Swedish, Thai, Turkish, Ukrainian, and Vietnamese.
+
+Execute `truthound translate --list-languages` to view the complete list with language codes.
 
 ## Technology Stack
 
@@ -121,7 +218,7 @@ The dashboard interface is accessible at `http://localhost:8765`.
 - TailwindCSS
 - shadcn/ui
 - Zustand
-- i18next
+- [Intlayer](https://intlayer.org) (internationalization)
 
 ## Development Setup
 

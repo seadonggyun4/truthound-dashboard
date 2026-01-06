@@ -142,6 +142,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Intlayer (auto-generated)
+.intlayer/
+
 # Frontend build output (handled by build process)
 # src/truthound_dashboard/static/
 
