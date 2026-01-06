@@ -22,6 +22,16 @@ const ISSUE_TYPES = [
 ]
 
 function createSummary(totalRuns: number): HistorySummary {
+  // Guard against zero or negative totalRuns
+  if (totalRuns <= 0) {
+    return {
+      total_runs: 0,
+      passed_runs: 0,
+      failed_runs: 0,
+      success_rate: 0,
+    }
+  }
+
   const passedRuns = Math.floor(totalRuns * faker.number.float({ min: 0.6, max: 0.95 }))
   const failedRuns = totalRuns - passedRuns
 
@@ -52,7 +62,21 @@ function createTrendData(
       break
   }
 
-  const intervals = granularity === 'hourly' ? days * 24 : granularity === 'daily' ? days : Math.ceil(days / 7)
+  // Guard against zero days (shouldn't happen but be safe)
+  if (days <= 0) {
+    return []
+  }
+
+  // Calculate intervals, ensuring at least 1
+  let intervals: number
+  if (granularity === 'hourly') {
+    intervals = days * 24
+  } else if (granularity === 'daily') {
+    intervals = days
+  } else {
+    // weekly: ensure at least 1 interval
+    intervals = Math.max(1, Math.ceil(days / 7))
+  }
 
   for (let i = intervals - 1; i >= 0; i--) {
     const date = new Date()
@@ -70,7 +94,7 @@ function createTrendData(
 
     points.push({
       date: date.toISOString().split('T')[0],
-      success_rate: (passedCount / runCount) * 100,
+      success_rate: runCount > 0 ? (passedCount / runCount) * 100 : 0,
       run_count: runCount,
       passed_count: passedCount,
       failed_count: failedCount,

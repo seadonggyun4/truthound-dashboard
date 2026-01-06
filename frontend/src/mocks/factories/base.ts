@@ -23,11 +23,30 @@ export function createRecentTimestamp(): string {
 }
 
 export function randomChoice<T>(items: T[]): T {
+  if (items.length === 0) {
+    throw new Error('randomChoice: items array cannot be empty')
+  }
+  if (items.length === 1) {
+    return items[0]
+  }
   return items[faker.number.int({ min: 0, max: items.length - 1 })]
 }
 
 export function randomSubset<T>(items: T[], min = 1, max?: number): T[] {
-  const count = faker.number.int({ min, max: max ?? items.length })
+  // Handle empty array
+  if (items.length === 0) {
+    return []
+  }
+
+  // Ensure min doesn't exceed items length
+  const safeMin = Math.min(min, items.length)
+  // Ensure max doesn't exceed items length
+  const safeMax = Math.min(max ?? items.length, items.length)
+  // Ensure min <= max
+  const finalMin = Math.min(safeMin, safeMax)
+  const finalMax = Math.max(safeMin, safeMax)
+
+  const count = faker.number.int({ min: finalMin, max: finalMax })
   return faker.helpers.shuffle([...items]).slice(0, count)
 }
 
