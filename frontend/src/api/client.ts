@@ -111,7 +111,8 @@ export async function listSources(params?: {
 }
 
 export async function getSource(id: string): Promise<Source> {
-  return request<Source>(`/sources/${id}`)
+  const response = await request<{ success: boolean; data: Source }>(`/sources/${id}`)
+  return response.data
 }
 
 export async function createSource(data: {
@@ -120,10 +121,11 @@ export async function createSource(data: {
   config: Record<string, unknown>
   description?: string
 }): Promise<Source> {
-  return request<Source>('/sources', {
+  const response = await request<{ success: boolean; data: Source }>('/sources', {
     method: 'POST',
     body: JSON.stringify(data),
   })
+  return response.data
 }
 
 export async function updateSource(
@@ -135,10 +137,11 @@ export async function updateSource(
     is_active?: boolean
   }
 ): Promise<Source> {
-  return request<Source>(`/sources/${id}`, {
+  const response = await request<{ success: boolean; data: Source }>(`/sources/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   })
+  return response.data
 }
 
 export async function deleteSource(id: string): Promise<{ message: string }> {
@@ -195,14 +198,16 @@ export async function runValidation(
     auto_schema?: boolean
   }
 ): Promise<Validation> {
-  return request<Validation>(`/validations/sources/${sourceId}/validate`, {
+  const response = await request<{ success: boolean; data: Validation }>(`/validations/sources/${sourceId}/validate`, {
     method: 'POST',
     body: JSON.stringify(data || {}),
   })
+  return response.data
 }
 
 export async function getValidation(id: string): Promise<Validation> {
-  return request<Validation>(`/validations/${id}`)
+  const response = await request<{ success: boolean; data: Validation }>(`/validations/${id}`)
+  return response.data
 }
 
 export async function listSourceValidations(
@@ -231,27 +236,30 @@ export interface Schema {
 }
 
 export async function getSourceSchema(sourceId: string): Promise<Schema | null> {
-  return request<Schema | null>(`/sources/${sourceId}/schema`)
+  const response = await request<{ success: boolean; data: Schema | null }>(`/sources/${sourceId}/schema`)
+  return response.data
 }
 
 export async function learnSchema(
   sourceId: string,
   data?: { infer_constraints?: boolean }
 ): Promise<Schema> {
-  return request<Schema>(`/sources/${sourceId}/learn`, {
+  const response = await request<{ success: boolean; data: Schema }>(`/sources/${sourceId}/learn`, {
     method: 'POST',
     body: JSON.stringify(data || {}),
   })
+  return response.data
 }
 
 export async function updateSchema(
   sourceId: string,
   schemaYaml: string
 ): Promise<Schema> {
-  return request<Schema>(`/sources/${sourceId}/schema`, {
+  const response = await request<{ success: boolean; data: Schema }>(`/sources/${sourceId}/schema`, {
     method: 'PUT',
     body: JSON.stringify({ schema_yaml: schemaYaml }),
   })
+  return response.data
 }
 
 // Profile
@@ -275,9 +283,10 @@ export interface ProfileResult {
 }
 
 export async function profileSource(sourceId: string): Promise<ProfileResult> {
-  return request<ProfileResult>(`/sources/${sourceId}/profile`, {
+  const response = await request<{ success: boolean; data: ProfileResult }>(`/sources/${sourceId}/profile`, {
     method: 'POST',
   })
+  return response.data
 }
 
 // Test source connection
