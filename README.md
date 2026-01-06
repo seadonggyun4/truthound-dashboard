@@ -2,9 +2,9 @@
 
 # truthound-dashboard
 
-[![PyPI version](https://badge.fury.io/py/truthound-dashboard.svg)](https://pypi.org/project/truthound-dashboard/)
+[![PyPI version](https://img.shields.io/pypi/v/truthound-dashboard.svg)](https://pypi.org/project/truthound-dashboard/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](https://opensource.org/licenses/Apache-2.0)
 
 A web-based data quality monitoring dashboard for [truthound](https://github.com/seadonggyun4/truthound).
 
