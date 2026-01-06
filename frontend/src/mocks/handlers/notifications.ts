@@ -10,6 +10,7 @@ import {
   create,
   update,
   remove,
+  cleanupOrphanedData,
 } from '../data/store'
 import {
   createNotificationChannel,
@@ -51,7 +52,9 @@ export const notificationsHandlers = [
     return HttpResponse.json({
       success: true,
       data: paginated,
-      count: total,
+      total,
+      offset,
+      limit,
     })
   }),
 
@@ -78,11 +81,29 @@ export const notificationsHandlers = [
   http.post(`${API_BASE}/notifications/channels`, async ({ request }) => {
     await delay(300)
 
-    const body = (await request.json()) as {
+    let body: {
       name: string
       type: string
       config: Record<string, unknown>
       is_active?: boolean
+    }
+
+    try {
+      body = await request.json() as typeof body
+    } catch {
+      return HttpResponse.json(
+        { detail: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
+
+    // Validate channel type
+    const validTypes = ['slack', 'email', 'webhook']
+    if (!validTypes.includes(body.type)) {
+      return HttpResponse.json(
+        { detail: `Invalid channel type. Must be one of: ${validTypes.join(', ')}` },
+        { status: 400 }
+      )
     }
 
     const channel = createNotificationChannel({
@@ -107,11 +128,20 @@ export const notificationsHandlers = [
   http.put(`${API_BASE}/notifications/channels/:id`, async ({ params, request }) => {
     await delay(250)
 
-    const body = (await request.json()) as Partial<{
+    let body: Partial<{
       name: string
       config: Record<string, unknown>
       is_active: boolean
     }>
+
+    try {
+      body = await request.json() as typeof body
+    } catch {
+      return HttpResponse.json(
+        { detail: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
 
     const updated = update(
       getStore().notificationChannels,
@@ -144,6 +174,9 @@ export const notificationsHandlers = [
         { status: 404 }
       )
     }
+
+    // Clean up rules and logs referencing this channel
+    cleanupOrphanedData()
 
     return HttpResponse.json({ success: true })
   }),
@@ -227,7 +260,9 @@ export const notificationsHandlers = [
     return HttpResponse.json({
       success: true,
       data: paginated,
-      count: total,
+      total,
+      offset,
+      limit,
     })
   }),
 
@@ -254,13 +289,32 @@ export const notificationsHandlers = [
   http.post(`${API_BASE}/notifications/rules`, async ({ request }) => {
     await delay(300)
 
-    const body = (await request.json()) as {
+    let body: {
       name: string
       condition: string
       channel_ids: string[]
       condition_config?: Record<string, unknown>
       source_ids?: string[]
       is_active?: boolean
+    }
+
+    try {
+      body = await request.json() as typeof body
+    } catch {
+      return HttpResponse.json(
+        { detail: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
+
+    // Validate that all channel_ids exist
+    const channels = getStore().notificationChannels
+    const invalidChannelIds = body.channel_ids.filter((id) => !channels.has(id))
+    if (invalidChannelIds.length > 0) {
+      return HttpResponse.json(
+        { detail: `Invalid channel IDs: ${invalidChannelIds.join(', ')}` },
+        { status: 400 }
+      )
     }
 
     const rule = createNotificationRule({
@@ -288,7 +342,7 @@ export const notificationsHandlers = [
   http.put(`${API_BASE}/notifications/rules/:id`, async ({ params, request }) => {
     await delay(250)
 
-    const body = (await request.json()) as Partial<{
+    let body: Partial<{
       name: string
       condition: string
       channel_ids: string[]
@@ -296,6 +350,15 @@ export const notificationsHandlers = [
       source_ids: string[]
       is_active: boolean
     }>
+
+    try {
+      body = await request.json() as typeof body
+    } catch {
+      return HttpResponse.json(
+        { detail: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
 
     const updated = update(
       getStore().notificationRules,
@@ -332,7 +395,7 @@ export const notificationsHandlers = [
     return HttpResponse.json({ success: true })
   }),
 
-  // Get rule conditions
+  // Get rule conditions - all 9 conditions matching factory/notifications.ts
   http.get(`${API_BASE}/notifications/rules/conditions`, async () => {
     await delay(100)
 
@@ -345,6 +408,9 @@ export const notificationsHandlers = [
         'on_drift',
         'on_success',
         'always',
+        'on_warning',
+        'on_error',
+        'on_threshold',
       ],
     })
   }),
@@ -384,7 +450,9 @@ export const notificationsHandlers = [
     return HttpResponse.json({
       success: true,
       data: paginated,
-      count: total,
+      total,
+      offset,
+      limit,
     })
   }),
 
@@ -421,7 +489,7 @@ export const notificationsHandlers = [
     const url = new URL(request.url)
     const hours = parseInt(url.searchParams.get('hours') ?? '24')
 
-    const stats = createNotificationStats(hours)
+    const stats = createNotificationStats({ hours })
 
     return HttpResponse.json({
       success: true,
