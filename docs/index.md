@@ -55,10 +55,14 @@ Compare two datasets to detect schema and distribution changes.
 ### Dark Mode & i18n
 Support for dark/light themes and multiple languages (English, Korean).
 
+### AI-Powered Translation
+Translate the UI to any language using OpenAI, Anthropic, Ollama, or Mistral with a single command.
+
 ## Documentation
 
 - [Getting Started](./getting-started.md) - Installation and quick start guide
 - [Features](./features.md) - Detailed feature documentation
+- [Internationalization](./internationalization.md) - i18n and AI translation guide
 - [API Reference](./api.md) - REST API documentation
 - [Configuration](./configuration.md) - Configuration options
 
