@@ -1,6 +1,7 @@
 /**
  * In-memory data store for mock API
  * Provides CRUD operations with persistence during session
+ * Extended for comprehensive test coverage
  */
 
 import type {
@@ -14,14 +15,15 @@ import type {
   NotificationLog,
 } from '@/api/client'
 import {
-  createSources,
-  createValidations,
+  createDiverseSources,
+  createDiverseValidations,
   createSchema,
-  createSchedules,
-  createDriftComparisons,
-  createNotificationChannels,
-  createNotificationRules,
-  createNotificationLogs,
+  createDiverseSchedules,
+  createDiverseDriftComparisons,
+  createDiverseChannels,
+  createDiverseRules,
+  createDiverseLogs,
+  setAvailableChannelIds,
 } from '../factories'
 
 // ============================================================================
@@ -46,14 +48,14 @@ let store: MockStore | null = null
 // ============================================================================
 
 function initializeStore(): MockStore {
-  // Create initial sources
-  const sources = createSources(8)
+  // Create diverse sources covering all test scenarios
+  const sources = createDiverseSources()
   const sourcesMap = new Map(sources.map((s) => [s.id, s]))
 
-  // Create validations for each source
+  // Create diverse validations for each source
   const validations: Validation[] = []
   sources.forEach((source) => {
-    const sourceValidations = createValidations(5, source.id)
+    const sourceValidations = createDiverseValidations(source.id)
     validations.push(...sourceValidations)
   })
   const validationsMap = new Map(validations.map((v) => [v.id, v]))
@@ -65,38 +67,30 @@ function initializeStore(): MockStore {
     schemasMap.set(source.id, schema)
   })
 
-  // Create schedules linked to sources
-  const schedules = createSchedules(5).map((schedule, i) => ({
-    ...schedule,
-    source_id: sources[i % sources.length].id,
-    source_name: sources[i % sources.length].name,
-  }))
+  // Create diverse schedules linked to sources
+  const schedules = createDiverseSchedules(sources.map((s) => ({ id: s.id, name: s.name })))
   const schedulesMap = new Map(schedules.map((s) => [s.id, s]))
 
-  // Create drift comparisons
-  const driftComparisons = createDriftComparisons(6).map((drift, i) => ({
-    ...drift,
-    baseline_source_id: sources[i % sources.length].id,
-    current_source_id: sources[(i + 1) % sources.length].id,
-  }))
+  // Create diverse drift comparisons with real source references
+  const sourceIds = sources.map((s) => s.id)
+  const driftComparisons = createDiverseDriftComparisons(sourceIds, sourceIds)
   const driftComparisonsMap = new Map(driftComparisons.map((d) => [d.id, d]))
 
-  // Create notification channels
-  const channels = createNotificationChannels(4)
+  // Create diverse notification channels
+  const channels = createDiverseChannels()
   const channelsMap = new Map(channels.map((c) => [c.id, c]))
 
-  // Create notification rules linked to channels
-  const rules = createNotificationRules(5).map((rule) => ({
-    ...rule,
-    channel_ids: [channels[0].id, channels[1].id].slice(0, Math.random() > 0.5 ? 2 : 1),
-  }))
+  // Set available channel IDs for rule creation (ensures rules reference existing channels)
+  const channelIds = channels.map((c) => c.id)
+  setAvailableChannelIds(channelIds)
+
+  // Create diverse notification rules linked to channels
+  const rules = createDiverseRules(channelIds, sourceIds)
   const rulesMap = new Map(rules.map((r) => [r.id, r]))
 
-  // Create notification logs
-  const logs = createNotificationLogs(20).map((log) => ({
-    ...log,
-    channel_id: channels[Math.floor(Math.random() * channels.length)].id,
-  }))
+  // Create diverse notification logs
+  const ruleIds = rules.map((r) => r.id)
+  const logs = createDiverseLogs(channelIds, ruleIds)
   const logsMap = new Map(logs.map((l) => [l.id, l]))
 
   return {
@@ -123,7 +117,80 @@ export function getStore(): MockStore {
 }
 
 export function resetStore(): void {
+  // Clear reference before reinitializing
+  store = null
   store = initializeStore()
+}
+
+// ============================================================================
+// Data Integrity Helpers
+// ============================================================================
+
+/**
+ * Validate that a notification rule references existing channels
+ */
+export function validateRuleChannels(rule: NotificationRule): boolean {
+  const channels = getStore().notificationChannels
+  return rule.channel_ids.every((id) => channels.has(id))
+}
+
+/**
+ * Validate that a notification log references existing channel
+ */
+export function validateLogChannel(log: NotificationLog): boolean {
+  return getStore().notificationChannels.has(log.channel_id)
+}
+
+/**
+ * Validate that a schedule references an existing source
+ */
+export function validateScheduleSource(schedule: Schedule): boolean {
+  return getStore().sources.has(schedule.source_id)
+}
+
+/**
+ * Clean up orphaned data (schedules/validations referencing deleted sources)
+ */
+export function cleanupOrphanedData(): void {
+  const store = getStore()
+  const sourceIds = new Set(store.sources.keys())
+
+  // Remove schedules referencing non-existent sources
+  for (const [id, schedule] of store.schedules) {
+    if (!sourceIds.has(schedule.source_id)) {
+      store.schedules.delete(id)
+    }
+  }
+
+  // Remove validations referencing non-existent sources
+  for (const [id, validation] of store.validations) {
+    if (!sourceIds.has(validation.source_id)) {
+      store.validations.delete(id)
+    }
+  }
+
+  // Remove schemas for non-existent sources
+  for (const sourceId of store.schemas.keys()) {
+    if (!sourceIds.has(sourceId)) {
+      store.schemas.delete(sourceId)
+    }
+  }
+
+  // Clean up notification rules referencing non-existent channels
+  const channelIds = new Set(store.notificationChannels.keys())
+  for (const [id, rule] of store.notificationRules) {
+    rule.channel_ids = rule.channel_ids.filter((cid) => channelIds.has(cid))
+    if (rule.channel_ids.length === 0) {
+      store.notificationRules.delete(id)
+    }
+  }
+
+  // Clean up notification logs referencing non-existent channels
+  for (const [id, log] of store.notificationLogs) {
+    if (!channelIds.has(log.channel_id)) {
+      store.notificationLogs.delete(id)
+    }
+  }
 }
 
 // ============================================================================
