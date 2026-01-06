@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "truthound-dashboard"
-version = "1.0.2"
+version = "1.1.0"
 description = "Open-source data quality dashboard - GX Cloud alternative"
 readme = "README.md"
 license = "Apache-2.0"
@@ -51,6 +51,10 @@ dev = [
     "ruff>=0.1.0",
     "black>=23.0.0",
     "mypy>=1.8.0",
+]
+translate = [
+    # Translation module uses httpx which is already a core dependency
+    # No additional dependencies needed - all API calls use httpx
 ]
 
 [project.scripts]
