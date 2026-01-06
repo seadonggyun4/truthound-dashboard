@@ -43,11 +43,14 @@ export const validationsHandlers = [
       sources.set(sourceId, {
         ...existingSource,
         last_validated_at: new Date().toISOString(),
-        latest_validation_status: validation.passed ? 'passed' : 'failed',
+        latest_validation_status: validation.passed ? 'success' : 'failed',
       })
     }
 
-    return HttpResponse.json(validation)
+    return HttpResponse.json({
+      success: true,
+      data: validation,
+    })
   }),
 
   // Get validation by ID
@@ -63,7 +66,10 @@ export const validationsHandlers = [
       )
     }
 
-    return HttpResponse.json(validation)
+    return HttpResponse.json({
+      success: true,
+      data: validation,
+    })
   }),
 
   // List validations for a source
@@ -72,14 +78,18 @@ export const validationsHandlers = [
 
     const url = new URL(request.url)
     const limit = parseInt(url.searchParams.get('limit') ?? '20')
+    const offset = parseInt(url.searchParams.get('offset') ?? '0')
 
     const sourceId = params.sourceId as string
-    const validations = getValidationsBySourceId(sourceId).slice(0, limit)
+    const allValidations = getValidationsBySourceId(sourceId)
+    const total = allValidations.length
+    const validations = allValidations.slice(offset, offset + limit)
 
     return HttpResponse.json({
       success: true,
       data: validations,
-      total: validations.length,
+      total,  // Return total count of ALL validations, not just the sliced ones
+      offset,
       limit,
     })
   }),
