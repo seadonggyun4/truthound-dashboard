@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useIntlayer } from '@/providers'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -28,11 +28,14 @@ import {
   type DriftComparison,
 } from '@/api/client'
 import { formatDate } from '@/lib/utils'
+import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
 import { GitCompare, Plus, AlertTriangle, CheckCircle, ArrowRight } from 'lucide-react'
 
 export default function Drift() {
-  const { t } = useTranslation()
+  const drift_t = useIntlayer('drift')
+  const common = useIntlayer('common')
+  const errors = useIntlayer('errors')
   const { toast } = useToast()
   const [sources, setSources] = useState<Source[]>([])
   const [comparisons, setComparisons] = useState<DriftComparison[]>([])
@@ -57,8 +60,8 @@ export default function Drift() {
       } catch (err) {
         toast({
           variant: 'destructive',
-          title: t('common.error'),
-          description: err instanceof Error ? err.message : t('errors.loadFailed'),
+          title: str(common.error),
+          description: err instanceof Error ? err.message : str(errors.loadFailed),
         })
       } finally {
         setLoading(false)
@@ -66,14 +69,14 @@ export default function Drift() {
     }
 
     fetchData()
-  }, [toast, t])
+  }, [toast, common, errors])
 
   const handleCompare = async () => {
     if (!baselineId || !currentId) {
       toast({
         variant: 'destructive',
-        title: t('common.error'),
-        description: t('drift.selectBothSources'),
+        title: str(common.error),
+        description: str(drift_t.selectBothSources),
       })
       return
     }
@@ -81,8 +84,8 @@ export default function Drift() {
     if (baselineId === currentId) {
       toast({
         variant: 'destructive',
-        title: t('common.error'),
-        description: t('drift.mustBeDifferent'),
+        title: str(common.error),
+        description: str(drift_t.mustBeDifferent),
       })
       return
     }
@@ -101,16 +104,16 @@ export default function Drift() {
       setCurrentId('')
 
       toast({
-        title: t('drift.comparisonComplete'),
+        title: str(drift_t.comparisonComplete),
         description: result.data.has_drift
-          ? t('drift.driftDetectedColumns', { count: result.data.drifted_columns })
-          : t('drift.noDriftDetected'),
+          ? `${result.data.drifted_columns} columns drifted`
+          : str(drift_t.noDriftDetected),
       })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: t('drift.comparisonFailed'),
-        description: err instanceof Error ? err.message : t('errors.generic'),
+        title: str(drift_t.comparisonFailed),
+        description: err instanceof Error ? err.message : str(errors.generic),
       })
     } finally {
       setComparing(false)
@@ -135,31 +138,31 @@ export default function Drift() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{t('drift.title')}</h1>
-          <p className="text-muted-foreground">{t('drift.subtitle')}</p>
+          <h1 className="text-2xl font-bold">{drift_t.title}</h1>
+          <p className="text-muted-foreground">{drift_t.subtitle}</p>
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              {t('drift.newComparison')}
+              {drift_t.newComparison}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{t('drift.compareDatasets')}</DialogTitle>
+              <DialogTitle>{drift_t.compareDatasets}</DialogTitle>
               <DialogDescription>
-                {t('drift.compareDescription')}
+                {drift_t.compareDescription}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>{t('drift.baselineSource')}</Label>
+                <Label>{drift_t.baselineSource}</Label>
                 <Select value={baselineId} onValueChange={setBaselineId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t('drift.selectBaseline')} />
+                    <SelectValue placeholder={drift_t.selectBaseline} />
                   </SelectTrigger>
                   <SelectContent>
                     {sources.map((s) => (
@@ -172,10 +175,10 @@ export default function Drift() {
               </div>
 
               <div className="space-y-2">
-                <Label>{t('drift.currentSource')}</Label>
+                <Label>{drift_t.currentSource}</Label>
                 <Select value={currentId} onValueChange={setCurrentId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t('drift.selectCurrent')} />
+                    <SelectValue placeholder={drift_t.selectCurrent} />
                   </SelectTrigger>
                   <SelectContent>
                     {sources.map((s) => (
@@ -188,17 +191,17 @@ export default function Drift() {
               </div>
 
               <div className="space-y-2">
-                <Label>{t('drift.detectionMethod')}</Label>
+                <Label>{drift_t.detectionMethod}</Label>
                 <Select value={method} onValueChange={(v) => setMethod(v as typeof method)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="auto">{t('drift.methods.auto')}</SelectItem>
-                    <SelectItem value="ks">{t('drift.methods.ks')}</SelectItem>
-                    <SelectItem value="psi">{t('drift.methods.psi')}</SelectItem>
-                    <SelectItem value="chi2">{t('drift.methods.chi2')}</SelectItem>
-                    <SelectItem value="js">{t('drift.methods.js')}</SelectItem>
+                    <SelectItem value="auto">{drift_t.methods.auto}</SelectItem>
+                    <SelectItem value="ks">{drift_t.methods.ks}</SelectItem>
+                    <SelectItem value="psi">{drift_t.methods.psi}</SelectItem>
+                    <SelectItem value="chi2">{drift_t.methods.chi2}</SelectItem>
+                    <SelectItem value="js">{drift_t.methods.js}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -206,10 +209,10 @@ export default function Drift() {
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                {t('common.cancel')}
+                {common.cancel}
               </Button>
               <Button onClick={handleCompare} disabled={comparing}>
-                {comparing ? t('drift.comparing') : t('drift.compare')}
+                {comparing ? drift_t.comparing : drift_t.compare}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -221,13 +224,13 @@ export default function Drift() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <GitCompare className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">{t('drift.noComparisonsYet')}</h3>
+            <h3 className="text-lg font-medium mb-2">{drift_t.noComparisonsYet}</h3>
             <p className="text-muted-foreground text-center mb-4">
-              {t('drift.noComparisonsDesc')}
+              {drift_t.noComparisonsDesc}
             </p>
             <Button onClick={() => setDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              {t('drift.newComparison')}
+              {drift_t.newComparison}
             </Button>
           </CardContent>
         </Card>
@@ -255,31 +258,31 @@ export default function Drift() {
 
                   <div className="flex items-center gap-2">
                     {c.has_high_drift && (
-                      <Badge variant="destructive">{t('drift.highDrift')}</Badge>
+                      <Badge variant="destructive">{drift_t.highDrift}</Badge>
                     )}
                     {c.has_drift && !c.has_high_drift && (
                       <Badge variant="warning" className="bg-amber-500 text-white">
-                        {t('drift.driftDetected')}
+                        {drift_t.driftDetected}
                       </Badge>
                     )}
-                    {!c.has_drift && <Badge variant="outline">{t('drift.noDrift')}</Badge>}
+                    {!c.has_drift && <Badge variant="outline">{drift_t.noDrift}</Badge>}
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <div className="text-sm text-muted-foreground">{t('drift.columnsCompared')}</div>
+                    <div className="text-sm text-muted-foreground">{drift_t.columnsCompared}</div>
                     <div className="text-xl font-semibold">{c.total_columns || 0}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-muted-foreground">{t('drift.driftedColumns')}</div>
+                    <div className="text-sm text-muted-foreground">{drift_t.driftedColumns}</div>
                     <div className="text-xl font-semibold text-amber-600">
                       {c.drifted_columns || 0}
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm text-muted-foreground">{t('drift.driftPercentage')}</div>
+                    <div className="text-sm text-muted-foreground">{drift_t.driftPercentage}</div>
                     <div className="text-xl font-semibold">
                       {c.drift_percentage?.toFixed(1) || 0}%
                     </div>
@@ -288,7 +291,7 @@ export default function Drift() {
 
                 {c.result?.columns && c.result.columns.length > 0 && (
                   <div className="mt-4 pt-4 border-t">
-                    <div className="text-sm font-medium mb-2">{t('drift.columnDetails')}</div>
+                    <div className="text-sm font-medium mb-2">{drift_t.columnDetails}</div>
                     <div className="space-y-2">
                       {c.result.columns
                         .filter((col) => col.drifted)

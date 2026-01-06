@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useIntlayer, useLocale, LOCALE_INFO } from '@/providers'
 import {
   LayoutDashboard,
   Database,
@@ -22,29 +22,26 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useTheme } from '@/components/theme-provider'
 import { useState } from 'react'
-import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/i18n'
 import logoImg from '@/assets/logo.png'
 
-const navigation = [
-  { name: 'nav.dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'nav.sources', href: '/sources', icon: Database },
-  { name: 'nav.drift', href: '/drift', icon: GitCompare },
-  { name: 'nav.schedules', href: '/schedules', icon: Clock },
-  { name: 'nav.notifications', href: '/notifications', icon: Bell },
+type NavKey = 'dashboard' | 'sources' | 'drift' | 'schedules' | 'notifications'
+
+const navigation: Array<{ key: NavKey; href: string; icon: typeof LayoutDashboard }> = [
+  { key: 'dashboard', href: '/', icon: LayoutDashboard },
+  { key: 'sources', href: '/sources', icon: Database },
+  { key: 'drift', href: '/drift', icon: GitCompare },
+  { key: 'schedules', href: '/schedules', icon: Clock },
+  { key: 'notifications', href: '/notifications', icon: Bell },
 ]
 
 export default function Layout() {
   const location = useLocation()
-  const { t, i18n } = useTranslation()
+  const nav = useIntlayer('nav')
+  const { locale, setLocale } = useLocale()
   const { theme, setTheme } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const currentLanguage = i18n.language as LanguageCode
-  const currentLang = SUPPORTED_LANGUAGES.find((l) => l.code === currentLanguage)
-
-  const handleLanguageChange = (code: LanguageCode) => {
-    i18n.changeLanguage(code)
-  }
+  const currentLang = LOCALE_INFO.find((l) => l.code === locale)
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingTop: 'var(--demo-banner-height, 0px)' }}>
@@ -82,7 +79,7 @@ export default function Layout() {
                 : location.pathname.startsWith(item.href)
             return (
               <Link
-                key={item.name}
+                key={item.key}
                 to={item.href}
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
@@ -93,7 +90,7 @@ export default function Layout() {
                 )}
               >
                 <item.icon className="h-5 w-5" />
-                {t(item.name)}
+                {nav[item.key]}
               </Link>
             )
           })}
@@ -129,14 +126,14 @@ export default function Layout() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {SUPPORTED_LANGUAGES.map((lang) => (
+                {LOCALE_INFO.map((lang) => (
                   <DropdownMenuItem
                     key={lang.code}
-                    onClick={() => handleLanguageChange(lang.code)}
+                    onClick={() => setLocale(lang.code)}
                     className="flex items-center justify-between gap-2"
                   >
                     <span>{lang.nativeName}</span>
-                    {currentLanguage === lang.code && (
+                    {locale === lang.code && (
                       <Check className="h-4 w-4 text-primary" />
                     )}
                   </DropdownMenuItem>

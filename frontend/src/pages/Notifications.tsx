@@ -8,7 +8,7 @@
  */
 
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useIntlayer } from '@/providers'
 import {
   Bell,
   Plus,
@@ -58,6 +58,7 @@ import {
   type NotificationRule,
 } from '@/api/client'
 import { formatDate } from '@/lib/utils'
+import { str } from '@/lib/intlayer-utils'
 
 function getChannelIcon(type: string) {
   switch (type) {
@@ -110,7 +111,8 @@ function getConditionLabel(condition: string): string {
 }
 
 export default function Notifications() {
-  const { t } = useTranslation()
+  const notifications_t = useIntlayer('notifications')
+  const common = useIntlayer('common')
   const { toast } = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
   const [activeTab, setActiveTab] = useState('channels')
@@ -154,19 +156,19 @@ export default function Notifications() {
       const result = await testChannelMutation.mutate(channelId)
       if (result.success) {
         toast({
-          title: t('notifications.testSuccess'),
+          title: str(notifications_t.testSuccess),
           variant: 'default',
         })
       } else {
         toast({
-          title: t('notifications.testFailed'),
+          title: str(notifications_t.testFailed),
           description: result.error,
           variant: 'destructive',
         })
       }
     } catch {
       toast({
-        title: t('notifications.testFailed'),
+        title: str(notifications_t.testFailed),
         variant: 'destructive',
       })
     }
@@ -174,19 +176,19 @@ export default function Notifications() {
 
   const handleDeleteChannel = async (channelId: string) => {
     const confirmed = await confirm({
-      title: t('notifications.deleteChannel'),
-      description: t('notifications.deleteChannelConfirm'),
-      confirmText: t('common.delete'),
+      title: str(notifications_t.deleteChannel),
+      description: str(notifications_t.deleteChannelConfirm),
+      confirmText: str(common.delete),
       variant: 'destructive',
     })
     if (!confirmed) return
 
     try {
       await deleteChannelMutation.mutate(channelId)
-      toast({ title: t('notifications.channelDeleted') })
+      toast({ title: str(notifications_t.channelDeleted) })
       refetchChannels()
     } catch {
-      toast({ title: t('notifications.deleteChannelFailed'), variant: 'destructive' })
+      toast({ title: str(notifications_t.deleteChannelFailed), variant: 'destructive' })
     }
   }
 
@@ -203,19 +205,19 @@ export default function Notifications() {
 
   const handleDeleteRule = async (ruleId: string) => {
     const confirmed = await confirm({
-      title: t('notifications.deleteRule'),
-      description: t('notifications.deleteRuleConfirm'),
-      confirmText: t('common.delete'),
+      title: str(notifications_t.deleteRule),
+      description: str(notifications_t.deleteRuleConfirm),
+      confirmText: str(common.delete),
       variant: 'destructive',
     })
     if (!confirmed) return
 
     try {
       await deleteRuleMutation.mutate(ruleId)
-      toast({ title: t('notifications.ruleDeleted') })
+      toast({ title: str(notifications_t.ruleDeleted) })
       refetchRules()
     } catch {
-      toast({ title: t('notifications.deleteRuleFailed'), variant: 'destructive' })
+      toast({ title: str(notifications_t.deleteRuleFailed), variant: 'destructive' })
     }
   }
 
@@ -235,9 +237,9 @@ export default function Notifications() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{t('notifications.title')}</h1>
+          <h1 className="text-2xl font-bold">{notifications_t.title}</h1>
           <p className="text-muted-foreground">
-            Configure notification channels and rules
+            {notifications_t.subtitle}
           </p>
         </div>
       </div>
@@ -268,7 +270,7 @@ export default function Notifications() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Sent
+                {notifications_t.sent}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -280,7 +282,7 @@ export default function Notifications() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Failed
+                {notifications_t.failed}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -296,13 +298,13 @@ export default function Notifications() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="channels">
-            {t('notifications.channels')} ({channels.length})
+            {notifications_t.channels} ({channels.length})
           </TabsTrigger>
           <TabsTrigger value="rules">
-            {t('notifications.rules')} ({rules.length})
+            {notifications_t.rules} ({rules.length})
           </TabsTrigger>
           <TabsTrigger value="logs">
-            {t('notifications.logs')} ({logs.length})
+            {notifications_t.logs} ({logs.length})
           </TabsTrigger>
         </TabsList>
 
@@ -311,22 +313,22 @@ export default function Notifications() {
           <div className="flex justify-between">
             <Button variant="outline" size="sm" onClick={() => refetchChannels()}>
               <RefreshCw className="h-4 w-4 mr-2" />
-              {t('common.refresh')}
+              {common.refresh}
             </Button>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              {t('notifications.addChannel')}
+              {notifications_t.addChannel}
             </Button>
           </div>
 
           {channelsLoading ? (
             <div className="text-center py-8 text-muted-foreground">
-              {t('common.loading')}
+              {common.loading}
             </div>
           ) : channels.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                {t('notifications.noChannels')}
+                {notifications_t.noChannels}
               </CardContent>
             </Card>
           ) : (
@@ -334,11 +336,11 @@ export default function Notifications() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('common.name')}</TableHead>
-                    <TableHead>{t('common.type')}</TableHead>
+                    <TableHead>{common.name}</TableHead>
+                    <TableHead>{common.type}</TableHead>
                     <TableHead>Config</TableHead>
-                    <TableHead>{t('common.status')}</TableHead>
-                    <TableHead className="text-right">{t('common.actions')}</TableHead>
+                    <TableHead>{common.status}</TableHead>
+                    <TableHead className="text-right">{common.actions}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -395,22 +397,22 @@ export default function Notifications() {
           <div className="flex justify-between">
             <Button variant="outline" size="sm" onClick={() => refetchRules()}>
               <RefreshCw className="h-4 w-4 mr-2" />
-              {t('common.refresh')}
+              {common.refresh}
             </Button>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              {t('notifications.addRule')}
+              {notifications_t.addRule}
             </Button>
           </div>
 
           {rulesLoading ? (
             <div className="text-center py-8 text-muted-foreground">
-              {t('common.loading')}
+              {common.loading}
             </div>
           ) : rules.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                {t('notifications.noRules')}
+                {notifications_t.noRules}
               </CardContent>
             </Card>
           ) : (
@@ -418,11 +420,11 @@ export default function Notifications() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('common.name')}</TableHead>
+                    <TableHead>{common.name}</TableHead>
                     <TableHead>Condition</TableHead>
                     <TableHead>Channels</TableHead>
-                    <TableHead>{t('common.status')}</TableHead>
-                    <TableHead className="text-right">{t('common.actions')}</TableHead>
+                    <TableHead>{common.status}</TableHead>
+                    <TableHead className="text-right">{common.actions}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -472,18 +474,18 @@ export default function Notifications() {
           <div className="flex justify-between">
             <Button variant="outline" size="sm" onClick={() => refetchLogs()}>
               <RefreshCw className="h-4 w-4 mr-2" />
-              {t('common.refresh')}
+              {common.refresh}
             </Button>
           </div>
 
           {logsLoading ? (
             <div className="text-center py-8 text-muted-foreground">
-              {t('common.loading')}
+              {common.loading}
             </div>
           ) : logs.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                {t('notifications.noLogs')}
+                {notifications_t.noLogs}
               </CardContent>
             </Card>
           ) : (
@@ -491,7 +493,7 @@ export default function Notifications() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('common.status')}</TableHead>
+                    <TableHead>{common.status}</TableHead>
                     <TableHead>Event</TableHead>
                     <TableHead>Message</TableHead>
                     <TableHead>Time</TableHead>

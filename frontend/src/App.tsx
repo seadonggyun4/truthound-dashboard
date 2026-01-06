@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import { DemoBanner } from './components/DemoBanner'
+import { LoadingFallback } from './components/LoadingFallback'
 import Dashboard from './pages/Dashboard'
 import Sources from './pages/Sources'
 import SourceDetail from './pages/SourceDetail'
@@ -13,12 +14,9 @@ import Drift from './pages/Drift'
 import Schedules from './pages/Schedules'
 import Notifications from './pages/Notifications'
 
-// Import i18n configuration
-import './i18n'
-
 function App() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+    <Suspense fallback={<LoadingFallback />}>
       <DemoBanner />
       <Routes>
         <Route path="/" element={<Layout />}>

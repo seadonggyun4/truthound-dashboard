@@ -4,7 +4,8 @@
 
 import { AlertTriangle, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useIntlayer } from '@/providers'
+import { str } from '@/lib/intlayer-utils'
 
 // Export banner height for layout calculations
 export const DEMO_BANNER_HEIGHT = 40
@@ -17,7 +18,7 @@ export function useDemoBanner() {
 }
 
 export function DemoBanner() {
-  const { t } = useTranslation()
+  const demo = useIntlayer('demo')
   const { isVisible, dismiss } = useDemoBanner()
 
   useEffect(() => {
@@ -44,13 +45,13 @@ export function DemoBanner() {
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4" />
           <span>
-            <strong>{t('demo.title')}</strong> - {t('demo.description')}
+            <strong>{demo.title}</strong> - {demo.description}
           </span>
         </div>
         <button
           onClick={dismiss}
           className="p-1 hover:bg-white/20 rounded transition-colors"
-          aria-label={t('demo.dismiss')}
+          aria-label={str(demo.dismiss)}
         >
           <X className="h-4 w-4" />
         </button>

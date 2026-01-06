@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { intlayer } from 'vite-intlayer'
 import path from 'path'
 
 export default defineConfig(({ mode }) => ({
-  plugins: [react()],
+  plugins: [react(), intlayer()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

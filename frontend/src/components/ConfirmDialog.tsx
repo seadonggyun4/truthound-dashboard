@@ -25,7 +25,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useIntlayer } from '@/providers'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
+import { str } from '@/lib/intlayer-utils'
 
 export interface ConfirmOptions {
   title: string
@@ -53,7 +54,7 @@ interface ConfirmState extends ConfirmOptions {
 }
 
 export function useConfirm() {
-  const { t } = useTranslation()
+  const common = useIntlayer('common')
   const [state, setState] = useState<ConfirmState>({
     isOpen: false,
     title: '',
@@ -71,14 +72,14 @@ export function useConfirm() {
           isOpen: true,
           title: options.title,
           description: options.description,
-          confirmText: options.confirmText || t('common.confirm'),
-          cancelText: options.cancelText || t('common.cancel'),
+          confirmText: options.confirmText || str(common.confirm),
+          cancelText: options.cancelText || str(common.cancel),
           variant: options.variant || 'default',
           resolve,
         })
       })
     },
-    [t]
+    [common]
   )
 
   const handleConfirm = useCallback(() => {

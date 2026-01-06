@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useIntlayer } from '@/providers'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -40,6 +40,7 @@ import {
   type Schedule,
 } from '@/api/client'
 import { formatDate } from '@/lib/utils'
+import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
 import {
   Clock,
@@ -53,17 +54,21 @@ import {
 } from 'lucide-react'
 
 export default function Schedules() {
-  const { t } = useTranslation()
+  const nav = useIntlayer('nav')
+  const schedules_t = useIntlayer('schedules')
+  const common = useIntlayer('common')
+  const errors = useIntlayer('errors')
+  const validation = useIntlayer('validation')
   const { toast } = useToast()
 
-  const CRON_PRESETS = [
-    { label: t('schedules.cronPresets.everyHour'), value: '0 * * * *' },
-    { label: t('schedules.cronPresets.every6Hours'), value: '0 */6 * * *' },
-    { label: t('schedules.cronPresets.dailyMidnight'), value: '0 0 * * *' },
-    { label: t('schedules.cronPresets.daily8am'), value: '0 8 * * *' },
-    { label: t('schedules.cronPresets.everyMonday'), value: '0 0 * * 1' },
-    { label: t('schedules.cronPresets.everyMonth'), value: '0 0 1 * *' },
-  ]
+  const CRON_PRESETS = useMemo(() => [
+    { label: schedules_t.cronPresets.everyHour, value: '0 * * * *' },
+    { label: schedules_t.cronPresets.every6Hours, value: '0 */6 * * *' },
+    { label: schedules_t.cronPresets.dailyMidnight, value: '0 0 * * *' },
+    { label: schedules_t.cronPresets.daily8am, value: '0 8 * * *' },
+    { label: schedules_t.cronPresets.everyMonday, value: '0 0 * * 1' },
+    { label: schedules_t.cronPresets.everyMonth, value: '0 0 1 * *' },
+  ], [schedules_t])
   const [sources, setSources] = useState<Source[]>([])
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [loading, setLoading] = useState(true)
@@ -87,13 +92,13 @@ export default function Schedules() {
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: t('common.error'),
-        description: err instanceof Error ? err.message : t('errors.loadFailed'),
+        title: str(common.error),
+        description: err instanceof Error ? err.message : str(errors.loadFailed),
       })
     } finally {
       setLoading(false)
     }
-  }, [toast, t])
+  }, [toast, common, errors])
 
   useEffect(() => {
     fetchData()
@@ -103,8 +108,8 @@ export default function Schedules() {
     if (!formName || !formSourceId || !formCron) {
       toast({
         variant: 'destructive',
-        title: t('common.error'),
-        description: t('schedules.fillRequired'),
+        title: str(common.error),
+        description: str(schedules_t.fillRequired),
       })
       return
     }
@@ -125,14 +130,14 @@ export default function Schedules() {
       setFormCron('0 0 * * *')
 
       toast({
-        title: t('schedules.scheduleCreated'),
-        description: t('schedules.scheduleCreatedDesc', { name: result.data.name }),
+        title: str(schedules_t.scheduleCreated),
+        description: `${result.data.name} created successfully`,
       })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: t('schedules.createFailed'),
-        description: err instanceof Error ? err.message : t('errors.generic'),
+        title: str(schedules_t.createFailed),
+        description: err instanceof Error ? err.message : str(errors.generic),
       })
     } finally {
       setCreating(false)
@@ -143,12 +148,12 @@ export default function Schedules() {
     try {
       await deleteSchedule(id)
       setSchedules((prev) => prev.filter((s) => s.id !== id))
-      toast({ title: t('schedules.deleted') })
+      toast({ title: str(schedules_t.deleted) })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: t('schedules.deleteFailed'),
-        description: err instanceof Error ? err.message : t('errors.generic'),
+        title: str(schedules_t.deleteFailed),
+        description: err instanceof Error ? err.message : str(errors.generic),
       })
     }
   }
@@ -159,12 +164,12 @@ export default function Schedules() {
       setSchedules((prev) =>
         prev.map((s) => (s.id === id ? result.schedule : s))
       )
-      toast({ title: t('schedules.schedulePaused') })
+      toast({ title: str(schedules_t.schedulePaused) })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: t('schedules.pauseFailed'),
-        description: err instanceof Error ? err.message : t('errors.generic'),
+        title: str(schedules_t.pauseFailed),
+        description: err instanceof Error ? err.message : str(errors.generic),
       })
     }
   }
@@ -175,12 +180,12 @@ export default function Schedules() {
       setSchedules((prev) =>
         prev.map((s) => (s.id === id ? result.schedule : s))
       )
-      toast({ title: t('schedules.scheduleResumed') })
+      toast({ title: str(schedules_t.scheduleResumed) })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: t('schedules.resumeFailed'),
-        description: err instanceof Error ? err.message : t('errors.generic'),
+        title: str(schedules_t.resumeFailed),
+        description: err instanceof Error ? err.message : str(errors.generic),
       })
     }
   }
@@ -189,14 +194,14 @@ export default function Schedules() {
     try {
       const result = await runScheduleNow(id)
       toast({
-        title: t('schedules.validationTriggered'),
-        description: result.passed ? t('validation.passed') : t('validation.failed'),
+        title: str(schedules_t.validationTriggered),
+        description: str(result.passed ? validation.passed : validation.failed),
       })
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: t('schedules.runFailed'),
-        description: err instanceof Error ? err.message : t('errors.generic'),
+        title: str(schedules_t.runFailed),
+        description: err instanceof Error ? err.message : str(errors.generic),
       })
     }
   }
@@ -219,40 +224,40 @@ export default function Schedules() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{t('nav.schedules')}</h1>
-          <p className="text-muted-foreground">{t('schedules.subtitle')}</p>
+          <h1 className="text-2xl font-bold">{nav.schedules}</h1>
+          <p className="text-muted-foreground">{schedules_t.subtitle}</p>
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              {t('schedules.newSchedule')}
+              {schedules_t.newSchedule}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{t('schedules.createSchedule')}</DialogTitle>
+              <DialogTitle>{schedules_t.createSchedule}</DialogTitle>
               <DialogDescription>
-                {t('schedules.createScheduleDesc')}
+                {schedules_t.createScheduleDesc}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>{t('common.name')}</Label>
+                <Label>{common.name}</Label>
                 <Input
-                  placeholder={t('schedules.cronPresets.dailyMidnight')}
+                  placeholder={str(schedules_t.cronPresets.dailyMidnight)}
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>{t('common.source')}</Label>
+                <Label>{common.source}</Label>
                 <Select value={formSourceId} onValueChange={setFormSourceId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t('schedules.selectSource')} />
+                    <SelectValue placeholder={str(schedules_t.selectSource)} />
                   </SelectTrigger>
                   <SelectContent>
                     {sources.map((s) => (
@@ -265,7 +270,7 @@ export default function Schedules() {
               </div>
 
               <div className="space-y-2">
-                <Label>{t('common.schedule')}</Label>
+                <Label>{common.schedule}</Label>
                 <Select value={formCron} onValueChange={setFormCron}>
                   <SelectTrigger>
                     <SelectValue />
@@ -279,13 +284,13 @@ export default function Schedules() {
                   </SelectContent>
                 </Select>
                 <Input
-                  placeholder={t('schedules.customCron')}
+                  placeholder={str(schedules_t.customCron)}
                   value={formCron}
                   onChange={(e) => setFormCron(e.target.value)}
                   className="mt-2"
                 />
                 <p className="text-xs text-muted-foreground">
-                  {t('schedules.cronFormat')}
+                  {schedules_t.cronFormat}
                 </p>
               </div>
 
@@ -295,16 +300,16 @@ export default function Schedules() {
                   checked={formNotify}
                   onCheckedChange={setFormNotify}
                 />
-                <Label htmlFor="notify">{t('schedules.notifyOnFailure')}</Label>
+                <Label htmlFor="notify">{schedules_t.notifyOnFailure}</Label>
               </div>
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                {t('common.cancel')}
+                {common.cancel}
               </Button>
               <Button onClick={handleCreate} disabled={creating}>
-                {creating ? t('schedules.creating') : t('common.create')}
+                {creating ? schedules_t.creating : common.create}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -316,13 +321,13 @@ export default function Schedules() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">{t('schedules.noSchedulesYet')}</h3>
+            <h3 className="text-lg font-medium mb-2">{schedules_t.noSchedulesYet}</h3>
             <p className="text-muted-foreground text-center mb-4">
-              {t('schedules.noSchedulesDesc')}
+              {schedules_t.noSchedulesDesc}
             </p>
             <Button onClick={() => setDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              {t('schedules.newSchedule')}
+              {schedules_t.newSchedule}
             </Button>
           </CardContent>
         </Card>
@@ -341,14 +346,14 @@ export default function Schedules() {
                     <div>
                       <CardTitle className="text-lg">{s.name}</CardTitle>
                       <CardDescription>
-                        {t('common.source')}: {getSourceName(s.source_id)}
+                        {common.source}: {getSourceName(s.source_id)}
                       </CardDescription>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <Badge variant={s.is_active ? 'default' : 'secondary'}>
-                      {s.is_active ? t('schedules.active') : t('schedules.paused')}
+                      {s.is_active ? schedules_t.active : schedules_t.paused}
                     </Badge>
 
                     <DropdownMenu>
@@ -360,17 +365,17 @@ export default function Schedules() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleRunNow(s.id)}>
                           <PlayCircle className="h-4 w-4 mr-2" />
-                          {t('schedules.runNow')}
+                          {schedules_t.runNow}
                         </DropdownMenuItem>
                         {s.is_active ? (
                           <DropdownMenuItem onClick={() => handlePause(s.id)}>
                             <Pause className="h-4 w-4 mr-2" />
-                            {t('schedules.pause')}
+                            {schedules_t.pause}
                           </DropdownMenuItem>
                         ) : (
                           <DropdownMenuItem onClick={() => handleResume(s.id)}>
                             <Play className="h-4 w-4 mr-2" />
-                            {t('schedules.resume')}
+                            {schedules_t.resume}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
@@ -378,7 +383,7 @@ export default function Schedules() {
                           onClick={() => handleDelete(s.id)}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
-                          {t('common.delete')}
+                          {common.delete}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -388,15 +393,15 @@ export default function Schedules() {
               <CardContent>
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
-                    <div className="text-muted-foreground">{t('schedules.cronExpression')}</div>
+                    <div className="text-muted-foreground">{schedules_t.cronExpression}</div>
                     <div className="font-mono">{s.cron_expression}</div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground">{t('schedules.lastRun')}</div>
-                    <div>{s.last_run_at ? formatDate(s.last_run_at) : t('common.never')}</div>
+                    <div className="text-muted-foreground">{schedules_t.lastRun}</div>
+                    <div>{s.last_run_at ? formatDate(s.last_run_at) : common.never}</div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground">{t('schedules.nextRun')}</div>
+                    <div className="text-muted-foreground">{schedules_t.nextRun}</div>
                     <div>
                       {s.next_run_at && s.is_active
                         ? formatDate(s.next_run_at)
