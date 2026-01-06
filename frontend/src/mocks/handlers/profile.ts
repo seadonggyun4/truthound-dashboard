@@ -23,8 +23,11 @@ export const profileHandlers = [
       )
     }
 
-    const profile = createProfileResult(source.name)
+    const profile = createProfileResult({ sourceName: source.name })
 
-    return HttpResponse.json(profile)
+    return HttpResponse.json({
+      success: true,
+      data: profile,
+    })
   }),
 ]
