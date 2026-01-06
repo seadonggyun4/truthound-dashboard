@@ -13,12 +13,21 @@ export const driftHandlers = [
   http.post(`${API_BASE}/drift/compare`, async ({ request }) => {
     await delay(1500) // Simulate comparison time
 
-    const body = (await request.json()) as {
+    let body: {
       baseline_source_id: string
       current_source_id: string
       columns?: string[]
       method?: string
       threshold?: number
+    }
+
+    try {
+      body = await request.json() as typeof body
+    } catch {
+      return HttpResponse.json(
+        { detail: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
     }
 
     const baselineSource = getById(getStore().sources, body.baseline_source_id)
@@ -60,6 +69,7 @@ export const driftHandlers = [
     const baselineSourceId = url.searchParams.get('baseline_source_id')
     const currentSourceId = url.searchParams.get('current_source_id')
     const limit = parseInt(url.searchParams.get('limit') ?? '20')
+    const offset = parseInt(url.searchParams.get('offset') ?? '0')
 
     let comparisons = getAll(getStore().driftComparisons)
 
@@ -80,12 +90,15 @@ export const driftHandlers = [
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
 
-    const paginated = comparisons.slice(0, limit)
+    const total = comparisons.length
+    const paginated = comparisons.slice(offset, offset + limit)
 
     return HttpResponse.json({
       success: true,
       data: paginated,
-      total: comparisons.length,
+      total,
+      offset,
+      limit,
     })
   }),
 
