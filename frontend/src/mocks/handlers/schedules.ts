@@ -24,6 +24,7 @@ export const schedulesHandlers = [
     const sourceId = url.searchParams.get('source_id')
     const activeOnly = url.searchParams.get('active_only') === 'true'
     const limit = parseInt(url.searchParams.get('limit') ?? '50')
+    const offset = parseInt(url.searchParams.get('offset') ?? '0')
 
     let schedules = getAll(getStore().schedules)
 
@@ -40,12 +41,15 @@ export const schedulesHandlers = [
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
 
-    const paginated = schedules.slice(0, limit)
+    const total = schedules.length
+    const paginated = schedules.slice(offset, offset + limit)
 
     return HttpResponse.json({
       success: true,
       data: paginated,
-      total: schedules.length,
+      total,
+      offset,
+      limit,
     })
   }),
 
@@ -72,12 +76,21 @@ export const schedulesHandlers = [
   http.post(`${API_BASE}/schedules`, async ({ request }) => {
     await delay(300)
 
-    const body = (await request.json()) as {
+    let body: {
       source_id: string
       name: string
       cron_expression: string
       notify_on_failure?: boolean
       config?: Record<string, unknown>
+    }
+
+    try {
+      body = await request.json() as typeof body
+    } catch {
+      return HttpResponse.json(
+        { detail: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
     }
 
     const source = getById(getStore().sources, body.source_id)
@@ -86,6 +99,15 @@ export const schedulesHandlers = [
       return HttpResponse.json(
         { detail: 'Source not found' },
         { status: 404 }
+      )
+    }
+
+    // Validate cron expression format (basic validation: 5 or 6 space-separated parts)
+    const cronParts = body.cron_expression.trim().split(/\s+/)
+    if (cronParts.length < 5 || cronParts.length > 6) {
+      return HttpResponse.json(
+        { detail: 'Invalid cron expression. Must have 5 or 6 space-separated parts.' },
+        { status: 400 }
       )
     }
 
@@ -113,12 +135,21 @@ export const schedulesHandlers = [
   http.put(`${API_BASE}/schedules/:id`, async ({ params, request }) => {
     await delay(250)
 
-    const body = (await request.json()) as Partial<{
+    let body: Partial<{
       name: string
       cron_expression: string
       notify_on_failure: boolean
       config: Record<string, unknown>
     }>
+
+    try {
+      body = await request.json() as typeof body
+    } catch {
+      return HttpResponse.json(
+        { detail: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
 
     const updated = update(getStore().schedules, params.id as string, body)
 
