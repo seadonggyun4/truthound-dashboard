@@ -10,8 +10,9 @@ import {
   create,
   update,
   remove,
+  cleanupOrphanedData,
 } from '../data/store'
-import { createSource, createId } from '../factories'
+import { createId } from '../factories'
 
 const API_BASE = '/api/v1'
 
@@ -61,46 +62,76 @@ export const sourcesHandlers = [
       )
     }
 
-    return HttpResponse.json(source)
+    return HttpResponse.json({
+      success: true,
+      data: source,
+    })
   }),
 
   // Create source
   http.post(`${API_BASE}/sources`, async ({ request }) => {
     await delay(300)
 
-    const body = (await request.json()) as {
+    let body: {
       name: string
       type: string
       config: Record<string, unknown>
       description?: string
     }
 
-    const newSource = createSource({
+    try {
+      body = await request.json() as typeof body
+    } catch {
+      return HttpResponse.json(
+        { detail: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
+
+    const now = new Date().toISOString()
+
+    // Create source with all provided data directly, not using factory defaults for user-provided fields
+    const newSource = {
       id: createId(),
       name: body.name,
       type: body.type,
-    })
-
-    newSource.config = body.config
-    newSource.description = body.description
-    newSource.created_at = new Date().toISOString()
-    newSource.updated_at = new Date().toISOString()
+      config: body.config,
+      description: body.description ?? '',
+      is_active: true,
+      has_schema: false,
+      created_at: now,
+      updated_at: now,
+      last_validated_at: undefined,
+      latest_validation_status: undefined,
+    }
 
     create(getStore().sources, newSource)
 
-    return HttpResponse.json(newSource, { status: 201 })
+    return HttpResponse.json({
+      success: true,
+      data: newSource,
+    }, { status: 201 })
   }),
 
   // Update source
   http.put(`${API_BASE}/sources/:id`, async ({ params, request }) => {
     await delay(250)
 
-    const body = (await request.json()) as Partial<{
+    let body: Partial<{
       name: string
       config: Record<string, unknown>
       description: string
       is_active: boolean
     }>
+
+    try {
+      body = await request.json() as typeof body
+    } catch {
+      return HttpResponse.json(
+        { detail: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
 
     const updated = update(getStore().sources, params.id as string, body)
 
@@ -111,7 +142,10 @@ export const sourcesHandlers = [
       )
     }
 
-    return HttpResponse.json(updated)
+    return HttpResponse.json({
+      success: true,
+      data: updated,
+    })
   }),
 
   // Delete source
@@ -127,7 +161,10 @@ export const sourcesHandlers = [
       )
     }
 
-    return HttpResponse.json({ message: 'Source deleted successfully' })
+    // Clean up orphaned data (schedules, validations, schemas) referencing this source
+    cleanupOrphanedData()
+
+    return HttpResponse.json({ success: true, message: 'Source deleted successfully' })
   }),
 
   // Test source connection
