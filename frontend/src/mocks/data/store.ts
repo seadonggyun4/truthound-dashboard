@@ -13,6 +13,15 @@ import type {
   NotificationChannel,
   NotificationRule,
   NotificationLog,
+  GlossaryTerm,
+  GlossaryCategory,
+  TermRelationship,
+  TermHistory,
+  CatalogAsset,
+  AssetColumn,
+  AssetTag,
+  Comment,
+  Activity,
 } from '@/api/client'
 import {
   createDiverseSources,
@@ -24,6 +33,13 @@ import {
   createDiverseRules,
   createDiverseLogs,
   setAvailableChannelIds,
+  createDiverseCategories,
+  createDiverseTerms,
+  createTermsWithRelationships,
+  createTermHistories,
+  createDiverseAssets,
+  createDiverseComments,
+  createDiverseActivities,
 } from '../factories'
 
 // ============================================================================
@@ -39,6 +55,16 @@ interface MockStore {
   notificationChannels: Map<string, NotificationChannel>
   notificationRules: Map<string, NotificationRule>
   notificationLogs: Map<string, NotificationLog>
+  // Phase 5: Business Glossary & Data Catalog
+  glossaryTerms: Map<string, GlossaryTerm>
+  glossaryCategories: Map<string, GlossaryCategory>
+  termRelationships: Map<string, TermRelationship>
+  termHistory: Map<string, TermHistory>
+  catalogAssets: Map<string, CatalogAsset>
+  assetColumns: Map<string, AssetColumn>
+  assetTags: Map<string, AssetTag>
+  comments: Map<string, Comment>
+  activities: Map<string, Activity>
 }
 
 let store: MockStore | null = null
@@ -93,6 +119,45 @@ function initializeStore(): MockStore {
   const logs = createDiverseLogs(channelIds, ruleIds)
   const logsMap = new Map(logs.map((l) => [l.id, l]))
 
+  // ========== Phase 5: Business Glossary ==========
+  const categories = createDiverseCategories()
+  const categoriesMap = new Map(categories.map((c) => [c.id, c]))
+
+  const termsWithoutRelations = createDiverseTerms(categories)
+  const { terms, relationships } = createTermsWithRelationships(termsWithoutRelations)
+  const termsMap = new Map(terms.map((t) => [t.id, t]))
+  const relationshipsMap = new Map(relationships.map((r) => [r.id, r]))
+
+  // Create history for some terms
+  const historyItems: TermHistory[] = []
+  terms.slice(0, 5).forEach((term) => {
+    historyItems.push(...createTermHistories(term.id, 2))
+  })
+  const historyMap = new Map(historyItems.map((h) => [h.id, h]))
+
+  // ========== Phase 5: Data Catalog ==========
+  const assets = createDiverseAssets(sourceIds)
+  const assetsMap = new Map(assets.map((a) => [a.id, a]))
+
+  // Extract columns and tags from assets
+  const columnsMap = new Map<string, AssetColumn>()
+  const tagsMap = new Map<string, AssetTag>()
+  assets.forEach((asset) => {
+    asset.columns.forEach((col) => columnsMap.set(col.id, col))
+    asset.tags.forEach((tag) => tagsMap.set(tag.id, tag))
+  })
+
+  // ========== Phase 5: Collaboration ==========
+  const termIds = terms.map((t) => t.id)
+  const assetIds = assets.map((a) => a.id)
+  const columnIds = Array.from(columnsMap.keys())
+
+  const comments = createDiverseComments(termIds, assetIds, columnIds)
+  const commentsMap = new Map(comments.map((c) => [c.id, c]))
+
+  const activities = createDiverseActivities(termIds, assetIds, columnIds)
+  const activitiesMap = new Map(activities.map((a) => [a.id, a]))
+
   return {
     sources: sourcesMap,
     validations: validationsMap,
@@ -102,6 +167,16 @@ function initializeStore(): MockStore {
     notificationChannels: channelsMap,
     notificationRules: rulesMap,
     notificationLogs: logsMap,
+    // Phase 5
+    glossaryTerms: termsMap,
+    glossaryCategories: categoriesMap,
+    termRelationships: relationshipsMap,
+    termHistory: historyMap,
+    catalogAssets: assetsMap,
+    assetColumns: columnsMap,
+    assetTags: tagsMap,
+    comments: commentsMap,
+    activities: activitiesMap,
   }
 }
 

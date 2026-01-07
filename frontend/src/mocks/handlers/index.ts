@@ -11,6 +11,9 @@ import { historyHandlers } from './history'
 import { driftHandlers } from './drift'
 import { schedulesHandlers } from './schedules'
 import { notificationsHandlers } from './notifications'
+import { glossaryHandlers } from './glossary'
+import { catalogHandlers } from './catalog'
+import { collaborationHandlers } from './collaboration'
 
 export const handlers = [
   ...healthHandlers,
@@ -22,4 +25,7 @@ export const handlers = [
   ...driftHandlers,
   ...schedulesHandlers,
   ...notificationsHandlers,
+  ...glossaryHandlers,
+  ...catalogHandlers,
+  ...collaborationHandlers,
 ]
