@@ -710,6 +710,360 @@ Retrieve notification delivery logs.
 
 ---
 
+## Business Glossary
+
+### GET /glossary/terms
+
+Retrieve glossary terms.
+
+**Query Parameters:**
+- `search` (optional): Search term names and definitions
+- `category_id` (optional): Filter by category
+- `status` (optional): Filter by status (`draft`, `approved`, `deprecated`)
+- `page` (default: 1)
+- `per_page` (default: 20)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "term123",
+      "name": "Customer",
+      "definition": "An individual or organization that purchases products",
+      "category_id": "cat123",
+      "category_name": "Business",
+      "status": "approved",
+      "owner": "data-team",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+### POST /glossary/terms
+
+Create a new term.
+
+**Request:**
+```json
+{
+  "name": "Customer",
+  "definition": "An individual or organization that purchases products",
+  "category_id": "cat123",
+  "status": "draft",
+  "owner": "data-team"
+}
+```
+
+### GET /glossary/terms/{id}
+
+Retrieve term details including relationships.
+
+### PUT /glossary/terms/{id}
+
+Update a term. Changes are automatically tracked in history.
+
+### DELETE /glossary/terms/{id}
+
+Delete a term.
+
+### GET /glossary/terms/{id}/history
+
+Retrieve term change history.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "hist123",
+      "term_id": "term123",
+      "field_name": "definition",
+      "old_value": "Previous definition",
+      "new_value": "Updated definition",
+      "changed_by": "user@example.com",
+      "changed_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+### GET /glossary/terms/{id}/relationships
+
+Retrieve term relationships.
+
+### GET /glossary/categories
+
+Retrieve all categories.
+
+### POST /glossary/categories
+
+Create a new category.
+
+**Request:**
+```json
+{
+  "name": "Business",
+  "description": "Business-related terms",
+  "parent_id": null
+}
+```
+
+### PUT /glossary/categories/{id}
+
+Update a category.
+
+### DELETE /glossary/categories/{id}
+
+Delete a category.
+
+### POST /glossary/relationships
+
+Create a relationship between terms.
+
+**Request:**
+```json
+{
+  "source_term_id": "term123",
+  "target_term_id": "term456",
+  "relationship_type": "synonym"
+}
+```
+
+**Relationship Types:**
+- `synonym` - Terms with the same meaning
+- `related` - Related terms
+
+### DELETE /glossary/relationships/{id}
+
+Delete a relationship.
+
+---
+
+## Data Catalog
+
+### GET /catalog/assets
+
+Retrieve data assets.
+
+**Query Parameters:**
+- `search` (optional): Search asset names and descriptions
+- `asset_type` (optional): Filter by type (`table`, `file`, `api`)
+- `source_id` (optional): Filter by data source
+- `page` (default: 1)
+- `per_page` (default: 20)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "asset123",
+      "name": "customers",
+      "asset_type": "table",
+      "description": "Customer master data",
+      "source_id": "src123",
+      "source_name": "Production DB",
+      "owner": "data-team",
+      "quality_score": 85,
+      "column_count": 12,
+      "tag_count": 3,
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+### POST /catalog/assets
+
+Create a new asset.
+
+**Request:**
+```json
+{
+  "name": "customers",
+  "asset_type": "table",
+  "description": "Customer master data",
+  "source_id": "src123",
+  "owner": "data-team",
+  "quality_score": 85
+}
+```
+
+### GET /catalog/assets/{id}
+
+Retrieve asset details including columns and tags.
+
+### PUT /catalog/assets/{id}
+
+Update an asset.
+
+### DELETE /catalog/assets/{id}
+
+Delete an asset.
+
+### GET /catalog/assets/{id}/columns
+
+Retrieve asset columns.
+
+### POST /catalog/assets/{id}/columns
+
+Add a column to an asset.
+
+**Request:**
+```json
+{
+  "name": "customer_id",
+  "data_type": "integer",
+  "description": "Unique customer identifier",
+  "is_nullable": false,
+  "is_primary_key": true,
+  "sensitivity_level": "internal"
+}
+```
+
+**Sensitivity Levels:**
+- `public` - No restrictions
+- `internal` - Internal use only
+- `confidential` - Restricted access
+- `restricted` - Highly sensitive
+
+### PUT /catalog/columns/{id}
+
+Update a column.
+
+### DELETE /catalog/columns/{id}
+
+Delete a column.
+
+### PUT /catalog/columns/{id}/term
+
+Map a column to a glossary term.
+
+**Request:**
+```json
+{
+  "term_id": "term123"
+}
+```
+
+### DELETE /catalog/columns/{id}/term
+
+Remove column-term mapping.
+
+### GET /catalog/assets/{id}/tags
+
+Retrieve asset tags.
+
+### POST /catalog/assets/{id}/tags
+
+Add a tag to an asset.
+
+**Request:**
+```json
+{
+  "tag_name": "domain",
+  "tag_value": "sales"
+}
+```
+
+### DELETE /catalog/tags/{id}
+
+Delete a tag.
+
+---
+
+## Collaboration
+
+### GET /comments
+
+Retrieve comments for a resource.
+
+**Query Parameters:**
+- `resource_type` (required): `term`, `asset`, or `column`
+- `resource_id` (required): ID of the resource
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "cmt123",
+      "resource_type": "term",
+      "resource_id": "term123",
+      "content": "This definition needs clarification",
+      "author": "user@example.com",
+      "parent_id": null,
+      "replies": [],
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+### POST /comments
+
+Create a comment.
+
+**Request:**
+```json
+{
+  "resource_type": "term",
+  "resource_id": "term123",
+  "content": "This definition needs clarification",
+  "author": "user@example.com",
+  "parent_id": null
+}
+```
+
+### PUT /comments/{id}
+
+Update a comment.
+
+### DELETE /comments/{id}
+
+Delete a comment.
+
+### GET /activities
+
+Retrieve activity feed.
+
+**Query Parameters:**
+- `resource_type` (optional): Filter by resource type
+- `resource_id` (optional): Filter by resource ID
+- `limit` (default: 50)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "act123",
+      "resource_type": "term",
+      "resource_id": "term123",
+      "action": "updated",
+      "actor": "user@example.com",
+      "description": "Updated term definition",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Action Types:**
+- `created` - Resource created
+- `updated` - Resource updated
+- `deleted` - Resource deleted
+- `commented` - Comment added
+
+---
+
 ## Error Codes
 
 | Code | Description |

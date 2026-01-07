@@ -335,6 +335,99 @@ Configure rules to trigger notifications based on conditions.
 
 ---
 
+## Business Glossary
+
+Manage business terminology with definitions, categories, and relationships.
+
+### Term Management
+
+- **CRUD Operations**: Create, read, update, and delete business terms
+- **Categories**: Organize terms into hierarchical categories
+- **Status Tracking**: Track term lifecycle (draft, approved, deprecated)
+- **Change History**: Automatic tracking of all term modifications
+
+### Term Relationships
+
+Define connections between terms:
+
+| Relationship Type | Description |
+|-------------------|-------------|
+| **Synonym** | Terms with the same meaning |
+| **Related** | Terms that are conceptually related |
+
+### Search and Filter
+
+- Full-text search across term names and definitions
+- Filter by category
+- Filter by status
+
+---
+
+## Data Catalog
+
+Register and manage data assets with metadata.
+
+### Asset Types
+
+| Type | Description |
+|------|-------------|
+| **Table** | Database tables |
+| **File** | Data files (CSV, Parquet, etc.) |
+| **API** | API endpoints |
+
+### Asset Management
+
+- **Registration**: Register data assets with descriptions
+- **Source Linking**: Link assets to data sources
+- **Quality Score**: Track data quality (0-100 scale)
+- **Ownership**: Assign asset owners
+
+### Column Metadata
+
+Manage column-level information:
+
+- Column name and data type
+- Description
+- Nullable and primary key flags
+- Term mapping (link columns to glossary terms)
+- Sensitivity classification
+
+### Sensitivity Levels
+
+| Level | Description |
+|-------|-------------|
+| **Public** | No restrictions |
+| **Internal** | Internal use only |
+| **Confidential** | Restricted access |
+| **Restricted** | Highly sensitive data |
+
+### Tagging
+
+Apply custom tags to assets for flexible categorization.
+
+---
+
+## Collaboration
+
+Enable team collaboration on data assets.
+
+### Comments
+
+- Add comments to terms, assets, and columns
+- Threaded replies for discussions
+- Edit and delete own comments
+
+### Activity Feed
+
+Track all changes across the system:
+
+- Term creation, updates, and deletion
+- Asset modifications
+- Comment activity
+- Column-term mappings
+
+---
+
 ## UI Features
 
 ### Dark Mode

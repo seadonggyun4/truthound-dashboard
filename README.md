@@ -30,6 +30,8 @@ truthound-dashboard provides a graphical interface for managing data sources, ex
 | Webhook Notifications | Available | Available |
 | Drift Detection | Available | Available |
 | Data Profiling | Available | Available |
+| Business Glossary | Available | Available |
+| Data Catalog | Available | Available |
 | Dark Mode | Available | Available |
 | Multi-language (en/ko) | Not Available | Available |
 | License | Commercial | Apache 2.0 |
@@ -101,6 +103,24 @@ The dashboard interface is accessible at `http://localhost:8765`.
 ### Data Profiling
 - Statistical profiling using `th.profile`
 - Column-level statistics
+
+### Business Glossary
+- Business term definitions with categories
+- Term relationships (synonyms, related terms)
+- Term lifecycle management (draft, approved, deprecated)
+- Change history tracking
+
+### Data Catalog
+- Data asset registration (tables, files, APIs)
+- Column-level metadata management
+- Column-to-term mapping
+- Quality score tracking
+- Sensitivity classification (public, internal, confidential, restricted)
+- Custom tagging
+
+### Collaboration
+- Comments on terms, assets, and columns
+- Activity feed for tracking changes
 
 ### User Interface
 - Light and dark theme support
