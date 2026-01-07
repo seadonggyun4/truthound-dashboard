@@ -711,6 +711,435 @@ export async function getNotificationStats(params?: {
   return request('/notifications/logs/stats', { params })
 }
 
+// ============================================================================
+// Glossary (Phase 5)
+// ============================================================================
+
+export interface GlossaryCategory {
+  id: string
+  name: string
+  description?: string
+  parent_id?: string
+  created_at: string
+  updated_at: string
+  children?: GlossaryCategory[]
+}
+
+export interface GlossaryTermSummary {
+  id: string
+  name: string
+  definition: string
+}
+
+export interface GlossaryTerm {
+  id: string
+  name: string
+  definition: string
+  category_id?: string
+  status: 'draft' | 'approved' | 'deprecated'
+  owner_id?: string
+  created_at: string
+  updated_at: string
+  category?: GlossaryCategory
+  synonyms: GlossaryTermSummary[]
+  related_terms: GlossaryTermSummary[]
+}
+
+export interface TermRelationship {
+  id: string
+  source_term_id: string
+  target_term_id: string
+  relationship_type: 'synonym' | 'related' | 'parent' | 'child'
+  created_at: string
+  source_term: GlossaryTermSummary
+  target_term: GlossaryTermSummary
+}
+
+export interface TermHistory {
+  id: string
+  term_id: string
+  field_name: string
+  old_value?: string
+  new_value?: string
+  changed_by?: string
+  changed_at: string
+}
+
+export interface TermCreate {
+  name: string
+  definition: string
+  category_id?: string
+  status?: 'draft' | 'approved' | 'deprecated'
+  owner_id?: string
+}
+
+export interface TermUpdate {
+  name?: string
+  definition?: string
+  category_id?: string
+  status?: 'draft' | 'approved' | 'deprecated'
+  owner_id?: string
+}
+
+export interface CategoryCreate {
+  name: string
+  description?: string
+  parent_id?: string
+}
+
+export interface CategoryUpdate {
+  name?: string
+  description?: string
+  parent_id?: string
+}
+
+export interface RelationshipCreate {
+  source_term_id: string
+  target_term_id: string
+  relationship_type: 'synonym' | 'related' | 'parent' | 'child'
+}
+
+// Glossary Terms
+export async function getTerms(params?: {
+  search?: string
+  category_id?: string
+  status?: string
+  skip?: number
+  limit?: number
+}): Promise<GlossaryTerm[]> {
+  return request<GlossaryTerm[]>('/glossary/terms', { params })
+}
+
+export async function getTerm(id: string): Promise<GlossaryTerm> {
+  return request<GlossaryTerm>(`/glossary/terms/${id}`)
+}
+
+export async function createTerm(data: TermCreate): Promise<GlossaryTerm> {
+  return request<GlossaryTerm>('/glossary/terms', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateTerm(id: string, data: TermUpdate): Promise<GlossaryTerm> {
+  return request<GlossaryTerm>(`/glossary/terms/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteTerm(id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/glossary/terms/${id}`, { method: 'DELETE' })
+}
+
+export async function getTermHistory(id: string): Promise<TermHistory[]> {
+  return request<TermHistory[]>(`/glossary/terms/${id}/history`)
+}
+
+export async function getTermRelationships(id: string): Promise<TermRelationship[]> {
+  return request<TermRelationship[]>(`/glossary/terms/${id}/relationships`)
+}
+
+// Glossary Categories
+export async function getCategories(): Promise<GlossaryCategory[]> {
+  return request<GlossaryCategory[]>('/glossary/categories')
+}
+
+export async function createCategory(data: CategoryCreate): Promise<GlossaryCategory> {
+  return request<GlossaryCategory>('/glossary/categories', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateCategory(id: string, data: CategoryUpdate): Promise<GlossaryCategory> {
+  return request<GlossaryCategory>(`/glossary/categories/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteCategory(id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/glossary/categories/${id}`, { method: 'DELETE' })
+}
+
+// Glossary Relationships
+export async function createRelationship(data: RelationshipCreate): Promise<TermRelationship> {
+  return request<TermRelationship>('/glossary/relationships', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteRelationship(id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/glossary/relationships/${id}`, { method: 'DELETE' })
+}
+
+// ============================================================================
+// Catalog (Phase 5)
+// ============================================================================
+
+export type AssetType = 'table' | 'file' | 'api'
+export type SensitivityLevel = 'public' | 'internal' | 'confidential' | 'restricted'
+
+export interface AssetTag {
+  id: string
+  asset_id: string
+  tag_name: string
+  tag_value?: string
+  created_at: string
+}
+
+export interface AssetColumn {
+  id: string
+  asset_id: string
+  name: string
+  data_type?: string
+  description?: string
+  is_nullable: boolean
+  is_primary_key: boolean
+  term_id?: string
+  sensitivity_level?: SensitivityLevel
+  created_at: string
+  term?: GlossaryTermSummary
+}
+
+export interface SourceSummary {
+  id: string
+  name: string
+  type: string
+}
+
+export interface CatalogAsset {
+  id: string
+  name: string
+  asset_type: AssetType
+  source_id?: string
+  description?: string
+  owner_id?: string
+  quality_score?: number
+  created_at: string
+  updated_at: string
+  source?: SourceSummary
+  columns: AssetColumn[]
+  tags: AssetTag[]
+}
+
+export interface AssetListItem {
+  id: string
+  name: string
+  asset_type: AssetType
+  source_id?: string
+  source_name?: string
+  quality_score?: number
+  tag_count: number
+  column_count: number
+  updated_at: string
+}
+
+export interface AssetCreate {
+  name: string
+  asset_type: AssetType
+  source_id?: string
+  description?: string
+  owner_id?: string
+}
+
+export interface AssetUpdate {
+  name?: string
+  asset_type?: AssetType
+  source_id?: string
+  description?: string
+  owner_id?: string
+  quality_score?: number
+}
+
+export interface ColumnCreate {
+  name: string
+  data_type?: string
+  description?: string
+  is_nullable?: boolean
+  is_primary_key?: boolean
+  sensitivity_level?: SensitivityLevel
+}
+
+export interface ColumnUpdate {
+  name?: string
+  data_type?: string
+  description?: string
+  is_nullable?: boolean
+  is_primary_key?: boolean
+  sensitivity_level?: SensitivityLevel
+}
+
+export interface TagCreate {
+  tag_name: string
+  tag_value?: string
+}
+
+// Catalog Assets
+export async function getAssets(params?: {
+  search?: string
+  asset_type?: string
+  source_id?: string
+  skip?: number
+  limit?: number
+}): Promise<AssetListItem[]> {
+  return request<AssetListItem[]>('/catalog/assets', { params })
+}
+
+export async function getAsset(id: string): Promise<CatalogAsset> {
+  return request<CatalogAsset>(`/catalog/assets/${id}`)
+}
+
+export async function createAsset(data: AssetCreate): Promise<CatalogAsset> {
+  return request<CatalogAsset>('/catalog/assets', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateAsset(id: string, data: AssetUpdate): Promise<CatalogAsset> {
+  return request<CatalogAsset>(`/catalog/assets/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteAsset(id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/catalog/assets/${id}`, { method: 'DELETE' })
+}
+
+// Asset Columns
+export async function getAssetColumns(assetId: string): Promise<AssetColumn[]> {
+  return request<AssetColumn[]>(`/catalog/assets/${assetId}/columns`)
+}
+
+export async function createColumn(assetId: string, data: ColumnCreate): Promise<AssetColumn> {
+  return request<AssetColumn>(`/catalog/assets/${assetId}/columns`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateColumn(columnId: string, data: ColumnUpdate): Promise<AssetColumn> {
+  return request<AssetColumn>(`/catalog/columns/${columnId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteColumn(columnId: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/catalog/columns/${columnId}`, { method: 'DELETE' })
+}
+
+export async function mapColumnToTerm(columnId: string, termId: string): Promise<AssetColumn> {
+  return request<AssetColumn>(`/catalog/columns/${columnId}/term`, {
+    method: 'PUT',
+    body: JSON.stringify({ term_id: termId }),
+  })
+}
+
+export async function unmapColumnFromTerm(columnId: string): Promise<AssetColumn> {
+  return request<AssetColumn>(`/catalog/columns/${columnId}/term`, { method: 'DELETE' })
+}
+
+// Asset Tags
+export async function getAssetTags(assetId: string): Promise<AssetTag[]> {
+  return request<AssetTag[]>(`/catalog/assets/${assetId}/tags`)
+}
+
+export async function addTag(assetId: string, data: TagCreate): Promise<AssetTag> {
+  return request<AssetTag>(`/catalog/assets/${assetId}/tags`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function removeTag(tagId: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/catalog/tags/${tagId}`, { method: 'DELETE' })
+}
+
+// ============================================================================
+// Collaboration (Phase 5)
+// ============================================================================
+
+export type ResourceType = 'term' | 'asset' | 'column'
+export type ActivityAction = 'created' | 'updated' | 'deleted' | 'commented'
+
+export interface Comment {
+  id: string
+  resource_type: ResourceType
+  resource_id: string
+  content: string
+  author_id?: string
+  parent_id?: string
+  created_at: string
+  updated_at: string
+  replies: Comment[]
+}
+
+export interface Activity {
+  id: string
+  resource_type: string
+  resource_id: string
+  action: ActivityAction
+  actor_id?: string
+  description?: string
+  metadata?: Record<string, unknown>
+  created_at: string
+}
+
+export interface CommentCreate {
+  resource_type: ResourceType
+  resource_id: string
+  content: string
+  author_id?: string
+  parent_id?: string
+}
+
+export interface CommentUpdate {
+  content: string
+}
+
+// Comments
+export async function getComments(
+  resourceType: ResourceType,
+  resourceId: string
+): Promise<Comment[]> {
+  return request<Comment[]>('/comments', {
+    params: { resource_type: resourceType, resource_id: resourceId },
+  })
+}
+
+export async function createComment(data: CommentCreate): Promise<Comment> {
+  return request<Comment>('/comments', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateComment(id: string, data: CommentUpdate): Promise<Comment> {
+  return request<Comment>(`/comments/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteComment(id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/comments/${id}`, { method: 'DELETE' })
+}
+
+// Activities
+export async function getActivities(params?: {
+  resource_type?: string
+  resource_id?: string
+  skip?: number
+  limit?: number
+}): Promise<Activity[]> {
+  return request<Activity[]>('/activities', { params })
+}
+
 // API client helper for direct requests
 export const apiClient = {
   get: <T>(endpoint: string) => request<T>(endpoint),

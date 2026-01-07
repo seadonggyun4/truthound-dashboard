@@ -13,6 +13,11 @@ import Profile from './pages/Profile'
 import Drift from './pages/Drift'
 import Schedules from './pages/Schedules'
 import Notifications from './pages/Notifications'
+import Glossary from './pages/Glossary'
+import GlossaryDetail from './pages/GlossaryDetail'
+import Catalog from './pages/Catalog'
+import CatalogDetail from './pages/CatalogDetail'
+import Activity from './pages/Activity'
 
 function App() {
   return (
@@ -30,6 +35,12 @@ function App() {
           <Route path="drift" element={<Drift />} />
           <Route path="schedules" element={<Schedules />} />
           <Route path="notifications" element={<Notifications />} />
+          {/* Phase 5: Business Glossary & Data Catalog */}
+          <Route path="glossary" element={<Glossary />} />
+          <Route path="glossary/:id" element={<GlossaryDetail />} />
+          <Route path="catalog" element={<Catalog />} />
+          <Route path="catalog/:id" element={<CatalogDetail />} />
+          <Route path="activity" element={<Activity />} />
         </Route>
       </Routes>
     </Suspense>

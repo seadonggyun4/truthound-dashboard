@@ -11,6 +11,9 @@ import {
   Bell,
   Globe,
   Check,
+  BookOpen,
+  FolderOpen,
+  Activity,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -24,13 +27,16 @@ import { useTheme } from '@/components/theme-provider'
 import { useState } from 'react'
 import logoImg from '@/assets/logo.png'
 
-type NavKey = 'dashboard' | 'sources' | 'drift' | 'schedules' | 'notifications'
+type NavKey = 'dashboard' | 'sources' | 'catalog' | 'glossary' | 'drift' | 'schedules' | 'activity' | 'notifications'
 
 const navigation: Array<{ key: NavKey; href: string; icon: typeof LayoutDashboard }> = [
   { key: 'dashboard', href: '/', icon: LayoutDashboard },
   { key: 'sources', href: '/sources', icon: Database },
+  { key: 'catalog', href: '/catalog', icon: FolderOpen },
+  { key: 'glossary', href: '/glossary', icon: BookOpen },
   { key: 'drift', href: '/drift', icon: GitCompare },
   { key: 'schedules', href: '/schedules', icon: Clock },
+  { key: 'activity', href: '/activity', icon: Activity },
   { key: 'notifications', href: '/notifications', icon: Bell },
 ]
 

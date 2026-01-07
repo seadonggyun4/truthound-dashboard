@@ -98,14 +98,11 @@ const commonContent = {
   }),
 
     // Other
-    retry: t({ en: 'Retry', ko: '다시 시도',
-  }),
-    source: t({ en: 'Source', ko: '소스',
-  }),
-    schedule: t({ en: 'Schedule', ko: '스케줄',
-  }),
-    never: t({ en: 'Never', ko: '없음',
-  }),
+    retry: t({ en: 'Retry', ko: '다시 시도' }),
+    source: t({ en: 'Source', ko: '소스' }),
+    schedule: t({ en: 'Schedule', ko: '스케줄' }),
+    never: t({ en: 'Never', ko: '없음' }),
+    saving: t({ en: 'Saving...', ko: '저장 중...' }),
   },
 } satisfies Dictionary
 
