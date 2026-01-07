@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "truthound-dashboard"
-version = "1.1.0"
+version = "1.2.0"
 description = "Open-source data quality dashboard - GX Cloud alternative"
 readme = "README.md"
 license = "Apache-2.0"
