@@ -21,6 +21,7 @@ from .database import (
     reset_db,
 )
 from .models import (
+    # Phase 1-4 Models
     AppSettings,
     DriftComparison,
     NotificationChannel,
@@ -32,6 +33,23 @@ from .models import (
     Schema,
     Source,
     Validation,
+    # Phase 5 Enums
+    ActivityAction,
+    AssetType,
+    RelationshipType,
+    ResourceType,
+    SensitivityLevel,
+    TermStatus,
+    # Phase 5 Models
+    Activity,
+    AssetColumn,
+    AssetTag,
+    CatalogAsset,
+    Comment,
+    GlossaryCategory,
+    GlossaryTerm,
+    TermHistory,
+    TermRelationship,
 )
 from .repository import BaseRepository
 
@@ -62,6 +80,25 @@ __all__ = [
     "NotificationChannel",
     "NotificationRule",
     "NotificationLog",
+    # Phase 5 Enums
+    "TermStatus",
+    "RelationshipType",
+    "AssetType",
+    "SensitivityLevel",
+    "ResourceType",
+    "ActivityAction",
+    # Phase 5 Models - Glossary
+    "GlossaryCategory",
+    "GlossaryTerm",
+    "TermRelationship",
+    "TermHistory",
+    # Phase 5 Models - Catalog
+    "CatalogAsset",
+    "AssetColumn",
+    "AssetTag",
+    # Phase 5 Models - Collaboration
+    "Comment",
+    "Activity",
     # Repository
     "BaseRepository",
 ]

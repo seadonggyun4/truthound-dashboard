@@ -142,6 +142,13 @@ from .truthound_adapter import (
     get_adapter,
     reset_adapter,
 )
+# Phase 5 Services
+from .phase5 import (
+    ActivityLogger,
+    CatalogService,
+    CollaborationService,
+    GlossaryService,
+)
 
 __all__ = [
     # Base classes
@@ -261,4 +268,9 @@ __all__ = [
     "StratifiedSamplingStrategy",
     "get_sampler",
     "reset_sampler",
+    # Phase 5 Services
+    "GlossaryService",
+    "CatalogService",
+    "CollaborationService",
+    "ActivityLogger",
 ]

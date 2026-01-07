@@ -12,6 +12,17 @@ Models:
     - NotificationChannel: Notification channel configuration
     - NotificationRule: Notification trigger rules
     - NotificationLog: Notification delivery log
+
+Phase 5 Models:
+    - GlossaryCategory: Business term categories
+    - GlossaryTerm: Business glossary terms
+    - TermRelationship: Relationships between terms
+    - TermHistory: Term change history
+    - CatalogAsset: Data catalog assets
+    - AssetColumn: Asset column metadata
+    - AssetTag: Asset tags
+    - Comment: Comments on resources
+    - Activity: Activity log
 """
 
 from __future__ import annotations
@@ -19,11 +30,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from enum import Enum
+
 from sqlalchemy import (
     JSON,
     Boolean,
     DateTime,
     Enum as SQLEnum,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -33,6 +47,66 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin, UUIDMixin
+
+
+# =============================================================================
+# Phase 5: Enums
+# =============================================================================
+
+
+class TermStatus(str, Enum):
+    """Status of a glossary term."""
+
+    DRAFT = "draft"
+    APPROVED = "approved"
+    DEPRECATED = "deprecated"
+
+
+class RelationshipType(str, Enum):
+    """Type of relationship between terms."""
+
+    SYNONYM = "synonym"
+    RELATED = "related"
+    PARENT = "parent"
+    CHILD = "child"
+
+
+class AssetType(str, Enum):
+    """Type of catalog asset."""
+
+    TABLE = "table"
+    FILE = "file"
+    API = "api"
+
+
+class SensitivityLevel(str, Enum):
+    """Sensitivity level for data columns."""
+
+    PUBLIC = "public"
+    INTERNAL = "internal"
+    CONFIDENTIAL = "confidential"
+    RESTRICTED = "restricted"
+
+
+class ResourceType(str, Enum):
+    """Type of resource for comments and activities."""
+
+    TERM = "term"
+    CATEGORY = "category"
+    ASSET = "asset"
+    COLUMN = "column"
+
+
+class ActivityAction(str, Enum):
+    """Type of activity action."""
+
+    CREATED = "created"
+    UPDATED = "updated"
+    DELETED = "deleted"
+    COMMENTED = "commented"
+    STATUS_CHANGED = "status_changed"
+    MAPPED = "mapped"
+    UNMAPPED = "unmapped"
 
 
 class Source(Base, UUIDMixin, TimestampMixin):
@@ -96,6 +170,12 @@ class Source(Base, UUIDMixin, TimestampMixin):
         "Schedule",
         back_populates="source",
         cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    # Phase 5: Catalog assets linked to this source
+    assets: Mapped[list[CatalogAsset]] = relationship(
+        "CatalogAsset",
+        back_populates="source",
         lazy="selectin",
     )
 
@@ -730,3 +810,616 @@ class NotificationLog(Base, UUIDMixin):
         self.status = "failed"
         self.error_message = error
         self.sent_at = datetime.utcnow()
+
+
+# =============================================================================
+# Phase 5: Business Glossary Models
+# =============================================================================
+
+
+class GlossaryCategory(Base, UUIDMixin, TimestampMixin):
+    """Business glossary category model.
+
+    Provides hierarchical categorization for business terms.
+    Categories can be nested (parent-child relationships).
+
+    Attributes:
+        id: Unique identifier (UUID).
+        name: Category name (unique).
+        description: Optional category description.
+        parent_id: Optional parent category ID for hierarchy.
+    """
+
+    __tablename__ = "glossary_categories"
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    parent_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("glossary_categories.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Relationships
+    parent: Mapped[GlossaryCategory | None] = relationship(
+        "GlossaryCategory",
+        remote_side="GlossaryCategory.id",
+        back_populates="children",
+    )
+    children: Mapped[list[GlossaryCategory]] = relationship(
+        "GlossaryCategory",
+        back_populates="parent",
+        lazy="selectin",
+    )
+    terms: Mapped[list[GlossaryTerm]] = relationship(
+        "GlossaryTerm",
+        back_populates="category",
+        lazy="selectin",
+    )
+
+    @property
+    def term_count(self) -> int:
+        """Get number of terms in this category."""
+        return len(self.terms)
+
+    @property
+    def full_path(self) -> str:
+        """Get full category path (e.g., 'Parent > Child')."""
+        if self.parent:
+            return f"{self.parent.full_path} > {self.name}"
+        return self.name
+
+
+class GlossaryTerm(Base, UUIDMixin, TimestampMixin):
+    """Business glossary term model.
+
+    Represents a business term with its definition, status, and relationships.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        name: Term name (unique).
+        definition: Term definition (required).
+        category_id: Optional category ID.
+        status: Term status (draft, approved, deprecated).
+        owner_id: Optional owner identifier.
+    """
+
+    __tablename__ = "glossary_terms"
+
+    # Composite index for efficient search queries
+    __table_args__ = (
+        Index("idx_glossary_terms_name_status", "name", "status"),
+        Index("idx_glossary_terms_category", "category_id"),
+    )
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    definition: Mapped[str] = mapped_column(Text, nullable=False)
+    category_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("glossary_categories.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=TermStatus.DRAFT.value,
+        index=True,
+    )
+    owner_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Relationships
+    category: Mapped[GlossaryCategory | None] = relationship(
+        "GlossaryCategory",
+        back_populates="terms",
+    )
+    history: Mapped[list[TermHistory]] = relationship(
+        "TermHistory",
+        back_populates="term",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="desc(TermHistory.changed_at)",
+    )
+    # Relationships where this term is the source
+    outgoing_relationships: Mapped[list[TermRelationship]] = relationship(
+        "TermRelationship",
+        foreign_keys="TermRelationship.source_term_id",
+        back_populates="source_term",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    # Relationships where this term is the target
+    incoming_relationships: Mapped[list[TermRelationship]] = relationship(
+        "TermRelationship",
+        foreign_keys="TermRelationship.target_term_id",
+        back_populates="target_term",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    # Columns mapped to this term
+    mapped_columns: Mapped[list[AssetColumn]] = relationship(
+        "AssetColumn",
+        back_populates="term",
+        lazy="selectin",
+    )
+
+    @property
+    def synonyms(self) -> list[GlossaryTerm]:
+        """Get all synonym terms."""
+        result = []
+        for rel in self.outgoing_relationships:
+            if rel.relationship_type == RelationshipType.SYNONYM.value:
+                result.append(rel.target_term)
+        for rel in self.incoming_relationships:
+            if rel.relationship_type == RelationshipType.SYNONYM.value:
+                result.append(rel.source_term)
+        return result
+
+    @property
+    def related_terms(self) -> list[GlossaryTerm]:
+        """Get all related terms (non-synonym relationships)."""
+        result = []
+        for rel in self.outgoing_relationships:
+            if rel.relationship_type == RelationshipType.RELATED.value:
+                result.append(rel.target_term)
+        for rel in self.incoming_relationships:
+            if rel.relationship_type == RelationshipType.RELATED.value:
+                result.append(rel.source_term)
+        return result
+
+    @property
+    def is_approved(self) -> bool:
+        """Check if term is approved."""
+        return self.status == TermStatus.APPROVED.value
+
+    @property
+    def is_deprecated(self) -> bool:
+        """Check if term is deprecated."""
+        return self.status == TermStatus.DEPRECATED.value
+
+    def approve(self) -> None:
+        """Approve this term."""
+        self.status = TermStatus.APPROVED.value
+
+    def deprecate(self) -> None:
+        """Mark this term as deprecated."""
+        self.status = TermStatus.DEPRECATED.value
+
+
+class TermRelationship(Base, UUIDMixin):
+    """Relationship between glossary terms.
+
+    Represents directional relationships between terms such as
+    synonyms, related terms, or parent-child relationships.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        source_term_id: Source term ID.
+        target_term_id: Target term ID.
+        relationship_type: Type of relationship.
+        created_at: When the relationship was created.
+    """
+
+    __tablename__ = "term_relationships"
+
+    # Unique constraint to prevent duplicate relationships
+    __table_args__ = (
+        Index(
+            "idx_term_relationships_unique",
+            "source_term_id",
+            "target_term_id",
+            "relationship_type",
+            unique=True,
+        ),
+    )
+
+    source_term_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("glossary_terms.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    target_term_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("glossary_terms.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    relationship_type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+    # Relationships
+    source_term: Mapped[GlossaryTerm] = relationship(
+        "GlossaryTerm",
+        foreign_keys=[source_term_id],
+        back_populates="outgoing_relationships",
+    )
+    target_term: Mapped[GlossaryTerm] = relationship(
+        "GlossaryTerm",
+        foreign_keys=[target_term_id],
+        back_populates="incoming_relationships",
+    )
+
+
+class TermHistory(Base, UUIDMixin):
+    """History of changes to glossary terms.
+
+    Tracks all modifications to term fields for auditing.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        term_id: Reference to the term.
+        field_name: Name of the changed field.
+        old_value: Previous value (as string).
+        new_value: New value (as string).
+        changed_by: User who made the change.
+        changed_at: When the change occurred.
+    """
+
+    __tablename__ = "term_history"
+
+    # Index for efficient history queries
+    __table_args__ = (
+        Index("idx_term_history_term_changed", "term_id", "changed_at"),
+    )
+
+    term_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("glossary_terms.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    field_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    old_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    new_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    changed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    changed_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+    # Relationships
+    term: Mapped[GlossaryTerm] = relationship(
+        "GlossaryTerm",
+        back_populates="history",
+    )
+
+
+# =============================================================================
+# Phase 5: Data Catalog Models
+# =============================================================================
+
+
+class CatalogAsset(Base, UUIDMixin, TimestampMixin):
+    """Data catalog asset model.
+
+    Represents a data asset (table, file, API) in the catalog.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        name: Asset name.
+        asset_type: Type of asset (table, file, api).
+        source_id: Optional reference to data source.
+        description: Optional asset description.
+        owner_id: Optional owner identifier.
+        quality_score: Computed quality score (0-100).
+    """
+
+    __tablename__ = "catalog_assets"
+
+    # Indexes for efficient queries
+    __table_args__ = (
+        Index("idx_catalog_assets_type", "asset_type"),
+        Index("idx_catalog_assets_source", "source_id"),
+        Index("idx_catalog_assets_name_type", "name", "asset_type"),
+    )
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    asset_type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=AssetType.TABLE.value,
+    )
+    source_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("sources.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    owner_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    quality_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # Relationships
+    source: Mapped[Source | None] = relationship(
+        "Source",
+        back_populates="assets",
+    )
+    columns: Mapped[list[AssetColumn]] = relationship(
+        "AssetColumn",
+        back_populates="asset",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="AssetColumn.name",
+    )
+    tags: Mapped[list[AssetTag]] = relationship(
+        "AssetTag",
+        back_populates="asset",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    @property
+    def column_count(self) -> int:
+        """Get number of columns."""
+        return len(self.columns)
+
+    @property
+    def tag_names(self) -> list[str]:
+        """Get list of tag names."""
+        return [tag.tag_name for tag in self.tags]
+
+    @property
+    def quality_level(self) -> str:
+        """Get quality level based on score."""
+        if self.quality_score is None:
+            return "unknown"
+        if self.quality_score >= 90:
+            return "excellent"
+        if self.quality_score >= 70:
+            return "good"
+        if self.quality_score >= 50:
+            return "fair"
+        return "poor"
+
+    def update_quality_score(self, score: float) -> None:
+        """Update the quality score."""
+        self.quality_score = min(100.0, max(0.0, score))
+
+
+class AssetColumn(Base, UUIDMixin, TimestampMixin):
+    """Asset column metadata model.
+
+    Represents a column within a data asset with optional term mapping.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        asset_id: Reference to parent asset.
+        name: Column name.
+        data_type: Column data type.
+        description: Optional column description.
+        is_nullable: Whether column allows null values.
+        is_primary_key: Whether column is a primary key.
+        term_id: Optional mapped glossary term ID.
+        sensitivity_level: Data sensitivity classification.
+    """
+
+    __tablename__ = "asset_columns"
+
+    # Indexes for efficient queries
+    __table_args__ = (
+        Index("idx_asset_columns_asset", "asset_id"),
+        Index("idx_asset_columns_term", "term_id"),
+        Index("idx_asset_columns_sensitivity", "sensitivity_level"),
+    )
+
+    asset_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("catalog_assets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    data_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_nullable: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_primary_key: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    term_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("glossary_terms.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    sensitivity_level: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+        default=SensitivityLevel.PUBLIC.value,
+    )
+
+    # Relationships
+    asset: Mapped[CatalogAsset] = relationship(
+        "CatalogAsset",
+        back_populates="columns",
+    )
+    term: Mapped[GlossaryTerm | None] = relationship(
+        "GlossaryTerm",
+        back_populates="mapped_columns",
+    )
+
+    @property
+    def is_sensitive(self) -> bool:
+        """Check if column contains sensitive data."""
+        if self.sensitivity_level is None:
+            return False
+        return self.sensitivity_level in (
+            SensitivityLevel.CONFIDENTIAL.value,
+            SensitivityLevel.RESTRICTED.value,
+        )
+
+    @property
+    def has_term_mapping(self) -> bool:
+        """Check if column is mapped to a term."""
+        return self.term_id is not None
+
+    def map_to_term(self, term_id: str) -> None:
+        """Map this column to a glossary term."""
+        self.term_id = term_id
+
+    def unmap_term(self) -> None:
+        """Remove term mapping from this column."""
+        self.term_id = None
+
+
+class AssetTag(Base, UUIDMixin):
+    """Tag for catalog assets.
+
+    Provides flexible tagging for assets with optional values.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        asset_id: Reference to parent asset.
+        tag_name: Tag name/key.
+        tag_value: Optional tag value.
+        created_at: When the tag was created.
+    """
+
+    __tablename__ = "asset_tags"
+
+    # Unique constraint to prevent duplicate tags
+    __table_args__ = (
+        Index("idx_asset_tags_asset", "asset_id"),
+        Index("idx_asset_tags_name", "tag_name"),
+        Index(
+            "idx_asset_tags_unique",
+            "asset_id",
+            "tag_name",
+            unique=True,
+        ),
+    )
+
+    asset_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("catalog_assets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    tag_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    tag_value: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+    # Relationships
+    asset: Mapped[CatalogAsset] = relationship(
+        "CatalogAsset",
+        back_populates="tags",
+    )
+
+
+# =============================================================================
+# Phase 5: Collaboration Models
+# =============================================================================
+
+
+class Comment(Base, UUIDMixin, TimestampMixin):
+    """Comment on resources (terms, assets, columns).
+
+    Supports threaded comments with replies.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        resource_type: Type of resource being commented on.
+        resource_id: ID of the resource.
+        content: Comment content.
+        author_id: Optional author identifier.
+        parent_id: Optional parent comment ID for replies.
+    """
+
+    __tablename__ = "comments"
+
+    # Indexes for efficient queries
+    __table_args__ = (
+        Index("idx_comments_resource", "resource_type", "resource_id"),
+        Index("idx_comments_parent", "parent_id"),
+    )
+
+    resource_type: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    resource_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    author_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    parent_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("comments.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
+    # Relationships
+    parent: Mapped[Comment | None] = relationship(
+        "Comment",
+        remote_side="Comment.id",
+        back_populates="replies",
+    )
+    replies: Mapped[list[Comment]] = relationship(
+        "Comment",
+        back_populates="parent",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="Comment.created_at",
+    )
+
+    @property
+    def is_reply(self) -> bool:
+        """Check if this is a reply to another comment."""
+        return self.parent_id is not None
+
+    @property
+    def reply_count(self) -> int:
+        """Get number of direct replies."""
+        return len(self.replies)
+
+
+class Activity(Base, UUIDMixin):
+    """Activity log for tracking changes.
+
+    Records all significant actions on resources for audit trail.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        resource_type: Type of resource.
+        resource_id: ID of the resource.
+        action: Type of action performed.
+        actor_id: User who performed the action.
+        description: Human-readable description.
+        metadata: Additional action metadata as JSON.
+        created_at: When the activity occurred.
+    """
+
+    __tablename__ = "activities"
+
+    # Indexes for efficient queries
+    __table_args__ = (
+        Index("idx_activities_resource", "resource_type", "resource_id"),
+        Index("idx_activities_action", "action"),
+        Index("idx_activities_created", "created_at"),
+    )
+
+    resource_type: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    resource_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    actor_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+        index=True,
+    )
+
+    @property
+    def resource_key(self) -> str:
+        """Get unique resource key."""
+        return f"{self.resource_type}:{self.resource_id}"
