@@ -6,6 +6,7 @@ This module configures the main API router and includes all sub-routers.
 from fastapi import APIRouter
 
 from . import (
+    # Phase 1-4
     drift,
     health,
     history,
@@ -16,6 +17,10 @@ from . import (
     schemas,
     sources,
     validations,
+    # Phase 5
+    catalog,
+    collaboration,
+    glossary,
 )
 
 api_router = APIRouter()
@@ -80,4 +85,28 @@ api_router.include_router(
 api_router.include_router(
     notifications.router,
     tags=["notifications"],
+)
+
+# =============================================================================
+# Phase 5: Business Glossary & Data Catalog
+# =============================================================================
+
+# Glossary management endpoints
+api_router.include_router(
+    glossary.router,
+    prefix="/glossary",
+    tags=["glossary"],
+)
+
+# Catalog management endpoints
+api_router.include_router(
+    catalog.router,
+    prefix="/catalog",
+    tags=["catalog"],
+)
+
+# Collaboration endpoints (comments, activities)
+api_router.include_router(
+    collaboration.router,
+    tags=["collaboration"],
 )
