@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { intlayer } from 'vite-intlayer'
 import path from 'path'
 
-export default defineConfig(() => ({
+export default defineConfig(({ command }) => ({
   plugins: [react(), intlayer()],
   resolve: {
     alias: {
@@ -24,6 +24,6 @@ export default defineConfig(() => ({
     emptyOutDir: true,
     sourcemap: false,
   },
-  // Exclude mockServiceWorker.js from production build
-  publicDir: 'public-pip',
+  // Use 'public' for dev (includes mockServiceWorker.js), 'public-pip' for production build
+  publicDir: command === 'serve' ? 'public' : 'public-pip',
 }))
