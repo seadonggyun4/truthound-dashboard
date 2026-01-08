@@ -10,7 +10,7 @@
     "build:demo": "npx intlayer build && tsc && vite build --mode demo",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "preview:mock": "vite preview --mode mock",
+    "preview:demo": "vite preview --mode demo",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "type-check": "tsc --noEmit",
     "test": "vitest",
