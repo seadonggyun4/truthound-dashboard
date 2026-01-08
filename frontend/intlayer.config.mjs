@@ -1,0 +1,18 @@
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/** @type {import('intlayer').IntlayerConfig} */
+const config = {
+  internationalization: {
+    locales: ["en", "ko"],
+    defaultLocale: "en",
+  },
+  content: {
+    contentDir: [resolve(__dirname, "./src")],
+    fileExtensions: [".content.ts", ".content.tsx"],
+  },
+};
+
+export default config;
