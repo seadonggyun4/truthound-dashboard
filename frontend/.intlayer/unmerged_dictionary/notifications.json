@@ -1,0 +1,245 @@
+[
+  {
+    "key": "notifications",
+    "content": {
+      "title": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Notifications",
+          "ko": "알림"
+        }
+      },
+      "subtitle": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Configure notification channels and rules",
+          "ko": "알림 채널 및 규칙 설정"
+        }
+      },
+      "channels": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Channels",
+          "ko": "채널"
+        }
+      },
+      "rules": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Rules",
+          "ko": "규칙"
+        }
+      },
+      "logs": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Logs",
+          "ko": "로그"
+        }
+      },
+      "addChannel": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Add Channel",
+          "ko": "채널 추가"
+        }
+      },
+      "addRule": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Add Rule",
+          "ko": "규칙 추가"
+        }
+      },
+      "editChannel": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Edit Channel",
+          "ko": "채널 편집"
+        }
+      },
+      "editRule": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Edit Rule",
+          "ko": "규칙 편집"
+        }
+      },
+      "testChannel": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Test",
+          "ko": "테스트"
+        }
+      },
+      "noChannels": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "No notification channels configured",
+          "ko": "설정된 알림 채널이 없습니다"
+        }
+      },
+      "noRules": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "No notification rules configured",
+          "ko": "설정된 알림 규칙이 없습니다"
+        }
+      },
+      "noLogs": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "No notification logs",
+          "ko": "알림 로그가 없습니다"
+        }
+      },
+      "channelTypes": {
+        "slack": {
+          "nodeType": "translation",
+          "translation": {
+            "en": "Slack",
+            "ko": "Slack"
+          }
+        },
+        "email": {
+          "nodeType": "translation",
+          "translation": {
+            "en": "Email",
+            "ko": "이메일"
+          }
+        },
+        "webhook": {
+          "nodeType": "translation",
+          "translation": {
+            "en": "Webhook",
+            "ko": "웹훅"
+          }
+        }
+      },
+      "conditions": {
+        "validation_failed": {
+          "nodeType": "translation",
+          "translation": {
+            "en": "Validation Failed",
+            "ko": "검증 실패"
+          }
+        },
+        "critical_issues": {
+          "nodeType": "translation",
+          "translation": {
+            "en": "Critical Issues Detected",
+            "ko": "심각한 이슈 발견"
+          }
+        },
+        "high_issues": {
+          "nodeType": "translation",
+          "translation": {
+            "en": "High Severity Issues",
+            "ko": "높은 심각도 이슈"
+          }
+        },
+        "schedule_failed": {
+          "nodeType": "translation",
+          "translation": {
+            "en": "Schedule Failed",
+            "ko": "스케줄 실패"
+          }
+        },
+        "drift_detected": {
+          "nodeType": "translation",
+          "translation": {
+            "en": "Drift Detected",
+            "ko": "드리프트 감지"
+          }
+        }
+      },
+      "testSuccess": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Test notification sent successfully",
+          "ko": "테스트 알림이 성공적으로 전송되었습니다"
+        }
+      },
+      "testFailed": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Failed to send test notification",
+          "ko": "테스트 알림 전송에 실패했습니다"
+        }
+      },
+      "sent": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Sent",
+          "ko": "전송됨"
+        }
+      },
+      "failed": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Failed",
+          "ko": "실패"
+        }
+      },
+      "deleteChannel": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Delete Channel",
+          "ko": "채널 삭제"
+        }
+      },
+      "deleteChannelConfirm": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Are you sure you want to delete this channel? This action cannot be undone.",
+          "ko": "이 채널을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+        }
+      },
+      "channelDeleted": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Channel deleted successfully",
+          "ko": "채널이 삭제되었습니다"
+        }
+      },
+      "deleteChannelFailed": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Failed to delete channel",
+          "ko": "채널 삭제에 실패했습니다"
+        }
+      },
+      "deleteRule": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Delete Rule",
+          "ko": "규칙 삭제"
+        }
+      },
+      "deleteRuleConfirm": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Are you sure you want to delete this rule? This action cannot be undone.",
+          "ko": "이 규칙을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+        }
+      },
+      "ruleDeleted": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Rule deleted successfully",
+          "ko": "규칙이 삭제되었습니다"
+        }
+      },
+      "deleteRuleFailed": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Failed to delete rule",
+          "ko": "규칙 삭제에 실패했습니다"
+        }
+      }
+    },
+    "localId": "notifications::local::src/content/notifications.content.ts",
+    "location": "local",
+    "filePath": "src/content/notifications.content.ts"
+  }
+]

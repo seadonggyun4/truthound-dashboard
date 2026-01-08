@@ -1,0 +1,31 @@
+[
+  {
+    "key": "demo",
+    "content": {
+      "title": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Demo Mode",
+          "ko": "데모 모드"
+        }
+      },
+      "description": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "This is a demo with simulated data. No backend required.",
+          "ko": "시뮬레이션 데이터로 실행 중입니다. 백엔드가 필요하지 않습니다."
+        }
+      },
+      "dismiss": {
+        "nodeType": "translation",
+        "translation": {
+          "en": "Dismiss banner",
+          "ko": "배너 닫기"
+        }
+      }
+    },
+    "localId": "demo::local::src/content/demo.content.ts",
+    "location": "local",
+    "filePath": "src/content/demo.content.ts"
+  }
+]

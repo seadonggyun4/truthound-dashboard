@@ -1,0 +1,85 @@
+{
+  "key": "sources",
+  "content": {
+    "nodeType": "translation",
+    "translation": {
+      "en": {
+        "title": "Data Sources",
+        "subtitle": "Manage your data sources and validations",
+        "addSource": "Add Source",
+        "addFirstSource": "Add Your First Source",
+        "editSource": "Edit Source",
+        "deleteSource": "Delete Source",
+        "noSources": "No data sources configured",
+        "noSourcesYet": "No sources yet",
+        "noSourcesDesc": "Add your first data source to start monitoring data quality",
+        "sourceName": "Source Name",
+        "sourceType": "Source Type",
+        "sourcePath": "Path / Connection",
+        "lastValidated": "Last validated",
+        "never": "Never",
+        "validate": "Validate",
+        "loadError": "Failed to load sources",
+        "deleteSuccess": "Source deleted successfully",
+        "deleteFailed": "Failed to delete source",
+        "validationStarted": "Validation Started",
+        "runningValidation": "Running validation...",
+        "validationPassed": "Validation Passed",
+        "validationFailed": "Validation Failed",
+        "validationError": "Failed to run validation",
+        "confirmDelete": "Are you sure you want to delete this source? This will also delete all related schemas, rules, and validations.",
+        "types": {
+          "file": "File",
+          "csv": "CSV File",
+          "parquet": "Parquet File",
+          "json": "JSON File",
+          "database": "Database",
+          "postgresql": "PostgreSQL",
+          "mysql": "MySQL",
+          "snowflake": "Snowflake",
+          "bigquery": "BigQuery"
+        }
+      },
+      "ko": {
+        "title": "데이터 소스",
+        "subtitle": "데이터 소스 및 검증 관리",
+        "addSource": "소스 추가",
+        "addFirstSource": "첫 번째 소스 추가하기",
+        "editSource": "소스 편집",
+        "deleteSource": "소스 삭제",
+        "noSources": "설정된 데이터 소스가 없습니다",
+        "noSourcesYet": "소스가 없습니다",
+        "noSourcesDesc": "데이터 품질 모니터링을 시작하려면 첫 번째 소스를 추가하세요",
+        "sourceName": "소스 이름",
+        "sourceType": "소스 유형",
+        "sourcePath": "경로 / 연결",
+        "lastValidated": "마지막 검증",
+        "never": "없음",
+        "validate": "검증",
+        "loadError": "소스를 불러오지 못했습니다",
+        "deleteSuccess": "소스가 삭제되었습니다",
+        "deleteFailed": "소스 삭제에 실패했습니다",
+        "validationStarted": "검증 시작",
+        "runningValidation": "검증 실행 중...",
+        "validationPassed": "검증 통과",
+        "validationFailed": "검증 실패",
+        "validationError": "검증 실행에 실패했습니다",
+        "confirmDelete": "이 소스를 삭제하시겠습니까? 관련된 모든 스키마, 규칙, 검증 결과도 함께 삭제됩니다.",
+        "types": {
+          "file": "파일",
+          "csv": "CSV 파일",
+          "parquet": "Parquet 파일",
+          "json": "JSON 파일",
+          "database": "데이터베이스",
+          "postgresql": "PostgreSQL",
+          "mysql": "MySQL",
+          "snowflake": "Snowflake",
+          "bigquery": "BigQuery"
+        }
+      }
+    }
+  },
+  "localIds": [
+    "sources::local::src/content/sources.content.ts"
+  ]
+}
