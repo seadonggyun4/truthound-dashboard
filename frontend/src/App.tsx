@@ -1,7 +1,6 @@
 import { Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
-import { DemoBanner } from './components/DemoBanner'
 import { LoadingFallback } from './components/LoadingFallback'
 import Dashboard from './pages/Dashboard'
 import Sources from './pages/Sources'
@@ -22,7 +21,6 @@ import Activity from './pages/Activity'
 function App() {
   return (
     <Suspense fallback={<LoadingFallback />}>
-      <DemoBanner />
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />

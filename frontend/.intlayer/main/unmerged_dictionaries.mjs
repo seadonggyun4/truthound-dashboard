@@ -2,7 +2,6 @@ import _KRoWd9wBIIBMv7WbjZIE from '../unmerged_dictionary/catalog.json' with { t
 import _Y7oZmA5LmDtL3JEgsUPM from '../unmerged_dictionary/collaboration.json' with { type: 'json' };
 import _vCCVBp8kCGmTeHIzCwhA from '../unmerged_dictionary/common.json' with { type: 'json' };
 import _qVbNqQq6pwYPWgya2g20 from '../unmerged_dictionary/dashboard.json' with { type: 'json' };
-import _OOww4DugJtZvnuznqu1l from '../unmerged_dictionary/demo.json' with { type: 'json' };
 import _EqtELq9jioJ880u655Pn from '../unmerged_dictionary/drift.json' with { type: 'json' };
 import _Ua3ZVftySEXFAxqrkJjk from '../unmerged_dictionary/errors.json' with { type: 'json' };
 import _rzrtvdsW6MA7HG6MZiqM from '../unmerged_dictionary/glossary.json' with { type: 'json' };
@@ -18,7 +17,6 @@ const dictionaries = {
   "collaboration": _Y7oZmA5LmDtL3JEgsUPM,
   "common": _vCCVBp8kCGmTeHIzCwhA,
   "dashboard": _qVbNqQq6pwYPWgya2g20,
-  "demo": _OOww4DugJtZvnuznqu1l,
   "drift": _EqtELq9jioJ880u655Pn,
   "errors": _Ua3ZVftySEXFAxqrkJjk,
   "glossary": _rzrtvdsW6MA7HG6MZiqM,

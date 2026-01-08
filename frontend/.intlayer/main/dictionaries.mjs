@@ -2,7 +2,6 @@ import _r8WBgJrQMvfEJCnickJy from '../dictionary/catalog.json' with { type: 'jso
 import _0Y9XaDOODYyUA9HjehwW from '../dictionary/collaboration.json' with { type: 'json' };
 import _RVRZfI48wib1tk4rZI6m from '../dictionary/common.json' with { type: 'json' };
 import _bKHwuoe295nh62GUJWja from '../dictionary/dashboard.json' with { type: 'json' };
-import _Kkdt0GCekhqsxaIEPDCo from '../dictionary/demo.json' with { type: 'json' };
 import _gy5t9yobj2Dw5sALwbEY from '../dictionary/drift.json' with { type: 'json' };
 import _tHF9Fug0R3fzsqMvGStV from '../dictionary/errors.json' with { type: 'json' };
 import _16MMyjmBnb4CU3Tdg0Gv from '../dictionary/glossary.json' with { type: 'json' };
@@ -18,7 +17,6 @@ const dictionaries = {
   "collaboration": _0Y9XaDOODYyUA9HjehwW,
   "common": _RVRZfI48wib1tk4rZI6m,
   "dashboard": _bKHwuoe295nh62GUJWja,
-  "demo": _Kkdt0GCekhqsxaIEPDCo,
   "drift": _gy5t9yobj2Dw5sALwbEY,
   "errors": _tHF9Fug0R3fzsqMvGStV,
   "glossary": _16MMyjmBnb4CU3Tdg0Gv,

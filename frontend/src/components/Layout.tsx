@@ -50,12 +50,11 @@ export default function Layout() {
   const currentLang = LOCALE_INFO.find((l) => l.code === locale)
 
   return (
-    <div className="min-h-screen bg-background" style={{ paddingTop: 'var(--demo-banner-height, 0px)' }}>
+    <div className="min-h-screen bg-background">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          style={{ top: 'var(--demo-banner-height, 0px)' }}
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -63,10 +62,9 @@ export default function Layout() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 bottom-0 z-50 w-48 transform bg-card border-r transition-transform duration-200 lg:translate-x-0',
+          'fixed left-0 top-0 bottom-0 z-50 w-48 transform bg-card border-r transition-transform duration-200 lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
-        style={{ top: 'var(--demo-banner-height, 0px)' }}
       >
         {/* Logo */}
         <div className="flex h-16 items-center gap-2 border-b px-6">
@@ -108,8 +106,7 @@ export default function Layout() {
       <div className="lg:pl-48">
         {/* Top bar */}
         <header
-          className="sticky z-30 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6"
-          style={{ top: 'var(--demo-banner-height, 0px)' }}
+          className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6"
         >
           <Button
             variant="ghost"

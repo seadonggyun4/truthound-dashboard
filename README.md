@@ -10,7 +10,7 @@
 
 A web-based data quality monitoring dashboard for [truthound](https://github.com/seadonggyun4/truthound).
 
-[Documentation](https://truthound.netlify.app) | [Live Demo](https://truthound-dashboard.netlify.app) | [PyPI](https://pypi.org/project/truthound-dashboard/)
+[Documentation](https://truthound.netlify.app) | [PyPI](https://pypi.org/project/truthound-dashboard/)
 
 ## Overview
 
@@ -273,12 +273,6 @@ pytest
 # Run tests with coverage report
 pytest --cov=truthound_dashboard
 ```
-
-## Live Demo
-
-A live demonstration is available at [https://truthound-dashboard.netlify.app](https://truthound-dashboard.netlify.app).
-
-The demo instance operates using Mock Service Worker (MSW) with simulated data and does not require a backend connection.
 
 ## Documentation
 
