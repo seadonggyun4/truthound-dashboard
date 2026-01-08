@@ -20,9 +20,11 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    // Use 'dist' for demo/production builds (Netlify), otherwise use static folder for backend
-    outDir: mode === 'production' ? 'dist' : '../src/truthound_dashboard/static',
+    // demo: Netlify (dist/), pip: backend static folder
+    outDir: mode === 'demo' ? 'dist' : '../src/truthound_dashboard/static',
     emptyOutDir: true,
     sourcemap: false,
   },
+  // pip: exclude mockServiceWorker.js, demo: include all
+  publicDir: mode === 'pip' ? 'public-pip' : 'public',
 }))
