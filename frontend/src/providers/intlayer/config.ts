@@ -10,7 +10,7 @@ import { Locales } from 'intlayer'
  * Supported locales in the application
  * Add new locales here when expanding language support
  */
-export const SUPPORTED_LOCALES = [Locales.ENGLISH, Locales.KOREAN, Locales.FRENCH] as const
+export const SUPPORTED_LOCALES = [Locales.ENGLISH, Locales.KOREAN] as const
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 
@@ -50,12 +50,6 @@ export const LOCALE_INFO: readonly LocaleInfo[] = [
     name: 'Korean',
     nativeName: '한국어',
     flag: '🇰🇷',
-  },
-  {
-    code: Locales.FRENCH,
-    name: 'French',
-    nativeName: 'Français',
-    flag: '🇫🇷',
   },
 ] as const
 
