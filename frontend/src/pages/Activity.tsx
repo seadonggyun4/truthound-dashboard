@@ -80,13 +80,13 @@ export default function Activity() {
 
       {/* Filters */}
       <div className="flex items-center gap-4">
-        <Select value={resourceFilter} onValueChange={setResourceFilter}>
+        <Select value={resourceFilter || 'all'} onValueChange={(v) => setResourceFilter(v === 'all' ? '' : v)}>
           <SelectTrigger className="w-[200px]">
             <Filter className="mr-2 h-4 w-4" />
             <SelectValue placeholder={str(collab.filterByResource)} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">{collab.allResources}</SelectItem>
+            <SelectItem value="all">{collab.allResources}</SelectItem>
             <SelectItem value="term">{collab.resourceTypes.term}</SelectItem>
             <SelectItem value="asset">{collab.resourceTypes.asset}</SelectItem>
             <SelectItem value="column">{collab.resourceTypes.column}</SelectItem>

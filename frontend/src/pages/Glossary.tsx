@@ -141,13 +141,13 @@ export default function Glossary() {
             className="pl-10"
           />
         </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+        <Select value={categoryFilter || 'all'} onValueChange={(v) => setCategoryFilter(v === 'all' ? '' : v)}>
           <SelectTrigger className="w-[200px]">
             <Filter className="mr-2 h-4 w-4" />
             <SelectValue placeholder={str(glossary.filterByCategory)} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">{glossary.allCategories}</SelectItem>
+            <SelectItem value="all">{glossary.allCategories}</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat.id} value={cat.id}>
                 {cat.name}
@@ -155,12 +155,12 @@ export default function Glossary() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder={str(glossary.filterByStatus)} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">{glossary.allStatuses}</SelectItem>
+            <SelectItem value="all">{glossary.allStatuses}</SelectItem>
             <SelectItem value="draft">{glossary.status.draft}</SelectItem>
             <SelectItem value="approved">{glossary.status.approved}</SelectItem>
             <SelectItem value="deprecated">{glossary.status.deprecated}</SelectItem>

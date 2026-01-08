@@ -151,24 +151,24 @@ export default function Catalog() {
             className="pl-10"
           />
         </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
+        <Select value={typeFilter || 'all'} onValueChange={(v) => setTypeFilter(v === 'all' ? '' : v)}>
           <SelectTrigger className="w-[160px]">
             <Filter className="mr-2 h-4 w-4" />
             <SelectValue placeholder={str(catalog.filterByType)} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">{catalog.allTypes}</SelectItem>
+            <SelectItem value="all">{catalog.allTypes}</SelectItem>
             <SelectItem value="table">{catalog.assetTypes.table}</SelectItem>
             <SelectItem value="file">{catalog.assetTypes.file}</SelectItem>
             <SelectItem value="api">{catalog.assetTypes.api}</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+        <Select value={sourceFilter || 'all'} onValueChange={(v) => setSourceFilter(v === 'all' ? '' : v)}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder={str(catalog.filterBySource)} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">{catalog.allSources}</SelectItem>
+            <SelectItem value="all">{catalog.allSources}</SelectItem>
             {sources.map((source) => (
               <SelectItem key={source.id} value={source.id}>
                 {source.name}
