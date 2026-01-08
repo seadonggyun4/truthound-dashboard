@@ -151,12 +151,12 @@ export function AssetFormDialog({
 
             <div className="space-y-2">
               <Label>{catalog.dataSource}</Label>
-              <Select value={sourceId} onValueChange={setSourceId}>
+              <Select value={sourceId || 'none'} onValueChange={(v) => setSourceId(v === 'none' ? '' : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder={str(catalog.selectSource)} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">{catalog.noSource}</SelectItem>
+                  <SelectItem value="none">{catalog.noSource}</SelectItem>
                   {sources.map((source) => (
                     <SelectItem key={source.id} value={source.id}>
                       {source.name}

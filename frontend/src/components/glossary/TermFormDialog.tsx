@@ -149,12 +149,12 @@ export function TermFormDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>{glossary.category}</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
+              <Select value={categoryId || 'none'} onValueChange={(v) => setCategoryId(v === 'none' ? '' : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder={str(glossary.selectCategory)} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">{glossary.noCategory}</SelectItem>
+                  <SelectItem value="none">{glossary.noCategory}</SelectItem>
                   {categories.map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>
                       {cat.name}

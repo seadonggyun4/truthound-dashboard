@@ -30,11 +30,42 @@ export function str(node: IntlayerNodeLike<string> | string | undefined): string
   if (typeof node === 'string') {
     return node
   }
-  // IntlayerNode has a value property containing the raw string
-  if (typeof node === 'object' && 'value' in node && typeof node.value === 'string') {
-    return node.value
+  if (typeof node === 'number') {
+    return String(node)
   }
-  // Fallback: convert to string
+  // IntlayerNode has a value property containing the raw string
+  if (typeof node === 'object' && node !== null) {
+    const obj = node as Record<string, unknown>
+    // Direct value property (IntlayerNode structure)
+    if ('value' in obj) {
+      const value = obj.value
+      if (typeof value === 'string') {
+        return value
+      }
+      if (typeof value === 'number') {
+        return String(value)
+      }
+    }
+    // React element with props.value (IntlayerNode wrapped in JSX)
+    if ('props' in obj && typeof obj.props === 'object' && obj.props !== null) {
+      const props = obj.props as Record<string, unknown>
+      if ('value' in props) {
+        const value = props.value
+        if (typeof value === 'string') {
+          return value
+        }
+      }
+      // Check for children as string
+      if ('children' in props && typeof props.children === 'string') {
+        return props.children
+      }
+    }
+  }
+  // Fallback: This shouldn't happen for valid IntlayerNode
+  // Log warning in development for debugging
+  if (import.meta.env.DEV) {
+    console.warn('[intlayer-utils] str() received unexpected value:', node)
+  }
   return String(node)
 }
 

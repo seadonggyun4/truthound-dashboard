@@ -14,6 +14,7 @@ import { notificationsHandlers } from './notifications'
 import { glossaryHandlers } from './glossary'
 import { catalogHandlers } from './catalog'
 import { collaborationHandlers } from './collaboration'
+import { rulesHandlers } from './rules'
 
 export const handlers = [
   ...healthHandlers,
@@ -28,4 +29,5 @@ export const handlers = [
   ...glossaryHandlers,
   ...catalogHandlers,
   ...collaborationHandlers,
+  ...rulesHandlers,
 ]

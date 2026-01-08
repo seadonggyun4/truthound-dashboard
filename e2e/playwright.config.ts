@@ -34,7 +34,7 @@ export default defineConfig({
   // Shared settings for all the projects below
   use: {
     // Base URL to use in actions like `await page.goto('/')`
-    baseURL: 'http://localhost:8765',
+    baseURL: process.env.USE_MOCK ? 'http://localhost:5173' : 'http://localhost:8765',
 
     // Collect trace when retrying the failed test
     trace: 'on-first-retry',
@@ -73,8 +73,10 @@ export default defineConfig({
 
   // Run your local dev server before starting the tests
   webServer: {
-    command: 'cd .. && truthound serve --no-browser',
-    url: 'http://localhost:8765',
+    command: process.env.USE_MOCK
+      ? 'cd ../frontend && npm run dev:mock'
+      : 'cd .. && truthound serve --no-browser',
+    url: process.env.USE_MOCK ? 'http://localhost:5173' : 'http://localhost:8765',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },

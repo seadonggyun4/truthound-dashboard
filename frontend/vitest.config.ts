@@ -21,6 +21,12 @@ export default defineConfig({
         'src/vite-env.d.ts',
       ],
     },
+    alias: {
+      // Replace all intlayer-related modules with mocks to avoid esbuild issues
+      'react-intlayer': path.resolve(__dirname, './src/test/mocks/react-intlayer.ts'),
+      'intlayer': path.resolve(__dirname, './src/test/mocks/intlayer.ts'),
+      '@intlayer/config': path.resolve(__dirname, './src/test/mocks/intlayer-config.ts'),
+    },
   },
   resolve: {
     alias: {
