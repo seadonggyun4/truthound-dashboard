@@ -142,8 +142,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Intlayer (keep dictionary for Netlify build, ignore cache)
-frontend/.intlayer/cache/
+# Intlayer (auto-generated)
+frontend/.intlayer/
 
 # Frontend build output (handled by build process)
 # src/truthound_dashboard/static/
