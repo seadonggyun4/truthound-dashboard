@@ -1,4 +1,5 @@
-<img width="300" height="300" alt="Truthound_icon" src="https://github.com/user-attachments/assets/90d9e806-8895-45ec-97dc-f8300da4d997" />
+
+<img width="2551" height="911" alt="스크린샷 2026-01-08 오전 11 54 18" src="https://github.com/user-attachments/assets/5e6b6d39-ee69-48f3-b0df-577f73bcb03d" />
 
 # truthound-dashboard
 
@@ -13,6 +14,7 @@ A web-based data quality monitoring dashboard for [truthound](https://github.com
 [Documentation](https://truthound.netlify.app) | [PyPI](https://pypi.org/project/truthound-dashboard/)
 
 ## Overview
+<img width="300" height="300" alt="Truthound_icon" src="https://github.com/user-attachments/assets/90d9e806-8895-45ec-97dc-f8300da4d997" />
 
 truthound-dashboard provides a graphical interface for managing data sources, executing validations, tracking historical results, scheduling automated checks, and configuring notifications. It serves as an alternative to commercial data quality platforms.
 
