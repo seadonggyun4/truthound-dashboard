@@ -1,8 +1,8 @@
 # Netlify configuration for Truthound Dashboard Demo
 
 [build]
-  # Build command
-  command = "npm run build:demo"
+  # Build command - debug dictionary files
+  command = "echo '=== Checking .intlayer/dictionary ===' && ls -la .intlayer/dictionary/ && cat .intlayer/dictionary/nav.json | head -5 && npm run build:demo"
   # Output directory
   publish = "dist"
 
