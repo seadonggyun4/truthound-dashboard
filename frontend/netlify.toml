@@ -1,8 +1,8 @@
 # Netlify configuration for Truthound Dashboard Demo
 
 [build]
-  # Build command - skip intlayer build since dictionary is pre-built
-  command = "ls -la .intlayer/dictionary/ && tsc && vite build --mode demo"
+  # Build command
+  command = "npm run build:demo"
   # Output directory
   publish = "dist"
 

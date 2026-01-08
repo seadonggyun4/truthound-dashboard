@@ -10,6 +10,7 @@ const config = {
     defaultLocale: "en",
   },
   content: {
+    baseDir: __dirname,
     contentDir: [resolve(__dirname, "./src")],
     fileExtensions: [".content.ts", ".content.tsx"],
   },
