@@ -1,24 +1,10 @@
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { intlayer } from 'vite-intlayer'
 import path from 'path'
 
-// Custom plugin to resolve .intlayer paths
-const intlayerPathResolver = (): Plugin => ({
-  name: 'intlayer-path-resolver',
-  enforce: 'pre',
-  resolveId(source, importer) {
-    // Match patterns like ../../.intlayer/dictionary/xxx.json
-    if (source.includes('.intlayer/dictionary/') && importer) {
-      const jsonFile = source.split('.intlayer/dictionary/')[1]
-      return path.resolve(__dirname, '.intlayer/dictionary', jsonFile)
-    }
-    return null
-  },
-})
-
 export default defineConfig(({ mode }) => ({
-  plugins: [intlayerPathResolver(), react(), intlayer()],
+  plugins: [react(), intlayer()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
