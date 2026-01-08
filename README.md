@@ -264,6 +264,24 @@ npm run dev
 npm run dev:mock
 ```
 
+## Preview with Mock Data
+
+To explore the dashboard interface without configuring a backend or data sources, the repository includes a mock mode that simulates API responses using [Mock Service Worker (MSW)](https://mswjs.io/).
+
+```bash
+# Clone the repository
+git clone https://github.com/seadonggyun4/truthound-dashboard
+cd truthound-dashboard/frontend
+
+# Install dependencies
+npm install
+
+# Start the development server with mock data
+npm run dev:mock
+```
+
+The mock server provides realistic sample data for all dashboard features, enabling evaluation of the user interface and workflow without external dependencies.
+
 ## Testing
 
 ```bash
