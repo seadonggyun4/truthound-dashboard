@@ -12,6 +12,7 @@ import _1k2hq970iLlsAKLuanhI from './schedules.ts';
 import _MmyL5m4Ox8ktYC55pHJm from './settings.ts';
 import _LMqIY1GosrfjGDPQt8NX from './sources.ts';
 import _914fqQfvVojp21vDKy46 from './validation.ts';
+import _gMe3bVpQfxuizrNLgwx1 from './validators.ts';
 
 declare module 'intlayer' {
   interface __DictionaryRegistry {
@@ -28,6 +29,7 @@ declare module 'intlayer' {
     "settings": typeof _MmyL5m4Ox8ktYC55pHJm;
     "sources": typeof _LMqIY1GosrfjGDPQt8NX;
     "validation": typeof _914fqQfvVojp21vDKy46;
+    "validators": typeof _gMe3bVpQfxuizrNLgwx1;
   }
 
   interface __DeclaredLocalesRegistry {

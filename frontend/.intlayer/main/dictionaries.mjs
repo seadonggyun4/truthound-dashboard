@@ -11,6 +11,7 @@ import _Y9WvPv3e2xX4IOxYcHeX from '../dictionary/schedules.json' with { type: 'j
 import _YFyJ1LX066W9IbdNctFh from '../dictionary/settings.json' with { type: 'json' };
 import _DpO3BslSmImztidaimhZ from '../dictionary/sources.json' with { type: 'json' };
 import _Pu5BFR0tGrjKDQbmF1pC from '../dictionary/validation.json' with { type: 'json' };
+import _3o136ZUwgoxuNTy7IG6K from '../dictionary/validators.json' with { type: 'json' };
 
 const dictionaries = {
   "catalog": _r8WBgJrQMvfEJCnickJy,
@@ -25,7 +26,8 @@ const dictionaries = {
   "schedules": _Y9WvPv3e2xX4IOxYcHeX,
   "settings": _YFyJ1LX066W9IbdNctFh,
   "sources": _DpO3BslSmImztidaimhZ,
-  "validation": _Pu5BFR0tGrjKDQbmF1pC
+  "validation": _Pu5BFR0tGrjKDQbmF1pC,
+  "validators": _3o136ZUwgoxuNTy7IG6K
 };
 const getDictionaries = () => dictionaries;
 

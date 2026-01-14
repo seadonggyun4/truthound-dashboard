@@ -11,6 +11,7 @@ const _xgn6YfRH8hT7OqP2mxRN = require('../unmerged_dictionary/schedules.json');
 const _ZOAdeBI7bXfBrnKogJeu = require('../unmerged_dictionary/settings.json');
 const _mluQYzldy0M4oRk4zK6X = require('../unmerged_dictionary/sources.json');
 const _Tk2hZa9MyMPkZgDZ7y4d = require('../unmerged_dictionary/validation.json');
+const _yopRoCwvobwREyGLGqHI = require('../unmerged_dictionary/validators.json');
 
 const dictionaries = {
   "catalog": _KRoWd9wBIIBMv7WbjZIE,
@@ -25,7 +26,8 @@ const dictionaries = {
   "schedules": _xgn6YfRH8hT7OqP2mxRN,
   "settings": _ZOAdeBI7bXfBrnKogJeu,
   "sources": _mluQYzldy0M4oRk4zK6X,
-  "validation": _Tk2hZa9MyMPkZgDZ7y4d
+  "validation": _Tk2hZa9MyMPkZgDZ7y4d,
+  "validators": _yopRoCwvobwREyGLGqHI
 };
 const getUnmergedDictionaries = () => dictionaries;
 

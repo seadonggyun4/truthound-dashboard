@@ -11,6 +11,7 @@ const _Y9WvPv3e2xX4IOxYcHeX = require('../dictionary/schedules.json');
 const _YFyJ1LX066W9IbdNctFh = require('../dictionary/settings.json');
 const _DpO3BslSmImztidaimhZ = require('../dictionary/sources.json');
 const _Pu5BFR0tGrjKDQbmF1pC = require('../dictionary/validation.json');
+const _3o136ZUwgoxuNTy7IG6K = require('../dictionary/validators.json');
 
 const dictionaries = {
   "catalog": _r8WBgJrQMvfEJCnickJy,
@@ -25,7 +26,8 @@ const dictionaries = {
   "schedules": _Y9WvPv3e2xX4IOxYcHeX,
   "settings": _YFyJ1LX066W9IbdNctFh,
   "sources": _DpO3BslSmImztidaimhZ,
-  "validation": _Pu5BFR0tGrjKDQbmF1pC
+  "validation": _Pu5BFR0tGrjKDQbmF1pC,
+  "validators": _3o136ZUwgoxuNTy7IG6K
 };
 const getDictionaries = () => dictionaries;
 

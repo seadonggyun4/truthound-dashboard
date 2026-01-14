@@ -11,6 +11,7 @@ import _xgn6YfRH8hT7OqP2mxRN from '../unmerged_dictionary/schedules.json' with {
 import _ZOAdeBI7bXfBrnKogJeu from '../unmerged_dictionary/settings.json' with { type: 'json' };
 import _mluQYzldy0M4oRk4zK6X from '../unmerged_dictionary/sources.json' with { type: 'json' };
 import _Tk2hZa9MyMPkZgDZ7y4d from '../unmerged_dictionary/validation.json' with { type: 'json' };
+import _yopRoCwvobwREyGLGqHI from '../unmerged_dictionary/validators.json' with { type: 'json' };
 
 const dictionaries = {
   "catalog": _KRoWd9wBIIBMv7WbjZIE,
@@ -25,7 +26,8 @@ const dictionaries = {
   "schedules": _xgn6YfRH8hT7OqP2mxRN,
   "settings": _ZOAdeBI7bXfBrnKogJeu,
   "sources": _mluQYzldy0M4oRk4zK6X,
-  "validation": _Tk2hZa9MyMPkZgDZ7y4d
+  "validation": _Tk2hZa9MyMPkZgDZ7y4d,
+  "validators": _yopRoCwvobwREyGLGqHI
 };
 const getUnmergedDictionaries = () => dictionaries;
 
