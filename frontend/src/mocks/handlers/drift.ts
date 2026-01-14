@@ -1,10 +1,17 @@
 /**
  * Drift detection API handlers
+ *
+ * Supports all 8 drift detection methods from truthound:
+ * - ks, psi, chi2, js, kl, wasserstein, cvm, anderson
+ *
+ * Also supports multiple testing correction methods:
+ * - none, bonferroni, holm, bh
  */
 
 import { http, HttpResponse, delay } from 'msw'
 import { getStore, getAll, getById, create } from '../data/store'
 import { createDriftComparison, createId } from '../factories'
+import type { DriftMethod, CorrectionMethod } from '@/api/client'
 
 const API_BASE = '/api/v1'
 
@@ -17,8 +24,10 @@ export const driftHandlers = [
       baseline_source_id: string
       current_source_id: string
       columns?: string[]
-      method?: string
+      method?: DriftMethod
       threshold?: number
+      correction?: CorrectionMethod
+      sample_size?: number
     }
 
     try {
@@ -47,10 +56,14 @@ export const driftHandlers = [
       )
     }
 
+    // Create comparison with all provided options
     const comparison = createDriftComparison({
       id: createId(),
       baselineSourceId: body.baseline_source_id,
       currentSourceId: body.current_source_id,
+      method: body.method,
+      threshold: body.threshold,
+      correction: body.correction,
     })
 
     create(getStore().driftComparisons, comparison)

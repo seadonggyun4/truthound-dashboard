@@ -1,9 +1,22 @@
 /**
  * Drift detection factory - generates drift comparison results
  * Extended for comprehensive test coverage
+ *
+ * Supports all 8 drift detection methods from truthound:
+ * - ks: Kolmogorov-Smirnov test
+ * - psi: Population Stability Index
+ * - chi2: Chi-Square test
+ * - js: Jensen-Shannon divergence
+ * - kl: Kullback-Leibler divergence
+ * - wasserstein: Earth Mover's Distance
+ * - cvm: Cramér-von Mises test
+ * - anderson: Anderson-Darling test
+ *
+ * Also supports multiple testing correction methods:
+ * - none, bonferroni, holm, bh (Benjamini-Hochberg)
  */
 
-import type { DriftComparison, ColumnDriftResult, DriftResult } from '@/api/client'
+import type { DriftComparison, ColumnDriftResult, DriftResult, DriftMethod, CorrectionMethod } from '@/api/client'
 import { createId, createTimestamp, randomChoice, randomInt, faker } from './base'
 
 export interface DriftFactoryOptions {
@@ -13,12 +26,36 @@ export interface DriftFactoryOptions {
   hasDrift?: boolean
   hasHighDrift?: boolean
   driftPercentage?: number
-  method?: 'ks' | 'psi' | 'chi2' | 'js' | 'auto'
+  method?: DriftMethod
+  correction?: CorrectionMethod
   threshold?: number
   totalColumns?: number
 }
 
-const DRIFT_METHODS = ['ks', 'psi', 'chi2', 'js'] as const
+/**
+ * All supported drift detection methods (from truthound)
+ */
+export const DRIFT_METHODS = ['ks', 'psi', 'chi2', 'js', 'kl', 'wasserstein', 'cvm', 'anderson'] as const
+
+/**
+ * All supported correction methods
+ */
+export const CORRECTION_METHODS = ['none', 'bonferroni', 'holm', 'bh'] as const
+
+/**
+ * Default thresholds for each method
+ */
+export const DEFAULT_THRESHOLDS: Record<DriftMethod, number> = {
+  auto: 0.05,
+  ks: 0.05,
+  psi: 0.1,
+  chi2: 0.05,
+  js: 0.1,
+  kl: 0.1,
+  wasserstein: 0.1,
+  cvm: 0.05,
+  anderson: 0.05,
+}
 const DTYPES = ['int64', 'float64', 'object', 'datetime64', 'bool', 'category'] as const
 
 /**
@@ -115,7 +152,7 @@ interface ColumnDriftOptions {
   dtype?: string
   drifted?: boolean
   level?: 'none' | 'low' | 'medium' | 'high'
-  method?: 'ks' | 'psi' | 'chi2' | 'js'
+  method?: typeof DRIFT_METHODS[number]
 }
 
 function createColumnDriftResult(options: ColumnDriftOptions = {}): ColumnDriftResult {
@@ -245,6 +282,9 @@ export function createDriftComparison(
     driftPercentage: options.driftPercentage,
   })
 
+  const method = options.method ?? 'auto'
+  const threshold = options.threshold ?? DEFAULT_THRESHOLDS[method]
+
   return {
     id: options.id ?? createId(),
     baseline_source_id: baselineSourceId,
@@ -257,8 +297,9 @@ export function createDriftComparison(
       (result.drifted_columns.length / result.total_columns) * 100,
     result,
     config: {
-      method: options.method ?? 'auto',
-      threshold: options.threshold ?? 0.05,
+      method,
+      threshold,
+      correction: options.correction ?? null,
     },
     created_at: createTimestamp(randomInt(0, 30)),
     updated_at: createTimestamp(randomInt(0, 7)),
@@ -334,13 +375,25 @@ export function createDiverseDriftComparisons(
     totalColumns: 25,
   }))
 
-  // 6. Different detection methods
-  const methods: Array<'ks' | 'psi' | 'chi2' | 'js'> = ['ks', 'psi', 'chi2', 'js']
+  // 6. Different detection methods (all 8 methods from truthound)
+  const methods: DriftMethod[] = ['ks', 'psi', 'chi2', 'js', 'kl', 'wasserstein', 'cvm', 'anderson']
   methods.forEach((method, i) => {
     comparisons.push(createDriftComparison({
       baselineSourceId: safeBaselineId(5 + i),
       currentSourceId: safeCurrentId(5 + i),
       method,
+      hasDrift: faker.datatype.boolean(0.5),
+    }))
+  })
+
+  // 6b. Different correction methods
+  const corrections: CorrectionMethod[] = ['none', 'bonferroni', 'holm', 'bh']
+  corrections.forEach((correction, i) => {
+    comparisons.push(createDriftComparison({
+      baselineSourceId: safeBaselineId(13 + i),
+      currentSourceId: safeCurrentId(13 + i),
+      method: 'psi',
+      correction,
       hasDrift: faker.datatype.boolean(0.5),
     }))
   })
