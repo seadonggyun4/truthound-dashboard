@@ -126,6 +126,8 @@ from .scheduler import (
 from .services import (
     DriftService,
     HistoryService,
+    MaskService,
+    PIIScanService,
     ProfileService,
     RuleService,
     ScheduleService,
@@ -137,7 +139,9 @@ from .truthound_adapter import (
     CheckResult,
     CompareResult,
     LearnResult,
+    MaskResult,
     ProfileResult,
+    ScanResult,
     TruthoundAdapter,
     get_adapter,
     reset_adapter,
@@ -163,6 +167,8 @@ __all__ = [
     "HistoryService",
     "DriftService",
     "ScheduleService",
+    "PIIScanService",
+    "MaskService",
     # Adapter
     "TruthoundAdapter",
     "get_adapter",
@@ -172,6 +178,8 @@ __all__ = [
     "LearnResult",
     "ProfileResult",
     "CompareResult",
+    "ScanResult",
+    "MaskResult",
     # Scheduler
     "ValidationScheduler",
     "get_scheduler",

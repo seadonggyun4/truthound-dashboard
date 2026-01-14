@@ -10,13 +10,16 @@ from . import (
     drift,
     health,
     history,
+    mask,
     notifications,
     profile,
     rules,
+    scan,
     schedules,
     schemas,
     sources,
     validations,
+    validators,
     # Phase 5
     catalog,
     collaboration,
@@ -57,6 +60,12 @@ api_router.include_router(
     tags=["validations"],
 )
 
+# Validator registry endpoints
+api_router.include_router(
+    validators.router,
+    tags=["validators"],
+)
+
 # Profiling endpoints
 api_router.include_router(
     profile.router,
@@ -73,6 +82,19 @@ api_router.include_router(
 api_router.include_router(
     drift.router,
     tags=["drift"],
+)
+
+# PII scan endpoints
+api_router.include_router(
+    scan.router,
+    prefix="/scans",
+    tags=["pii-scan"],
+)
+
+# Data masking endpoints
+api_router.include_router(
+    mask.router,
+    tags=["masks"],
 )
 
 # Schedule management endpoints (Phase 2)

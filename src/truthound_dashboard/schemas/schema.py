@@ -40,11 +40,39 @@ class ColumnSchema(BaseSchema):
 
 
 class SchemaLearnRequest(BaseSchema):
-    """Request to learn schema from source."""
+    """Request to learn schema from source.
+
+    Maps to truthound's th.learn() parameters for schema inference.
+
+    Attributes:
+        infer_constraints: If True, infers min/max, allowed values from data.
+        categorical_threshold: Maximum unique values for categorical detection.
+            Columns with unique values <= this threshold are treated as categorical.
+        sample_size: Number of rows to sample for large datasets.
+            If None, uses all rows. Useful for performance with large files.
+    """
 
     infer_constraints: bool = Field(
         default=True,
-        description="Infer constraints from data statistics",
+        description="Infer constraints (min/max, allowed values) from data statistics",
+    )
+    categorical_threshold: int | None = Field(
+        default=None,
+        ge=1,
+        le=1000,
+        description=(
+            "Maximum unique values for categorical detection. "
+            "Columns with unique values <= threshold are treated as categorical. "
+            "If None, uses truthound default (20)."
+        ),
+    )
+    sample_size: int | None = Field(
+        default=None,
+        ge=100,
+        description=(
+            "Number of rows to sample for schema learning. "
+            "If None, uses all rows. Useful for large datasets."
+        ),
     )
 
 

@@ -598,6 +598,253 @@ class DriftComparison(Base, UUIDMixin, TimestampMixin):
         return []
 
 
+class MaskingStrategy(str, Enum):
+    """Masking strategy enum."""
+
+    REDACT = "redact"
+    HASH = "hash"
+    FAKE = "fake"
+
+
+class DataMask(Base, UUIDMixin):
+    """Data masking operation model.
+
+    Stores results from th.mask() data masking operations.
+    Supports three strategies: redact (asterisks), hash (SHA256), fake (realistic data).
+
+    Attributes:
+        id: Unique identifier (UUID).
+        source_id: Reference to parent Source.
+        status: Current status (pending, running, success, failed, error).
+        strategy: Masking strategy used (redact, hash, fake).
+        output_path: Path to the masked output file.
+        columns_masked: List of columns that were masked.
+        row_count: Number of rows processed.
+        column_count: Number of columns in the data.
+        auto_detected: Whether PII columns were auto-detected.
+        result_json: Full mask result as JSON.
+        duration_ms: Operation duration in milliseconds.
+    """
+
+    __tablename__ = "data_masks"
+
+    # Composite index for efficient history queries (source + time ordering)
+    __table_args__ = (
+        Index("idx_data_masks_source_created", "source_id", "created_at"),
+    )
+
+    source_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("sources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Status tracking
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="pending",
+        index=True,
+    )
+
+    # Masking configuration
+    strategy: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=MaskingStrategy.REDACT.value,
+        index=True,
+    )
+    output_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    columns_masked: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    auto_detected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Data statistics
+    row_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    column_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Full result and timing
+    result_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # Relationships
+    source: Mapped[Source] = relationship(
+        "Source",
+        backref="data_masks",
+    )
+
+    @property
+    def is_complete(self) -> bool:
+        """Check if masking operation has completed."""
+        return self.status in ("success", "failed", "error")
+
+    @property
+    def masked_column_count(self) -> int:
+        """Get number of columns that were masked."""
+        return len(self.columns_masked) if self.columns_masked else 0
+
+    def mark_started(self) -> None:
+        """Mark operation as started."""
+        self.status = "running"
+        self.started_at = datetime.utcnow()
+
+    def mark_completed(
+        self,
+        result: dict[str, Any],
+    ) -> None:
+        """Mark operation as completed with results."""
+        self.status = "success"
+        self.result_json = result
+        self.completed_at = datetime.utcnow()
+
+        if self.started_at:
+            delta = self.completed_at - self.started_at
+            self.duration_ms = int(delta.total_seconds() * 1000)
+
+    def mark_error(self, message: str) -> None:
+        """Mark operation as errored."""
+        self.status = "error"
+        self.error_message = message
+        self.completed_at = datetime.utcnow()
+
+        if self.started_at:
+            delta = self.completed_at - self.started_at
+            self.duration_ms = int(delta.total_seconds() * 1000)
+
+
+class PIIScan(Base, UUIDMixin):
+    """PII scan result model.
+
+    Stores results from th.scan() PII detection runs.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        source_id: Reference to parent Source.
+        status: Current status (pending, running, success, failed, error).
+        total_columns_scanned: Total columns that were scanned.
+        columns_with_pii: Number of columns containing PII.
+        total_findings: Total number of PII findings.
+        has_violations: Whether any regulation violations were found.
+        total_violations: Number of regulation violations.
+        min_confidence: Confidence threshold used for this scan.
+        regulations_checked: List of regulations checked.
+        result_json: Full scan result as JSON.
+        duration_ms: Scan duration in milliseconds.
+    """
+
+    __tablename__ = "pii_scans"
+
+    # Composite index for efficient history queries (source + time ordering)
+    __table_args__ = (
+        Index("idx_pii_scans_source_created", "source_id", "created_at"),
+    )
+
+    source_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("sources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Status tracking
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="pending",
+        index=True,
+    )
+
+    # Scan summary
+    total_columns_scanned: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    columns_with_pii: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_findings: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    has_violations: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    total_violations: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Data statistics
+    row_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    column_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Configuration used
+    min_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    regulations_checked: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+
+    # Full result and timing
+    result_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # Relationships
+    source: Mapped[Source] = relationship(
+        "Source",
+        backref="pii_scans",
+    )
+
+    @property
+    def findings(self) -> list[dict[str, Any]]:
+        """Get list of PII findings from result JSON."""
+        if self.result_json and "findings" in self.result_json:
+            return self.result_json["findings"]
+        return []
+
+    @property
+    def violations(self) -> list[dict[str, Any]]:
+        """Get list of regulation violations from result JSON."""
+        if self.result_json and "violations" in self.result_json:
+            return self.result_json["violations"]
+        return []
+
+    @property
+    def is_complete(self) -> bool:
+        """Check if scan has completed (success, failed, or error)."""
+        return self.status in ("success", "failed", "error")
+
+    def mark_started(self) -> None:
+        """Mark scan as started."""
+        self.status = "running"
+        self.started_at = datetime.utcnow()
+
+    def mark_completed(
+        self,
+        has_violations: bool,
+        result: dict[str, Any],
+    ) -> None:
+        """Mark scan as completed with results."""
+        self.status = "success" if not has_violations else "failed"
+        self.has_violations = has_violations
+        self.result_json = result
+        self.completed_at = datetime.utcnow()
+
+        if self.started_at:
+            delta = self.completed_at - self.started_at
+            self.duration_ms = int(delta.total_seconds() * 1000)
+
+    def mark_error(self, message: str) -> None:
+        """Mark scan as errored."""
+        self.status = "error"
+        self.error_message = message
+        self.completed_at = datetime.utcnow()
+
+        if self.started_at:
+            delta = self.completed_at - self.started_at
+            self.duration_ms = int(delta.total_seconds() * 1000)
+
+
 class AppSettings(Base):
     """Application settings model.
 

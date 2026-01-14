@@ -59,7 +59,7 @@ async def get_schema(
     "/sources/{source_id}/learn",
     response_model=SchemaResponse,
     summary="Learn schema",
-    description="Auto-learn schema from data source",
+    description="Auto-learn schema from data source with customizable inference options",
 )
 async def learn_schema(
     service: SchemaServiceDep,
@@ -69,17 +69,24 @@ async def learn_schema(
 ) -> SchemaResponse:
     """Learn schema from a data source.
 
+    Analyzes the data source and generates a schema with inferred types
+    and optional constraints. Supports customization of categorical detection
+    and sampling for large datasets.
+
     Args:
         service: Injected schema service.
         source_service: Injected source service.
         source_id: Source to learn schema from.
-        request: Learning options.
+        request: Learning options including:
+            - infer_constraints: Whether to infer min/max and allowed values
+            - categorical_threshold: Max unique values for categorical detection
+            - sample_size: Number of rows to sample for large datasets
 
     Returns:
-        Learned schema.
+        Learned schema with column types and constraints.
 
     Raises:
-        HTTPException: 404 if source not found.
+        HTTPException: 404 if source not found, 500 on learning error.
     """
     # Verify source exists
     source = await source_service.get_by_id(source_id)
@@ -90,6 +97,8 @@ async def learn_schema(
         schema = await service.learn_schema(
             source_id,
             infer_constraints=request.infer_constraints,
+            categorical_threshold=request.categorical_threshold,
+            sample_size=request.sample_size,
         )
         return SchemaResponse.from_model(schema)
     except Exception as e:

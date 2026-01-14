@@ -23,10 +23,13 @@ from .database import (
 from .models import (
     # Phase 1-4 Models
     AppSettings,
+    DataMask,
     DriftComparison,
+    MaskingStrategy,
     NotificationChannel,
     NotificationLog,
     NotificationRule,
+    PIIScan,
     Profile,
     Rule,
     Schedule,
@@ -75,6 +78,9 @@ __all__ = [
     "Profile",
     "Schedule",
     "DriftComparison",
+    "DataMask",
+    "MaskingStrategy",
+    "PIIScan",
     "AppSettings",
     # Notification models (Phase 3)
     "NotificationChannel",

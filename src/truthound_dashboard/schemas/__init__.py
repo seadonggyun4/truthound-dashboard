@@ -20,12 +20,18 @@ from .base import (
 )
 from .drift import (
     ColumnDriftResult,
+    CorrectionMethod,
+    CorrectionMethodLiteral,
+    DEFAULT_THRESHOLDS,
     DriftCompareRequest,
     DriftComparisonListItem,
     DriftComparisonListResponse,
     DriftComparisonResponse,
+    DriftMethod,
+    DriftMethodLiteral,
     DriftResult,
     DriftSourceSummary,
+    get_default_threshold,
 )
 from .history import (
     FailureFrequencyItem,
@@ -35,7 +41,7 @@ from .history import (
     RecentValidation,
     TrendDataPoint,
 )
-from .profile import ColumnProfile, ProfileResponse
+from .profile import ColumnProfile, ProfileRequest, ProfileResponse
 from .rule import (
     RuleBase,
     RuleCreate,
@@ -114,6 +120,26 @@ from .collaboration import (
     CommentUpdate,
     ResourceType,
 )
+from .mask import (
+    MaskingStrategy,
+    MaskingStrategyLiteral,
+    MaskListItem,
+    MaskListResponse,
+    MaskRequest,
+    MaskResponse,
+    MaskStatus,
+    MaskSummary,
+)
+from .scan import (
+    PIIFinding,
+    PIIScanListItem,
+    PIIScanListResponse,
+    PIIScanRequest,
+    PIIScanResponse,
+    PIIScanSummary,
+    Regulation,
+    RegulationViolation,
+)
 from .schema import (
     ColumnSchema,
     SchemaLearnRequest,
@@ -182,8 +208,27 @@ __all__ = [
     "SchemaResponse",
     "SchemaSummary",
     # Profile
+    "ProfileRequest",
     "ColumnProfile",
     "ProfileResponse",
+    # Data Masking
+    "MaskingStrategy",
+    "MaskingStrategyLiteral",
+    "MaskStatus",
+    "MaskRequest",
+    "MaskSummary",
+    "MaskResponse",
+    "MaskListItem",
+    "MaskListResponse",
+    # PII Scan
+    "Regulation",
+    "PIIScanRequest",
+    "PIIFinding",
+    "RegulationViolation",
+    "PIIScanSummary",
+    "PIIScanResponse",
+    "PIIScanListItem",
+    "PIIScanListResponse",
     # History
     "TrendDataPoint",
     "FailureFrequencyItem",
@@ -192,6 +237,12 @@ __all__ = [
     "HistoryResponse",
     "HistoryQueryParams",
     # Drift
+    "DriftMethod",
+    "DriftMethodLiteral",
+    "CorrectionMethod",
+    "CorrectionMethodLiteral",
+    "DEFAULT_THRESHOLDS",
+    "get_default_threshold",
     "DriftCompareRequest",
     "ColumnDriftResult",
     "DriftResult",

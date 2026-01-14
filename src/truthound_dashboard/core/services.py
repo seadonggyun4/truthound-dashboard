@@ -24,7 +24,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from truthound_dashboard.db import (
     BaseRepository,
+    DataMask,
     DriftComparison,
+    PIIScan,
     Profile,
     Rule,
     Schedule,
@@ -35,6 +37,8 @@ from truthound_dashboard.db import (
 
 from .truthound_adapter import (
     CheckResult,
+    MaskResult,
+    ScanResult,
     get_adapter,
 )
 
@@ -394,16 +398,36 @@ class ValidationService:
         source_id: str,
         *,
         validators: list[str] | None = None,
+        validator_params: dict[str, dict[str, Any]] | None = None,
         schema_path: str | None = None,
         auto_schema: bool = False,
+        columns: list[str] | None = None,
+        min_severity: str | None = None,
+        strict: bool = False,
+        parallel: bool = False,
+        max_workers: int | None = None,
+        pushdown: bool | None = None,
     ) -> Validation:
         """Run validation on a source.
 
+        This method provides full access to truthound's th.check() parameters,
+        allowing fine-grained control over validation behavior.
+
         Args:
             source_id: Source ID to validate.
-            validators: Optional validator list.
+            validators: Optional validator list. If None, all validators run.
+            validator_params: Optional per-validator parameters.
+                Format: {"ValidatorName": {"param1": value1, "param2": value2}}
+                Example: {"Null": {"columns": ["email"], "mostly": 0.95},
+                          "CompletenessRatio": {"column": "phone", "min_ratio": 0.98}}
             schema_path: Optional schema file path.
             auto_schema: Auto-learn schema if True.
+            columns: Columns to validate. If None, validates all columns.
+            min_severity: Minimum severity to report ("low", "medium", "high", "critical").
+            strict: If True, raises exception on validation failures.
+            parallel: If True, uses DAG-based parallel execution.
+            max_workers: Max threads for parallel execution (requires parallel=True).
+            pushdown: Enable query pushdown for SQL sources. None uses auto-detection.
 
         Returns:
             Validation record with results.
@@ -424,12 +448,19 @@ class ValidationService:
         )
 
         try:
-            # Run validation
+            # Run validation with all supported parameters
             result = await self.adapter.check(
                 source.source_path or "",
                 validators=validators,
+                validator_params=validator_params,
                 schema=schema_path,
                 auto_schema=auto_schema,
+                columns=columns,
+                min_severity=min_severity,
+                strict=strict,
+                parallel=parallel,
+                max_workers=max_workers,
+                pushdown=pushdown,
             )
 
             # Update validation with results
@@ -526,12 +557,23 @@ class SchemaService:
         source_id: str,
         *,
         infer_constraints: bool = True,
+        categorical_threshold: int | None = None,
+        sample_size: int | None = None,
     ) -> Schema:
         """Learn and store schema for a source.
 
+        Wraps truthound's th.learn() with full parameter support for schema
+        inference customization.
+
         Args:
             source_id: Source ID.
-            infer_constraints: Infer constraints from data.
+            infer_constraints: If True, infers constraints (min/max, allowed values)
+                from data statistics.
+            categorical_threshold: Maximum unique values for categorical detection.
+                Columns with unique values <= threshold are treated as categorical.
+                If None, uses truthound default (20).
+            sample_size: Number of rows to sample for large datasets.
+                If None, uses all rows.
 
         Returns:
             Created schema record.
@@ -544,10 +586,12 @@ class SchemaService:
         if source is None:
             raise ValueError(f"Source '{source_id}' not found")
 
-        # Learn schema
+        # Learn schema with all parameters
         result = await self.adapter.learn(
             source.source_path or "",
             infer_constraints=infer_constraints,
+            categorical_threshold=categorical_threshold,
+            sample_size=sample_size,
         )
 
         # Deactivate existing schemas
@@ -993,11 +1037,19 @@ class ProfileService:
         self.profile_repo = ProfileRepository(session)
         self.adapter = get_adapter()
 
-    async def profile_source(self, source_id: str, *, save: bool = True) -> Profile:
+    async def profile_source(
+        self,
+        source_id: str,
+        *,
+        sample_size: int | None = None,
+        save: bool = True,
+    ) -> Profile:
         """Profile a data source and optionally save result.
 
         Args:
             source_id: Source ID to profile.
+            sample_size: Maximum number of rows to sample for profiling.
+                If None, profiles all data. Useful for large datasets.
             save: Whether to save profile to database.
 
         Returns:
@@ -1010,7 +1062,10 @@ class ProfileService:
         if source is None:
             raise ValueError(f"Source '{source_id}' not found")
 
-        result = await self.adapter.profile(source.source_path or "")
+        result = await self.adapter.profile(
+            source.source_path or "",
+            sample_size=sample_size,
+        )
 
         if save:
             profile = await self.profile_repo.create(
@@ -1222,6 +1277,7 @@ class DriftService:
         columns: list[str] | None = None,
         method: str = "auto",
         threshold: float | None = None,
+        correction: str | None = None,
         sample_size: int | None = None,
         save: bool = True,
     ) -> DriftComparison:
@@ -1231,8 +1287,10 @@ class DriftService:
             baseline_source_id: Baseline source ID.
             current_source_id: Current source ID.
             columns: Optional list of columns to compare.
-            method: Detection method.
+            method: Detection method. Supported:
+                auto, ks, psi, chi2, js, kl, wasserstein, cvm, anderson
             threshold: Optional custom threshold.
+            correction: Multiple testing correction (none, bonferroni, holm, bh).
             sample_size: Optional sample size.
             save: Whether to save comparison to database.
 
@@ -1256,6 +1314,7 @@ class DriftService:
             columns=columns,
             method=method,
             threshold=threshold,
+            correction=correction,
             sample_size=sample_size,
         )
 
@@ -1263,6 +1322,7 @@ class DriftService:
             "columns": columns,
             "method": method,
             "threshold": threshold,
+            "correction": correction,
             "sample_size": sample_size,
         }
 
@@ -1529,3 +1589,393 @@ class ScheduleService:
             return next_fire
         except Exception as e:
             raise ValueError(f"Invalid cron expression: {e}")
+
+
+class PIIScanRepository(BaseRepository[PIIScan]):
+    """Repository for PIIScan model operations."""
+
+    model = PIIScan
+
+    async def get_for_source(
+        self,
+        source_id: str,
+        *,
+        limit: int = 20,
+    ) -> Sequence[PIIScan]:
+        """Get PII scans for a source.
+
+        Args:
+            source_id: Source ID.
+            limit: Maximum to return.
+
+        Returns:
+            Sequence of PII scans.
+        """
+        return await self.list(
+            limit=limit,
+            filters=[PIIScan.source_id == source_id],
+            order_by=PIIScan.created_at.desc(),
+        )
+
+    async def get_latest_for_source(self, source_id: str) -> PIIScan | None:
+        """Get most recent PII scan for a source.
+
+        Args:
+            source_id: Source ID.
+
+        Returns:
+            Latest PII scan or None.
+        """
+        result = await self.session.execute(
+            select(PIIScan)
+            .where(PIIScan.source_id == source_id)
+            .order_by(PIIScan.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+
+class PIIScanService:
+    """Service for PII scanning operations.
+
+    Handles PII detection and regulation compliance checking using th.scan().
+    """
+
+    def __init__(self, session: AsyncSession) -> None:
+        """Initialize service.
+
+        Args:
+            session: Database session.
+        """
+        self.session = session
+        self.source_repo = SourceRepository(session)
+        self.scan_repo = PIIScanRepository(session)
+        self.adapter = get_adapter()
+
+    async def run_scan(
+        self,
+        source_id: str,
+        *,
+        columns: list[str] | None = None,
+        regulations: list[str] | None = None,
+        min_confidence: float = 0.8,
+    ) -> PIIScan:
+        """Run PII scan on a source.
+
+        This method provides access to truthound's th.scan() parameters,
+        allowing detection of personally identifiable information and
+        checking compliance with privacy regulations.
+
+        Args:
+            source_id: Source ID to scan.
+            columns: Optional columns to scan. If None, scans all columns.
+            regulations: Optional regulations to check (gdpr, ccpa, lgpd).
+            min_confidence: Minimum confidence threshold (0.0-1.0). Default 0.8.
+
+        Returns:
+            PIIScan record with results.
+
+        Raises:
+            ValueError: If source not found.
+        """
+        # Get source
+        source = await self.source_repo.get_by_id(source_id)
+        if source is None:
+            raise ValueError(f"Source '{source_id}' not found")
+
+        # Create scan record
+        scan = await self.scan_repo.create(
+            source_id=source_id,
+            status="running",
+            min_confidence=min_confidence,
+            regulations_checked=regulations,
+            started_at=datetime.utcnow(),
+        )
+
+        try:
+            # Run scan
+            result = await self.adapter.scan(
+                source.source_path or "",
+                columns=columns,
+                regulations=regulations,
+                min_confidence=min_confidence,
+            )
+
+            # Update scan with results
+            await self._update_scan_success(scan, result)
+
+        except Exception as e:
+            # Update scan with error
+            scan.mark_error(str(e))
+
+        await self.session.flush()
+        await self.session.refresh(scan)
+        return scan
+
+    async def _update_scan_success(
+        self,
+        scan: PIIScan,
+        result: ScanResult,
+    ) -> None:
+        """Update scan with successful result.
+
+        Args:
+            scan: PIIScan record to update.
+            result: Scan result from adapter.
+        """
+        scan.status = "success" if not result.has_violations else "failed"
+        scan.total_columns_scanned = result.total_columns_scanned
+        scan.columns_with_pii = result.columns_with_pii
+        scan.total_findings = result.total_findings
+        scan.has_violations = result.has_violations
+        scan.total_violations = result.total_violations
+        scan.row_count = result.row_count
+        scan.column_count = result.column_count
+        scan.result_json = result.to_dict()
+        scan.completed_at = datetime.utcnow()
+
+        if scan.started_at:
+            delta = scan.completed_at - scan.started_at
+            scan.duration_ms = int(delta.total_seconds() * 1000)
+
+    async def get_scan(self, scan_id: str) -> PIIScan | None:
+        """Get PII scan by ID.
+
+        Args:
+            scan_id: Scan ID.
+
+        Returns:
+            PIIScan or None.
+        """
+        return await self.scan_repo.get_by_id(scan_id)
+
+    async def list_for_source(
+        self,
+        source_id: str,
+        *,
+        limit: int = 20,
+    ) -> Sequence[PIIScan]:
+        """List PII scans for a source.
+
+        Args:
+            source_id: Source ID.
+            limit: Maximum to return.
+
+        Returns:
+            Sequence of PII scans.
+        """
+        return await self.scan_repo.get_for_source(source_id, limit=limit)
+
+    async def get_latest_for_source(self, source_id: str) -> PIIScan | None:
+        """Get most recent PII scan for a source.
+
+        Args:
+            source_id: Source ID.
+
+        Returns:
+            Latest PII scan or None.
+        """
+        return await self.scan_repo.get_latest_for_source(source_id)
+
+
+class DataMaskRepository(BaseRepository[DataMask]):
+    """Repository for DataMask model operations."""
+
+    model = DataMask
+
+    async def get_for_source(
+        self,
+        source_id: str,
+        *,
+        limit: int = 20,
+    ) -> Sequence[DataMask]:
+        """Get mask operations for a source.
+
+        Args:
+            source_id: Source ID.
+            limit: Maximum to return.
+
+        Returns:
+            Sequence of mask operations.
+        """
+        return await self.list(
+            limit=limit,
+            filters=[DataMask.source_id == source_id],
+            order_by=DataMask.created_at.desc(),
+        )
+
+    async def get_latest_for_source(self, source_id: str) -> DataMask | None:
+        """Get most recent mask operation for a source.
+
+        Args:
+            source_id: Source ID.
+
+        Returns:
+            Latest mask operation or None.
+        """
+        result = await self.session.execute(
+            select(DataMask)
+            .where(DataMask.source_id == source_id)
+            .order_by(DataMask.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+
+class MaskService:
+    """Service for data masking operations.
+
+    Handles data masking using th.mask() with three strategies:
+    - redact: Replace values with asterisks
+    - hash: Replace values with SHA256 hash (deterministic)
+    - fake: Replace values with realistic fake data
+    """
+
+    def __init__(self, session: AsyncSession) -> None:
+        """Initialize service.
+
+        Args:
+            session: Database session.
+        """
+        self.session = session
+        self.source_repo = SourceRepository(session)
+        self.mask_repo = DataMaskRepository(session)
+        self.adapter = get_adapter()
+
+    async def run_mask(
+        self,
+        source_id: str,
+        *,
+        columns: list[str] | None = None,
+        strategy: str = "redact",
+        output_format: str = "csv",
+    ) -> DataMask:
+        """Run data masking on a source.
+
+        This method provides access to truthound's th.mask() with
+        three masking strategies for PII protection.
+
+        Args:
+            source_id: Source ID to mask.
+            columns: Optional columns to mask. If None, auto-detects PII.
+            strategy: Masking strategy (redact, hash, fake). Default is redact.
+            output_format: Output file format (csv, parquet, json). Default is csv.
+
+        Returns:
+            DataMask record with results.
+
+        Raises:
+            ValueError: If source not found or invalid strategy.
+        """
+        # Validate strategy
+        if strategy not in ("redact", "hash", "fake"):
+            raise ValueError(
+                f"Invalid strategy: {strategy}. Use 'redact', 'hash', or 'fake'."
+            )
+
+        # Get source
+        source = await self.source_repo.get_by_id(source_id)
+        if source is None:
+            raise ValueError(f"Source '{source_id}' not found")
+
+        # Determine output path
+        source_path = source.source_path or ""
+        import os
+        from pathlib import Path
+
+        base_path = Path(source_path)
+        output_dir = base_path.parent / "masked"
+        output_dir.mkdir(exist_ok=True)
+        output_filename = f"{base_path.stem}_masked_{strategy}.{output_format}"
+        output_path = str(output_dir / output_filename)
+
+        # Create mask record
+        mask = await self.mask_repo.create(
+            source_id=source_id,
+            status="running",
+            strategy=strategy,
+            auto_detected=columns is None,
+            started_at=datetime.utcnow(),
+        )
+
+        try:
+            # Run masking
+            result = await self.adapter.mask(
+                source_path,
+                output_path,
+                columns=columns,
+                strategy=strategy,
+            )
+
+            # Update mask with results
+            await self._update_mask_success(mask, result)
+
+        except Exception as e:
+            # Update mask with error
+            mask.mark_error(str(e))
+
+        await self.session.flush()
+        await self.session.refresh(mask)
+        return mask
+
+    async def _update_mask_success(
+        self,
+        mask: DataMask,
+        result: MaskResult,
+    ) -> None:
+        """Update mask with successful result.
+
+        Args:
+            mask: DataMask record to update.
+            result: Mask result from adapter.
+        """
+        mask.status = "success"
+        mask.output_path = result.output_path
+        mask.columns_masked = result.columns_masked
+        mask.row_count = result.row_count
+        mask.column_count = result.column_count
+        mask.result_json = result.to_dict()
+        mask.completed_at = datetime.utcnow()
+
+        if mask.started_at:
+            delta = mask.completed_at - mask.started_at
+            mask.duration_ms = int(delta.total_seconds() * 1000)
+
+    async def get_mask(self, mask_id: str) -> DataMask | None:
+        """Get mask operation by ID.
+
+        Args:
+            mask_id: Mask ID.
+
+        Returns:
+            DataMask or None.
+        """
+        return await self.mask_repo.get_by_id(mask_id)
+
+    async def list_for_source(
+        self,
+        source_id: str,
+        *,
+        limit: int = 20,
+    ) -> Sequence[DataMask]:
+        """List mask operations for a source.
+
+        Args:
+            source_id: Source ID.
+            limit: Maximum to return.
+
+        Returns:
+            Sequence of mask operations.
+        """
+        return await self.mask_repo.get_for_source(source_id, limit=limit)
+
+    async def get_latest_for_source(self, source_id: str) -> DataMask | None:
+        """Get most recent mask operation for a source.
+
+        Args:
+            source_id: Source ID.
+
+        Returns:
+            Latest mask operation or None.
+        """
+        return await self.mask_repo.get_latest_for_source(source_id)

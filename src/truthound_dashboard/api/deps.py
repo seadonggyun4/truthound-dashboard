@@ -22,6 +22,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from truthound_dashboard.core import (
     DriftService,
     HistoryService,
+    MaskService,
+    PIIScanService,
     ProfileService,
     RuleService,
     ScheduleService,
@@ -142,6 +144,30 @@ async def get_schedule_service(session: SessionDep) -> ScheduleService:
     return ScheduleService(session)
 
 
+async def get_pii_scan_service(session: SessionDep) -> PIIScanService:
+    """Get PII scan service dependency.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        PIIScanService instance.
+    """
+    return PIIScanService(session)
+
+
+async def get_mask_service(session: SessionDep) -> MaskService:
+    """Get mask service dependency.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        MaskService instance.
+    """
+    return MaskService(session)
+
+
 # Type aliases for service dependencies
 SourceServiceDep = Annotated[SourceService, Depends(get_source_service)]
 ValidationServiceDep = Annotated[ValidationService, Depends(get_validation_service)]
@@ -151,3 +177,5 @@ RuleServiceDep = Annotated[RuleService, Depends(get_rule_service)]
 HistoryServiceDep = Annotated[HistoryService, Depends(get_history_service)]
 DriftServiceDep = Annotated[DriftService, Depends(get_drift_service)]
 ScheduleServiceDep = Annotated[ScheduleService, Depends(get_schedule_service)]
+PIIScanServiceDep = Annotated[PIIScanService, Depends(get_pii_scan_service)]
+MaskServiceDep = Annotated[MaskService, Depends(get_mask_service)]

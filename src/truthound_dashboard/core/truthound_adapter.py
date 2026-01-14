@@ -192,6 +192,85 @@ class CompareResult:
         }
 
 
+@dataclass
+class ScanResult:
+    """PII scan result.
+
+    Attributes:
+        source: Data source path.
+        row_count: Number of rows scanned.
+        column_count: Number of columns.
+        total_columns_scanned: Total columns that were scanned.
+        columns_with_pii: Number of columns containing PII.
+        total_findings: Total number of PII findings.
+        has_violations: Whether any regulation violations were found.
+        total_violations: Number of regulation violations.
+        findings: List of PII finding dictionaries.
+        violations: List of regulation violation dictionaries.
+    """
+
+    source: str
+    row_count: int
+    column_count: int
+    total_columns_scanned: int
+    columns_with_pii: int
+    total_findings: int
+    has_violations: bool
+    total_violations: int
+    findings: list[dict[str, Any]]
+    violations: list[dict[str, Any]]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "source": self.source,
+            "row_count": self.row_count,
+            "column_count": self.column_count,
+            "total_columns_scanned": self.total_columns_scanned,
+            "columns_with_pii": self.columns_with_pii,
+            "total_findings": self.total_findings,
+            "has_violations": self.has_violations,
+            "total_violations": self.total_violations,
+            "findings": self.findings,
+            "violations": self.violations,
+        }
+
+
+@dataclass
+class MaskResult:
+    """Data masking result.
+
+    Attributes:
+        source: Original data source path.
+        output_path: Path to the masked output file.
+        row_count: Number of rows in the masked data.
+        column_count: Number of columns in the masked data.
+        columns_masked: List of columns that were masked.
+        strategy: Masking strategy used (redact, hash, fake).
+        original_columns: List of all column names.
+    """
+
+    source: str
+    output_path: str
+    row_count: int
+    column_count: int
+    columns_masked: list[str]
+    strategy: str
+    original_columns: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "source": self.source,
+            "output_path": self.output_path,
+            "row_count": self.row_count,
+            "column_count": self.column_count,
+            "columns_masked": self.columns_masked,
+            "strategy": self.strategy,
+            "original_columns": self.original_columns,
+        }
+
+
 class TruthoundAdapter:
     """Async wrapper for truthound functions.
 
@@ -216,18 +295,35 @@ class TruthoundAdapter:
         data: str,
         *,
         validators: list[str] | None = None,
+        validator_params: dict[str, dict[str, Any]] | None = None,
         schema: str | None = None,
         auto_schema: bool = False,
+        columns: list[str] | None = None,
+        min_severity: str | None = None,
+        strict: bool = False,
         parallel: bool = False,
+        max_workers: int | None = None,
+        pushdown: bool | None = None,
     ) -> CheckResult:
         """Run data validation asynchronously.
+
+        This method wraps truthound's th.check() with full parameter support.
+        All parameters map directly to th.check() for maximum flexibility.
 
         Args:
             data: Data source path (CSV, Parquet, etc.).
             validators: Optional list of validator names to run.
+            validator_params: Optional dict of per-validator parameters.
+                Format: {"ValidatorName": {"param1": value1, "param2": value2}}
+                Example: {"Null": {"columns": ["a", "b"], "mostly": 0.95}}
             schema: Optional path to schema YAML file.
             auto_schema: If True, auto-learns schema for validation.
-            parallel: If True, uses parallel execution.
+            columns: Columns to validate. If None, validates all columns.
+            min_severity: Minimum severity to report ("low", "medium", "high", "critical").
+            strict: If True, raises exception on validation failures.
+            parallel: If True, uses DAG-based parallel execution.
+            max_workers: Max threads for parallel execution.
+            pushdown: Enable query pushdown for SQL sources. None uses auto-detection.
 
         Returns:
             CheckResult with validation results.
@@ -235,17 +331,36 @@ class TruthoundAdapter:
         Raises:
             ImportError: If truthound is not installed.
             FileNotFoundError: If data file doesn't exist.
+            ValidationError: If strict=True and validation fails.
         """
         import truthound as th
 
-        func = partial(
-            th.check,
-            data,
-            validators=validators,
-            schema=schema,
-            auto_schema=auto_schema,
-            parallel=parallel,
-        )
+        # Build kwargs dynamically to avoid passing None for optional params
+        # This ensures truthound uses its own defaults when params are not specified
+        kwargs: dict[str, Any] = {
+            "validators": validators,
+            "schema": schema,
+            "auto_schema": auto_schema,
+            "parallel": parallel,
+        }
+
+        # Add per-validator parameters if provided
+        if validator_params:
+            kwargs["validator_params"] = validator_params
+
+        # Only add optional params if explicitly set
+        if columns is not None:
+            kwargs["columns"] = columns
+        if min_severity is not None:
+            kwargs["min_severity"] = min_severity
+        if strict:
+            kwargs["strict"] = strict
+        if max_workers is not None:
+            kwargs["max_workers"] = max_workers
+        if pushdown is not None:
+            kwargs["pushdown"] = pushdown
+
+        func = partial(th.check, data, **kwargs)
 
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(self._executor, func)
@@ -257,44 +372,122 @@ class TruthoundAdapter:
         source: str,
         *,
         infer_constraints: bool = True,
+        categorical_threshold: int | None = None,
+        sample_size: int | None = None,
     ) -> LearnResult:
         """Learn schema from data asynchronously.
 
         Uses truthound's th.learn() to analyze data and generate schema.
+        Supports all th.learn() parameters for maximum flexibility.
 
         Args:
             source: Data source path.
-            infer_constraints: If True, infer constraints from statistics.
+            infer_constraints: If True, infers constraints (min/max, allowed values)
+                from data statistics.
+            categorical_threshold: Maximum unique values for categorical detection.
+                Columns with unique values <= threshold are treated as categorical
+                and will have allowed_values inferred. If None, uses truthound
+                default (20).
+            sample_size: Number of rows to sample for large datasets.
+                If None, uses all rows. Sampling improves performance but may
+                miss rare values.
 
         Returns:
             LearnResult with schema information.
         """
         import truthound as th
 
-        func = partial(th.learn, source, infer_constraints=infer_constraints)
+        # Build kwargs dynamically to let truthound use its defaults when not specified
+        kwargs: dict[str, Any] = {"infer_constraints": infer_constraints}
+
+        if categorical_threshold is not None:
+            kwargs["categorical_threshold"] = categorical_threshold
+        if sample_size is not None:
+            kwargs["sample_size"] = sample_size
+
+        func = partial(th.learn, source, **kwargs)
 
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(self._executor, func)
 
         return self._convert_learn_result(result)
 
-    async def profile(self, source: str) -> ProfileResult:
+    async def profile(
+        self,
+        source: str,
+        *,
+        sample_size: int | None = None,
+    ) -> ProfileResult:
         """Run data profiling asynchronously.
 
         Args:
             source: Data source path.
+            sample_size: Maximum number of rows to sample for profiling.
+                If None, profiles all data. Useful for large datasets.
 
         Returns:
             ProfileResult with profiling information.
         """
         import truthound as th
 
-        func = partial(th.profile, source)
+        # Build kwargs dynamically to let truthound use its defaults
+        kwargs: dict[str, Any] = {}
+        if sample_size is not None:
+            kwargs["sample_size"] = sample_size
+
+        func = partial(th.profile, source, **kwargs)
 
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(self._executor, func)
 
         return self._convert_profile_result(result)
+
+    async def scan(
+        self,
+        data: str,
+        *,
+        columns: list[str] | None = None,
+        regulations: list[str] | None = None,
+        min_confidence: float = 0.8,
+    ) -> ScanResult:
+        """Run PII scan on data asynchronously.
+
+        Uses truthound's th.scan() to detect personally identifiable information
+        and check compliance with privacy regulations.
+
+        Args:
+            data: Data source path (CSV, Parquet, etc.).
+            columns: Optional list of columns to scan. If None, scans all columns.
+            regulations: Optional list of regulations to check compliance.
+                Supported: "gdpr", "ccpa", "lgpd"
+            min_confidence: Minimum confidence threshold for PII detection (0.0-1.0).
+                Default is 0.8.
+
+        Returns:
+            ScanResult with PII findings and regulation violations.
+
+        Raises:
+            ImportError: If truthound is not installed.
+            FileNotFoundError: If data file doesn't exist.
+        """
+        import truthound as th
+
+        # Build kwargs dynamically to let truthound use its defaults
+        kwargs: dict[str, Any] = {
+            "min_confidence": min_confidence,
+        }
+
+        if columns is not None:
+            kwargs["columns"] = columns
+        if regulations is not None:
+            kwargs["regulations"] = regulations
+
+        func = partial(th.scan, data, **kwargs)
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(self._executor, func)
+
+        return self._convert_scan_result(result)
 
     async def compare(
         self,
@@ -304,6 +497,7 @@ class TruthoundAdapter:
         columns: list[str] | None = None,
         method: str = "auto",
         threshold: float | None = None,
+        correction: str | None = None,
         sample_size: int | None = None,
     ) -> CompareResult:
         """Compare two datasets for drift detection.
@@ -312,8 +506,24 @@ class TruthoundAdapter:
             baseline: Reference data path.
             current: Current data path to compare.
             columns: Optional list of columns to compare. If None, all common columns.
-            method: Detection method - "auto", "ks", "psi", "chi2", or "js".
+            method: Detection method. Supported methods:
+                - "auto": Smart selection (numeric → PSI, categorical → chi2)
+                - "ks": Kolmogorov-Smirnov test (continuous distributions)
+                - "psi": Population Stability Index (industry standard)
+                - "chi2": Chi-Square test (categorical data)
+                - "js": Jensen-Shannon divergence (symmetric, bounded)
+                - "kl": Kullback-Leibler divergence (information loss)
+                - "wasserstein": Earth Mover's Distance (distribution transport)
+                - "cvm": Cramér-von Mises (sensitive to tails)
+                - "anderson": Anderson-Darling (tail-weighted)
             threshold: Optional custom threshold for drift detection.
+                Defaults vary by method: KS/chi2/cvm/anderson=0.05, PSI/JS/KL/wasserstein=0.1
+            correction: Multiple testing correction method:
+                - None: Use truthound default (bh for multiple columns)
+                - "none": No correction
+                - "bonferroni": Conservative, independent tests
+                - "holm": Sequential adjustment
+                - "bh": Benjamini-Hochberg FDR control
             sample_size: Optional sample size for large datasets.
 
         Returns:
@@ -321,29 +531,94 @@ class TruthoundAdapter:
         """
         import truthound as th
 
-        func = partial(
-            th.compare,
-            baseline,
-            current,
-            columns=columns,
-            method=method,
-            threshold=threshold,
-            sample_size=sample_size,
-        )
+        # Build kwargs dynamically to avoid passing None for optional params
+        kwargs: dict[str, Any] = {
+            "columns": columns,
+            "method": method,
+        }
+
+        # Only add optional params if explicitly set
+        if threshold is not None:
+            kwargs["threshold"] = threshold
+        if correction is not None:
+            kwargs["correction"] = correction
+        if sample_size is not None:
+            kwargs["sample_size"] = sample_size
+
+        func = partial(th.compare, baseline, current, **kwargs)
 
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(self._executor, func)
 
         return self._convert_compare_result(result)
 
+    async def mask(
+        self,
+        data: str,
+        output: str,
+        *,
+        columns: list[str] | None = None,
+        strategy: str = "redact",
+    ) -> MaskResult:
+        """Mask sensitive data in a file asynchronously.
+
+        Uses truthound's th.mask() to mask PII and sensitive data with
+        three strategies: redact, hash, and fake.
+
+        Args:
+            data: Data source path (CSV, Parquet, etc.).
+            output: Output file path for the masked data.
+            columns: Optional list of columns to mask. If None, auto-detects PII.
+            strategy: Masking strategy:
+                - "redact": Replace values with asterisks (default)
+                - "hash": Replace values with SHA256 hash
+                - "fake": Replace values with realistic fake data
+
+        Returns:
+            MaskResult with masking operation details.
+
+        Raises:
+            ImportError: If truthound is not installed.
+            FileNotFoundError: If data file doesn't exist.
+            ValueError: If invalid strategy is provided.
+        """
+        import truthound as th
+
+        # Validate strategy
+        if strategy not in ("redact", "hash", "fake"):
+            raise ValueError(
+                f"Invalid strategy: {strategy}. Use 'redact', 'hash', or 'fake'."
+            )
+
+        # Build kwargs dynamically
+        kwargs: dict[str, Any] = {
+            "strategy": strategy,
+        }
+
+        if columns is not None:
+            kwargs["columns"] = columns
+
+        func = partial(th.mask, data, **kwargs)
+
+        loop = asyncio.get_event_loop()
+        masked_df = await loop.run_in_executor(self._executor, func)
+
+        return self._convert_mask_result(data, output, masked_df, strategy, columns)
+
     async def check_with_sampling(
         self,
         data: str,
         *,
         validators: list[str] | None = None,
+        validator_params: dict[str, dict[str, Any]] | None = None,
         schema: str | None = None,
         auto_schema: bool = False,
+        columns: list[str] | None = None,
+        min_severity: str | None = None,
+        strict: bool = False,
         parallel: bool = False,
+        max_workers: int | None = None,
+        pushdown: bool | None = None,
         sample_size: int | None = None,
         sampling_method: str | None = None,
     ) -> CheckResult:
@@ -358,7 +633,12 @@ class TruthoundAdapter:
             validators: Optional list of validator names to run.
             schema: Optional path to schema YAML file.
             auto_schema: If True, auto-learns schema for validation.
+            columns: Columns to validate. If None, validates all columns.
+            min_severity: Minimum severity to report.
+            strict: If True, raises exception on validation failures.
             parallel: If True, uses parallel execution.
+            max_workers: Max threads for parallel execution.
+            pushdown: Enable query pushdown for SQL sources.
             sample_size: Number of rows to sample. Uses config default if not specified.
             sampling_method: Sampling method ("random", "head", "stratified").
 
@@ -402,9 +682,15 @@ class TruthoundAdapter:
         return await self.check(
             data,
             validators=validators,
+            validator_params=validator_params,
             schema=schema,
             auto_schema=auto_schema,
+            columns=columns,
+            min_severity=min_severity,
+            strict=strict,
             parallel=parallel,
+            max_workers=max_workers,
+            pushdown=pushdown,
         )
 
     async def learn_with_sampling(
@@ -412,14 +698,20 @@ class TruthoundAdapter:
         source: str,
         *,
         infer_constraints: bool = True,
+        categorical_threshold: int | None = None,
         sample_size: int | None = None,
     ) -> LearnResult:
         """Learn schema from data with automatic sampling for large datasets.
 
+        This method first applies dashboard-level sampling for very large files,
+        then passes the sample_size to th.learn() if specified.
+
         Args:
             source: Data source path.
             infer_constraints: If True, infer constraints from statistics.
-            sample_size: Number of rows to sample. Uses config default if not specified.
+            categorical_threshold: Maximum unique values for categorical detection.
+            sample_size: Number of rows to sample. Used both for dashboard sampling
+                and passed to th.learn() for internal sampling.
 
         Returns:
             LearnResult with schema information.
@@ -428,7 +720,7 @@ class TruthoundAdapter:
 
         sampler = get_sampler()
 
-        # Sample if needed
+        # Sample if needed (dashboard-level sampling for very large files)
         path = Path(source)
         if path.exists() and sampler.needs_sampling(path):
             sample_result = await sampler.auto_sample(path, n=sample_size)
@@ -438,7 +730,12 @@ class TruthoundAdapter:
                 )
                 source = sample_result.sampled_path
 
-        return await self.learn(source, infer_constraints=infer_constraints)
+        return await self.learn(
+            source,
+            infer_constraints=infer_constraints,
+            categorical_threshold=categorical_threshold,
+            sample_size=sample_size,
+        )
 
     async def profile_with_sampling(
         self,
@@ -576,6 +873,72 @@ class TruthoundAdapter:
             columns=columns,
         )
 
+    def _convert_scan_result(self, result: Any) -> ScanResult:
+        """Convert truthound PIIReport to ScanResult.
+
+        The truthound PIIReport contains:
+        - source: str
+        - row_count: int
+        - column_count: int
+        - findings: list[PIIFinding]
+        - has_violations: bool
+        - violations: list[RegulationViolation]
+
+        Each PIIFinding has:
+        - column: str
+        - pii_type: str
+        - confidence: float
+        - sample_count: int
+        - sample_values: list[str] (optional)
+
+        Each RegulationViolation has:
+        - regulation: str
+        - column: str
+        - pii_type: str
+        - message: str
+        - severity: str (optional)
+        """
+        # Convert findings to dictionaries
+        findings = []
+        columns_with_pii = set()
+        for finding in result.findings:
+            columns_with_pii.add(finding.column)
+            findings.append(
+                {
+                    "column": finding.column,
+                    "pii_type": finding.pii_type,
+                    "confidence": finding.confidence,
+                    "sample_count": finding.sample_count,
+                    "sample_values": getattr(finding, "sample_values", None),
+                }
+            )
+
+        # Convert violations to dictionaries
+        violations = []
+        for violation in getattr(result, "violations", []):
+            violations.append(
+                {
+                    "regulation": violation.regulation,
+                    "column": violation.column,
+                    "pii_type": getattr(violation, "pii_type", "unknown"),
+                    "message": violation.message,
+                    "severity": getattr(violation, "severity", "high"),
+                }
+            )
+
+        return ScanResult(
+            source=result.source,
+            row_count=result.row_count,
+            column_count=result.column_count,
+            total_columns_scanned=result.column_count,
+            columns_with_pii=len(columns_with_pii),
+            total_findings=len(findings),
+            has_violations=getattr(result, "has_violations", len(violations) > 0),
+            total_violations=len(violations),
+            findings=findings,
+            violations=violations,
+        )
+
     def _convert_compare_result(self, result: Any) -> CompareResult:
         """Convert truthound DriftReport to CompareResult.
 
@@ -625,6 +988,58 @@ class TruthoundAdapter:
             total_columns=len(result.columns),
             drifted_columns=result.get_drifted_columns(),
             columns=columns,
+        )
+
+    def _convert_mask_result(
+        self,
+        source: str,
+        output: str,
+        masked_df: Any,
+        strategy: str,
+        columns: list[str] | None,
+    ) -> MaskResult:
+        """Convert truthound mask result to MaskResult.
+
+        Args:
+            source: Original data source path.
+            output: Output file path.
+            masked_df: Polars DataFrame with masked data.
+            strategy: Masking strategy used.
+            columns: Columns that were requested to be masked.
+
+        Returns:
+            MaskResult with masking details.
+        """
+        # Get column information from the DataFrame
+        all_columns = list(masked_df.columns)
+        row_count = len(masked_df)
+
+        # Determine which columns were actually masked
+        # If columns was None, truthound auto-detected PII columns
+        columns_masked = columns if columns else []
+
+        # Write the masked data to output file
+        output_path = Path(output)
+        suffix = output_path.suffix.lower()
+
+        if suffix == ".csv":
+            masked_df.write_csv(output)
+        elif suffix == ".parquet":
+            masked_df.write_parquet(output)
+        elif suffix == ".json":
+            masked_df.write_json(output)
+        else:
+            # Default to CSV
+            masked_df.write_csv(output)
+
+        return MaskResult(
+            source=source,
+            output_path=str(output_path.absolute()),
+            row_count=row_count,
+            column_count=len(all_columns),
+            columns_masked=columns_masked,
+            strategy=strategy,
+            original_columns=all_columns,
         )
 
     def shutdown(self) -> None:
