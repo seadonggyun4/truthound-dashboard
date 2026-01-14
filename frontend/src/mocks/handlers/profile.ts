@@ -8,9 +8,16 @@ import { createProfileResult } from '../factories'
 
 const API_BASE = '/api/v1'
 
+/**
+ * Request body for profile endpoint
+ */
+interface ProfileRequest {
+  sample_size?: number
+}
+
 export const profileHandlers = [
   // Profile a source
-  http.post(`${API_BASE}/sources/:sourceId/profile`, async ({ params }) => {
+  http.post(`${API_BASE}/sources/:sourceId/profile`, async ({ params, request }) => {
     await delay(1200) // Simulate profiling time
 
     const sourceId = params.sourceId as string
@@ -23,7 +30,27 @@ export const profileHandlers = [
       )
     }
 
-    const profile = createProfileResult({ sourceName: source.name })
+    // Parse request body if present (sample_size support)
+    let profileRequest: ProfileRequest | undefined
+    try {
+      const body = await request.text()
+      if (body) {
+        profileRequest = JSON.parse(body) as ProfileRequest
+      }
+    } catch {
+      // Empty body or invalid JSON, continue without options
+    }
+
+    // Create profile result
+    // In mock mode, sample_size doesn't actually affect the result,
+    // but we acknowledge it was received for API compatibility
+    const profile = createProfileResult({
+      sourceName: source.name,
+      // If sample_size is provided, simulate smaller dataset
+      rowCount: profileRequest?.sample_size
+        ? Math.min(profileRequest.sample_size, 1000000)
+        : undefined,
+    })
 
     return HttpResponse.json({
       success: true,

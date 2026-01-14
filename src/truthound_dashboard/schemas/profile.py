@@ -12,6 +12,22 @@ from pydantic import Field
 from .base import BaseSchema
 
 
+class ProfileRequest(BaseSchema):
+    """Request schema for data profiling.
+
+    Provides optional configuration for profiling operations.
+    All fields are optional with sensible defaults.
+    """
+
+    sample_size: int | None = Field(
+        default=None,
+        ge=1,
+        description="Maximum number of rows to sample for profiling. "
+        "If None, profiles all data. Useful for large datasets.",
+        examples=[10000, 50000, 100000],
+    )
+
+
 class ColumnProfile(BaseSchema):
     """Profile information for a single column."""
 
