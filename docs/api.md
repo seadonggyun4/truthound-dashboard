@@ -288,19 +288,56 @@ Analyzes data to automatically generate a schema.
 
 Run validation (th.check).
 
-**Request:**
+**Request (Simple Mode):**
 ```json
 {
-  "validators": ["not_null", "unique", "dtype"],
+  "validators": ["Null", "Unique", "ColumnExists"],
   "schema_path": "/path/to/schema.yaml",
   "auto_schema": false
 }
 ```
 
+**Request (Advanced Mode with validator_configs):**
+```json
+{
+  "validator_configs": [
+    {
+      "name": "Between",
+      "enabled": true,
+      "params": {
+        "column": "price",
+        "min_value": 0,
+        "max_value": 10000
+      },
+      "severity_override": "high"
+    },
+    {
+      "name": "Regex",
+      "enabled": true,
+      "params": {
+        "column": "email",
+        "pattern": "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$"
+      }
+    }
+  ],
+  "columns": ["price", "email", "status"],
+  "min_severity": "medium",
+  "parallel": true,
+  "max_workers": 4
+}
+```
+
 **Parameters:**
-- `validators` (optional): List of validators to run
+- `validators` (optional): List of validator names to run (simple mode)
+- `validator_configs` (optional): Per-validator configuration with params (advanced mode, takes precedence)
 - `schema_path` (optional): Path to schema file
 - `auto_schema` (optional): If true, auto-generate schema before validation
+- `columns` (optional): Specific columns to validate
+- `min_severity` (optional): Minimum severity to report (low, medium, high, critical)
+- `strict` (optional): Raise exception on failures
+- `parallel` (optional): Enable parallel execution
+- `max_workers` (optional): Max threads for parallel (1-32)
+- `pushdown` (optional): Enable SQL query pushdown
 
 **Response:**
 ```json
@@ -378,6 +415,16 @@ Retrieve validation history for a source.
 
 Run data profiling (th.profile).
 
+**Request:**
+```json
+{
+  "sample_size": 10000
+}
+```
+
+**Parameters:**
+- `sample_size` (optional): Maximum rows to sample for profiling
+
 **Response:**
 ```json
 {
@@ -433,18 +480,37 @@ Compare two datasets (th.compare).
 **Request:**
 ```json
 {
-  "source_id": "abc123",
-  "target_id": "def456"
+  "baseline_source_id": "abc123",
+  "current_source_id": "def456",
+  "columns": ["price", "quantity"],
+  "method": "psi",
+  "threshold": 0.1,
+  "correction": "bh",
+  "sample_size": 10000
 }
 ```
 
-Or:
-```json
-{
-  "source_path": "/data/v1.csv",
-  "target_path": "/data/v2.csv"
-}
-```
+**Parameters:**
+- `baseline_source_id` (required): Baseline source ID
+- `current_source_id` (required): Current source ID to compare
+- `columns` (optional): Columns to compare (null = all columns)
+- `method` (optional): Detection method - auto, ks, psi, chi2, js, kl, wasserstein, cvm, anderson (default: auto)
+- `threshold` (optional): Custom threshold (default varies by method)
+- `correction` (optional): Multiple testing correction - none, bonferroni, holm, bh (default: bh for multiple columns)
+- `sample_size` (optional): Sample size for large datasets
+
+**Detection Methods:**
+| Method | Use Case | Default Threshold |
+|--------|----------|-------------------|
+| auto | Smart selection based on data type | 0.05 |
+| ks | Continuous distributions | 0.05 |
+| psi | Industry standard, any distribution | 0.1 |
+| chi2 | Categorical data | 0.05 |
+| js | Symmetric, bounded (0-1) | 0.1 |
+| kl | Information loss measure | 0.1 |
+| wasserstein | Earth Mover's Distance | 0.1 |
+| cvm | Sensitive to tail differences | 0.05 |
+| anderson | Weighted for tail sensitivity | 0.05 |
 
 **Response:**
 ```json
@@ -478,6 +544,207 @@ Or:
 ### GET /drift/{id}
 
 Retrieve drift comparison result.
+
+### GET /drift/comparisons
+
+List drift comparisons with optional filters.
+
+**Query Parameters:**
+- `baseline_source_id` (optional): Filter by baseline source
+- `current_source_id` (optional): Filter by current source
+- `limit` (default: 20): Maximum results (1-100)
+
+---
+
+## Validators
+
+### GET /validators
+
+List all available validators with their parameter definitions.
+
+**Query Parameters:**
+- `category` (optional): Filter by category (schema, completeness, uniqueness, etc.)
+- `search` (optional): Search by name, description, or tags
+
+**Response:**
+```json
+[
+  {
+    "name": "Between",
+    "display_name": "Value Between",
+    "category": "distribution",
+    "description": "Validates that values fall within a specified range",
+    "parameters": [
+      {
+        "name": "column",
+        "label": "Column",
+        "type": "column",
+        "required": true
+      },
+      {
+        "name": "min_value",
+        "label": "Minimum Value",
+        "type": "float",
+        "required": true
+      },
+      {
+        "name": "max_value",
+        "label": "Maximum Value",
+        "type": "float",
+        "required": true
+      }
+    ],
+    "tags": ["distribution", "range", "bounds"],
+    "severity_default": "medium"
+  }
+]
+```
+
+### GET /validators/categories
+
+List all validator categories with metadata.
+
+**Response:**
+```json
+[
+  {
+    "value": "schema",
+    "label": "Schema",
+    "description": "Validate structure, columns, and data types",
+    "icon": "layout",
+    "color": "#3b82f6",
+    "validator_count": 14
+  }
+]
+```
+
+### GET /validators/{name}
+
+Get a specific validator definition by name.
+
+---
+
+## PII Scan
+
+### POST /scans/sources/{id}/scan
+
+Run PII scan on a data source (th.scan).
+
+**Request:**
+```json
+{
+  "columns": ["email", "phone", "ssn"],
+  "regulations": ["gdpr", "ccpa"],
+  "min_confidence": 0.8
+}
+```
+
+**Parameters:**
+- `columns` (optional): Columns to scan (null = all columns)
+- `regulations` (optional): Privacy regulations to check - gdpr, ccpa, lgpd
+- `min_confidence` (optional): Confidence threshold (0.0-1.0, default: 0.8)
+
+**Response:**
+```json
+{
+  "id": "scan123",
+  "source_id": "abc123",
+  "status": "success",
+  "total_columns_scanned": 15,
+  "columns_with_pii": 3,
+  "total_findings": 5,
+  "has_violations": true,
+  "total_violations": 2,
+  "findings": [
+    {
+      "column": "email",
+      "pii_type": "email",
+      "confidence": 0.95,
+      "sample_count": 1000
+    }
+  ],
+  "violations": [
+    {
+      "regulation": "gdpr",
+      "column": "ssn",
+      "pii_type": "ssn",
+      "message": "SSN data requires explicit consent under GDPR",
+      "severity": "high"
+    }
+  ],
+  "created_at": "2024-01-15T10:30:00Z"
+}
+```
+
+### GET /scans/{id}
+
+Get PII scan result by ID.
+
+### GET /scans/sources/{id}/scans
+
+List PII scan history for a source.
+
+### GET /scans/sources/{id}/scans/latest
+
+Get the most recent PII scan for a source.
+
+---
+
+## Data Masking
+
+### POST /masks/sources/{id}/mask
+
+Run data masking on a source (th.mask).
+
+**Request:**
+```json
+{
+  "columns": ["email", "ssn", "phone"],
+  "strategy": "hash",
+  "output_format": "csv"
+}
+```
+
+**Parameters:**
+- `columns` (optional): Columns to mask (null = auto-detect PII columns)
+- `strategy` (optional): Masking strategy - redact, hash, fake (default: redact)
+- `output_format` (optional): Output format - csv, parquet, json (default: csv)
+
+**Masking Strategies:**
+| Strategy | Description |
+|----------|-------------|
+| redact | Replace values with asterisks (e.g., "john@example.com" → "****") |
+| hash | Replace with SHA256 hash (deterministic, can be used for joins) |
+| fake | Replace with realistic fake data (e.g., "john@example.com" → "alice@test.org") |
+
+**Response:**
+```json
+{
+  "id": "mask123",
+  "source_id": "abc123",
+  "status": "success",
+  "strategy": "hash",
+  "output_path": "/tmp/masked_data.csv",
+  "columns_masked": ["email", "ssn", "phone"],
+  "auto_detected": false,
+  "row_count": 10000,
+  "column_count": 15,
+  "duration_ms": 1500,
+  "created_at": "2024-01-15T10:30:00Z"
+}
+```
+
+### GET /masks/{id}
+
+Get mask operation by ID.
+
+### GET /masks/sources/{id}/masks
+
+List mask operations for a source.
+
+### GET /masks/sources/{id}/masks/latest
+
+Get the most recent mask operation for a source.
 
 ---
 

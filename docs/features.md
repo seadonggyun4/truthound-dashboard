@@ -83,18 +83,34 @@ Edit schemas directly in YAML format through the UI.
 
 Execute data quality validations and review results.
 
-### Validators
+### Validator Registry
 
-Validators provided by truthound:
+Dashboard supports 150+ validators across 15 categories:
 
-| Validator | Description |
-|-----------|-------------|
-| `not_null` | Check for null values |
-| `unique` | Check for duplicate values |
-| `dtype` | Verify data types |
-| `in_range` | Validate numeric ranges |
-| `in_set` | Validate against allowed values |
-| `regex` | Pattern matching |
+| Category | Description | Count |
+|----------|-------------|-------|
+| **Schema** | Structure, columns, data types | 14 |
+| **Completeness** | Null values, missing data | 7 |
+| **Uniqueness** | Duplicates, keys | 13 |
+| **Distribution** | Value ranges, distributions | 15 |
+| **String** | Pattern matching, format validation | 17 |
+| **Datetime** | Date/time format and range | 10 |
+| **Aggregate** | Statistical checks (mean, sum) | 8 |
+| **Cross-Table** | Multi-table relationships | 5 |
+| **Multi-Column** | Column relationships | 3 |
+| **Query** | Expression-based validation | 2 |
+| **Table** | Table metadata validation | 4 |
+| **Geospatial** | Geographic coordinates | 4 |
+| **Drift** | Distribution change detection | 5 |
+| **Anomaly** | ML-based outlier detection | 6 |
+| **Privacy** | PII detection, compliance | 3 |
+
+### Validator Configuration
+
+Configure individual validators with parameters:
+- Per-validator parameter input forms
+- Severity override support
+- Real-time validation
 
 ### Validation Result
 
@@ -178,7 +194,7 @@ Analyze statistical characteristics of data.
 
 ## Drift Detection
 
-Compare two datasets to detect changes.
+Compare two datasets to detect changes using th.compare().
 
 ### Use Cases
 
@@ -186,13 +202,28 @@ Compare two datasets to detect changes.
 2. **Environment Comparison**: Production vs. Staging
 3. **Model Monitoring**: Training vs. Serving data
 
-### Drift Types
+### Detection Methods
 
-| Type | Description |
-|------|-------------|
-| **Schema Drift** | Column additions, deletions, or type changes |
-| **Distribution Drift** | Value distribution changes |
-| **Volume Drift** | Row count changes |
+| Method | Use Case | Description |
+|--------|----------|-------------|
+| **auto** | Smart selection | Automatically selects method based on data type |
+| **ks** | Continuous data | Kolmogorov-Smirnov test |
+| **psi** | Any distribution | Population Stability Index (industry standard) |
+| **chi2** | Categorical data | Chi-Square test |
+| **js** | Probability distributions | Jensen-Shannon divergence (symmetric, bounded) |
+| **kl** | Distribution comparison | Kullback-Leibler divergence |
+| **wasserstein** | Non-overlapping | Earth Mover's Distance |
+| **cvm** | Tail sensitivity | Cramér-von Mises test |
+| **anderson** | Tail weighted | Anderson-Darling test |
+
+### Multiple Testing Correction
+
+| Method | Description |
+|--------|-------------|
+| **none** | No correction |
+| **bonferroni** | Conservative, independent tests |
+| **holm** | Sequential adjustment |
+| **bh** | Benjamini-Hochberg FDR control (default) |
 
 ### Comparison Result
 
@@ -200,17 +231,111 @@ Compare two datasets to detect changes.
 {
   "has_drift": true,
   "has_high_drift": false,
-  "drifted_columns": ["price", "quantity"],
+  "total_columns": 10,
+  "drifted_columns": 2,
+  "drift_percentage": 20.0,
   "columns": [
     {
-      "name": "price",
-      "has_drift": true,
-      "drift_score": 0.45,
-      "drift_type": "distribution_shift",
-      "source_stats": { "mean": 100.5 },
-      "target_stats": { "mean": 145.2 }
+      "column": "price",
+      "drifted": true,
+      "level": "medium",
+      "method": "psi",
+      "statistic": 0.15,
+      "p_value": 0.02
     }
   ]
+}
+```
+
+---
+
+## PII Scan
+
+Detect personally identifiable information in datasets using th.scan().
+
+### Supported PII Types
+
+- Email addresses
+- Phone numbers
+- Social Security Numbers (SSN)
+- Credit card numbers
+- IP addresses
+- Dates of birth
+- Physical addresses
+- Personal names
+- Passport numbers
+- Driver's license numbers
+- National ID numbers
+- Bank account numbers
+- Medical record numbers
+- Biometric data
+
+### Regulation Compliance
+
+Check compliance with privacy regulations:
+
+| Regulation | Description |
+|------------|-------------|
+| **GDPR** | EU General Data Protection Regulation |
+| **CCPA** | California Consumer Privacy Act |
+| **LGPD** | Brazil's General Data Protection Law |
+
+### Scan Result
+
+```json
+{
+  "total_columns_scanned": 15,
+  "columns_with_pii": 3,
+  "total_findings": 5,
+  "findings": [
+    {
+      "column": "email",
+      "pii_type": "email",
+      "confidence": 0.95,
+      "sample_count": 1000
+    }
+  ],
+  "violations": [
+    {
+      "regulation": "gdpr",
+      "column": "ssn",
+      "pii_type": "ssn",
+      "severity": "high"
+    }
+  ]
+}
+```
+
+---
+
+## Data Masking
+
+Protect sensitive data using th.mask().
+
+### Masking Strategies
+
+| Strategy | Description | Example |
+|----------|-------------|---------|
+| **redact** | Replace with asterisks | `john@example.com` → `****` |
+| **hash** | SHA256 hash (deterministic) | `john@example.com` → `a1b2c3...` |
+| **fake** | Realistic fake data | `john@example.com` → `alice@test.org` |
+
+### Features
+
+- Auto-detection of PII columns
+- Multiple output formats (CSV, Parquet, JSON)
+- Deterministic hashing for join preservation
+- Realistic fake data generation
+
+### Mask Result
+
+```json
+{
+  "strategy": "hash",
+  "columns_masked": ["email", "ssn", "phone"],
+  "auto_detected": true,
+  "row_count": 10000,
+  "output_path": "/tmp/masked_data.csv"
 }
 ```
 
