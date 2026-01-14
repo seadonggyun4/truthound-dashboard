@@ -190,17 +190,59 @@ export interface ValidationListResponse {
   limit: number
 }
 
+/**
+ * Configuration for a single validator with its parameters.
+ */
+export interface ValidatorConfig {
+  /** Validator name */
+  name: string
+  /** Whether to run this validator */
+  enabled: boolean
+  /** Parameter values */
+  params: Record<string, unknown>
+  /** Override default severity */
+  severity_override?: 'low' | 'medium' | 'high' | 'critical'
+}
+
+/**
+ * Options for running validation - maps to th.check() parameters.
+ *
+ * Supports two modes:
+ * 1. Simple mode: Use `validators` list with validator names (backward compatible)
+ * 2. Advanced mode: Use `validator_configs` for per-validator parameter configuration
+ *
+ * @see https://github.com/truthound/truthound - th.check() documentation
+ */
+export interface ValidationRunOptions {
+  /** Simple mode: Specific validators to run by name. If not provided, all validators run. */
+  validators?: string[]
+  /** Advanced mode: Per-validator configuration with parameters. Takes precedence over validators. */
+  validator_configs?: ValidatorConfig[]
+  /** Path to schema YAML file for schema validation. */
+  schema_path?: string
+  /** Auto-learn and cache schema for validation. */
+  auto_schema?: boolean
+  /** Columns to validate. If not provided, all columns are validated. */
+  columns?: string[]
+  /** Minimum severity level to report ('low' | 'medium' | 'high' | 'critical'). */
+  min_severity?: 'low' | 'medium' | 'high' | 'critical'
+  /** If true, raises exception on validation failures. */
+  strict?: boolean
+  /** If true, uses DAG-based parallel execution. */
+  parallel?: boolean
+  /** Max threads for parallel execution (1-32). Only used when parallel=true. */
+  max_workers?: number
+  /** Enable query pushdown for SQL sources. Undefined uses auto-detection. */
+  pushdown?: boolean
+}
+
 export async function runValidation(
   sourceId: string,
-  data?: {
-    validators?: string[]
-    schema_path?: string
-    auto_schema?: boolean
-  }
+  options?: ValidationRunOptions
 ): Promise<Validation> {
   const response = await request<{ success: boolean; data: Validation }>(`/validations/sources/${sourceId}/validate`, {
     method: 'POST',
-    body: JSON.stringify(data || {}),
+    body: JSON.stringify(options || {}),
   })
   return response.data
 }
@@ -282,9 +324,24 @@ export interface ProfileResult {
   columns: ColumnProfile[]
 }
 
-export async function profileSource(sourceId: string): Promise<ProfileResult> {
+/**
+ * Options for data profiling.
+ */
+export interface ProfileOptions {
+  /**
+   * Maximum number of rows to sample for profiling.
+   * If undefined, profiles all data. Useful for large datasets.
+   */
+  sample_size?: number
+}
+
+export async function profileSource(
+  sourceId: string,
+  options?: ProfileOptions
+): Promise<ProfileResult> {
   const response = await request<{ success: boolean; data: ProfileResult }>(`/sources/${sourceId}/profile`, {
     method: 'POST',
+    body: options ? JSON.stringify(options) : undefined,
   })
   return response.data
 }
@@ -362,12 +419,95 @@ export async function getValidationHistory(
 }
 
 // Drift Detection
+
+/**
+ * Drift detection methods supported by truthound.
+ *
+ * Each method has different characteristics and use cases:
+ * - auto: Smart selection based on data type (numeric → PSI, categorical → chi2)
+ * - ks: Kolmogorov-Smirnov test - best for continuous distributions
+ * - psi: Population Stability Index - industry standard, any distribution
+ * - chi2: Chi-Square test - best for categorical data
+ * - js: Jensen-Shannon divergence - symmetric, bounded (0-1)
+ * - kl: Kullback-Leibler divergence - information loss measure
+ * - wasserstein: Earth Mover's Distance - metric, meaningful for non-overlapping
+ * - cvm: Cramér-von Mises - more sensitive to tail differences than KS
+ * - anderson: Anderson-Darling - weighted for tail sensitivity
+ */
+export type DriftMethod =
+  | 'auto'
+  | 'ks'
+  | 'psi'
+  | 'chi2'
+  | 'js'
+  | 'kl'
+  | 'wasserstein'
+  | 'cvm'
+  | 'anderson'
+
+/**
+ * Multiple testing correction methods.
+ *
+ * When comparing multiple columns, correction adjusts p-values to control
+ * false discovery rate:
+ * - none: No correction (use with caution)
+ * - bonferroni: Conservative, suitable for independent tests
+ * - holm: Sequential adjustment, less conservative than Bonferroni
+ * - bh: Benjamini-Hochberg (FDR control), default for multiple columns
+ */
+export type CorrectionMethod = 'none' | 'bonferroni' | 'holm' | 'bh'
+
+/**
+ * All drift methods for UI selection.
+ */
+export const DRIFT_METHODS: { value: DriftMethod; label: string; description: string }[] = [
+  { value: 'auto', label: 'Auto', description: 'Smart selection based on data type' },
+  { value: 'ks', label: 'Kolmogorov-Smirnov', description: 'Best for continuous distributions' },
+  { value: 'psi', label: 'PSI', description: 'Population Stability Index - industry standard' },
+  { value: 'chi2', label: 'Chi-Square', description: 'Best for categorical data' },
+  { value: 'js', label: 'Jensen-Shannon', description: 'Symmetric divergence, bounded 0-1' },
+  { value: 'kl', label: 'Kullback-Leibler', description: 'Information loss measure' },
+  { value: 'wasserstein', label: 'Wasserstein', description: 'Earth Mover\'s Distance' },
+  { value: 'cvm', label: 'Cramér-von Mises', description: 'More sensitive to tails than KS' },
+  { value: 'anderson', label: 'Anderson-Darling', description: 'Tail-weighted sensitivity' },
+]
+
+/**
+ * Correction methods for UI selection.
+ */
+export const CORRECTION_METHODS: { value: CorrectionMethod | ''; label: string; description: string }[] = [
+  { value: '', label: 'Default (BH)', description: 'Benjamini-Hochberg FDR control for multiple columns' },
+  { value: 'none', label: 'None', description: 'No correction (use with caution)' },
+  { value: 'bonferroni', label: 'Bonferroni', description: 'Conservative, independent tests' },
+  { value: 'holm', label: 'Holm', description: 'Sequential adjustment, less conservative' },
+  { value: 'bh', label: 'Benjamini-Hochberg', description: 'FDR control' },
+]
+
+/**
+ * Default thresholds for each detection method.
+ */
+export const DEFAULT_THRESHOLDS: Record<DriftMethod, number> = {
+  auto: 0.05,
+  ks: 0.05,
+  psi: 0.1,
+  chi2: 0.05,
+  js: 0.1,
+  kl: 0.1,
+  wasserstein: 0.1,
+  cvm: 0.05,
+  anderson: 0.05,
+}
+
 export interface DriftCompareRequest {
   baseline_source_id: string
   current_source_id: string
   columns?: string[]
-  method?: 'auto' | 'ks' | 'psi' | 'chi2' | 'js'
+  /** Detection method (see DriftMethod type for details) */
+  method?: DriftMethod
+  /** Custom threshold (default varies by method) */
   threshold?: number
+  /** Multiple testing correction method */
+  correction?: CorrectionMethod
   sample_size?: number
 }
 
@@ -519,6 +659,209 @@ export async function runScheduleNow(
   id: string
 ): Promise<{ success: boolean; message: string; validation_id: string; passed: boolean }> {
   return request(`/schedules/${id}/run`, { method: 'POST' })
+}
+
+// ============================================================================
+// PII Scan
+// ============================================================================
+
+/**
+ * PII types commonly detected by th.scan()
+ */
+export const PII_TYPES = [
+  'email',
+  'phone',
+  'ssn',
+  'credit_card',
+  'ip_address',
+  'date_of_birth',
+  'address',
+  'name',
+  'passport',
+  'driver_license',
+  'national_id',
+  'bank_account',
+  'medical_record',
+  'biometric',
+] as const
+
+/**
+ * Supported privacy regulations for compliance checking.
+ */
+export type Regulation = 'gdpr' | 'ccpa' | 'lgpd'
+
+export const REGULATIONS: { value: Regulation; label: string; description: string }[] = [
+  { value: 'gdpr', label: 'GDPR', description: 'General Data Protection Regulation (EU)' },
+  { value: 'ccpa', label: 'CCPA', description: 'California Consumer Privacy Act (US)' },
+  { value: 'lgpd', label: 'LGPD', description: 'Lei Geral de Proteção de Dados (Brazil)' },
+]
+
+export interface PIIFinding {
+  column: string
+  pii_type: string
+  confidence: number
+  sample_count: number
+  sample_values?: string[]
+}
+
+export interface RegulationViolation {
+  regulation: Regulation
+  column: string
+  pii_type: string
+  message: string
+  severity: 'low' | 'medium' | 'high' | 'critical'
+}
+
+export interface PIIScan {
+  id: string
+  source_id: string
+  status: 'pending' | 'running' | 'success' | 'failed' | 'error'
+  total_columns_scanned: number
+  columns_with_pii: number
+  total_findings: number
+  has_violations: boolean
+  total_violations: number
+  row_count?: number
+  column_count?: number
+  min_confidence: number
+  regulations_checked?: string[] | null
+  findings: PIIFinding[]
+  violations: RegulationViolation[]
+  error_message?: string
+  duration_ms?: number
+  started_at?: string
+  completed_at?: string
+  created_at: string
+}
+
+export interface PIIScanListResponse {
+  data: PIIScan[]
+  total: number
+  limit: number
+}
+
+/**
+ * Options for running PII scan - maps to th.scan() parameters.
+ */
+export interface PIIScanOptions {
+  /** Specific columns to scan. If not provided, all columns are scanned. */
+  columns?: string[]
+  /** Privacy regulations to check compliance (gdpr, ccpa, lgpd). */
+  regulations?: Regulation[]
+  /** Minimum confidence threshold for PII detection (0.0-1.0). Default: 0.8 */
+  min_confidence?: number
+}
+
+export async function runPIIScan(
+  sourceId: string,
+  options?: PIIScanOptions
+): Promise<PIIScan> {
+  return request<PIIScan>(`/scans/sources/${sourceId}/scan`, {
+    method: 'POST',
+    body: JSON.stringify(options || {}),
+  })
+}
+
+export async function getPIIScan(id: string): Promise<PIIScan> {
+  return request<PIIScan>(`/scans/${id}`)
+}
+
+export async function listSourcePIIScans(
+  sourceId: string,
+  params?: { limit?: number }
+): Promise<PIIScanListResponse> {
+  return request<PIIScanListResponse>(
+    `/scans/sources/${sourceId}/scans`,
+    { params }
+  )
+}
+
+export async function getLatestPIIScan(sourceId: string): Promise<PIIScan> {
+  return request<PIIScan>(`/scans/sources/${sourceId}/scans/latest`)
+}
+
+// ============================================================================
+// Data Masking (th.mask())
+// ============================================================================
+
+/**
+ * Masking strategies for th.mask():
+ * - redact: Replace values with asterisks
+ * - hash: Replace values with SHA256 hash (deterministic)
+ * - fake: Replace values with realistic fake data
+ */
+export type MaskingStrategy = 'redact' | 'hash' | 'fake'
+
+export interface DataMask {
+  id: string
+  source_id: string
+  status: 'pending' | 'running' | 'success' | 'failed' | 'error'
+  strategy: MaskingStrategy
+  output_path?: string
+  columns_masked?: string[]
+  auto_detected: boolean
+  row_count?: number
+  column_count?: number
+  duration_ms?: number
+  error_message?: string
+  started_at?: string
+  completed_at?: string
+  created_at: string
+}
+
+export interface DataMaskListItem {
+  id: string
+  source_id: string
+  source_name?: string
+  status: string
+  strategy: string
+  columns_masked: number
+  row_count?: number
+  duration_ms?: number
+  created_at: string
+}
+
+export interface DataMaskListResponse {
+  data: DataMaskListItem[]
+  total: number
+  limit: number
+}
+
+export interface MaskOptions {
+  /** Columns to mask. If not provided, auto-detects PII columns. */
+  columns?: string[]
+  /** Masking strategy: redact, hash, or fake. Default: redact */
+  strategy?: MaskingStrategy
+  /** Output file format: csv, parquet, json. Default: csv */
+  output_format?: 'csv' | 'parquet' | 'json'
+}
+
+export async function runDataMask(
+  sourceId: string,
+  options?: MaskOptions
+): Promise<DataMask> {
+  return request<DataMask>(`/masks/sources/${sourceId}/mask`, {
+    method: 'POST',
+    body: JSON.stringify(options || {}),
+  })
+}
+
+export async function getDataMask(id: string): Promise<DataMask> {
+  return request<DataMask>(`/masks/${id}`)
+}
+
+export async function listSourceDataMasks(
+  sourceId: string,
+  params?: { limit?: number }
+): Promise<DataMaskListResponse> {
+  return request<DataMaskListResponse>(
+    `/masks/sources/${sourceId}/masks`,
+    { params }
+  )
+}
+
+export async function getLatestDataMask(sourceId: string): Promise<DataMask> {
+  return request<DataMask>(`/masks/sources/${sourceId}/masks/latest`)
 }
 
 // ============================================================================
@@ -1138,6 +1481,119 @@ export async function getActivities(params?: {
   limit?: number
 }): Promise<Activity[]> {
   return request<Activity[]>('/activities', { params })
+}
+
+// ============================================================================
+// Validators Registry
+// ============================================================================
+
+/**
+ * Validator categories.
+ */
+export type ValidatorCategory =
+  | 'schema'
+  | 'completeness'
+  | 'uniqueness'
+  | 'distribution'
+  | 'string'
+  | 'datetime'
+  | 'aggregate'
+  | 'cross_table'
+  | 'query'
+  | 'multi_column'
+  | 'table'
+  | 'geospatial'
+  | 'drift'
+  | 'anomaly'
+
+/**
+ * Parameter types for validator configuration.
+ */
+export type ParameterType =
+  | 'string'
+  | 'string_list'
+  | 'integer'
+  | 'float'
+  | 'boolean'
+  | 'select'
+  | 'multi_select'
+  | 'column'
+  | 'column_list'
+  | 'schema'
+  | 'expression'
+  | 'regex'
+
+/**
+ * Option for select/multi_select parameters.
+ */
+export interface SelectOption {
+  value: string
+  label: string
+}
+
+/**
+ * Definition of a validator parameter.
+ */
+export interface ParameterDefinition {
+  name: string
+  label: string
+  type: ParameterType
+  description?: string
+  required?: boolean
+  default?: unknown
+  options?: SelectOption[]
+  min_value?: number
+  max_value?: number
+  placeholder?: string
+  validation_pattern?: string
+  depends_on?: string
+  depends_value?: unknown
+}
+
+/**
+ * Complete definition of a validator including its parameters.
+ */
+export interface ValidatorDefinition {
+  name: string
+  display_name: string
+  category: ValidatorCategory
+  description: string
+  parameters: ParameterDefinition[]
+  tags: string[]
+  severity_default: 'low' | 'medium' | 'high' | 'critical'
+  requires_extra?: string
+}
+
+/**
+ * Category info for UI display.
+ */
+export interface CategoryInfo {
+  value: string
+  label: string
+}
+
+/**
+ * Get all available validators.
+ */
+export async function listValidators(params?: {
+  category?: ValidatorCategory
+  search?: string
+}): Promise<ValidatorDefinition[]> {
+  return request<ValidatorDefinition[]>('/validators', { params })
+}
+
+/**
+ * Get all validator categories.
+ */
+export async function listValidatorCategories(): Promise<CategoryInfo[]> {
+  return request<CategoryInfo[]>('/validators/categories')
+}
+
+/**
+ * Get a specific validator by name.
+ */
+export async function getValidator(name: string): Promise<ValidatorDefinition | null> {
+  return request<ValidatorDefinition | null>(`/validators/${name}`)
 }
 
 // API client helper for direct requests

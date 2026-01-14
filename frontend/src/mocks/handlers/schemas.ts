@@ -39,7 +39,7 @@ export const schemasHandlers = [
   }),
 
   // Learn schema for a source
-  http.post(`${API_BASE}/sources/:sourceId/learn`, async ({ params }) => {
+  http.post(`${API_BASE}/sources/:sourceId/learn`, async ({ params, request }) => {
     await delay(1000) // Simulate learning time
 
     const sourceId = params.sourceId as string
@@ -52,10 +52,52 @@ export const schemasHandlers = [
       )
     }
 
+    // Parse request body for learn options
+    interface LearnRequest {
+      infer_constraints?: boolean
+      categorical_threshold?: number
+      sample_size?: number
+    }
+
+    let learnOptions: LearnRequest = {}
+    try {
+      const body = await request.json()
+      learnOptions = body as LearnRequest
+    } catch {
+      // Empty body is fine, use defaults
+    }
+
+    // Validate categorical_threshold if provided (1-1000)
+    if (learnOptions.categorical_threshold !== undefined) {
+      if (learnOptions.categorical_threshold < 1 || learnOptions.categorical_threshold > 1000) {
+        return HttpResponse.json(
+          { detail: 'categorical_threshold must be between 1 and 1000' },
+          { status: 422 }
+        )
+      }
+    }
+
+    // Validate sample_size if provided (>= 100)
+    if (learnOptions.sample_size !== undefined) {
+      if (learnOptions.sample_size < 100) {
+        return HttpResponse.json(
+          { detail: 'sample_size must be at least 100' },
+          { status: 422 }
+        )
+      }
+    }
+
+    // Create schema (categorical_threshold affects how many enum constraints are inferred)
+    // In mock, we simulate this by varying column count slightly based on options
+    const columnCount = learnOptions.sample_size
+      ? Math.min(20, Math.max(5, Math.floor(learnOptions.sample_size / 1000)))
+      : undefined
+
     // Create or update schema
     const schema = createSchema({
       id: createId(),
       sourceId,
+      columnCount,
     })
 
     getStore().schemas.set(sourceId, schema)

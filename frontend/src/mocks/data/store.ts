@@ -13,6 +13,8 @@ import type {
   NotificationChannel,
   NotificationRule,
   NotificationLog,
+  PIIScan,
+  DataMask,
   GlossaryTerm,
   GlossaryCategory,
   TermRelationship,
@@ -33,6 +35,8 @@ import {
   createDiverseRules,
   createDiverseLogs,
   setAvailableChannelIds,
+  createDiversePIIScans,
+  createDiverseDataMasks,
   createDiverseCategories,
   createDiverseTerms,
   createTermsWithRelationships,
@@ -55,6 +59,8 @@ interface MockStore {
   notificationChannels: Map<string, NotificationChannel>
   notificationRules: Map<string, NotificationRule>
   notificationLogs: Map<string, NotificationLog>
+  piiScans: Map<string, PIIScan>
+  dataMasks: Map<string, DataMask>
   // Phase 5: Business Glossary & Data Catalog
   glossaryTerms: Map<string, GlossaryTerm>
   glossaryCategories: Map<string, GlossaryCategory>
@@ -119,6 +125,22 @@ function initializeStore(): MockStore {
   const logs = createDiverseLogs(channelIds, ruleIds)
   const logsMap = new Map(logs.map((l) => [l.id, l]))
 
+  // Create diverse PII scans for each source
+  const piiScans: PIIScan[] = []
+  sources.forEach((source) => {
+    const sourcePIIScans = createDiversePIIScans(source.id)
+    piiScans.push(...sourcePIIScans)
+  })
+  const piiScansMap = new Map(piiScans.map((s) => [s.id, s]))
+
+  // Create diverse data masks for each source
+  const dataMasks: DataMask[] = []
+  sources.forEach((source) => {
+    const sourceDataMasks = createDiverseDataMasks(source.id)
+    dataMasks.push(...sourceDataMasks)
+  })
+  const dataMasksMap = new Map(dataMasks.map((m) => [m.id, m]))
+
   // ========== Phase 5: Business Glossary ==========
   const categories = createDiverseCategories()
   const categoriesMap = new Map(categories.map((c) => [c.id, c]))
@@ -167,6 +189,8 @@ function initializeStore(): MockStore {
     notificationChannels: channelsMap,
     notificationRules: rulesMap,
     notificationLogs: logsMap,
+    piiScans: piiScansMap,
+    dataMasks: dataMasksMap,
     // Phase 5
     glossaryTerms: termsMap,
     glossaryCategories: categoriesMap,
