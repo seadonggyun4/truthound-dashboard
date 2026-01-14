@@ -35,7 +35,7 @@ export function str(node: IntlayerNodeLike<string> | string | undefined): string
   }
   // IntlayerNode has a value property containing the raw string
   if (typeof node === 'object' && node !== null) {
-    const obj = node as Record<string, unknown>
+    const obj = node as unknown as Record<string, unknown>
     // Direct value property (IntlayerNode structure)
     if ('value' in obj) {
       const value = obj.value

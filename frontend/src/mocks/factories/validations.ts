@@ -13,11 +13,23 @@ import {
 } from './base'
 
 /**
+ * Validator configuration for advanced mode.
+ */
+export interface ValidatorConfig {
+  name: string
+  enabled: boolean
+  params: Record<string, unknown>
+  severity_override?: 'low' | 'medium' | 'high' | 'critical'
+}
+
+/**
  * Options for th.check() call - mirrors ValidationRunOptions from client.ts
  * Used to influence mock validation generation behavior
  */
 export interface ValidationRunOptions {
   validators?: string[]
+  /** Advanced mode: Per-validator configuration with parameters */
+  validator_configs?: ValidatorConfig[]
   columns?: string[]
   min_severity?: 'low' | 'medium' | 'high' | 'critical'
   parallel?: boolean

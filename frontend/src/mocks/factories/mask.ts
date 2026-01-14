@@ -60,23 +60,6 @@ const PII_COLUMNS = [
   'bank_account',
 ]
 
-// Non-PII columns for realistic data structure
-const NON_PII_COLUMNS = [
-  'id',
-  'user_id',
-  'created_at',
-  'updated_at',
-  'status',
-  'category',
-  'amount',
-  'quantity',
-  'price',
-  'description',
-  'is_active',
-  'order_id',
-  'product_id',
-]
-
 /**
  * Create a single data mask operation
  */
@@ -89,12 +72,6 @@ export function createDataMask(
   // Determine columns
   const columnCount = options.columnCount ?? randomInt(8, 30)
   const piiColumnCount = Math.min(randomInt(2, 8), columnCount - 3)
-  const nonPiiColumnCount = columnCount - piiColumnCount
-
-  const allColumns = [
-    ...randomSubset(PII_COLUMNS, piiColumnCount),
-    ...randomSubset(NON_PII_COLUMNS, nonPiiColumnCount),
-  ]
 
   // Columns that were masked (either specified or auto-detected PII)
   const columnsMasked =

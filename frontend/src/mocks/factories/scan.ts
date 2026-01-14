@@ -9,7 +9,6 @@ import {
   createTimestamp,
   randomChoice,
   randomInt,
-  randomSubset,
   faker,
 } from './base'
 
@@ -226,7 +225,7 @@ function createViolations(
       createRegulationViolation({
         regulation: randomChoice([...regulations]),
         column: finding?.column,
-        pii_type: finding?.pii_type,
+        piiType: finding?.pii_type,
       })
     )
   }
