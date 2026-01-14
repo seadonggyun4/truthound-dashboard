@@ -25,13 +25,16 @@ truthound-dashboard provides a graphical interface for managing data sources, ex
 | Data Source Management | Available | Available |
 | Schema Learning | Available | Available |
 | Validation Execution | Available | Available |
+| Validator Registry | Available | Available (150+ validators) |
 | Validation History | Available | Available |
 | Scheduled Validations | Available | Available |
 | Slack Notifications | Available | Available |
 | Email Notifications | Available | Available |
 | Webhook Notifications | Available | Available |
-| Drift Detection | Available | Available |
+| Drift Detection | Available | Available (8 methods) |
 | Data Profiling | Available | Available |
+| PII Scan | Available | Available (GDPR/CCPA/LGPD) |
+| Data Masking | Available | Available (redact/hash/fake) |
 | Business Glossary | Available | Available |
 | Data Catalog | Available | Available |
 | Dark Mode | Available | Available |
@@ -82,8 +85,11 @@ The dashboard interface is accessible at `http://localhost:8765`.
 
 ### Validation
 - On-demand validation execution using `th.check`
+- 150+ validators across 15 categories (schema, completeness, uniqueness, distribution, string, datetime, aggregate, cross-table, multi-column, query, table, geospatial, drift, anomaly, privacy)
+- Per-validator parameter configuration with UI
 - Persistent storage of validation results
 - Issue classification by severity (Critical, High, Medium, Low)
+- Advanced options: column filtering, min_severity, parallel execution, SQL pushdown
 
 ### Validation History
 - Historical record of validation results
@@ -100,11 +106,26 @@ The dashboard interface is accessible at `http://localhost:8765`.
 
 ### Drift Detection
 - Dataset comparison using `th.compare`
-- Column-level drift analysis
+- 8 detection methods: auto, ks, psi, chi2, js, kl, wasserstein, cvm, anderson
+- Multiple testing correction: bonferroni, holm, bh
+- Column-level drift analysis with statistical metrics
 
 ### Data Profiling
 - Statistical profiling using `th.profile`
 - Column-level statistics
+- Sample size configuration for large datasets
+
+### PII Scan
+- Personal data detection using `th.scan`
+- Supported PII types: email, phone, SSN, credit card, IP address, and more
+- Regulation compliance: GDPR, CCPA, LGPD
+- Configurable confidence threshold
+
+### Data Masking
+- Sensitive data protection using `th.mask`
+- Three masking strategies: redact (asterisks), hash (SHA256), fake (realistic data)
+- Auto-detection of PII columns
+- Multiple output formats: CSV, Parquet, JSON
 
 ### Business Glossary
 - Business term definitions with categories
