@@ -163,3 +163,4 @@ htmlcov/
 # Claude
 .claude/
 CLAUDE.md
+.truthound_docs/
