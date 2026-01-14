@@ -142,7 +142,7 @@ class ActivityResponse(BaseSchema, IDMixin):
             action=ActivityAction(activity.action),
             actor_id=activity.actor_id,
             description=activity.description,
-            metadata=activity.metadata,
+            metadata=activity.activity_metadata,
             created_at=activity.created_at,
         )
 

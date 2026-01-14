@@ -102,7 +102,7 @@ class ActivityLogger:
             action=action_value,
             actor_id=actor_id,
             description=description,
-            metadata=metadata,
+            activity_metadata=metadata,
         )
 
     async def get_for_resource(
