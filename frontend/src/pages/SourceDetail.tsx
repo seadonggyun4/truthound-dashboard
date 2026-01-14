@@ -11,22 +11,36 @@ import {
   XCircle,
   Settings2,
   BarChart3,
+  Sliders,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import {
   getSource,
   getSourceSchema,
   listSourceValidations,
   runValidation,
   learnSchema,
+  listValidators,
   type Source,
   type Schema,
   type Validation,
+  type ValidatorDefinition,
+  type ValidatorConfig,
 } from '@/api/client'
 import { formatDate, formatDuration, formatNumber } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
+import { ValidatorSelector } from '@/components/validators'
 
 export default function SourceDetail() {
   const { id } = useParams<{ id: string }>()
@@ -35,6 +49,10 @@ export default function SourceDetail() {
   const [validations, setValidations] = useState<Validation[]>([])
   const [loading, setLoading] = useState(true)
   const [validating, setValidating] = useState(false)
+  const [validationDialogOpen, setValidationDialogOpen] = useState(false)
+  const [validators, setValidators] = useState<ValidatorDefinition[]>([])
+  const [validatorConfigs, setValidatorConfigs] = useState<ValidatorConfig[]>([])
+  const [loadingValidators, setLoadingValidators] = useState(false)
   const { toast } = useToast()
 
   const loadData = useCallback(async () => {
@@ -60,11 +78,54 @@ export default function SourceDetail() {
     }
   }, [id, toast])
 
+  const loadValidators = useCallback(async () => {
+    if (validators.length > 0) return // Already loaded
+    try {
+      setLoadingValidators(true)
+      const validatorDefs = await listValidators()
+      setValidators(validatorDefs)
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to load validators',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoadingValidators(false)
+    }
+  }, [validators.length, toast])
+
   useEffect(() => {
     loadData()
   }, [loadData])
 
   async function handleValidate() {
+    if (!id) return
+    try {
+      setValidating(true)
+      // Get enabled validators with their configurations
+      const enabledConfigs = validatorConfigs.filter((c) => c.enabled)
+      const options = enabledConfigs.length > 0 ? { validator_configs: enabledConfigs } : {}
+      const result = await runValidation(id, options)
+      setValidations((prev) => [result, ...prev])
+      setValidationDialogOpen(false)
+      toast({
+        title: result.passed ? 'Validation Passed' : 'Validation Failed',
+        description: `Found ${result.total_issues} issues`,
+        variant: result.passed ? 'default' : 'destructive',
+      })
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to run validation',
+        variant: 'destructive',
+      })
+    } finally {
+      setValidating(false)
+    }
+  }
+
+  async function handleQuickValidate() {
     if (!id) return
     try {
       setValidating(true)
@@ -75,7 +136,7 @@ export default function SourceDetail() {
         description: `Found ${result.total_issues} issues`,
         variant: result.passed ? 'default' : 'destructive',
       })
-    } catch (err) {
+    } catch {
       toast({
         title: 'Error',
         description: 'Failed to run validation',
@@ -84,6 +145,11 @@ export default function SourceDetail() {
     } finally {
       setValidating(false)
     }
+  }
+
+  function handleOpenValidationDialog() {
+    loadValidators()
+    setValidationDialogOpen(true)
   }
 
   async function handleLearnSchema() {
@@ -183,10 +249,50 @@ export default function SourceDetail() {
             <FileCode className="mr-2 h-4 w-4" />
             Learn Schema
           </Button>
-          <Button onClick={handleValidate} disabled={validating}>
+          <Button variant="outline" onClick={handleQuickValidate} disabled={validating}>
             <Play className="mr-2 h-4 w-4" />
-            {validating ? 'Validating...' : 'Run Validation'}
+            {validating ? 'Validating...' : 'Quick Validate'}
           </Button>
+          <Dialog open={validationDialogOpen} onOpenChange={setValidationDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={handleOpenValidationDialog} disabled={validating}>
+                <Sliders className="mr-2 h-4 w-4" />
+                Configure & Run
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Configure Validation</DialogTitle>
+                <DialogDescription>
+                  Select and configure validators to run against this data source.
+                  Use presets for quick setup or customize individual validators.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                {loadingValidators ? (
+                  <div className="flex items-center justify-center h-64">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                  </div>
+                ) : (
+                  <ValidatorSelector
+                    validators={validators}
+                    configs={validatorConfigs}
+                    onChange={setValidatorConfigs}
+                    columns={schema?.columns || []}
+                  />
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setValidationDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleValidate} disabled={validating}>
+                  <Play className="mr-2 h-4 w-4" />
+                  {validating ? 'Validating...' : 'Run Validation'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
