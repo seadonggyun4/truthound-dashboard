@@ -60,14 +60,41 @@ class ProfileResponse(BaseSchema):
 
     @classmethod
     def from_result(cls, result: Any) -> ProfileResponse:
-        """Create response from adapter result.
+        """Create response from adapter result or Profile model.
 
         Args:
-            result: ProfileResult from adapter.
+            result: ProfileResult from adapter or Profile model.
 
         Returns:
             ProfileResponse instance.
         """
+        # Handle Profile model (from database)
+        if hasattr(result, "profile_json"):
+            profile_json = result.profile_json
+            source_name = profile_json.get("source", result.source_id)
+            columns_data = profile_json.get("columns", [])
+            columns = [
+                ColumnProfile(
+                    name=col["name"],
+                    dtype=col["dtype"],
+                    null_pct=col.get("null_pct", "0%"),
+                    unique_pct=col.get("unique_pct", "0%"),
+                    min=col.get("min"),
+                    max=col.get("max"),
+                    mean=col.get("mean"),
+                    std=col.get("std"),
+                )
+                for col in columns_data
+            ]
+            return cls(
+                source=source_name,
+                row_count=result.row_count or 0,
+                column_count=result.column_count or 0,
+                size_bytes=result.size_bytes or 0,
+                columns=columns,
+            )
+
+        # Handle ProfileResult (from adapter)
         columns = [
             ColumnProfile(
                 name=col["name"],
