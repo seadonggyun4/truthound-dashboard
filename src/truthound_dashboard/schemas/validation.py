@@ -11,6 +11,7 @@ from typing import Any, Literal
 from pydantic import Field
 
 from .base import BaseSchema, IDMixin, ListResponseWrapper
+from .validators import ValidatorConfig
 
 # Validation status types
 ValidationStatus = Literal["pending", "running", "success", "failed", "error"]
@@ -42,13 +43,32 @@ class ValidationIssue(BaseSchema):
 
 
 class ValidationRunRequest(BaseSchema):
-    """Request to run validation on a source."""
+    """Request to run validation on a source.
 
+    This schema maps to truthound's th.check() parameters for maximum flexibility.
+    All optional parameters default to None/False to use truthound's defaults.
+
+    Supports two modes:
+    1. Simple mode: Use `validators` list with validator names (backward compatible)
+    2. Advanced mode: Use `validator_configs` for per-validator parameter configuration
+    """
+
+    # Core validation options - Simple mode (backward compatible)
     validators: list[str] | None = Field(
         default=None,
-        description="Specific validators to run. If None, all validators are used.",
-        examples=[["null", "duplicate", "schema"]],
+        description="Specific validators to run by name. If None, all validators are used.",
+        examples=[["Null", "Duplicate", "ColumnExists"]],
     )
+
+    # Advanced mode - Per-validator configuration
+    validator_configs: list[ValidatorConfig] | None = Field(
+        default=None,
+        description=(
+            "Advanced: Configure individual validators with specific parameters. "
+            "Takes precedence over 'validators' list if provided."
+        ),
+    )
+
     schema_path: str | None = Field(
         default=None,
         description="Path to schema YAML file for schema validation",
@@ -56,6 +76,43 @@ class ValidationRunRequest(BaseSchema):
     auto_schema: bool = Field(
         default=False,
         description="Auto-learn and cache schema for validation",
+    )
+
+    # Column filtering
+    columns: list[str] | None = Field(
+        default=None,
+        description="Columns to validate. If None, all columns are validated.",
+        examples=[["user_id", "email", "created_at"]],
+    )
+
+    # Severity filtering
+    min_severity: Literal["low", "medium", "high", "critical"] | None = Field(
+        default=None,
+        description="Minimum severity level to report. Issues below this level are ignored.",
+        examples=["medium"],
+    )
+
+    # Execution behavior
+    strict: bool = Field(
+        default=False,
+        description="If True, raise exception on validation failures instead of returning results.",
+    )
+
+    # Performance options
+    parallel: bool = Field(
+        default=False,
+        description="If True, uses DAG-based parallel execution for validators.",
+    )
+    max_workers: int | None = Field(
+        default=None,
+        ge=1,
+        le=32,
+        description="Maximum number of worker threads for parallel execution. Only used when parallel=True.",
+        examples=[4, 8],
+    )
+    pushdown: bool | None = Field(
+        default=None,
+        description="Enable query pushdown optimization for SQL data sources. None uses auto-detection.",
     )
 
 

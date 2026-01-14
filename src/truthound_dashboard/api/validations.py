@@ -15,6 +15,7 @@ from truthound_dashboard.schemas import (
     ValidationResponse,
     ValidationRunRequest,
 )
+from truthound_dashboard.schemas.validators import configs_to_truthound_format
 
 from .deps import SourceServiceDep, ValidationServiceDep
 
@@ -34,6 +35,17 @@ async def run_validation(
 ) -> ValidationResponse:
     """Run validation on a data source.
 
+    Supports all th.check() parameters for maximum flexibility:
+    - validators: Specific validators to run
+    - schema_path: Path to schema YAML file
+    - auto_schema: Auto-learn and cache schema
+    - columns: Specific columns to validate
+    - min_severity: Minimum severity to report
+    - strict: Raise exception on failures
+    - parallel: Use parallel execution
+    - max_workers: Max threads for parallel
+    - pushdown: Enable query pushdown for SQL
+
     Args:
         service: Injected validation service.
         source_id: Source to validate.
@@ -46,11 +58,31 @@ async def run_validation(
         HTTPException: 404 if source not found.
     """
     try:
+        # Determine validators and params based on request mode
+        validators: list[str] | None = None
+        validator_params: dict | None = None
+
+        if request.validator_configs:
+            # Advanced mode: use validator_configs (takes precedence)
+            validators, validator_params = configs_to_truthound_format(
+                request.validator_configs
+            )
+        elif request.validators:
+            # Simple mode: use validator names list (backward compatible)
+            validators = request.validators
+
         validation = await service.run_validation(
             source_id,
-            validators=request.validators,
+            validators=validators,
+            validator_params=validator_params,
             schema_path=request.schema_path,
             auto_schema=request.auto_schema,
+            columns=request.columns,
+            min_severity=request.min_severity,
+            strict=request.strict,
+            parallel=request.parallel,
+            max_workers=request.max_workers,
+            pushdown=request.pushdown,
         )
         return ValidationResponse.from_model(validation)
     except ValueError as e:

@@ -12,6 +12,17 @@ import {
   faker,
 } from './base'
 
+/**
+ * Options for th.check() call - mirrors ValidationRunOptions from client.ts
+ * Used to influence mock validation generation behavior
+ */
+export interface ValidationRunOptions {
+  validators?: string[]
+  columns?: string[]
+  min_severity?: 'low' | 'medium' | 'high' | 'critical'
+  parallel?: boolean
+}
+
 export interface ValidationFactoryOptions {
   id?: string
   sourceId?: string
@@ -24,6 +35,13 @@ export interface ValidationFactoryOptions {
   durationMs?: number
   rowCount?: number
   columnCount?: number
+  /**
+   * th.check() options that influence mock behavior:
+   * - columns: limits issues to these columns only
+   * - min_severity: filters out issues below this level
+   * - parallel: simulates faster execution
+   */
+  options?: ValidationRunOptions
 }
 
 const ISSUE_TYPES = [
@@ -235,39 +253,80 @@ function createIssues(
   return issues
 }
 
+/**
+ * Severity level ordering for min_severity filtering
+ */
+const SEVERITY_ORDER: Record<ValidationIssue['severity'], number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+  critical: 3,
+}
+
+/**
+ * Filter issues by min_severity threshold
+ */
+function filterBySeverity(
+  issues: ValidationIssue[],
+  minSeverity?: 'low' | 'medium' | 'high' | 'critical'
+): ValidationIssue[] {
+  if (!minSeverity || minSeverity === 'low') return issues
+  const minLevel = SEVERITY_ORDER[minSeverity]
+  return issues.filter((issue) => SEVERITY_ORDER[issue.severity] >= minLevel)
+}
+
 export function createValidation(
-  options: ValidationFactoryOptions = {}
+  factoryOptions: ValidationFactoryOptions = {}
 ): Validation {
-  const status = options.status ?? randomChoice(['success', 'failed', 'error'])
-  const passed = options.passed ?? status === 'success'
+  const { options: runOptions, ...baseOptions } = factoryOptions
+  const status = baseOptions.status ?? randomChoice(['success', 'failed', 'error'])
+  const passed = baseOptions.passed ?? status === 'success'
 
   let issueCount: number
-  if (options.issueCount !== undefined) {
-    issueCount = options.issueCount
+  if (baseOptions.issueCount !== undefined) {
+    issueCount = baseOptions.issueCount
   } else {
     issueCount = passed ? randomInt(0, 2) : randomInt(3, 25)
   }
 
-  const issues = createIssues(issueCount, {
-    guaranteeCritical: options.hasCritical,
-    guaranteeHigh: options.hasHigh,
-    lowSeverityOnly: options.lowSeverityOnly,
+  // Create base issues
+  let issues = createIssues(issueCount, {
+    guaranteeCritical: baseOptions.hasCritical,
+    guaranteeHigh: baseOptions.hasHigh,
+    lowSeverityOnly: baseOptions.lowSeverityOnly,
   })
+
+  // Apply th.check() options to filter/modify issues
+  if (runOptions) {
+    // Filter by columns if specified
+    if (runOptions.columns && runOptions.columns.length > 0) {
+      // Replace issue columns with specified columns for realistic mock
+      issues = issues.map((issue) => ({
+        ...issue,
+        column: randomChoice(runOptions.columns!),
+      }))
+    }
+
+    // Filter by min_severity
+    issues = filterBySeverity(issues, runOptions.min_severity)
+  }
 
   const criticalIssues = issues.filter((i) => i.severity === 'critical').length
   const highIssues = issues.filter((i) => i.severity === 'high').length
   const mediumIssues = issues.filter((i) => i.severity === 'medium').length
   const lowIssues = issues.filter((i) => i.severity === 'low').length
 
-  const durationMs = options.durationMs ?? randomInt(200, 30000)
+  // Parallel execution is typically faster
+  const baseTime = runOptions?.parallel ? randomInt(100, 5000) : randomInt(200, 30000)
+  const durationMs = baseOptions.durationMs ?? baseTime
   const startedAt = createTimestamp(randomInt(0, 60))
   const completedAt = new Date(
     new Date(startedAt).getTime() + durationMs
   ).toISOString()
 
   return {
-    id: options.id ?? createId(),
-    source_id: options.sourceId ?? createId(),
+    id: baseOptions.id ?? createId(),
+    source_id: baseOptions.sourceId ?? createId(),
     status,
     passed,
     has_critical: criticalIssues > 0,
@@ -277,8 +336,8 @@ export function createValidation(
     high_issues: highIssues,
     medium_issues: mediumIssues,
     low_issues: lowIssues,
-    row_count: options.rowCount ?? randomInt(100, 5000000),
-    column_count: options.columnCount ?? randomInt(3, 100),
+    row_count: baseOptions.rowCount ?? randomInt(100, 5000000),
+    column_count: baseOptions.columnCount ?? randomInt(3, 100),
     issues,
     error_message: status === 'error' ? faker.lorem.sentence() : undefined,
     duration_ms: durationMs,
