@@ -221,9 +221,53 @@ async def test_source_connection(
 async def get_supported_types() -> dict:
     """Get list of supported source types.
 
-    Returns:
-        List of supported source types with required/optional fields.
-    """
-    from truthound_dashboard.core.connections import get_supported_source_types
+    Returns comprehensive information about each source type including
+    field definitions for dynamic form rendering.
 
-    return {"success": True, "data": get_supported_source_types()}
+    Returns:
+        List of supported source types with field definitions.
+    """
+    from truthound_dashboard.core.connections import (
+        get_source_type_categories,
+        get_supported_source_types,
+    )
+
+    return {
+        "success": True,
+        "data": {
+            "types": get_supported_source_types(),
+            "categories": get_source_type_categories(),
+        },
+    }
+
+
+@router.post(
+    "/test-connection",
+    response_model=dict,
+    summary="Test connection configuration",
+    description="Test a connection configuration before creating a source",
+)
+async def test_connection_config(
+    request: dict,
+) -> dict:
+    """Test connection configuration before creating a source.
+
+    This endpoint allows testing connection settings without
+    persisting them to the database.
+
+    Args:
+        request: Dictionary with 'type' and 'config' keys.
+
+    Returns:
+        Connection test result with success status and message.
+    """
+    from truthound_dashboard.core.connections import test_connection
+
+    source_type = request.get("type")
+    config = request.get("config", {})
+
+    if not source_type:
+        raise HTTPException(status_code=400, detail="Source type is required")
+
+    result = await test_connection(source_type, config)
+    return {"success": True, "data": result}

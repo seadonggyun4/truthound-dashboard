@@ -12,8 +12,26 @@ from pydantic import Field, field_validator
 
 from .base import BaseSchema, IDMixin, ListResponseWrapper, TimestampMixin
 
-# Supported source types
-SourceType = Literal["file", "postgresql", "mysql", "snowflake", "bigquery"]
+# Supported source types - must match SourceType enum in connections.py
+SourceType = Literal[
+    "file",
+    "postgresql",
+    "mysql",
+    "sqlite",
+    "snowflake",
+    "bigquery",
+    "redshift",
+    "databricks",
+    "oracle",
+    "sqlserver",
+    "spark",
+]
+
+# Source type categories for UI grouping
+SourceCategory = Literal["file", "database", "warehouse", "bigdata"]
+
+# Field types for dynamic form rendering
+FieldType = Literal["text", "password", "number", "select", "boolean", "file_path", "textarea"]
 
 
 class SourceBase(BaseSchema):
@@ -136,3 +154,100 @@ class SourceSummary(BaseSchema):
     type: SourceType
     is_active: bool
     last_validated_at: datetime | None = None
+
+
+# =============================================================================
+# Source Type Definition Schemas (for dynamic form rendering)
+# =============================================================================
+
+
+class FieldOption(BaseSchema):
+    """Option for select/multi-select fields."""
+
+    value: str
+    label: str
+
+
+class FieldDefinitionSchema(BaseSchema):
+    """Definition of a configuration field for dynamic form rendering."""
+
+    name: str = Field(..., description="Field identifier")
+    label: str = Field(..., description="Display label")
+    type: FieldType = Field(default="text", description="Input field type")
+    required: bool = Field(default=False, description="Whether field is required")
+    placeholder: str = Field(default="", description="Input placeholder text")
+    description: str = Field(default="", description="Help text for the field")
+    default: Any = Field(default=None, description="Default value")
+    options: list[FieldOption] | None = Field(
+        default=None,
+        description="Options for select fields",
+    )
+    min_value: int | None = Field(default=None, description="Minimum value for numbers")
+    max_value: int | None = Field(default=None, description="Maximum value for numbers")
+    depends_on: str | None = Field(
+        default=None,
+        description="Field this depends on for conditional rendering",
+    )
+    depends_value: Any = Field(
+        default=None,
+        description="Value of depends_on field that enables this field",
+    )
+
+
+class SourceTypeDefinitionSchema(BaseSchema):
+    """Complete definition of a source type for dynamic form rendering."""
+
+    type: SourceType = Field(..., description="Source type identifier")
+    name: str = Field(..., description="Display name")
+    description: str = Field(..., description="Type description")
+    icon: str = Field(..., description="Icon identifier for UI")
+    category: SourceCategory = Field(..., description="Source category")
+    fields: list[FieldDefinitionSchema] = Field(
+        ...,
+        description="Configuration fields",
+    )
+    required_fields: list[str] = Field(
+        default_factory=list,
+        description="List of required field names",
+    )
+    optional_fields: list[str] = Field(
+        default_factory=list,
+        description="List of optional field names",
+    )
+    docs_url: str = Field(default="", description="Documentation URL")
+
+
+class SourceTypeCategorySchema(BaseSchema):
+    """Category for grouping source types."""
+
+    value: str = Field(..., description="Category identifier")
+    label: str = Field(..., description="Display label")
+    description: str = Field(default="", description="Category description")
+
+
+class SourceTypesResponse(BaseSchema):
+    """Response containing all source types and categories."""
+
+    types: list[SourceTypeDefinitionSchema] = Field(
+        ...,
+        description="All available source types",
+    )
+    categories: list[SourceTypeCategorySchema] = Field(
+        ...,
+        description="Source type categories",
+    )
+
+
+class TestConnectionRequest(BaseSchema):
+    """Request to test a source connection before creating."""
+
+    type: SourceType = Field(..., description="Source type")
+    config: dict[str, Any] = Field(..., description="Connection configuration")
+
+
+class TestConnectionResponse(BaseSchema):
+    """Response from connection test."""
+
+    success: bool = Field(..., description="Whether connection was successful")
+    message: str | None = Field(default=None, description="Success message")
+    error: str | None = Field(default=None, description="Error message if failed")

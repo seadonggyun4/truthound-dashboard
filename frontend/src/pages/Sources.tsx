@@ -21,6 +21,7 @@ import { formatDate } from '@/lib/utils'
 import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
 import { useConfirm } from '@/components/ConfirmDialog'
+import { AddSourceDialog } from '@/components/sources'
 
 export default function Sources() {
   const nav = useIntlayer('nav')
@@ -29,6 +30,7 @@ export default function Sources() {
   const validation = useIntlayer('validation')
   const [sources, setSources] = useState<Source[]>([])
   const [loading, setLoading] = useState(true)
+  const [showAddDialog, setShowAddDialog] = useState(false)
   const { toast } = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
 
@@ -137,7 +139,7 @@ export default function Sources() {
             {sources_t.subtitle}
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setShowAddDialog(true)}>
           <Plus className="mr-2 h-4 w-4" />
           {sources_t.addSource}
         </Button>
@@ -238,6 +240,13 @@ export default function Sources() {
       )}
 
       <ConfirmDialog />
+
+      {/* Add Source Dialog */}
+      <AddSourceDialog
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        onSuccess={loadSources}
+      />
     </div>
   )
 }
