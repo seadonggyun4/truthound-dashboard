@@ -7,12 +7,16 @@ from fastapi import APIRouter
 
 from . import (
     # Phase 1-4
+    alerts,
     drift,
     health,
     history,
+    maintenance,
     mask,
     notifications,
+    notifications_advanced,
     profile,
+    reports,
     rules,
     scan,
     schedules,
@@ -20,10 +24,20 @@ from . import (
     sources,
     validations,
     validators,
+    versioning,
     # Phase 5
     catalog,
     collaboration,
     glossary,
+    # Schema Evolution & Rule Suggestions
+    rule_suggestions,
+    schema_evolution,
+    # Phase 10: ML & Lineage
+    anomaly,
+    lineage,
+    model_monitoring,
+    # Cross-Feature Integration
+    cross_alerts,
 )
 
 api_router = APIRouter()
@@ -131,4 +145,97 @@ api_router.include_router(
 api_router.include_router(
     collaboration.router,
     tags=["collaboration"],
+)
+
+# =============================================================================
+# Phase 4: Reports & Maintenance & Versioning
+# =============================================================================
+
+# Report generation endpoints
+api_router.include_router(
+    reports.router,
+    prefix="/reports",
+    tags=["reports"],
+)
+
+# Maintenance and retention policy endpoints
+api_router.include_router(
+    maintenance.router,
+    prefix="/maintenance",
+    tags=["maintenance"],
+)
+
+# Versioning endpoints
+api_router.include_router(
+    versioning.router,
+    tags=["versioning"],
+)
+
+# =============================================================================
+# Schema Evolution & Rule Suggestions
+# =============================================================================
+
+# Schema evolution endpoints
+api_router.include_router(
+    schema_evolution.router,
+    tags=["schema-evolution"],
+)
+
+# Rule suggestion endpoints
+api_router.include_router(
+    rule_suggestions.router,
+    tags=["rule-suggestions"],
+)
+
+# =============================================================================
+# Phase 14: Advanced Notifications
+# =============================================================================
+
+# Advanced notification endpoints (routing, deduplication, throttling, escalation)
+api_router.include_router(
+    notifications_advanced.router,
+    tags=["notifications-advanced"],
+)
+
+# =============================================================================
+# Phase 10: ML & Lineage
+# =============================================================================
+
+# Data lineage endpoints
+api_router.include_router(
+    lineage.router,
+    prefix="/lineage",
+    tags=["lineage"],
+)
+
+# Anomaly detection endpoints
+api_router.include_router(
+    anomaly.router,
+    tags=["anomaly"],
+)
+
+# ML Model Monitoring endpoints
+api_router.include_router(
+    model_monitoring.router,
+    tags=["model-monitoring"],
+)
+
+# =============================================================================
+# Unified Alerts
+# =============================================================================
+
+# Unified alerts aggregation endpoints
+api_router.include_router(
+    alerts.router,
+    tags=["alerts"],
+)
+
+# =============================================================================
+# Cross-Feature Integration
+# =============================================================================
+
+# Cross-alert correlation endpoints (anomaly + drift)
+api_router.include_router(
+    cross_alerts.router,
+    tags=["cross-alerts"],
 )
