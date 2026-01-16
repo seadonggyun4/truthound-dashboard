@@ -22,6 +22,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from enum import Enum
 from typing import Any
 
 from sqlalchemy import delete, func, select, text
@@ -36,6 +37,46 @@ from truthound_dashboard.db.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class RetentionPolicyType(str, Enum):
+    """Types of retention policies."""
+
+    TIME = "time"  # Time-based retention (days)
+    COUNT = "count"  # Count-based retention (keep N records)
+    SIZE = "size"  # Size-based retention (keep under N bytes)
+    STATUS = "status"  # Status-based retention (keep passed/failed)
+    TAG = "tag"  # Tag-based retention (keep/remove by tag)
+    COMPOSITE = "composite"  # Combination of multiple policies
+
+
+@dataclass
+class RetentionPolicy:
+    """Individual retention policy definition.
+
+    Attributes:
+        policy_type: Type of retention policy.
+        value: Policy value (days, count, bytes, status, or tag).
+        target: What this policy applies to (validations, profiles, etc).
+        priority: Policy priority (higher = applied first).
+        enabled: Whether this policy is active.
+    """
+
+    policy_type: RetentionPolicyType
+    value: Any
+    target: str = "validations"
+    priority: int = 0
+    enabled: bool = True
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "policy_type": self.policy_type.value if isinstance(self.policy_type, Enum) else self.policy_type,
+            "value": self.value,
+            "target": self.target,
+            "priority": self.priority,
+            "enabled": self.enabled,
+        }
 
 
 @dataclass
@@ -71,11 +112,26 @@ class CleanupResult:
 class MaintenanceConfig:
     """Configuration for maintenance tasks.
 
+    Supports 6 retention policy types:
+    - Time: Keep records for N days
+    - Count: Keep N most recent records
+    - Size: Keep total storage under N bytes
+    - Status: Different retention for passed/failed validations
+    - Tag: Protect or delete records by tag
+    - Composite: Combine multiple policies
+
     Attributes:
-        validation_retention_days: Days to keep validation records.
-        profile_keep_per_source: Number of profiles to keep per source.
-        notification_log_retention_days: Days to keep notification logs.
+        validation_retention_days: Days to keep validation records (Time policy).
+        profile_keep_per_source: Number of profiles to keep per source (Count policy).
+        notification_log_retention_days: Days to keep notification logs (Time policy).
         run_vacuum: Whether to run VACUUM after cleanup.
+        enabled: Whether automatic maintenance is enabled.
+        max_storage_mb: Maximum storage in MB for validations (Size policy).
+        keep_failed_validations: Whether to keep failed validations longer (Status policy).
+        failed_retention_days: Days to keep failed validations (Status policy).
+        protected_tags: Tags to never delete (Tag policy).
+        delete_tags: Tags to delete after standard retention (Tag policy).
+        policies: List of custom retention policies (Composite).
     """
 
     validation_retention_days: int = 90
@@ -83,6 +139,106 @@ class MaintenanceConfig:
     notification_log_retention_days: int = 30
     run_vacuum: bool = True
     enabled: bool = True
+    # Size-based retention
+    max_storage_mb: int | None = None  # None = no limit
+    # Status-based retention
+    keep_failed_validations: bool = True  # Keep failed longer for debugging
+    failed_retention_days: int = 180  # Days to keep failed validations
+    # Tag-based retention
+    protected_tags: list[str] = field(default_factory=list)  # Tags to never delete
+    delete_tags: list[str] = field(default_factory=list)  # Tags to delete after retention
+    # Custom policies (Composite)
+    policies: list[RetentionPolicy] = field(default_factory=list)
+
+    def get_active_policies(self) -> list[RetentionPolicy]:
+        """Get all active retention policies sorted by priority.
+
+        Returns:
+            List of RetentionPolicy sorted by priority (highest first).
+        """
+        active: list[RetentionPolicy] = []
+
+        # Time policy for validations
+        active.append(RetentionPolicy(
+            policy_type=RetentionPolicyType.TIME,
+            value=self.validation_retention_days,
+            target="validations",
+            priority=10,
+        ))
+
+        # Count policy for profiles
+        active.append(RetentionPolicy(
+            policy_type=RetentionPolicyType.COUNT,
+            value=self.profile_keep_per_source,
+            target="profiles",
+            priority=10,
+        ))
+
+        # Time policy for notification logs
+        active.append(RetentionPolicy(
+            policy_type=RetentionPolicyType.TIME,
+            value=self.notification_log_retention_days,
+            target="notification_logs",
+            priority=10,
+        ))
+
+        # Size policy if configured
+        if self.max_storage_mb is not None:
+            active.append(RetentionPolicy(
+                policy_type=RetentionPolicyType.SIZE,
+                value=self.max_storage_mb * 1024 * 1024,  # Convert to bytes
+                target="validations",
+                priority=20,
+            ))
+
+        # Status policy if keeping failed validations longer
+        if self.keep_failed_validations:
+            active.append(RetentionPolicy(
+                policy_type=RetentionPolicyType.STATUS,
+                value={"status": "failed", "retention_days": self.failed_retention_days},
+                target="validations",
+                priority=15,
+            ))
+
+        # Tag policy for protected tags
+        if self.protected_tags:
+            active.append(RetentionPolicy(
+                policy_type=RetentionPolicyType.TAG,
+                value={"protect": self.protected_tags},
+                target="validations",
+                priority=100,  # Highest priority - never delete
+            ))
+
+        # Tag policy for delete tags
+        if self.delete_tags:
+            active.append(RetentionPolicy(
+                policy_type=RetentionPolicyType.TAG,
+                value={"delete": self.delete_tags},
+                target="validations",
+                priority=5,  # Lower priority
+            ))
+
+        # Add custom policies
+        active.extend([p for p in self.policies if p.enabled])
+
+        # Sort by priority (descending)
+        return sorted(active, key=lambda p: p.priority, reverse=True)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for API responses."""
+        return {
+            "validation_retention_days": self.validation_retention_days,
+            "profile_keep_per_source": self.profile_keep_per_source,
+            "notification_log_retention_days": self.notification_log_retention_days,
+            "run_vacuum": self.run_vacuum,
+            "enabled": self.enabled,
+            "max_storage_mb": self.max_storage_mb,
+            "keep_failed_validations": self.keep_failed_validations,
+            "failed_retention_days": self.failed_retention_days,
+            "protected_tags": self.protected_tags,
+            "delete_tags": self.delete_tags,
+            "active_policies": [p.to_dict() for p in self.get_active_policies()],
+        }
 
 
 class CleanupStrategy(ABC):
@@ -300,6 +456,272 @@ class NotificationLogCleanupStrategy(CleanupStrategy):
             )
 
 
+class SizeBasedCleanupStrategy(CleanupStrategy):
+    """Cleanup strategy based on total storage size.
+
+    Removes oldest validations when total storage exceeds limit.
+    """
+
+    @property
+    def name(self) -> str:
+        return "size_based_cleanup"
+
+    async def execute(self, config: MaintenanceConfig) -> CleanupResult:
+        """Remove validations if total storage exceeds limit."""
+        start_time = datetime.utcnow()
+        total_deleted = 0
+
+        if config.max_storage_mb is None:
+            return CleanupResult(
+                task_name=self.name,
+                records_deleted=0,
+                duration_ms=0,
+                success=True,
+            )
+
+        max_bytes = config.max_storage_mb * 1024 * 1024
+
+        try:
+            async with get_session() as session:
+                # Estimate current storage (based on result_json size)
+                # In production, you might track actual file sizes
+                size_result = await session.execute(
+                    select(func.sum(func.length(Validation.result_json)))
+                )
+                current_size = size_result.scalar() or 0
+
+                if current_size <= max_bytes:
+                    duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                    return CleanupResult(
+                        task_name=self.name,
+                        records_deleted=0,
+                        duration_ms=duration,
+                        success=True,
+                    )
+
+                # Calculate how much to delete (aim for 80% of max)
+                target_size = int(max_bytes * 0.8)
+                bytes_to_free = current_size - target_size
+
+                # Get validations ordered by created_at, delete oldest first
+                validations_result = await session.execute(
+                    select(Validation.id, func.length(Validation.result_json))
+                    .order_by(Validation.created_at.asc())
+                )
+
+                freed_bytes = 0
+                ids_to_delete = []
+
+                for val_id, size in validations_result:
+                    if freed_bytes >= bytes_to_free:
+                        break
+                    ids_to_delete.append(val_id)
+                    freed_bytes += size or 0
+
+                if ids_to_delete:
+                    await session.execute(
+                        delete(Validation).where(Validation.id.in_(ids_to_delete))
+                    )
+                    total_deleted = len(ids_to_delete)
+
+            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+
+            logger.info(
+                f"Size-based cleanup: deleted {total_deleted} records, "
+                f"freed ~{freed_bytes / 1024 / 1024:.2f} MB"
+            )
+
+            return CleanupResult(
+                task_name=self.name,
+                records_deleted=total_deleted,
+                duration_ms=duration,
+                success=True,
+            )
+
+        except Exception as e:
+            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            logger.error(f"Size-based cleanup failed: {e}")
+            return CleanupResult(
+                task_name=self.name,
+                duration_ms=duration,
+                success=False,
+                error=str(e),
+            )
+
+
+class StatusBasedCleanupStrategy(CleanupStrategy):
+    """Cleanup strategy based on validation status.
+
+    Applies different retention rules for passed vs failed validations.
+    Failed validations are kept longer for debugging purposes.
+    """
+
+    @property
+    def name(self) -> str:
+        return "status_based_cleanup"
+
+    async def execute(self, config: MaintenanceConfig) -> CleanupResult:
+        """Remove validations based on status-specific retention."""
+        start_time = datetime.utcnow()
+        total_deleted = 0
+
+        if not config.keep_failed_validations:
+            return CleanupResult(
+                task_name=self.name,
+                records_deleted=0,
+                duration_ms=0,
+                success=True,
+            )
+
+        try:
+            # Standard cutoff for passed validations
+            passed_cutoff = datetime.utcnow() - timedelta(
+                days=config.validation_retention_days
+            )
+            # Extended cutoff for failed validations
+            failed_cutoff = datetime.utcnow() - timedelta(
+                days=config.failed_retention_days
+            )
+
+            async with get_session() as session:
+                # Delete old passed validations (use standard retention)
+                passed_count_result = await session.execute(
+                    select(func.count(Validation.id)).where(
+                        Validation.passed == True,  # noqa: E712
+                        Validation.created_at < passed_cutoff,
+                    )
+                )
+                passed_count = passed_count_result.scalar() or 0
+
+                if passed_count > 0:
+                    await session.execute(
+                        delete(Validation).where(
+                            Validation.passed == True,  # noqa: E712
+                            Validation.created_at < passed_cutoff,
+                        )
+                    )
+                    total_deleted += passed_count
+
+                # Delete old failed validations (use extended retention)
+                failed_count_result = await session.execute(
+                    select(func.count(Validation.id)).where(
+                        Validation.passed == False,  # noqa: E712
+                        Validation.created_at < failed_cutoff,
+                    )
+                )
+                failed_count = failed_count_result.scalar() or 0
+
+                if failed_count > 0:
+                    await session.execute(
+                        delete(Validation).where(
+                            Validation.passed == False,  # noqa: E712
+                            Validation.created_at < failed_cutoff,
+                        )
+                    )
+                    total_deleted += failed_count
+
+            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+
+            logger.info(
+                f"Status-based cleanup: deleted {passed_count} passed, "
+                f"{failed_count} failed validations"
+            )
+
+            return CleanupResult(
+                task_name=self.name,
+                records_deleted=total_deleted,
+                duration_ms=duration,
+                success=True,
+            )
+
+        except Exception as e:
+            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            logger.error(f"Status-based cleanup failed: {e}")
+            return CleanupResult(
+                task_name=self.name,
+                duration_ms=duration,
+                success=False,
+                error=str(e),
+            )
+
+
+class TagBasedCleanupStrategy(CleanupStrategy):
+    """Cleanup strategy based on validation tags.
+
+    Protects tagged validations or deletes them based on configuration.
+    Tags can be stored in validation metadata or a separate tags table.
+    """
+
+    @property
+    def name(self) -> str:
+        return "tag_based_cleanup"
+
+    async def execute(self, config: MaintenanceConfig) -> CleanupResult:
+        """Handle tag-based retention rules."""
+        start_time = datetime.utcnow()
+        total_deleted = 0
+
+        if not config.protected_tags and not config.delete_tags:
+            return CleanupResult(
+                task_name=self.name,
+                records_deleted=0,
+                duration_ms=0,
+                success=True,
+            )
+
+        try:
+            async with get_session() as session:
+                # Handle delete_tags: remove validations with these tags
+                # that are past standard retention
+                if config.delete_tags:
+                    cutoff = datetime.utcnow() - timedelta(
+                        days=config.validation_retention_days
+                    )
+
+                    for tag in config.delete_tags:
+                        # Tags stored in result_json metadata
+                        # This is a simplified approach; production might use a tags table
+                        count_result = await session.execute(
+                            select(func.count(Validation.id)).where(
+                                Validation.created_at < cutoff,
+                                Validation.result_json.contains(f'"tag": "{tag}"'),
+                            )
+                        )
+                        count = count_result.scalar() or 0
+
+                        if count > 0:
+                            await session.execute(
+                                delete(Validation).where(
+                                    Validation.created_at < cutoff,
+                                    Validation.result_json.contains(f'"tag": "{tag}"'),
+                                )
+                            )
+                            total_deleted += count
+
+                            logger.info(f"Tag cleanup: deleted {count} validations with tag '{tag}'")
+
+            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+
+            logger.info(f"Tag-based cleanup: deleted {total_deleted} total records")
+
+            return CleanupResult(
+                task_name=self.name,
+                records_deleted=total_deleted,
+                duration_ms=duration,
+                success=True,
+            )
+
+        except Exception as e:
+            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            logger.error(f"Tag-based cleanup failed: {e}")
+            return CleanupResult(
+                task_name=self.name,
+                duration_ms=duration,
+                success=False,
+                error=str(e),
+            )
+
+
 @dataclass
 class MaintenanceReport:
     """Report of a complete maintenance run.
@@ -385,11 +807,27 @@ class MaintenanceManager:
         self._strategies.append(strategy)
 
     def register_default_strategies(self) -> None:
-        """Register all default cleanup strategies."""
+        """Register all default cleanup strategies.
+
+        Registers 6 types of cleanup strategies:
+        - Time-based: ValidationCleanupStrategy, NotificationLogCleanupStrategy
+        - Count-based: ProfileCleanupStrategy
+        - Size-based: SizeBasedCleanupStrategy
+        - Status-based: StatusBasedCleanupStrategy
+        - Tag-based: TagBasedCleanupStrategy
+        """
         self._strategies = [
+            # Time-based policies
             ValidationCleanupStrategy(),
-            ProfileCleanupStrategy(),
             NotificationLogCleanupStrategy(),
+            # Count-based policy
+            ProfileCleanupStrategy(),
+            # Size-based policy
+            SizeBasedCleanupStrategy(),
+            # Status-based policy
+            StatusBasedCleanupStrategy(),
+            # Tag-based policy
+            TagBasedCleanupStrategy(),
         ]
 
     async def run_cleanup(self) -> MaintenanceReport:

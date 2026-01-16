@@ -306,6 +306,212 @@ class MemoryCache(CacheBackend):
             }
 
 
+class LFUCacheEntry(Generic[T]):
+    """LFU Cache entry with frequency tracking.
+
+    Attributes:
+        value: Cached value.
+        frequency: Access frequency count.
+        expires_at: Expiration datetime.
+        created_at: Creation datetime.
+        last_accessed: Last access datetime.
+    """
+
+    __slots__ = ("value", "frequency", "expires_at", "created_at", "last_accessed")
+
+    def __init__(self, value: T, ttl_seconds: int) -> None:
+        """Initialize LFU cache entry.
+
+        Args:
+            value: Value to cache.
+            ttl_seconds: Time to live in seconds.
+        """
+        self.value = value
+        self.frequency = 1
+        self.created_at = datetime.utcnow()
+        self.last_accessed = self.created_at
+        self.expires_at = self.created_at + timedelta(seconds=ttl_seconds)
+
+    @property
+    def is_expired(self) -> bool:
+        """Check if entry has expired."""
+        return datetime.utcnow() >= self.expires_at
+
+    def access(self) -> None:
+        """Record an access to this entry."""
+        self.frequency += 1
+        self.last_accessed = datetime.utcnow()
+
+
+class LFUCache(CacheBackend):
+    """Least Frequently Used (LFU) cache with TTL support.
+
+    Evicts least frequently accessed entries when cache is full.
+    Includes automatic cleanup of expired entries.
+
+    Features:
+    - Frequency-based eviction (least frequently used first)
+    - Tie-breaking by last access time (LRU among same frequency)
+    - TTL-based expiration
+    - Thread-safe with asyncio.Lock
+    """
+
+    def __init__(self, max_size: int = 1000, cleanup_interval: int = 300) -> None:
+        """Initialize LFU cache.
+
+        Args:
+            max_size: Maximum number of entries to store.
+            cleanup_interval: Interval for cleanup task in seconds.
+        """
+        self._cache: dict[str, LFUCacheEntry[Any]] = {}
+        self._lock = asyncio.Lock()
+        self._max_size = max_size
+        self._cleanup_interval = cleanup_interval
+        self._cleanup_task: asyncio.Task[None] | None = None
+        self._hits = 0
+        self._misses = 0
+
+    async def start_cleanup_task(self) -> None:
+        """Start background cleanup task."""
+        if self._cleanup_task is None:
+            self._cleanup_task = asyncio.create_task(self._cleanup_loop())
+
+    async def stop_cleanup_task(self) -> None:
+        """Stop background cleanup task."""
+        if self._cleanup_task is not None:
+            self._cleanup_task.cancel()
+            try:
+                await self._cleanup_task
+            except asyncio.CancelledError:
+                pass
+            self._cleanup_task = None
+
+    async def _cleanup_loop(self) -> None:
+        """Background cleanup loop."""
+        while True:
+            try:
+                await asyncio.sleep(self._cleanup_interval)
+                await self._cleanup_expired()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"LFU cache cleanup error: {e}")
+
+    async def _cleanup_expired(self) -> int:
+        """Remove expired entries.
+
+        Returns:
+            Number of entries removed.
+        """
+        async with self._lock:
+            expired_keys = [
+                key for key, entry in self._cache.items() if entry.is_expired
+            ]
+            for key in expired_keys:
+                del self._cache[key]
+            return len(expired_keys)
+
+    async def _evict_if_needed(self) -> None:
+        """Evict least frequently used entries if cache is full."""
+        if len(self._cache) >= self._max_size:
+            # Remove 10% of entries with lowest frequency
+            to_remove = max(1, self._max_size // 10)
+
+            # Sort by frequency (ascending), then by last_accessed (ascending)
+            sorted_entries = sorted(
+                self._cache.items(),
+                key=lambda x: (x[1].frequency, x[1].last_accessed),
+            )
+            for key, _ in sorted_entries[:to_remove]:
+                del self._cache[key]
+
+    async def get(self, key: str) -> Any | None:
+        """Get value from cache and increment frequency."""
+        async with self._lock:
+            entry = self._cache.get(key)
+            if entry is None:
+                self._misses += 1
+                return None
+            if entry.is_expired:
+                del self._cache[key]
+                self._misses += 1
+                return None
+            entry.access()
+            self._hits += 1
+            return entry.value
+
+    async def set(self, key: str, value: Any, ttl_seconds: int = 60) -> None:
+        """Set value in cache with TTL."""
+        async with self._lock:
+            await self._evict_if_needed()
+            self._cache[key] = LFUCacheEntry(value, ttl_seconds)
+
+    async def delete(self, key: str) -> bool:
+        """Delete value from cache."""
+        async with self._lock:
+            if key in self._cache:
+                del self._cache[key]
+                return True
+            return False
+
+    async def clear(self) -> None:
+        """Clear all cached values."""
+        async with self._lock:
+            self._cache.clear()
+            self._hits = 0
+            self._misses = 0
+
+    async def exists(self, key: str) -> bool:
+        """Check if key exists and is not expired."""
+        async with self._lock:
+            entry = self._cache.get(key)
+            if entry is None:
+                return False
+            if entry.is_expired:
+                del self._cache[key]
+                return False
+            return True
+
+    async def invalidate_pattern(self, pattern: str) -> int:
+        """Invalidate all keys matching pattern (prefix match)."""
+        async with self._lock:
+            keys_to_remove = [key for key in self._cache if key.startswith(pattern)]
+            for key in keys_to_remove:
+                del self._cache[key]
+            return len(keys_to_remove)
+
+    @property
+    def size(self) -> int:
+        """Get current cache size."""
+        return len(self._cache)
+
+    @property
+    def hit_rate(self) -> float:
+        """Get cache hit rate."""
+        total = self._hits + self._misses
+        return self._hits / total if total > 0 else 0.0
+
+    async def get_stats(self) -> dict[str, Any]:
+        """Get cache statistics."""
+        async with self._lock:
+            expired_count = sum(1 for e in self._cache.values() if e.is_expired)
+            freq_distribution: dict[int, int] = {}
+            for entry in self._cache.values():
+                freq = entry.frequency
+                freq_distribution[freq] = freq_distribution.get(freq, 0) + 1
+
+            return {
+                "total_entries": len(self._cache),
+                "expired_entries": expired_count,
+                "valid_entries": len(self._cache) - expired_count,
+                "max_size": self._max_size,
+                "hits": self._hits,
+                "misses": self._misses,
+                "hit_rate": self.hit_rate,
+                "frequency_distribution": freq_distribution,
+            }
+
+
 class FileCache(CacheBackend):
     """File-based cache with TTL support.
 
