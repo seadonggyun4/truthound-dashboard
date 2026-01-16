@@ -31,6 +31,13 @@ from truthound_dashboard.core import (
     SourceService,
     ValidationService,
 )
+from truthound_dashboard.core.schema_evolution import SchemaEvolutionService
+from truthound_dashboard.core.rule_generator import RuleGeneratorService
+from truthound_dashboard.core.profile_comparison import ProfileComparisonService
+from truthound_dashboard.core.lineage import LineageService
+from truthound_dashboard.core.anomaly import AnomalyDetectionService
+from truthound_dashboard.core.anomaly_explainer import AnomalyExplainerService
+from truthound_dashboard.core.openlineage import OpenLineageEmitterService, OpenLineageWebhookService
 from truthound_dashboard.db import get_db_session
 
 
@@ -168,6 +175,102 @@ async def get_mask_service(session: SessionDep) -> MaskService:
     return MaskService(session)
 
 
+async def get_schema_evolution_service(session: SessionDep) -> SchemaEvolutionService:
+    """Get schema evolution service dependency.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        SchemaEvolutionService instance.
+    """
+    return SchemaEvolutionService(session)
+
+
+async def get_rule_generator_service(session: SessionDep) -> RuleGeneratorService:
+    """Get rule generator service dependency.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        RuleGeneratorService instance.
+    """
+    return RuleGeneratorService(session)
+
+
+async def get_profile_comparison_service(session: SessionDep) -> ProfileComparisonService:
+    """Get profile comparison service dependency.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        ProfileComparisonService instance.
+    """
+    return ProfileComparisonService(session)
+
+
+async def get_lineage_service(session: SessionDep) -> LineageService:
+    """Get lineage service dependency.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        LineageService instance.
+    """
+    return LineageService(session)
+
+
+async def get_anomaly_detection_service(session: SessionDep) -> AnomalyDetectionService:
+    """Get anomaly detection service dependency.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        AnomalyDetectionService instance.
+    """
+    return AnomalyDetectionService(session)
+
+
+async def get_anomaly_explainer_service(session: SessionDep) -> AnomalyExplainerService:
+    """Get anomaly explainer service dependency.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        AnomalyExplainerService instance for SHAP/LIME explanations.
+    """
+    return AnomalyExplainerService(session)
+
+
+async def get_openlineage_emitter_service(session: SessionDep) -> OpenLineageEmitterService:
+    """Get OpenLineage emitter service dependency.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        OpenLineageEmitterService instance.
+    """
+    return OpenLineageEmitterService(session)
+
+
+async def get_openlineage_webhook_service(session: SessionDep) -> OpenLineageWebhookService:
+    """Get OpenLineage webhook service dependency.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        OpenLineageWebhookService instance.
+    """
+    return OpenLineageWebhookService(session)
+
+
 # Type aliases for service dependencies
 SourceServiceDep = Annotated[SourceService, Depends(get_source_service)]
 ValidationServiceDep = Annotated[ValidationService, Depends(get_validation_service)]
@@ -179,3 +282,25 @@ DriftServiceDep = Annotated[DriftService, Depends(get_drift_service)]
 ScheduleServiceDep = Annotated[ScheduleService, Depends(get_schedule_service)]
 PIIScanServiceDep = Annotated[PIIScanService, Depends(get_pii_scan_service)]
 MaskServiceDep = Annotated[MaskService, Depends(get_mask_service)]
+SchemaEvolutionServiceDep = Annotated[
+    SchemaEvolutionService, Depends(get_schema_evolution_service)
+]
+RuleGeneratorServiceDep = Annotated[
+    RuleGeneratorService, Depends(get_rule_generator_service)
+]
+ProfileComparisonServiceDep = Annotated[
+    ProfileComparisonService, Depends(get_profile_comparison_service)
+]
+LineageServiceDep = Annotated[LineageService, Depends(get_lineage_service)]
+AnomalyDetectionServiceDep = Annotated[
+    AnomalyDetectionService, Depends(get_anomaly_detection_service)
+]
+AnomalyExplainerServiceDep = Annotated[
+    AnomalyExplainerService, Depends(get_anomaly_explainer_service)
+]
+OpenLineageEmitterServiceDep = Annotated[
+    OpenLineageEmitterService, Depends(get_openlineage_emitter_service)
+]
+OpenLineageWebhookServiceDep = Annotated[
+    OpenLineageWebhookService, Depends(get_openlineage_webhook_service)
+]

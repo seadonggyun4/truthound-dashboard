@@ -153,3 +153,52 @@ class TestNotificationEvent(NotificationEvent):
         base = super().to_dict()
         base.update({"channel_name": self.channel_name})
         return base
+
+
+@dataclass
+class SchemaChangedEvent(NotificationEvent):
+    """Event triggered when schema changes are detected.
+
+    Attributes:
+        from_version: Previous schema version number (null if first version).
+        to_version: New schema version number.
+        total_changes: Total number of changes detected.
+        breaking_changes: Number of breaking changes.
+        changes: List of change details.
+    """
+
+    event_type: str = field(default="schema_changed", init=False)
+    from_version: int | None = None
+    to_version: int = 0
+    total_changes: int = 0
+    breaking_changes: int = 0
+    changes: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def severity(self) -> str:
+        """Get the severity level based on changes."""
+        if self.breaking_changes > 0:
+            return "Critical"
+        if self.total_changes >= 5:
+            return "High"
+        return "Medium"
+
+    @property
+    def has_breaking_changes(self) -> bool:
+        """Check if there are breaking changes."""
+        return self.breaking_changes > 0
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert event to dictionary."""
+        base = super().to_dict()
+        base.update(
+            {
+                "from_version": self.from_version,
+                "to_version": self.to_version,
+                "total_changes": self.total_changes,
+                "breaking_changes": self.breaking_changes,
+                "severity": self.severity,
+                "has_breaking_changes": self.has_breaking_changes,
+            }
+        )
+        return base

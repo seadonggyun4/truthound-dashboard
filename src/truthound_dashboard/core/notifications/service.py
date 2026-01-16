@@ -464,6 +464,8 @@ class NotificationRuleService:
         "high_issues",
         "schedule_failed",
         "drift_detected",
+        "schema_changed",
+        "breaking_schema_change",
     ]
 
     def __init__(self, session: AsyncSession) -> None:

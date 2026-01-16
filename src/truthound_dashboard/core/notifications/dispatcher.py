@@ -44,6 +44,7 @@ from .base import (
 )
 from .events import (
     DriftDetectedEvent,
+    SchemaChangedEvent,
     ScheduleFailedEvent,
     TestNotificationEvent,
     ValidationFailedEvent,
@@ -159,6 +160,7 @@ class NotificationDispatcher:
             "validation_failed": ["validation_failed", "critical_issues", "high_issues"],
             "schedule_failed": ["schedule_failed", "validation_failed"],
             "drift_detected": ["drift_detected"],
+            "schema_changed": ["schema_changed", "breaking_schema_change"],
             "test": [],
         }
 
@@ -201,6 +203,11 @@ class NotificationDispatcher:
         elif isinstance(event, DriftDetectedEvent):
             # Could add threshold checks here from rule.condition_config
             pass
+
+        elif isinstance(event, SchemaChangedEvent):
+            # Check for breaking change condition
+            if rule.condition == "breaking_schema_change" and not event.has_breaking_changes:
+                return False
 
         return True
 

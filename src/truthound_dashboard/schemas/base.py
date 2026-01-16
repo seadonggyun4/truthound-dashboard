@@ -60,6 +60,10 @@ class ResponseWrapper(BaseSchema, Generic[T]):
     message: str | None = Field(default=None, description="Optional message")
 
 
+# Alias for backward compatibility with newer code
+DataResponse = ResponseWrapper
+
+
 class ListResponseWrapper(BaseSchema, Generic[T]):
     """Generic wrapper for list responses with pagination.
 

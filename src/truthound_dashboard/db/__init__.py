@@ -53,6 +53,17 @@ from .models import (
     GlossaryTerm,
     TermHistory,
     TermRelationship,
+    # Anomaly Detection Models
+    AnomalyDetection,
+    # Model Monitoring Models
+    MonitoredModel,
+    ModelAlert,
+    ModelAlertRule,
+    ModelAlertHandler,
+    # Drift Monitoring Models
+    DriftMonitor,
+    DriftMonitorRun,
+    DriftAlert,
 )
 from .repository import BaseRepository
 
@@ -105,6 +116,17 @@ __all__ = [
     # Phase 5 Models - Collaboration
     "Comment",
     "Activity",
+    # Anomaly Detection Models
+    "AnomalyDetection",
+    # Model Monitoring Models
+    "MonitoredModel",
+    "ModelAlert",
+    "ModelAlertRule",
+    "ModelAlertHandler",
+    # Drift Monitoring Models
+    "DriftMonitor",
+    "DriftMonitorRun",
+    "DriftAlert",
     # Repository
     "BaseRepository",
 ]

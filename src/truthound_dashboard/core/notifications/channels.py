@@ -1,7 +1,17 @@
 """Notification channel implementations.
 
 This module provides concrete implementations of notification channels
-for Slack, Email, and Webhook notifications.
+for various notification services:
+
+- Slack: Incoming webhooks
+- Email: SMTP
+- Webhook: Generic HTTP endpoints
+- Discord: Discord webhooks
+- Telegram: Telegram Bot API
+- PagerDuty: Events API v2
+- OpsGenie: Alert API
+- Teams: Microsoft Teams webhooks
+- GitHub: Issues/Discussions API
 
 Each channel is registered with the ChannelRegistry and can be
 instantiated dynamically based on channel type.
@@ -22,6 +32,7 @@ from .base import (
 )
 from .events import (
     DriftDetectedEvent,
+    SchemaChangedEvent,
     ScheduleFailedEvent,
     TestNotificationEvent,
     ValidationFailedEvent,
@@ -553,5 +564,1013 @@ class WebhookChannel(BaseNotificationChannel):
 
         elif isinstance(event, TestNotificationEvent):
             return f"Test notification from truthound-dashboard"
+
+        return self._default_format(event)
+
+
+@ChannelRegistry.register("discord")
+class DiscordChannel(BaseNotificationChannel):
+    """Discord notification channel using webhooks.
+
+    Configuration:
+        webhook_url: Discord webhook URL
+        username: Optional bot username override
+        avatar_url: Optional avatar URL
+
+    Example config:
+        {
+            "webhook_url": "https://discord.com/api/webhooks/...",
+            "username": "Truthound Bot",
+            "avatar_url": "https://example.com/avatar.png"
+        }
+    """
+
+    channel_type = "discord"
+
+    @classmethod
+    def get_config_schema(cls) -> dict[str, Any]:
+        """Get Discord channel configuration schema."""
+        return {
+            "webhook_url": {
+                "type": "string",
+                "required": True,
+                "description": "Discord webhook URL",
+            },
+            "username": {
+                "type": "string",
+                "required": False,
+                "description": "Bot username override",
+            },
+            "avatar_url": {
+                "type": "string",
+                "required": False,
+                "description": "Bot avatar URL",
+            },
+        }
+
+    async def send(
+        self,
+        message: str,
+        event: NotificationEvent | None = None,
+        **kwargs: Any,
+    ) -> bool:
+        """Send notification to Discord.
+
+        Args:
+            message: Message text (supports Discord markdown).
+            event: Optional triggering event.
+            **kwargs: Additional Discord message options.
+
+        Returns:
+            True if message was sent successfully.
+        """
+        webhook_url = self.config["webhook_url"]
+
+        # Build payload with embeds for rich formatting
+        payload: dict[str, Any] = {"content": message}
+
+        # Add embeds for specific events
+        embeds = self._build_embeds(event)
+        if embeds:
+            payload["embeds"] = embeds
+
+        # Add optional overrides
+        if self.config.get("username"):
+            payload["username"] = self.config["username"]
+        if self.config.get("avatar_url"):
+            payload["avatar_url"] = self.config["avatar_url"]
+
+        payload.update(kwargs)
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(webhook_url, json=payload)
+            # Discord returns 204 on success
+            return response.status_code in (200, 204)
+
+    def _build_embeds(
+        self,
+        event: NotificationEvent | None,
+    ) -> list[dict[str, Any]]:
+        """Build Discord embeds for rich message formatting."""
+        if event is None:
+            return []
+
+        embed: dict[str, Any] = {
+            "timestamp": event.timestamp.isoformat(),
+            "footer": {"text": "Truthound Dashboard"},
+        }
+
+        if isinstance(event, ValidationFailedEvent):
+            embed["title"] = "🚨 Validation Failed"
+            embed["color"] = 0xFF0000 if event.has_critical else 0xFFA500
+            embed["fields"] = [
+                {"name": "Source", "value": event.source_name or "Unknown", "inline": True},
+                {"name": "Severity", "value": event.severity, "inline": True},
+                {"name": "Issues", "value": str(event.total_issues), "inline": True},
+            ]
+        elif isinstance(event, DriftDetectedEvent):
+            embed["title"] = "📊 Drift Detected"
+            embed["color"] = 0xFFA500
+            embed["fields"] = [
+                {"name": "Baseline", "value": event.baseline_source_name, "inline": True},
+                {"name": "Current", "value": event.current_source_name, "inline": True},
+                {"name": "Drift", "value": f"{event.drift_percentage:.1f}%", "inline": True},
+            ]
+        elif isinstance(event, ScheduleFailedEvent):
+            embed["title"] = "⏰ Schedule Failed"
+            embed["color"] = 0xFF6B6B
+            embed["fields"] = [
+                {"name": "Schedule", "value": event.schedule_name, "inline": True},
+                {"name": "Source", "value": event.source_name or "Unknown", "inline": True},
+            ]
+            if event.error_message:
+                embed["fields"].append({"name": "Error", "value": event.error_message[:1024], "inline": False})
+        elif isinstance(event, TestNotificationEvent):
+            embed["title"] = "✅ Test Notification"
+            embed["color"] = 0x00FF00
+            embed["description"] = f"Channel: {event.channel_name}"
+        else:
+            return []
+
+        return [embed]
+
+    def format_message(self, event: NotificationEvent) -> str:
+        """Format message for Discord."""
+        if isinstance(event, ValidationFailedEvent):
+            emoji = "🚨" if event.has_critical else "⚠️"
+            return f"{emoji} **Validation Failed** for `{event.source_name or 'Unknown'}`"
+
+        elif isinstance(event, ScheduleFailedEvent):
+            return f"⏰ **Schedule Failed**: `{event.schedule_name}`"
+
+        elif isinstance(event, DriftDetectedEvent):
+            return f"📊 **Drift Detected**: {event.drift_percentage:.1f}% drift"
+
+        elif isinstance(event, TestNotificationEvent):
+            return f"✅ **Test Notification** from truthound-dashboard"
+
+        return self._default_format(event)
+
+
+@ChannelRegistry.register("telegram")
+class TelegramChannel(BaseNotificationChannel):
+    """Telegram notification channel using Bot API.
+
+    Configuration:
+        bot_token: Telegram Bot API token
+        chat_id: Target chat/group/channel ID
+        parse_mode: Message parse mode (HTML or MarkdownV2)
+        disable_notification: Send silently (default: False)
+
+    Example config:
+        {
+            "bot_token": "123456789:ABCdefGHIjklMNOpqrsTUVwxyz",
+            "chat_id": "-1001234567890",
+            "parse_mode": "HTML"
+        }
+    """
+
+    channel_type = "telegram"
+
+    @classmethod
+    def get_config_schema(cls) -> dict[str, Any]:
+        """Get Telegram channel configuration schema."""
+        return {
+            "bot_token": {
+                "type": "string",
+                "required": True,
+                "secret": True,
+                "description": "Telegram Bot API token",
+            },
+            "chat_id": {
+                "type": "string",
+                "required": True,
+                "description": "Target chat/group/channel ID",
+            },
+            "parse_mode": {
+                "type": "string",
+                "required": False,
+                "default": "HTML",
+                "description": "Message parse mode (HTML or MarkdownV2)",
+            },
+            "disable_notification": {
+                "type": "boolean",
+                "required": False,
+                "default": False,
+                "description": "Send message silently",
+            },
+        }
+
+    async def send(
+        self,
+        message: str,
+        event: NotificationEvent | None = None,
+        **kwargs: Any,
+    ) -> bool:
+        """Send notification via Telegram Bot API.
+
+        Args:
+            message: Message text (supports HTML or Markdown).
+            event: Optional triggering event.
+            **kwargs: Additional Telegram API options.
+
+        Returns:
+            True if message was sent successfully.
+        """
+        bot_token = self.config["bot_token"]
+        chat_id = self.config["chat_id"]
+        api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": self.config.get("parse_mode", "HTML"),
+        }
+
+        if self.config.get("disable_notification"):
+            payload["disable_notification"] = True
+
+        payload.update(kwargs)
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(api_url, json=payload)
+            result = response.json()
+            return result.get("ok", False)
+
+    def format_message(self, event: NotificationEvent) -> str:
+        """Format message for Telegram with HTML."""
+        if isinstance(event, ValidationFailedEvent):
+            emoji = "🚨" if event.has_critical else "⚠️"
+            return (
+                f"{emoji} <b>Validation Failed</b>\n\n"
+                f"<b>Source:</b> {event.source_name or 'Unknown'}\n"
+                f"<b>Severity:</b> {event.severity}\n"
+                f"<b>Issues:</b> {event.total_issues}"
+            )
+
+        elif isinstance(event, ScheduleFailedEvent):
+            return (
+                f"⏰ <b>Schedule Failed</b>\n\n"
+                f"<b>Schedule:</b> {event.schedule_name}\n"
+                f"<b>Source:</b> {event.source_name or 'Unknown'}\n"
+                f"<b>Error:</b> {event.error_message or 'Validation failed'}"
+            )
+
+        elif isinstance(event, DriftDetectedEvent):
+            return (
+                f"📊 <b>Drift Detected</b>\n\n"
+                f"<b>Baseline:</b> {event.baseline_source_name}\n"
+                f"<b>Current:</b> {event.current_source_name}\n"
+                f"<b>Drift:</b> {event.drifted_columns}/{event.total_columns} columns "
+                f"({event.drift_percentage:.1f}%)"
+            )
+
+        elif isinstance(event, TestNotificationEvent):
+            return (
+                f"✅ <b>Test Notification</b>\n\n"
+                f"This is a test from truthound-dashboard.\n"
+                f"<b>Channel:</b> {event.channel_name}"
+            )
+
+        return self._default_format(event)
+
+
+@ChannelRegistry.register("pagerduty")
+class PagerDutyChannel(BaseNotificationChannel):
+    """PagerDuty notification channel using Events API v2.
+
+    Configuration:
+        routing_key: PagerDuty Events API v2 routing/integration key
+        severity: Default severity (critical, error, warning, info)
+        component: Optional component name
+        group: Optional logical grouping
+        class_type: Optional class/type of event
+
+    Example config:
+        {
+            "routing_key": "your-32-char-routing-key",
+            "severity": "error",
+            "component": "data-quality"
+        }
+    """
+
+    channel_type = "pagerduty"
+
+    EVENTS_API_URL = "https://events.pagerduty.com/v2/enqueue"
+
+    @classmethod
+    def get_config_schema(cls) -> dict[str, Any]:
+        """Get PagerDuty channel configuration schema."""
+        return {
+            "routing_key": {
+                "type": "string",
+                "required": True,
+                "secret": True,
+                "description": "PagerDuty Events API v2 routing key",
+            },
+            "severity": {
+                "type": "string",
+                "required": False,
+                "default": "error",
+                "description": "Default severity (critical, error, warning, info)",
+            },
+            "component": {
+                "type": "string",
+                "required": False,
+                "description": "Component name",
+            },
+            "group": {
+                "type": "string",
+                "required": False,
+                "description": "Logical grouping",
+            },
+            "class_type": {
+                "type": "string",
+                "required": False,
+                "description": "Event class/type",
+            },
+        }
+
+    async def send(
+        self,
+        message: str,
+        event: NotificationEvent | None = None,
+        action: str = "trigger",
+        dedup_key: str | None = None,
+        **kwargs: Any,
+    ) -> bool:
+        """Send event to PagerDuty.
+
+        Args:
+            message: Alert summary.
+            event: Optional triggering event.
+            action: Event action (trigger, acknowledge, resolve).
+            dedup_key: Optional deduplication key.
+            **kwargs: Additional PagerDuty event options.
+
+        Returns:
+            True if event was accepted.
+        """
+        routing_key = self.config["routing_key"]
+
+        # Determine severity from event
+        severity = self._determine_severity(event)
+
+        # Build payload
+        payload: dict[str, Any] = {
+            "routing_key": routing_key,
+            "event_action": action,
+            "payload": {
+                "summary": message[:1024],  # PagerDuty limit
+                "severity": severity,
+                "source": "truthound-dashboard",
+                "timestamp": event.timestamp.isoformat() if event else None,
+            },
+        }
+
+        # Add optional fields
+        if dedup_key:
+            payload["dedup_key"] = dedup_key
+        elif event:
+            # Generate dedup key from event
+            payload["dedup_key"] = f"truthound-{event.event_type}-{event.source_id or 'global'}"
+
+        if self.config.get("component"):
+            payload["payload"]["component"] = self.config["component"]
+        if self.config.get("group"):
+            payload["payload"]["group"] = self.config["group"]
+        if self.config.get("class_type"):
+            payload["payload"]["class"] = self.config["class_type"]
+
+        # Add custom details
+        if event:
+            payload["payload"]["custom_details"] = event.to_dict()
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(self.EVENTS_API_URL, json=payload)
+            return response.status_code == 202
+
+    def _determine_severity(self, event: NotificationEvent | None) -> str:
+        """Determine PagerDuty severity from event."""
+        default_severity = self.config.get("severity", "error")
+
+        if event is None:
+            return default_severity
+
+        if isinstance(event, ValidationFailedEvent):
+            if event.has_critical:
+                return "critical"
+            elif event.has_high:
+                return "error"
+            return "warning"
+
+        elif isinstance(event, ScheduleFailedEvent):
+            return "error"
+
+        elif isinstance(event, DriftDetectedEvent):
+            return "warning" if event.has_high_drift else "info"
+
+        elif isinstance(event, TestNotificationEvent):
+            return "info"
+
+        return default_severity
+
+    def format_message(self, event: NotificationEvent) -> str:
+        """Format message for PagerDuty alert summary."""
+        if isinstance(event, ValidationFailedEvent):
+            return (
+                f"Validation failed for {event.source_name or 'Unknown'}: "
+                f"{event.total_issues} {event.severity} issues"
+            )
+
+        elif isinstance(event, ScheduleFailedEvent):
+            return f"Scheduled validation failed: {event.schedule_name}"
+
+        elif isinstance(event, DriftDetectedEvent):
+            return (
+                f"Data drift detected: {event.drifted_columns}/{event.total_columns} columns "
+                f"({event.drift_percentage:.1f}%)"
+            )
+
+        elif isinstance(event, TestNotificationEvent):
+            return f"Test alert from truthound-dashboard ({event.channel_name})"
+
+        return self._default_format(event)
+
+
+@ChannelRegistry.register("opsgenie")
+class OpsGenieChannel(BaseNotificationChannel):
+    """OpsGenie notification channel using Alert API.
+
+    Configuration:
+        api_key: OpsGenie API key
+        priority: Default priority (P1-P5)
+        tags: Optional list of tags
+        team: Optional team name
+        responders: Optional list of responders
+
+    Example config:
+        {
+            "api_key": "your-opsgenie-api-key",
+            "priority": "P3",
+            "tags": ["data-quality", "automated"],
+            "team": "data-platform"
+        }
+    """
+
+    channel_type = "opsgenie"
+
+    API_URL = "https://api.opsgenie.com/v2/alerts"
+
+    @classmethod
+    def get_config_schema(cls) -> dict[str, Any]:
+        """Get OpsGenie channel configuration schema."""
+        return {
+            "api_key": {
+                "type": "string",
+                "required": True,
+                "secret": True,
+                "description": "OpsGenie API key",
+            },
+            "priority": {
+                "type": "string",
+                "required": False,
+                "default": "P3",
+                "description": "Default priority (P1-P5)",
+            },
+            "tags": {
+                "type": "array",
+                "required": False,
+                "items": {"type": "string"},
+                "description": "Alert tags",
+            },
+            "team": {
+                "type": "string",
+                "required": False,
+                "description": "Team name",
+            },
+            "responders": {
+                "type": "array",
+                "required": False,
+                "items": {"type": "object"},
+                "description": "List of responders",
+            },
+        }
+
+    async def send(
+        self,
+        message: str,
+        event: NotificationEvent | None = None,
+        alias: str | None = None,
+        **kwargs: Any,
+    ) -> bool:
+        """Send alert to OpsGenie.
+
+        Args:
+            message: Alert message.
+            event: Optional triggering event.
+            alias: Optional unique alert identifier.
+            **kwargs: Additional OpsGenie alert options.
+
+        Returns:
+            True if alert was created.
+        """
+        api_key = self.config["api_key"]
+
+        # Determine priority from event
+        priority = self._determine_priority(event)
+
+        # Build payload
+        payload: dict[str, Any] = {
+            "message": message[:130],  # OpsGenie message limit
+            "priority": priority,
+            "source": "truthound-dashboard",
+        }
+
+        # Add alias for deduplication
+        if alias:
+            payload["alias"] = alias
+        elif event:
+            payload["alias"] = f"truthound-{event.event_type}-{event.source_id or 'global'}"
+
+        # Add description with full details
+        if event:
+            payload["description"] = self._build_description(event)
+
+        # Add optional fields
+        tags = list(self.config.get("tags", [])) + ["truthound"]
+        payload["tags"] = tags
+
+        if self.config.get("team"):
+            payload["responders"] = [{"type": "team", "name": self.config["team"]}]
+        elif self.config.get("responders"):
+            payload["responders"] = self.config["responders"]
+
+        # Add details
+        if event:
+            payload["details"] = {
+                "event_type": event.event_type,
+                "source_id": event.source_id,
+                "source_name": event.source_name,
+                "timestamp": event.timestamp.isoformat(),
+            }
+
+        headers = {
+            "Authorization": f"GenieKey {api_key}",
+            "Content-Type": "application/json",
+        }
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(self.API_URL, json=payload, headers=headers)
+            return response.status_code == 202
+
+    def _determine_priority(self, event: NotificationEvent | None) -> str:
+        """Determine OpsGenie priority from event."""
+        default_priority = self.config.get("priority", "P3")
+
+        if event is None:
+            return default_priority
+
+        if isinstance(event, ValidationFailedEvent):
+            if event.has_critical:
+                return "P1"
+            elif event.has_high:
+                return "P2"
+            return "P3"
+
+        elif isinstance(event, ScheduleFailedEvent):
+            return "P2"
+
+        elif isinstance(event, DriftDetectedEvent):
+            return "P3" if event.has_high_drift else "P4"
+
+        elif isinstance(event, TestNotificationEvent):
+            return "P5"
+
+        return default_priority
+
+    def _build_description(self, event: NotificationEvent) -> str:
+        """Build detailed description for OpsGenie alert."""
+        if isinstance(event, ValidationFailedEvent):
+            return (
+                f"Validation failed for source: {event.source_name or 'Unknown'}\n\n"
+                f"Severity: {event.severity}\n"
+                f"Total Issues: {event.total_issues}\n"
+                f"Critical Issues: {event.has_critical}\n"
+                f"High Severity Issues: {event.has_high}\n"
+                f"Validation ID: {event.validation_id}"
+            )
+
+        elif isinstance(event, ScheduleFailedEvent):
+            return (
+                f"Scheduled validation failed\n\n"
+                f"Schedule: {event.schedule_name}\n"
+                f"Source: {event.source_name or 'Unknown'}\n"
+                f"Error: {event.error_message or 'Validation failed'}"
+            )
+
+        elif isinstance(event, DriftDetectedEvent):
+            return (
+                f"Data drift detected between datasets\n\n"
+                f"Baseline: {event.baseline_source_name}\n"
+                f"Current: {event.current_source_name}\n"
+                f"Drifted Columns: {event.drifted_columns}/{event.total_columns}\n"
+                f"Drift Percentage: {event.drift_percentage:.1f}%"
+            )
+
+        return f"Event type: {event.event_type}"
+
+    def format_message(self, event: NotificationEvent) -> str:
+        """Format message for OpsGenie alert (short)."""
+        if isinstance(event, ValidationFailedEvent):
+            return f"Validation failed: {event.source_name or 'Unknown'} ({event.severity})"
+
+        elif isinstance(event, ScheduleFailedEvent):
+            return f"Schedule failed: {event.schedule_name}"
+
+        elif isinstance(event, DriftDetectedEvent):
+            return f"Drift detected: {event.drift_percentage:.1f}%"
+
+        elif isinstance(event, TestNotificationEvent):
+            return f"Test alert: {event.channel_name}"
+
+        return self._default_format(event)
+
+
+@ChannelRegistry.register("teams")
+class TeamsChannel(BaseNotificationChannel):
+    """Microsoft Teams notification channel using webhooks.
+
+    Configuration:
+        webhook_url: Teams incoming webhook URL
+        theme_color: Optional accent color (hex without #)
+
+    Example config:
+        {
+            "webhook_url": "https://outlook.office.com/webhook/...",
+            "theme_color": "fd9e4b"
+        }
+    """
+
+    channel_type = "teams"
+
+    @classmethod
+    def get_config_schema(cls) -> dict[str, Any]:
+        """Get Teams channel configuration schema."""
+        return {
+            "webhook_url": {
+                "type": "string",
+                "required": True,
+                "description": "Teams incoming webhook URL",
+            },
+            "theme_color": {
+                "type": "string",
+                "required": False,
+                "default": "fd9e4b",
+                "description": "Accent color (hex without #)",
+            },
+        }
+
+    async def send(
+        self,
+        message: str,
+        event: NotificationEvent | None = None,
+        **kwargs: Any,
+    ) -> bool:
+        """Send notification to Microsoft Teams.
+
+        Args:
+            message: Message text.
+            event: Optional triggering event.
+            **kwargs: Additional Teams message options.
+
+        Returns:
+            True if message was sent successfully.
+        """
+        webhook_url = self.config["webhook_url"]
+
+        # Build Adaptive Card payload
+        payload = self._build_card(message, event)
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(webhook_url, json=payload)
+            return response.status_code == 200
+
+    def _build_card(
+        self,
+        message: str,
+        event: NotificationEvent | None,
+    ) -> dict[str, Any]:
+        """Build Teams Adaptive Card payload."""
+        theme_color = self.config.get("theme_color", "fd9e4b")
+
+        # Build card content
+        card: dict[str, Any] = {
+            "@type": "MessageCard",
+            "@context": "http://schema.org/extensions",
+            "themeColor": theme_color,
+            "summary": message[:150],
+            "sections": [],
+        }
+
+        # Build sections based on event type
+        if isinstance(event, ValidationFailedEvent):
+            card["title"] = "🚨 Validation Failed"
+            card["sections"].append({
+                "activityTitle": event.source_name or "Unknown Source",
+                "activitySubtitle": f"Severity: {event.severity}",
+                "facts": [
+                    {"name": "Total Issues", "value": str(event.total_issues)},
+                    {"name": "Critical", "value": "Yes" if event.has_critical else "No"},
+                    {"name": "High", "value": "Yes" if event.has_high else "No"},
+                    {"name": "Validation ID", "value": event.validation_id[:8] + "..."},
+                ],
+                "markdown": True,
+            })
+
+        elif isinstance(event, ScheduleFailedEvent):
+            card["title"] = "⏰ Schedule Failed"
+            card["sections"].append({
+                "activityTitle": event.schedule_name,
+                "activitySubtitle": event.source_name or "Unknown Source",
+                "facts": [
+                    {"name": "Error", "value": event.error_message or "Validation failed"},
+                ],
+                "markdown": True,
+            })
+
+        elif isinstance(event, DriftDetectedEvent):
+            card["title"] = "📊 Drift Detected"
+            card["sections"].append({
+                "activityTitle": "Data Drift Analysis",
+                "facts": [
+                    {"name": "Baseline", "value": event.baseline_source_name},
+                    {"name": "Current", "value": event.current_source_name},
+                    {"name": "Drifted Columns", "value": f"{event.drifted_columns}/{event.total_columns}"},
+                    {"name": "Drift %", "value": f"{event.drift_percentage:.1f}%"},
+                ],
+                "markdown": True,
+            })
+
+        elif isinstance(event, TestNotificationEvent):
+            card["title"] = "✅ Test Notification"
+            card["sections"].append({
+                "activityTitle": "truthound-dashboard",
+                "activitySubtitle": f"Channel: {event.channel_name}",
+                "text": "This is a test notification.",
+                "markdown": True,
+            })
+
+        else:
+            card["title"] = "Truthound Notification"
+            card["sections"].append({
+                "text": message,
+                "markdown": True,
+            })
+
+        return card
+
+    def format_message(self, event: NotificationEvent) -> str:
+        """Format message for Teams."""
+        if isinstance(event, ValidationFailedEvent):
+            return (
+                f"Validation failed for {event.source_name or 'Unknown'}: "
+                f"{event.total_issues} issues ({event.severity})"
+            )
+
+        elif isinstance(event, ScheduleFailedEvent):
+            return f"Schedule '{event.schedule_name}' failed"
+
+        elif isinstance(event, DriftDetectedEvent):
+            return (
+                f"Drift detected: {event.drifted_columns} columns "
+                f"({event.drift_percentage:.1f}%)"
+            )
+
+        elif isinstance(event, TestNotificationEvent):
+            return "Test notification from truthound-dashboard"
+
+        return self._default_format(event)
+
+
+@ChannelRegistry.register("github")
+class GitHubChannel(BaseNotificationChannel):
+    """GitHub notification channel for creating issues.
+
+    Configuration:
+        token: GitHub personal access token
+        owner: Repository owner
+        repo: Repository name
+        labels: Optional list of labels to apply
+        assignees: Optional list of assignees
+
+    Example config:
+        {
+            "token": "ghp_xxxxxxxxxxxxxxxxxxxx",
+            "owner": "myorg",
+            "repo": "data-quality",
+            "labels": ["data-quality", "automated"],
+            "assignees": ["data-team-lead"]
+        }
+    """
+
+    channel_type = "github"
+
+    API_URL = "https://api.github.com"
+
+    @classmethod
+    def get_config_schema(cls) -> dict[str, Any]:
+        """Get GitHub channel configuration schema."""
+        return {
+            "token": {
+                "type": "string",
+                "required": True,
+                "secret": True,
+                "description": "GitHub personal access token",
+            },
+            "owner": {
+                "type": "string",
+                "required": True,
+                "description": "Repository owner",
+            },
+            "repo": {
+                "type": "string",
+                "required": True,
+                "description": "Repository name",
+            },
+            "labels": {
+                "type": "array",
+                "required": False,
+                "items": {"type": "string"},
+                "description": "Labels to apply to issues",
+            },
+            "assignees": {
+                "type": "array",
+                "required": False,
+                "items": {"type": "string"},
+                "description": "Users to assign",
+            },
+        }
+
+    async def send(
+        self,
+        message: str,
+        event: NotificationEvent | None = None,
+        title: str | None = None,
+        **kwargs: Any,
+    ) -> bool:
+        """Create GitHub issue for notification.
+
+        Args:
+            message: Issue body.
+            event: Optional triggering event.
+            title: Optional title override.
+            **kwargs: Additional issue options.
+
+        Returns:
+            True if issue was created.
+        """
+        token = self.config["token"]
+        owner = self.config["owner"]
+        repo = self.config["repo"]
+
+        # Build issue title
+        if title is None:
+            title = self._build_title(event)
+
+        # Build issue body
+        body = self._build_body(message, event)
+
+        # Build payload
+        payload: dict[str, Any] = {
+            "title": title,
+            "body": body,
+        }
+
+        # Add optional fields
+        labels = list(self.config.get("labels", [])) + ["truthound-alert"]
+        payload["labels"] = labels
+
+        if self.config.get("assignees"):
+            payload["assignees"] = self.config["assignees"]
+
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+
+        url = f"{self.API_URL}/repos/{owner}/{repo}/issues"
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(url, json=payload, headers=headers)
+            return response.status_code == 201
+
+    def _build_title(self, event: NotificationEvent | None) -> str:
+        """Build issue title from event."""
+        if event is None:
+            return "[Truthound] Alert"
+
+        if isinstance(event, ValidationFailedEvent):
+            return f"[Truthound] Validation Failed: {event.source_name or 'Unknown'}"
+
+        elif isinstance(event, ScheduleFailedEvent):
+            return f"[Truthound] Schedule Failed: {event.schedule_name}"
+
+        elif isinstance(event, DriftDetectedEvent):
+            return f"[Truthound] Drift Detected: {event.baseline_source_name}"
+
+        elif isinstance(event, TestNotificationEvent):
+            return f"[Truthound] Test Issue: {event.channel_name}"
+
+        return f"[Truthound] {event.event_type}"
+
+    def _build_body(self, message: str, event: NotificationEvent | None) -> str:
+        """Build issue body with markdown formatting."""
+        body_parts = [
+            "## Truthound Dashboard Alert",
+            "",
+            message,
+            "",
+        ]
+
+        if event:
+            body_parts.extend([
+                "## Details",
+                "",
+                f"- **Event Type:** `{event.event_type}`",
+                f"- **Timestamp:** {event.timestamp.isoformat()}",
+            ])
+
+            if event.source_id:
+                body_parts.append(f"- **Source ID:** `{event.source_id}`")
+            if event.source_name:
+                body_parts.append(f"- **Source Name:** {event.source_name}")
+
+            if isinstance(event, ValidationFailedEvent):
+                body_parts.extend([
+                    "",
+                    "### Validation Summary",
+                    "",
+                    f"| Metric | Value |",
+                    f"|--------|-------|",
+                    f"| Severity | {event.severity} |",
+                    f"| Total Issues | {event.total_issues} |",
+                    f"| Critical | {'Yes' if event.has_critical else 'No'} |",
+                    f"| High | {'Yes' if event.has_high else 'No'} |",
+                    f"| Validation ID | `{event.validation_id}` |",
+                ])
+
+            elif isinstance(event, DriftDetectedEvent):
+                body_parts.extend([
+                    "",
+                    "### Drift Summary",
+                    "",
+                    f"| Metric | Value |",
+                    f"|--------|-------|",
+                    f"| Baseline | {event.baseline_source_name} |",
+                    f"| Current | {event.current_source_name} |",
+                    f"| Drifted Columns | {event.drifted_columns}/{event.total_columns} |",
+                    f"| Drift % | {event.drift_percentage:.1f}% |",
+                ])
+
+        body_parts.extend([
+            "",
+            "---",
+            "_This issue was automatically created by truthound-dashboard._",
+        ])
+
+        return "\n".join(body_parts)
+
+    def format_message(self, event: NotificationEvent) -> str:
+        """Format message for GitHub issue body."""
+        if isinstance(event, ValidationFailedEvent):
+            return (
+                f"A validation failure has been detected.\n\n"
+                f"**Source:** {event.source_name or 'Unknown'}\n"
+                f"**Severity:** {event.severity}\n"
+                f"**Total Issues:** {event.total_issues}"
+            )
+
+        elif isinstance(event, ScheduleFailedEvent):
+            return (
+                f"A scheduled validation has failed.\n\n"
+                f"**Schedule:** {event.schedule_name}\n"
+                f"**Source:** {event.source_name or 'Unknown'}\n"
+                f"**Error:** {event.error_message or 'Validation failed'}"
+            )
+
+        elif isinstance(event, DriftDetectedEvent):
+            return (
+                f"Data drift has been detected between datasets.\n\n"
+                f"**Baseline:** {event.baseline_source_name}\n"
+                f"**Current:** {event.current_source_name}\n"
+                f"**Drift:** {event.drift_percentage:.1f}%"
+            )
+
+        elif isinstance(event, TestNotificationEvent):
+            return (
+                f"This is a test issue created by truthound-dashboard.\n\n"
+                f"**Channel:** {event.channel_name}"
+            )
 
         return self._default_format(event)
