@@ -49,12 +49,15 @@ const notificationsContent = {
 
     // Channel types
     channelTypes: {
-      slack: t({ en: 'Slack', ko: 'Slack',
-  }),
-      email: t({ en: 'Email', ko: '이메일',
-  }),
-      webhook: t({ en: 'Webhook', ko: '웹훅',
-  }),
+      slack: t({ en: 'Slack', ko: 'Slack' }),
+      email: t({ en: 'Email', ko: '이메일' }),
+      webhook: t({ en: 'Webhook', ko: '웹훅' }),
+      discord: t({ en: 'Discord', ko: 'Discord' }),
+      telegram: t({ en: 'Telegram', ko: 'Telegram' }),
+      pagerduty: t({ en: 'PagerDuty', ko: 'PagerDuty' }),
+      opsgenie: t({ en: 'OpsGenie', ko: 'OpsGenie' }),
+      teams: t({ en: 'Microsoft Teams', ko: 'Microsoft Teams' }),
+      github: t({ en: 'GitHub', ko: 'GitHub' }),
     },
 
     // Conditions

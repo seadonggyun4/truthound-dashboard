@@ -20,7 +20,22 @@ const navContent = {
     notifications: t({ en: 'Notifications', ko: '알림' }),
     profile: t({ en: 'Profile', ko: '프로필' }),
     drift: t({ en: 'Drift', ko: '드리프트' }),
+    driftMonitoring: t({ en: 'Drift Monitoring', ko: '드리프트 모니터링' }),
+    lineage: t({ en: 'Lineage', ko: '리니지' }),
+    anomaly: t({ en: 'Anomaly Detection', ko: '이상 탐지' }),
+    privacy: t({ en: 'Privacy', ko: '프라이버시' }),
+    modelMonitoring: t({ en: 'Model Monitoring', ko: '모델 모니터링' }),
+    notificationsAdvanced: t({ en: 'Advanced Notifications', ko: '고급 알림' }),
+    alerts: t({ en: 'Alerts', ko: '알림 센터' }),
     settings: t({ en: 'Settings', ko: '설정' }),
+    maintenance: t({ en: 'Maintenance', ko: '유지보수' }),
+    // Section labels
+    sections: {
+      dataManagement: t({ en: 'Data Management', ko: '데이터 관리' }),
+      dataQuality: t({ en: 'Data Quality', ko: '데이터 품질' }),
+      mlMonitoring: t({ en: 'ML & Monitoring', ko: 'ML & 모니터링' }),
+      system: t({ en: 'System', ko: '시스템' }),
+    },
   },
 } satisfies Dictionary
 

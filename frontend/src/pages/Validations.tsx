@@ -8,11 +8,14 @@ import {
   Clock,
   Columns,
   Rows3,
+  GitBranch,
+  Loader2,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { getValidation, type Validation } from '@/api/client'
+import { ReportDownloadButton } from '@/components/reports'
+import { getValidation, createVersion, type Validation } from '@/api/client'
 import { formatDate, formatDuration, formatNumber } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 
@@ -20,6 +23,7 @@ export default function Validations() {
   const { id } = useParams<{ id: string }>()
   const [validation, setValidation] = useState<Validation | null>(null)
   const [loading, setLoading] = useState(true)
+  const [creatingVersion, setCreatingVersion] = useState(false)
   const { toast } = useToast()
 
   const loadValidation = useCallback(async () => {
@@ -42,6 +46,29 @@ export default function Validations() {
   useEffect(() => {
     loadValidation()
   }, [loadValidation])
+
+  async function handleCreateVersion() {
+    if (!validation) return
+    try {
+      setCreatingVersion(true)
+      const result = await createVersion({
+        validation_id: validation.id,
+        strategy: 'incremental',
+      })
+      toast({
+        title: 'Version Created',
+        description: `Created version ${result.data.version_number}`,
+      })
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to create version',
+        variant: 'destructive',
+      })
+    } finally {
+      setCreatingVersion(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -99,12 +126,30 @@ export default function Validations() {
             {formatDate(validation.created_at)}
           </p>
         </div>
-        <Badge
-          variant={validation.passed ? 'success' : 'destructive'}
-          className="text-lg px-4 py-1"
-        >
-          {validation.status}
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={handleCreateVersion}
+            disabled={creatingVersion || (validation.status !== 'success' && validation.status !== 'failed')}
+          >
+            {creatingVersion ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <GitBranch className="mr-2 h-4 w-4" />
+            )}
+            Create Version
+          </Button>
+          <ReportDownloadButton
+            validationId={validation.id}
+            disabled={validation.status !== 'success' && validation.status !== 'failed'}
+          />
+          <Badge
+            variant={validation.passed ? 'success' : 'destructive'}
+            className="text-lg px-4 py-1"
+          >
+            {validation.status}
+          </Badge>
+        </div>
       </div>
 
       {/* Stats */}

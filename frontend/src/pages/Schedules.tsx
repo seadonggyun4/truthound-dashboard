@@ -49,6 +49,7 @@ import { formatDate } from '@/lib/utils'
 import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
 import { ValidatorSelector } from '@/components/validators'
+import { TriggerBuilder, type TriggerConfig } from '@/components/triggers'
 import {
   Clock,
   Plus,
@@ -59,6 +60,11 @@ import {
   PlayCircle,
   Calendar,
   Sliders,
+  Timer,
+  TrendingUp,
+  Layers,
+  Zap,
+  Hand,
 } from 'lucide-react'
 
 export default function Schedules() {
@@ -95,6 +101,11 @@ export default function Schedules() {
   const [formSourceId, setFormSourceId] = useState('')
   const [formCron, setFormCron] = useState('0 0 * * *')
   const [formNotify, setFormNotify] = useState(true)
+  const [triggerConfig, setTriggerConfig] = useState<TriggerConfig>({
+    type: 'cron',
+    expression: '0 0 * * *',
+  })
+  const [useAdvancedTrigger, setUseAdvancedTrigger] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -152,7 +163,17 @@ export default function Schedules() {
   }, [])
 
   const handleCreate = async () => {
-    if (!formName || !formSourceId || !formCron) {
+    if (!formName || !formSourceId) {
+      toast({
+        variant: 'destructive',
+        title: str(common.error),
+        description: str(schedules_t.fillRequired),
+      })
+      return
+    }
+
+    // Validate cron expression for basic mode
+    if (!useAdvancedTrigger && !formCron) {
       toast({
         variant: 'destructive',
         title: str(common.error),
@@ -167,13 +188,31 @@ export default function Schedules() {
       const enabledConfigs = validatorConfigs.filter((c) => c.enabled)
       const config = enabledConfigs.length > 0 ? { validator_configs: enabledConfigs } : undefined
 
-      const result = await createSchedule({
+      // Build schedule create request
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const createData: any = {
         name: formName,
         source_id: formSourceId,
-        cron_expression: formCron,
         notify_on_failure: formNotify,
         config,
-      })
+      }
+
+      if (useAdvancedTrigger) {
+        // Use advanced trigger configuration
+        createData.trigger_type = triggerConfig.type
+        createData.trigger_config = triggerConfig
+        // For cron triggers, also set cron_expression for backward compatibility
+        if (triggerConfig.type === 'cron' && 'expression' in triggerConfig) {
+          createData.cron_expression = triggerConfig.expression
+        }
+      } else {
+        // Use simple cron mode
+        createData.trigger_type = 'cron'
+        createData.cron_expression = formCron
+        createData.trigger_config = { type: 'cron', expression: formCron }
+      }
+
+      const result = await createSchedule(createData)
 
       setSchedules((prev) => [result.data, ...prev])
       setDialogOpen(false)
@@ -202,6 +241,8 @@ export default function Schedules() {
     setValidatorConfigs([])
     setSelectedSourceSchema(null)
     setDialogTab('basic')
+    setTriggerConfig({ type: 'cron', expression: '0 0 * * *' })
+    setUseAdvancedTrigger(false)
   }
 
   const handleDialogOpen = (open: boolean) => {
@@ -285,6 +326,50 @@ export default function Schedules() {
     return source?.name || id.slice(0, 8)
   }
 
+  const getTriggerIcon = (type: string) => {
+    switch (type) {
+      case 'cron':
+        return <Clock className="h-4 w-4" />
+      case 'interval':
+        return <Timer className="h-4 w-4" />
+      case 'data_change':
+        return <TrendingUp className="h-4 w-4" />
+      case 'composite':
+        return <Layers className="h-4 w-4" />
+      case 'event':
+        return <Zap className="h-4 w-4" />
+      case 'manual':
+        return <Hand className="h-4 w-4" />
+      default:
+        return <Clock className="h-4 w-4" />
+    }
+  }
+
+  const getTriggerSummary = (schedule: Schedule): string => {
+    const config = schedule.trigger_config
+    if (!config) return '-'
+
+    switch (schedule.trigger_type) {
+      case 'interval': {
+        const parts: string[] = []
+        if (config.days) parts.push(`${config.days}d`)
+        if (config.hours) parts.push(`${config.hours}h`)
+        if (config.minutes) parts.push(`${config.minutes}m`)
+        return `Every ${parts.join(' ') || '-'}`
+      }
+      case 'data_change':
+        return `≥${((config.change_threshold || 0.05) * 100).toFixed(0)}% change`
+      case 'composite':
+        return `${(config.operator || 'and').toUpperCase()} (${config.triggers?.length || 0} triggers)`
+      case 'event':
+        return (config.event_types || []).slice(0, 2).join(', ')
+      case 'manual':
+        return 'API/UI only'
+      default:
+        return '-'
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -318,10 +403,19 @@ export default function Schedules() {
             </DialogHeader>
 
             <Tabs value={dialogTab} onValueChange={setDialogTab} className="flex-1 overflow-hidden flex flex-col">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="basic">
                   <Clock className="h-4 w-4 mr-2" />
                   Basic Settings
+                </TabsTrigger>
+                <TabsTrigger value="trigger">
+                  <Timer className="h-4 w-4 mr-2" />
+                  Trigger
+                  {useAdvancedTrigger && triggerConfig.type !== 'cron' && (
+                    <Badge variant="secondary" className="ml-2">
+                      {triggerConfig.type}
+                    </Badge>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="validators" disabled={!formSourceId}>
                   <Sliders className="h-4 w-4 mr-2" />
@@ -360,31 +454,6 @@ export default function Schedules() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>{common.schedule}</Label>
-                  <Select value={formCron} onValueChange={setFormCron}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CRON_PRESETS.map((p) => (
-                        <SelectItem key={p.value} value={p.value}>
-                          {p.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    placeholder={str(schedules_t.customCron)}
-                    value={formCron}
-                    onChange={(e) => setFormCron(e.target.value)}
-                    className="mt-2"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {schedules_t.cronFormat}
-                  </p>
-                </div>
-
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="notify"
@@ -394,14 +463,85 @@ export default function Schedules() {
                   <Label htmlFor="notify">{schedules_t.notifyOnFailure}</Label>
                 </div>
 
-                {formSourceId && (
-                  <div className="pt-4 border-t">
-                    <p className="text-sm text-muted-foreground">
-                      Select a source first, then configure validators in the "Validators" tab.
-                      If no validators are configured, all validators will run by default.
-                    </p>
+                <div className="pt-4 border-t space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="advanced-trigger"
+                      checked={useAdvancedTrigger}
+                      onCheckedChange={setUseAdvancedTrigger}
+                    />
+                    <Label htmlFor="advanced-trigger">Use advanced trigger options</Label>
                   </div>
-                )}
+
+                  {!useAdvancedTrigger && (
+                    <div className="space-y-2">
+                      <Label>{common.schedule}</Label>
+                      <Select value={formCron} onValueChange={setFormCron}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CRON_PRESETS.map((p) => (
+                            <SelectItem key={p.value} value={p.value}>
+                              {p.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        placeholder={str(schedules_t.customCron)}
+                        value={formCron}
+                        onChange={(e) => setFormCron(e.target.value)}
+                        className="mt-2"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {schedules_t.cronFormat}
+                      </p>
+                    </div>
+                  )}
+
+                  {useAdvancedTrigger && (
+                    <p className="text-sm text-muted-foreground">
+                      Configure advanced trigger options in the "Trigger" tab to set up
+                      data change detection, composite triggers, event-driven execution, and more.
+                    </p>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="trigger" className="py-4 overflow-y-auto flex-1">
+                <div className="space-y-4">
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <h4 className="font-medium mb-2">Trigger Types</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>Cron - Traditional scheduling</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Timer className="h-3 w-3" />
+                        <span>Interval - Fixed time intervals</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <TrendingUp className="h-3 w-3" />
+                        <span>Data Change - Profile-based detection</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Layers className="h-3 w-3" />
+                        <span>Composite - Combine triggers</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Zap className="h-3 w-3" />
+                        <span>Event - System event driven</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Hand className="h-3 w-3" />
+                        <span>Manual - API/UI only</span>
+                      </div>
+                    </div>
+                  </div>
+                  <TriggerBuilder value={triggerConfig} onChange={setTriggerConfig} />
+                </div>
               </TabsContent>
 
               <TabsContent value="validators" className="py-4 overflow-y-auto flex-1">
@@ -507,10 +647,21 @@ export default function Schedules() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="grid grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <div className="text-muted-foreground">Trigger Type</div>
+                    <div className="flex items-center gap-1.5">
+                      {getTriggerIcon(s.trigger_type || 'cron')}
+                      <span className="capitalize">{s.trigger_type || 'cron'}</span>
+                    </div>
+                  </div>
                   <div>
                     <div className="text-muted-foreground">{schedules_t.cronExpression}</div>
-                    <div className="font-mono">{s.cron_expression}</div>
+                    <div className="font-mono text-xs">
+                      {s.trigger_type === 'cron' || !s.trigger_type
+                        ? s.cron_expression
+                        : getTriggerSummary(s)}
+                    </div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">{schedules_t.lastRun}</div>
