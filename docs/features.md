@@ -211,19 +211,25 @@ Compare two datasets to detect changes using th.compare().
 | **psi** | Any distribution | Population Stability Index (industry standard) |
 | **chi2** | Categorical data | Chi-Square test |
 | **js** | Probability distributions | Jensen-Shannon divergence (symmetric, bounded) |
-| **kl** | Distribution comparison | Kullback-Leibler divergence |
-| **wasserstein** | Non-overlapping | Earth Mover's Distance |
-| **cvm** | Tail sensitivity | Cramér-von Mises test |
-| **anderson** | Tail weighted | Anderson-Darling test |
 
-### Multiple Testing Correction
+### Sampling Strategies
 
-| Method | Description |
-|--------|-------------|
-| **none** | No correction |
-| **bonferroni** | Conservative, independent tests |
-| **holm** | Sequential adjustment |
-| **bh** | Benjamini-Hochberg FDR control (default) |
+For large datasets, dashboard supports 4 sampling strategies:
+
+| Strategy | Description | Best For |
+|----------|-------------|----------|
+| **Random** | Simple random sampling | Unbiased sampling |
+| **Stratified** | Proportional sampling by strata | Maintaining class distribution |
+| **Reservoir** | Stream-based sampling | Large datasets or streaming data |
+| **Systematic** | Every nth row | Fast sampling |
+
+### Drift Monitoring Features
+
+- **Trend Visualization**: Historical drift scores over time
+- **Alerting**: Configurable thresholds for drift detection
+- **Root Cause Analysis**: Identify columns causing drift
+- **Remediation Suggestions**: Actionable recommendations
+- **Large Dataset Support**: Chunked processing for datasets over 1M rows
 
 ### Comparison Result
 
