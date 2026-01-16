@@ -17,6 +17,15 @@ import GlossaryDetail from './pages/GlossaryDetail'
 import Catalog from './pages/Catalog'
 import CatalogDetail from './pages/CatalogDetail'
 import Activity from './pages/Activity'
+import Maintenance from './pages/Maintenance'
+import VersionHistory from './pages/VersionHistory'
+import Lineage from './pages/Lineage'
+import Anomaly from './pages/Anomaly'
+import Privacy from './pages/Privacy'
+import DriftMonitoring from './pages/DriftMonitoring'
+import NotificationsAdvanced from './pages/NotificationsAdvanced'
+import ModelMonitoring from './pages/ModelMonitoring'
+import Alerts from './pages/Alerts'
 
 function App() {
   return (
@@ -29,8 +38,10 @@ function App() {
           <Route path="sources/:id/rules" element={<Rules />} />
           <Route path="sources/:id/history" element={<History />} />
           <Route path="sources/:id/profile" element={<Profile />} />
+          <Route path="sources/:id/versions" element={<VersionHistory />} />
           <Route path="validations/:id" element={<Validations />} />
           <Route path="drift" element={<Drift />} />
+          <Route path="lineage" element={<Lineage />} />
           <Route path="schedules" element={<Schedules />} />
           <Route path="notifications" element={<Notifications />} />
           {/* Phase 5: Business Glossary & Data Catalog */}
@@ -39,6 +50,16 @@ function App() {
           <Route path="catalog" element={<Catalog />} />
           <Route path="catalog/:id" element={<CatalogDetail />} />
           <Route path="activity" element={<Activity />} />
+          {/* Phase 4: Maintenance */}
+          <Route path="maintenance" element={<Maintenance />} />
+          {/* Phase 10: Advanced ML & Data Quality */}
+          <Route path="anomaly" element={<Anomaly />} />
+          <Route path="privacy" element={<Privacy />} />
+          <Route path="drift-monitoring" element={<DriftMonitoring />} />
+          <Route path="notifications/advanced" element={<NotificationsAdvanced />} />
+          <Route path="model-monitoring" element={<ModelMonitoring />} />
+          {/* Unified Alerts */}
+          <Route path="alerts" element={<Alerts />} />
         </Route>
       </Routes>
     </Suspense>

@@ -6,6 +6,14 @@
 import type { Schedule } from '@/api/client'
 import { createId, createTimestamp, randomChoice, randomInt, faker } from './base'
 
+export type TriggerType =
+  | 'cron'
+  | 'interval'
+  | 'data_change'
+  | 'composite'
+  | 'event'
+  | 'manual'
+
 export interface ScheduleFactoryOptions {
   id?: string
   sourceId?: string
@@ -14,6 +22,8 @@ export interface ScheduleFactoryOptions {
   isActive?: boolean
   hasRun?: boolean
   cronExpression?: string
+  triggerType?: TriggerType
+  triggerConfig?: Record<string, unknown>
   notifyOnFailure?: boolean
   validators?: string[]
   autoSchema?: boolean
@@ -147,6 +157,40 @@ function calculateLastRun(hasRun: boolean): string | undefined {
   return last.toISOString()
 }
 
+// Default trigger configs for different types
+const DEFAULT_TRIGGER_CONFIGS: Record<TriggerType, () => Record<string, unknown>> = {
+  cron: () => ({ type: 'cron', expression: randomChoice(CRON_EXPRESSIONS).expr }),
+  interval: () => ({
+    type: 'interval',
+    hours: randomChoice([1, 2, 4, 6, 12]),
+    minutes: randomChoice([0, 15, 30, 45]),
+  }),
+  data_change: () => ({
+    type: 'data_change',
+    change_threshold: randomChoice([0.01, 0.05, 0.1, 0.2]),
+    metrics: randomChoice([['row_count'], ['row_count', 'null_percentage'], ['row_count', 'null_percentage', 'distinct_count']]),
+    check_interval_minutes: randomChoice([15, 30, 60, 120]),
+  }),
+  composite: () => ({
+    type: 'composite',
+    operator: randomChoice(['and', 'or'] as const),
+    triggers: [
+      { type: 'cron', expression: '0 0 * * *' },
+      { type: 'data_change', change_threshold: 0.05, metrics: ['row_count'] },
+    ],
+  }),
+  event: () => ({
+    type: 'event',
+    event_types: randomChoice([
+      ['schema_changed'],
+      ['drift_detected'],
+      ['validation_failed'],
+      ['schema_changed', 'drift_detected'],
+    ]),
+  }),
+  manual: () => ({ type: 'manual' }),
+}
+
 export function createSchedule(options: ScheduleFactoryOptions = {}): Schedule {
   const cron = options.cronExpression
     ? CRON_EXPRESSIONS.find((c) => c.expr === options.cronExpression) ?? { expr: options.cronExpression, desc: 'Custom' }
@@ -154,16 +198,26 @@ export function createSchedule(options: ScheduleFactoryOptions = {}): Schedule {
   const isActive = options.isActive ?? faker.datatype.boolean(0.8)
   const hasRun = options.hasRun ?? faker.datatype.boolean(0.7)
   const validators = options.validators ?? randomChoice(VALIDATOR_PRESETS)
+  const triggerType = options.triggerType ?? 'cron'
+  const triggerConfig = options.triggerConfig ?? DEFAULT_TRIGGER_CONFIGS[triggerType]()
+
+  // For cron type, use the cron expression from the config if not specified
+  const cronExpression = triggerType === 'cron'
+    ? (triggerConfig.expression as string || cron.expr)
+    : cron.expr
 
   return {
     id: options.id ?? createId(),
     name: options.name ?? randomChoice(SCHEDULE_NAMES) + ` (${faker.string.alphanumeric(3)})`,
     source_id: options.sourceId ?? createId(),
-    cron_expression: cron.expr,
+    cron_expression: cronExpression,
+    trigger_type: triggerType,
+    trigger_config: triggerConfig,
+    trigger_count: hasRun ? randomInt(1, 100) : 0,
     is_active: isActive,
     notify_on_failure: options.notifyOnFailure ?? faker.datatype.boolean(0.7),
     last_run_at: calculateLastRun(hasRun),
-    next_run_at: calculateNextRun(isActive, cron.expr),
+    next_run_at: calculateNextRun(isActive, cronExpression),
     config: {
       validators,
       auto_schema: options.autoSchema ?? faker.datatype.boolean(0.6),
@@ -340,8 +394,102 @@ export function createDiverseSchedules(sources: Array<{ id: string; name: string
     cronExpression: '0 0 * * 0',
   }))
 
-  // 14. Add a few more random schedules
-  for (let i = 0; i < 5; i++) {
+  // 14. Interval trigger - every 6 hours
+  const s14 = getNextSource()
+  schedules.push(createSchedule({
+    sourceId: s14.id,
+    sourceName: s14.name,
+    name: 'Hourly Data Refresh Check',
+    isActive: true,
+    hasRun: true,
+    triggerType: 'interval',
+    triggerConfig: { type: 'interval', hours: 6 },
+  }))
+
+  // 15. Data change trigger
+  const s15 = getNextSource()
+  schedules.push(createSchedule({
+    sourceId: s15.id,
+    sourceName: s15.name,
+    name: 'Data Change Detection',
+    isActive: true,
+    hasRun: true,
+    triggerType: 'data_change',
+    triggerConfig: {
+      type: 'data_change',
+      change_threshold: 0.05,
+      metrics: ['row_count', 'null_percentage'],
+      check_interval_minutes: 30,
+    },
+  }))
+
+  // 16. Composite trigger (AND logic)
+  const s16 = getNextSource()
+  schedules.push(createSchedule({
+    sourceId: s16.id,
+    sourceName: s16.name,
+    name: 'Composite Validation (AND)',
+    isActive: true,
+    hasRun: true,
+    triggerType: 'composite',
+    triggerConfig: {
+      type: 'composite',
+      operator: 'and',
+      triggers: [
+        { type: 'cron', expression: '0 8 * * 1-5' },
+        { type: 'data_change', change_threshold: 0.1, metrics: ['row_count'] },
+      ],
+    },
+  }))
+
+  // 17. Composite trigger (OR logic)
+  const s17 = getNextSource()
+  schedules.push(createSchedule({
+    sourceId: s17.id,
+    sourceName: s17.name,
+    name: 'Composite Validation (OR)',
+    isActive: true,
+    hasRun: false,
+    triggerType: 'composite',
+    triggerConfig: {
+      type: 'composite',
+      operator: 'or',
+      triggers: [
+        { type: 'interval', hours: 12 },
+        { type: 'event', event_types: ['schema_changed'] },
+      ],
+    },
+  }))
+
+  // 18. Event trigger
+  const s18 = getNextSource()
+  schedules.push(createSchedule({
+    sourceId: s18.id,
+    sourceName: s18.name,
+    name: 'Schema Change Watcher',
+    isActive: true,
+    hasRun: true,
+    triggerType: 'event',
+    triggerConfig: {
+      type: 'event',
+      event_types: ['schema_changed', 'drift_detected'],
+    },
+  }))
+
+  // 19. Manual trigger only
+  const s19 = getNextSource()
+  schedules.push(createSchedule({
+    sourceId: s19.id,
+    sourceName: s19.name,
+    name: 'On-Demand Validation',
+    isActive: true,
+    hasRun: false,
+    triggerType: 'manual',
+    triggerConfig: { type: 'manual' },
+  }))
+
+  // 20. Add a few more random schedules
+  for (let i = 0; i < 3; i++) {
     const s = getNextSource()
     schedules.push(createSchedule({
       sourceId: s.id,

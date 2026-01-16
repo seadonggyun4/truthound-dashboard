@@ -21,7 +21,13 @@ export default {
         "channelTypes": {
           "slack": "Slack",
           "email": "Email",
-          "webhook": "Webhook"
+          "webhook": "Webhook",
+          "discord": "Discord",
+          "telegram": "Telegram",
+          "pagerduty": "PagerDuty",
+          "opsgenie": "OpsGenie",
+          "teams": "Microsoft Teams",
+          "github": "GitHub"
         },
         "conditions": {
           "validation_failed": "Validation Failed",
@@ -60,7 +66,13 @@ export default {
         "channelTypes": {
           "slack": "Slack",
           "email": "이메일",
-          "webhook": "웹훅"
+          "webhook": "웹훅",
+          "discord": "Discord",
+          "telegram": "Telegram",
+          "pagerduty": "PagerDuty",
+          "opsgenie": "OpsGenie",
+          "teams": "Microsoft Teams",
+          "github": "GitHub"
         },
         "conditions": {
           "validation_failed": "검증 실패",

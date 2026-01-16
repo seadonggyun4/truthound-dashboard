@@ -18,6 +18,17 @@ import { catalogHandlers } from './catalog'
 import { collaborationHandlers } from './collaboration'
 import { rulesHandlers } from './rules'
 import { validatorsHandlers } from './validators'
+import { reportHandlers } from './reports'
+import { maintenanceHandlers } from './maintenance'
+import { schemaEvolutionHandlers } from './schema-evolution'
+import { ruleSuggestionsHandlers } from './rule-suggestions'
+import { versioningHandlers } from './versioning'
+import { notificationsAdvancedHandlers } from './notifications-advanced'
+import { lineageHandlers } from './lineage'
+import { anomalyHandlers } from './anomaly'
+import { modelMonitoringHandlers } from './model-monitoring'
+import { alertsHandlers } from './alerts'
+import { crossAlertsHandlers } from './cross-alerts'
 
 export const handlers = [
   ...healthHandlers,
@@ -36,4 +47,15 @@ export const handlers = [
   ...collaborationHandlers,
   ...rulesHandlers,
   ...validatorsHandlers,
+  ...reportHandlers,
+  ...maintenanceHandlers,
+  ...schemaEvolutionHandlers,
+  ...ruleSuggestionsHandlers,
+  ...versioningHandlers,
+  ...notificationsAdvancedHandlers,
+  ...lineageHandlers,
+  ...anomalyHandlers,
+  ...modelMonitoringHandlers,
+  ...alertsHandlers,
+  ...crossAlertsHandlers,
 ]

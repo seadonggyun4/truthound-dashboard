@@ -79,11 +79,99 @@ export async function getHealth() {
   }>('/health')
 }
 
+// ============================================================================
+// Source Types and Definitions
+// ============================================================================
+
+/**
+ * All supported source types.
+ */
+export type SourceType =
+  | 'file'
+  | 'postgresql'
+  | 'mysql'
+  | 'sqlite'
+  | 'snowflake'
+  | 'bigquery'
+  | 'redshift'
+  | 'databricks'
+  | 'oracle'
+  | 'sqlserver'
+  | 'spark'
+
+/**
+ * Source type categories for UI grouping.
+ */
+export type SourceCategory = 'file' | 'database' | 'warehouse' | 'bigdata'
+
+/**
+ * Field types for dynamic form rendering.
+ */
+export type FieldType = 'text' | 'password' | 'number' | 'select' | 'boolean' | 'file_path' | 'textarea'
+
+/**
+ * Option for select fields.
+ */
+export interface FieldOption {
+  value: string
+  label: string
+}
+
+/**
+ * Definition of a configuration field for dynamic form rendering.
+ */
+export interface FieldDefinition {
+  name: string
+  label: string
+  type: FieldType
+  required: boolean
+  placeholder: string
+  description: string
+  default?: unknown
+  options?: FieldOption[]
+  min_value?: number
+  max_value?: number
+  depends_on?: string
+  depends_value?: unknown
+}
+
+/**
+ * Complete definition of a source type for UI rendering.
+ */
+export interface SourceTypeDefinition {
+  type: SourceType
+  name: string
+  description: string
+  icon: string
+  category: SourceCategory
+  fields: FieldDefinition[]
+  required_fields: string[]
+  optional_fields: string[]
+  docs_url?: string
+}
+
+/**
+ * Category definition for grouping source types.
+ */
+export interface SourceCategoryDefinition {
+  value: SourceCategory
+  label: string
+  description: string
+}
+
+/**
+ * Response containing all source types and categories.
+ */
+export interface SourceTypesResponse {
+  types: SourceTypeDefinition[]
+  categories: SourceCategoryDefinition[]
+}
+
 // Sources
 export interface Source {
   id: string
   name: string
-  type: string
+  type: SourceType
   config: Record<string, unknown>
   description?: string
   is_active: boolean
@@ -353,18 +441,26 @@ export async function testSourceConnection(
   return request(`/sources/${sourceId}/test`, { method: 'POST' })
 }
 
-// Get supported source types
+// Get supported source types with full field definitions
 export async function getSupportedSourceTypes(): Promise<{
   success: boolean
-  data: {
-    type: string
-    name: string
-    description: string
-    required_fields: string[]
-    optional_fields: string[]
-  }[]
+  data: SourceTypesResponse
 }> {
   return request('/sources/types/supported')
+}
+
+// Test connection configuration before creating a source
+export async function testConnectionConfig(
+  type: SourceType,
+  config: Record<string, unknown>
+): Promise<{
+  success: boolean
+  data: { success: boolean; message?: string; error?: string }
+}> {
+  return request('/sources/test-connection', {
+    method: 'POST',
+    body: JSON.stringify({ type, config }),
+  })
 }
 
 // History
@@ -524,6 +620,7 @@ export interface ColumnDriftResult {
 }
 
 export interface DriftResult {
+  comparison_id?: string
   baseline_source: string
   current_source: string
   baseline_rows: number
@@ -574,11 +671,23 @@ export async function getDriftComparison(
 }
 
 // Schedules
+export type TriggerType =
+  | 'cron'
+  | 'interval'
+  | 'data_change'
+  | 'composite'
+  | 'event'
+  | 'manual'
+
 export interface Schedule {
   id: string
   name: string
   source_id: string
   cron_expression: string
+  trigger_type?: TriggerType
+  trigger_config?: Record<string, unknown>
+  trigger_count?: number
+  last_trigger_result?: Record<string, unknown>
   is_active: boolean
   notify_on_failure: boolean
   last_run_at?: string
@@ -592,7 +701,9 @@ export interface Schedule {
 export interface ScheduleCreateRequest {
   source_id: string
   name: string
-  cron_expression: string
+  cron_expression?: string
+  trigger_type?: TriggerType
+  trigger_config?: Record<string, unknown>
   notify_on_failure?: boolean
   config?: Record<string, unknown>
 }
@@ -600,6 +711,8 @@ export interface ScheduleCreateRequest {
 export interface ScheduleUpdateRequest {
   name?: string
   cron_expression?: string
+  trigger_type?: TriggerType
+  trigger_config?: Record<string, unknown>
   notify_on_failure?: boolean
   config?: Record<string, unknown>
 }
@@ -1594,6 +1707,2771 @@ export async function listValidatorCategories(): Promise<CategoryInfo[]> {
  */
 export async function getValidator(name: string): Promise<ValidatorDefinition | null> {
   return request<ValidatorDefinition | null>(`/validators/${name}`)
+}
+
+// ============================================================================
+// Reports (Phase 4)
+// ============================================================================
+
+/**
+ * Report format types (6 formats including JUnit for CI/CD integration).
+ */
+export type ReportFormat = 'html' | 'csv' | 'json' | 'markdown' | 'pdf' | 'junit'
+
+/**
+ * Report theme types.
+ */
+export type ReportTheme = 'light' | 'dark' | 'professional' | 'minimal' | 'high_contrast'
+
+/**
+ * Options for generating a report.
+ */
+export interface ReportGenerateOptions {
+  format?: ReportFormat
+  theme?: ReportTheme
+  title?: string
+  include_samples?: boolean
+  include_statistics?: boolean
+}
+
+/**
+ * Report metadata.
+ */
+export interface ReportMetadata {
+  title: string
+  generated_at: string
+  source_name?: string
+  source_id?: string
+  validation_id?: string
+  theme: string
+  format: string
+}
+
+/**
+ * Report generation response.
+ */
+export interface ReportResponse {
+  filename: string
+  content_type: string
+  size_bytes: number
+  generation_time_ms: number
+  metadata: ReportMetadata
+}
+
+/**
+ * Available formats response.
+ */
+export interface AvailableFormatsResponse {
+  formats: string[]
+  themes: string[]
+}
+
+/**
+ * Get available report formats and themes.
+ */
+export async function getReportFormats(): Promise<AvailableFormatsResponse> {
+  return request<AvailableFormatsResponse>('/reports/formats')
+}
+
+/**
+ * Generate report metadata (use download for actual content).
+ */
+export async function generateReportMetadata(
+  validationId: string,
+  options?: ReportGenerateOptions
+): Promise<ReportResponse> {
+  return request<ReportResponse>(`/reports/validations/${validationId}/report`, {
+    method: 'POST',
+    body: JSON.stringify(options || {}),
+  })
+}
+
+/**
+ * Download validation report as file.
+ */
+export async function downloadValidationReport(
+  validationId: string,
+  options?: {
+    format?: ReportFormat
+    theme?: ReportTheme
+    include_samples?: boolean
+    include_statistics?: boolean
+  }
+): Promise<Blob> {
+  const params = new URLSearchParams()
+  if (options?.format) params.append('format', options.format)
+  if (options?.theme) params.append('theme', options.theme)
+  if (options?.include_samples !== undefined)
+    params.append('include_samples', String(options.include_samples))
+  if (options?.include_statistics !== undefined)
+    params.append('include_statistics', String(options.include_statistics))
+
+  const url = `${API_BASE}/reports/validations/${validationId}/download?${params}`
+  const response = await fetch(url)
+
+  if (!response.ok) {
+    throw new ApiError(response.status, response.statusText)
+  }
+
+  return response.blob()
+}
+
+/**
+ * Preview validation report (inline viewing).
+ */
+export async function previewValidationReport(
+  validationId: string,
+  format: ReportFormat = 'html',
+  theme: ReportTheme = 'professional'
+): Promise<string> {
+  const params = new URLSearchParams({ format, theme })
+  const url = `${API_BASE}/reports/validations/${validationId}/preview?${params}`
+  const response = await fetch(url)
+
+  if (!response.ok) {
+    throw new ApiError(response.status, response.statusText)
+  }
+
+  return response.text()
+}
+
+// ============================================================================
+// Maintenance (Phase 4)
+// ============================================================================
+
+/**
+ * Retention policy type.
+ */
+export type RetentionPolicyType = 'time' | 'count' | 'size' | 'status' | 'tag' | 'composite'
+
+/**
+ * Single retention policy definition.
+ */
+export interface RetentionPolicy {
+  policy_type: RetentionPolicyType
+  value: unknown
+  target: string
+  priority: number
+  enabled: boolean
+}
+
+/**
+ * Retention policy configuration - supports 6 policy types.
+ */
+export interface RetentionPolicyConfig {
+  validation_retention_days: number
+  profile_keep_per_source: number
+  notification_log_retention_days: number
+  run_vacuum: boolean
+  enabled: boolean
+  // Size-based retention
+  max_storage_mb?: number | null
+  // Status-based retention
+  keep_failed_validations?: boolean
+  failed_retention_days?: number
+  // Tag-based retention
+  protected_tags?: string[]
+  delete_tags?: string[]
+  // Active policies (read-only, computed)
+  active_policies?: RetentionPolicy[]
+}
+
+/**
+ * Cleanup result for a single task.
+ */
+export interface CleanupResult {
+  task_name: string
+  records_deleted: number
+  duration_ms: number
+  success: boolean
+  error?: string
+}
+
+/**
+ * Maintenance report response.
+ */
+export interface MaintenanceReport {
+  started_at: string
+  completed_at?: string
+  results: CleanupResult[]
+  total_deleted: number
+  total_duration_ms: number
+  vacuum_performed: boolean
+  vacuum_error?: string
+  success: boolean
+}
+
+/**
+ * Maintenance status response.
+ */
+export interface MaintenanceStatus {
+  enabled: boolean
+  last_run_at?: string
+  next_scheduled_at?: string
+  config: RetentionPolicyConfig
+  available_tasks: string[]
+}
+
+/**
+ * Cache statistics.
+ */
+export interface CacheStats {
+  total_entries: number
+  expired_entries: number
+  valid_entries: number
+  max_size: number
+  hit_rate?: number
+}
+
+/**
+ * Get retention policy.
+ */
+export async function getRetentionPolicy(): Promise<RetentionPolicyConfig> {
+  return request<RetentionPolicyConfig>('/maintenance/retention')
+}
+
+/**
+ * Update retention policy.
+ */
+export async function updateRetentionPolicy(
+  config: Partial<RetentionPolicyConfig>
+): Promise<RetentionPolicyConfig> {
+  return request<RetentionPolicyConfig>('/maintenance/retention', {
+    method: 'PUT',
+    body: JSON.stringify(config),
+  })
+}
+
+/**
+ * Get maintenance status.
+ */
+export async function getMaintenanceStatus(): Promise<MaintenanceStatus> {
+  return request<MaintenanceStatus>('/maintenance/status')
+}
+
+/**
+ * Trigger manual cleanup.
+ */
+export async function triggerCleanup(options?: {
+  tasks?: string[]
+  run_vacuum?: boolean
+}): Promise<MaintenanceReport> {
+  return request<MaintenanceReport>('/maintenance/cleanup', {
+    method: 'POST',
+    body: JSON.stringify(options || {}),
+  })
+}
+
+/**
+ * Run database vacuum.
+ */
+export async function runVacuum(): Promise<MaintenanceReport> {
+  return request<MaintenanceReport>('/maintenance/vacuum', {
+    method: 'POST',
+  })
+}
+
+/**
+ * Get cache statistics.
+ */
+export async function getCacheStats(): Promise<CacheStats> {
+  return request<CacheStats>('/maintenance/cache/stats')
+}
+
+/**
+ * Clear cache.
+ */
+export async function clearCache(options?: {
+  pattern?: string
+  namespace?: string
+}): Promise<CacheStats> {
+  return request<CacheStats>('/maintenance/cache/clear', {
+    method: 'POST',
+    body: JSON.stringify(options || {}),
+  })
+}
+
+// ============================================================================
+// Schema Evolution (Phase 6)
+// ============================================================================
+
+/**
+ * Type of schema change.
+ */
+export type SchemaChangeType = 'column_added' | 'column_removed' | 'type_changed'
+
+/**
+ * Severity of schema change.
+ */
+export type SchemaChangeSeverity = 'breaking' | 'non_breaking'
+
+/**
+ * Summary of a schema version for listings.
+ */
+export interface SchemaVersionSummary {
+  id: string
+  version_number: number
+  column_count: number
+  created_at: string
+}
+
+/**
+ * Full schema version response.
+ */
+export interface SchemaVersionResponse {
+  id: string
+  source_id: string
+  schema_id: string
+  version_number: number
+  column_count: number
+  columns: string[]
+  schema_hash: string
+  column_snapshot: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * Schema change record.
+ */
+export interface SchemaChangeResponse {
+  id: string
+  source_id: string
+  from_version_id: string | null
+  to_version_id: string
+  change_type: SchemaChangeType
+  column_name: string
+  old_value: string | null
+  new_value: string | null
+  severity: SchemaChangeSeverity
+  description: string
+  created_at: string
+}
+
+/**
+ * Summary of schema evolution for a source.
+ */
+export interface SchemaEvolutionSummary {
+  source_id: string
+  current_version: number
+  total_versions: number
+  total_changes: number
+  breaking_changes: number
+  last_change_at: string | null
+}
+
+/**
+ * Schema evolution detection result.
+ */
+export interface SchemaEvolutionResponse {
+  source_id: string
+  source_name: string
+  from_version: number | null
+  to_version: number
+  has_changes: boolean
+  total_changes: number
+  breaking_changes: number
+  changes: SchemaChangeResponse[]
+  detected_at: string
+}
+
+/**
+ * List schema versions for a source.
+ */
+export async function listSchemaVersions(
+  sourceId: string,
+  params?: { limit?: number; offset?: number }
+): Promise<{ versions: SchemaVersionSummary[]; total: number; source_id: string }> {
+  return request(`/sources/${sourceId}/schema/versions`, { params })
+}
+
+/**
+ * Get a specific schema version.
+ */
+export async function getSchemaVersion(versionId: string): Promise<SchemaVersionResponse> {
+  return request(`/schema/versions/${versionId}`)
+}
+
+/**
+ * List schema changes for a source.
+ */
+export async function listSchemaChanges(
+  sourceId: string,
+  params?: { limit?: number; offset?: number }
+): Promise<{ changes: SchemaChangeResponse[]; total: number; source_id: string }> {
+  return request(`/sources/${sourceId}/schema/changes`, { params })
+}
+
+/**
+ * Detect schema changes for a source (compare current schema with latest version).
+ */
+export async function detectSchemaChanges(
+  sourceId: string,
+  options?: { force_relearn?: boolean }
+): Promise<SchemaEvolutionResponse> {
+  return request(`/sources/${sourceId}/schema/detect-changes`, {
+    method: 'POST',
+    body: JSON.stringify(options || {}),
+  })
+}
+
+/**
+ * Get schema evolution summary for a source.
+ */
+export async function getSchemaEvolutionSummary(sourceId: string): Promise<SchemaEvolutionSummary> {
+  return request(`/sources/${sourceId}/schema/evolution/summary`)
+}
+
+// ============================================================================
+// Rule Suggestions (Phase 6)
+// ============================================================================
+
+/**
+ * A single suggested validation rule.
+ */
+export interface SuggestedRule {
+  id: string
+  column: string
+  validator_name: string
+  params: Record<string, unknown>
+  confidence: number
+  reason: string
+  severity_suggestion: string
+  category: string
+}
+
+/**
+ * Request options for generating rule suggestions.
+ */
+export interface RuleSuggestionRequest {
+  use_latest_profile?: boolean
+  profile_id?: string
+  min_confidence?: number
+  include_types?: string[]
+  exclude_columns?: string[]
+}
+
+/**
+ * Response containing suggested rules.
+ */
+export interface RuleSuggestionResponse {
+  source_id: string
+  source_name: string
+  profile_id: string
+  suggestions: SuggestedRule[]
+  total_suggestions: number
+  high_confidence_count: number
+  generated_at: string
+}
+
+/**
+ * Request to apply selected rule suggestions.
+ */
+export interface ApplyRulesRequest {
+  suggestions: SuggestedRule[]
+  create_new_rule?: boolean
+  rule_name?: string
+  rule_description?: string
+}
+
+/**
+ * Response after applying rule suggestions.
+ */
+export interface ApplyRulesResponse {
+  source_id: string
+  rule_id: string
+  rule_name: string
+  applied_count: number
+  validators: string[]
+  created_at: string
+}
+
+/**
+ * Generate rule suggestions from profile data.
+ */
+export async function suggestRules(
+  sourceId: string,
+  options?: RuleSuggestionRequest
+): Promise<RuleSuggestionResponse> {
+  return request(`/sources/${sourceId}/rules/suggest`, {
+    method: 'POST',
+    body: JSON.stringify(options || {}),
+  })
+}
+
+/**
+ * Apply selected rule suggestions.
+ */
+export async function applyRuleSuggestions(
+  sourceId: string,
+  data: ApplyRulesRequest
+): Promise<ApplyRulesResponse> {
+  return request(`/sources/${sourceId}/rules/apply-suggestions`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+// ============================================================================
+// Profile Comparison (Phase 6)
+// ============================================================================
+
+/**
+ * Trend direction for metrics.
+ */
+export type TrendDirection = 'up' | 'down' | 'stable'
+
+/**
+ * Summary of a profile for listing.
+ */
+export interface ProfileSummary {
+  id: string
+  source_id: string
+  row_count: number
+  column_count: number
+  size_bytes: number
+  created_at: string
+}
+
+/**
+ * Column comparison result.
+ */
+export interface ColumnComparison {
+  column: string
+  metric: string
+  baseline_value: number | string | null
+  current_value: number | string | null
+  change: number | null
+  change_pct: number | null
+  is_significant: boolean
+  trend: TrendDirection
+}
+
+/**
+ * Profile comparison summary.
+ */
+export interface ProfileComparisonSummary {
+  total_columns: number
+  columns_with_changes: number
+  significant_changes: number
+  columns_improved: number
+  columns_degraded: number
+}
+
+/**
+ * Profile comparison result.
+ */
+export interface ProfileComparisonResponse {
+  source_id: string
+  source_name: string
+  baseline_profile_id: string
+  current_profile_id: string
+  baseline_timestamp: string
+  current_timestamp: string
+  row_count_change: number
+  row_count_change_pct: number
+  column_count_change: number
+  column_comparisons: ColumnComparison[]
+  significant_changes: number
+  summary: ProfileComparisonSummary
+  compared_at: string
+}
+
+/**
+ * Profile trend data point.
+ */
+export interface ProfileTrendPoint {
+  timestamp: string
+  profile_id: string
+  row_count: number
+  column_count: number
+  avg_null_pct: number
+  avg_unique_pct: number
+  size_bytes: number
+}
+
+/**
+ * Column trend data.
+ */
+export interface ColumnTrend {
+  column: string
+  metric: string
+  values: [string, number][]
+  trend_direction: TrendDirection
+  change_pct: number
+  min_value: number | null
+  max_value: number | null
+  avg_value: number | null
+}
+
+/**
+ * Profile trend response.
+ */
+export interface ProfileTrendResponse {
+  source_id: string
+  source_name: string
+  period: string
+  granularity: string
+  data_points: ProfileTrendPoint[]
+  column_trends: ColumnTrend[]
+  total_profiles: number
+  row_count_trend: TrendDirection
+  summary: Record<string, unknown>
+}
+
+/**
+ * Latest comparison response.
+ */
+export interface LatestComparisonResponse {
+  source_id: string
+  has_previous: boolean
+  comparison: ProfileComparisonResponse | null
+}
+
+/**
+ * List profile history for a source.
+ */
+export async function listProfiles(
+  sourceId: string,
+  params?: { limit?: number; offset?: number }
+): Promise<{ profiles: ProfileSummary[]; total: number; source_id: string }> {
+  return request(`/sources/${sourceId}/profiles`, { params })
+}
+
+/**
+ * Compare two profiles.
+ */
+export async function compareProfiles(data: {
+  baseline_profile_id: string
+  current_profile_id: string
+  significance_threshold?: number
+}): Promise<ProfileComparisonResponse> {
+  return request('/profiles/compare', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Get profile trends over time.
+ */
+export async function getProfileTrend(
+  sourceId: string,
+  options?: {
+    period?: '7d' | '30d' | '90d'
+    granularity?: 'hourly' | 'daily' | 'weekly' | 'monthly'
+    columns?: string[]
+    metrics?: string[]
+  }
+): Promise<ProfileTrendResponse> {
+  const params: Record<string, string | number | boolean> = {}
+  if (options?.period) params.period = options.period
+  if (options?.granularity) params.granularity = options.granularity
+  if (options?.columns?.length) params.columns = options.columns.join(',')
+  if (options?.metrics?.length) params.metrics = options.metrics.join(',')
+  return request(`/sources/${sourceId}/profiles/trend`, { params })
+}
+
+/**
+ * Get latest profile comparison (current vs previous).
+ */
+export async function getLatestProfileComparison(
+  sourceId: string
+): Promise<LatestComparisonResponse> {
+  return request(`/sources/${sourceId}/profiles/latest-comparison`)
+}
+
+// ============================================================================
+// Versioning (Phase 4)
+// ============================================================================
+
+/**
+ * Versioning strategy types.
+ */
+export type VersioningStrategy = 'incremental' | 'semantic' | 'timestamp' | 'gitlike'
+
+/**
+ * Version information.
+ */
+export interface VersionInfo {
+  version_id: string
+  version_number: string
+  validation_id: string
+  source_id: string
+  strategy: VersioningStrategy
+  created_at: string
+  parent_version_id: string | null
+  metadata: Record<string, unknown>
+  content_hash: string | null
+}
+
+/**
+ * Response for listing versions.
+ */
+export interface VersionListResponse {
+  success: boolean
+  data: VersionInfo[]
+  total: number
+  source_id: string
+}
+
+/**
+ * Version diff/comparison result.
+ */
+export interface VersionDiff {
+  from_version: VersionInfo
+  to_version: VersionInfo
+  issues_added: Array<Record<string, unknown>>
+  issues_removed: Array<Record<string, unknown>>
+  issues_changed: Array<{
+    key: string
+    from: Record<string, unknown>
+    to: Record<string, unknown>
+  }>
+  summary_changes: Record<string, unknown>
+  has_changes: boolean
+}
+
+/**
+ * Version history response.
+ */
+export interface VersionHistoryResponse {
+  success: boolean
+  data: VersionInfo[]
+  depth: number
+}
+
+/**
+ * Create version response.
+ */
+export interface CreateVersionResponse {
+  success: boolean
+  data: VersionInfo
+  message: string
+}
+
+/**
+ * List versions for a source.
+ */
+export async function listVersions(
+  sourceId: string,
+  params?: { limit?: number }
+): Promise<VersionListResponse> {
+  return request<VersionListResponse>(`/versions/sources/${sourceId}`, { params })
+}
+
+/**
+ * Get a specific version.
+ */
+export async function getVersion(versionId: string): Promise<VersionInfo> {
+  return request<VersionInfo>(`/versions/${versionId}`)
+}
+
+/**
+ * Get the latest version for a source.
+ */
+export async function getLatestVersion(sourceId: string): Promise<VersionInfo> {
+  return request<VersionInfo>(`/versions/sources/${sourceId}/latest`)
+}
+
+/**
+ * Compare two versions.
+ */
+export async function compareVersions(
+  fromVersionId: string,
+  toVersionId: string
+): Promise<VersionDiff> {
+  return request<VersionDiff>('/versions/compare', {
+    method: 'POST',
+    body: JSON.stringify({
+      from_version_id: fromVersionId,
+      to_version_id: toVersionId,
+    }),
+  })
+}
+
+/**
+ * Get version history chain.
+ */
+export async function getVersionHistory(
+  versionId: string,
+  params?: { depth?: number }
+): Promise<VersionHistoryResponse> {
+  return request<VersionHistoryResponse>(`/versions/${versionId}/history`, { params })
+}
+
+/**
+ * Create a new version for a validation.
+ */
+export async function createVersion(data: {
+  validation_id: string
+  strategy?: VersioningStrategy
+  metadata?: Record<string, unknown>
+}): Promise<CreateVersionResponse> {
+  return request<CreateVersionResponse>('/versions/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+// ============================================================================
+// Version Rollback
+// ============================================================================
+
+/**
+ * Rollback availability response.
+ */
+export interface RollbackAvailabilityResponse {
+  success: boolean
+  can_rollback: boolean
+  current_version_id: string | null
+  available_versions: number
+  rollback_targets: VersionInfo[]
+}
+
+/**
+ * Rollback response.
+ */
+export interface RollbackResponse {
+  success: boolean
+  source_id: string
+  from_version: VersionInfo | null
+  to_version: VersionInfo | null
+  new_validation_id: string | null
+  message: string
+  rolled_back_at: string
+}
+
+/**
+ * Check rollback availability for a source.
+ */
+export async function checkRollbackAvailability(
+  sourceId: string
+): Promise<RollbackAvailabilityResponse> {
+  return request<RollbackAvailabilityResponse>(
+    `/versions/sources/${sourceId}/rollback-availability`
+  )
+}
+
+/**
+ * Rollback to a previous version.
+ */
+export async function rollbackToVersion(
+  sourceId: string,
+  targetVersionId: string,
+  createNewValidation = true
+): Promise<RollbackResponse> {
+  return request<RollbackResponse>(`/versions/sources/${sourceId}/rollback`, {
+    method: 'POST',
+    body: JSON.stringify({
+      target_version_id: targetVersionId,
+      create_new_validation: createNewValidation,
+    }),
+  })
+}
+
+// ============================================================================
+// Chart Settings
+// ============================================================================
+
+/**
+ * Supported chart libraries.
+ */
+export type ChartLibrary = 'recharts' | 'chartjs' | 'echarts' | 'plotly' | 'svg'
+
+/**
+ * Chart library configuration.
+ */
+export interface ChartLibraryConfig {
+  library: ChartLibrary
+  npm_package: string
+  version: string
+  supported_charts: string[]
+  cdn_url: string | null
+}
+
+/**
+ * Chart settings response.
+ */
+export interface ChartSettings {
+  library: ChartLibrary
+  theme: string
+  primary_color: string
+  animation_enabled: boolean
+  default_height: number
+  custom_options: Record<string, unknown>
+  library_config: ChartLibraryConfig
+  available_libraries: {
+    library: ChartLibrary
+    name: string
+    npm_package: string
+    supported_charts: string[]
+  }[]
+}
+
+/**
+ * Get chart settings.
+ */
+export async function getChartSettings(): Promise<ChartSettings> {
+  return request<ChartSettings>('/settings/charts')
+}
+
+/**
+ * Update chart settings.
+ */
+export async function updateChartSettings(settings: {
+  library?: ChartLibrary
+  theme?: string
+  primary_color?: string
+  animation_enabled?: boolean
+  default_height?: number
+  custom_options?: Record<string, unknown>
+}): Promise<ChartSettings> {
+  return request<ChartSettings>('/settings/charts', {
+    method: 'PUT',
+    body: JSON.stringify(settings),
+  })
+}
+
+// ============================================================================
+// Advanced Notifications (Phase 14)
+// ============================================================================
+
+// Routing Rules
+export interface RoutingRule {
+  id: string
+  name: string
+  rule_config: Record<string, unknown>
+  actions: string[]
+  priority: number
+  is_active: boolean
+  stop_on_match: boolean
+  metadata: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+export interface RuleTypeInfo {
+  type: string
+  name: string
+  description: string
+  param_schema: Record<string, unknown>
+}
+
+export interface RoutingRuleListResponse {
+  items: RoutingRule[]
+  total: number
+  offset: number
+  limit: number
+}
+
+export async function listRoutingRules(params?: {
+  offset?: number
+  limit?: number
+  active_only?: boolean
+}): Promise<RoutingRuleListResponse> {
+  return request('/notifications/routing/rules', { params })
+}
+
+export async function getRoutingRule(id: string): Promise<RoutingRule> {
+  return request(`/notifications/routing/rules/${id}`)
+}
+
+export async function createRoutingRule(data: {
+  name: string
+  rule_config: Record<string, unknown>
+  actions: string[]
+  priority?: number
+  is_active?: boolean
+  stop_on_match?: boolean
+  metadata?: Record<string, unknown>
+}): Promise<RoutingRule> {
+  return request('/notifications/routing/rules', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateRoutingRule(
+  id: string,
+  data: {
+    name?: string
+    rule_config?: Record<string, unknown>
+    actions?: string[]
+    priority?: number
+    is_active?: boolean
+    stop_on_match?: boolean
+    metadata?: Record<string, unknown>
+  }
+): Promise<RoutingRule> {
+  return request(`/notifications/routing/rules/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteRoutingRule(id: string): Promise<void> {
+  return request(`/notifications/routing/rules/${id}`, { method: 'DELETE' })
+}
+
+export async function getRuleTypes(): Promise<{ rule_types: RuleTypeInfo[] }> {
+  return request('/notifications/routing/rules/types')
+}
+
+// Deduplication
+export type DeduplicationStrategy = 'sliding' | 'tumbling' | 'session' | 'adaptive'
+export type DeduplicationPolicy = 'none' | 'basic' | 'severity' | 'issue_based' | 'strict' | 'custom'
+
+export interface DeduplicationConfig {
+  id: string
+  name: string
+  strategy: DeduplicationStrategy
+  policy: DeduplicationPolicy
+  window_seconds: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface DeduplicationStats {
+  total_received: number
+  total_deduplicated: number
+  total_passed: number
+  dedup_rate: number
+  active_fingerprints: number
+}
+
+export interface DeduplicationConfigListResponse {
+  items: DeduplicationConfig[]
+  total: number
+  offset: number
+  limit: number
+}
+
+export async function listDeduplicationConfigs(params?: {
+  offset?: number
+  limit?: number
+  active_only?: boolean
+}): Promise<DeduplicationConfigListResponse> {
+  return request('/notifications/deduplication/configs', { params })
+}
+
+export async function getDeduplicationConfig(id: string): Promise<DeduplicationConfig> {
+  return request(`/notifications/deduplication/configs/${id}`)
+}
+
+export async function createDeduplicationConfig(data: {
+  name: string
+  strategy?: DeduplicationStrategy
+  policy?: DeduplicationPolicy
+  window_seconds?: number
+  is_active?: boolean
+}): Promise<DeduplicationConfig> {
+  return request('/notifications/deduplication/configs', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateDeduplicationConfig(
+  id: string,
+  data: {
+    name?: string
+    strategy?: DeduplicationStrategy
+    policy?: DeduplicationPolicy
+    window_seconds?: number
+    is_active?: boolean
+  }
+): Promise<DeduplicationConfig> {
+  return request(`/notifications/deduplication/configs/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteDeduplicationConfig(id: string): Promise<void> {
+  return request(`/notifications/deduplication/configs/${id}`, { method: 'DELETE' })
+}
+
+export async function getDeduplicationStats(): Promise<DeduplicationStats> {
+  return request('/notifications/deduplication/stats')
+}
+
+// Throttling
+export interface ThrottlingConfig {
+  id: string
+  name: string
+  per_minute: number | null
+  per_hour: number | null
+  per_day: number | null
+  burst_allowance: number
+  channel_id: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ThrottlingStats {
+  total_received: number
+  total_throttled: number
+  total_passed: number
+  throttle_rate: number
+  current_window_count: number
+}
+
+export interface ThrottlingConfigListResponse {
+  items: ThrottlingConfig[]
+  total: number
+  offset: number
+  limit: number
+}
+
+export async function listThrottlingConfigs(params?: {
+  offset?: number
+  limit?: number
+  active_only?: boolean
+  channel_id?: string
+}): Promise<ThrottlingConfigListResponse> {
+  return request('/notifications/throttling/configs', { params })
+}
+
+export async function getThrottlingConfig(id: string): Promise<ThrottlingConfig> {
+  return request(`/notifications/throttling/configs/${id}`)
+}
+
+export async function createThrottlingConfig(data: {
+  name: string
+  per_minute?: number | null
+  per_hour?: number | null
+  per_day?: number | null
+  burst_allowance?: number
+  channel_id?: string | null
+  is_active?: boolean
+}): Promise<ThrottlingConfig> {
+  return request('/notifications/throttling/configs', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateThrottlingConfig(
+  id: string,
+  data: {
+    name?: string
+    per_minute?: number | null
+    per_hour?: number | null
+    per_day?: number | null
+    burst_allowance?: number
+    channel_id?: string | null
+    is_active?: boolean
+  }
+): Promise<ThrottlingConfig> {
+  return request(`/notifications/throttling/configs/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteThrottlingConfig(id: string): Promise<void> {
+  return request(`/notifications/throttling/configs/${id}`, { method: 'DELETE' })
+}
+
+export async function getThrottlingStats(): Promise<ThrottlingStats> {
+  return request('/notifications/throttling/stats')
+}
+
+// Escalation
+export type EscalationState = 'pending' | 'triggered' | 'acknowledged' | 'escalated' | 'resolved'
+export type EscalationTargetType = 'user' | 'group' | 'oncall' | 'channel'
+
+export interface EscalationTarget {
+  type: EscalationTargetType
+  identifier: string
+  channel: string
+}
+
+export interface EscalationLevel {
+  level: number
+  delay_minutes: number
+  targets: EscalationTarget[]
+}
+
+export interface EscalationPolicy {
+  id: string
+  name: string
+  description: string
+  levels: EscalationLevel[]
+  auto_resolve_on_success: boolean
+  max_escalations: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface EscalationEvent {
+  from_state: string | null
+  to_state: string
+  actor: string | null
+  message: string
+  timestamp: string
+}
+
+export interface EscalationIncident {
+  id: string
+  policy_id: string
+  incident_ref: string
+  state: EscalationState
+  current_level: number
+  escalation_count: number
+  context: Record<string, unknown>
+  acknowledged_by: string | null
+  acknowledged_at: string | null
+  resolved_by: string | null
+  resolved_at: string | null
+  next_escalation_at: string | null
+  events: EscalationEvent[]
+  created_at: string
+  updated_at: string
+}
+
+export interface EscalationStats {
+  total_incidents: number
+  by_state: Record<string, number>
+  active_count: number
+  total_policies: number
+  avg_resolution_time_minutes: number | null
+}
+
+export interface EscalationPolicyListResponse {
+  items: EscalationPolicy[]
+  total: number
+  offset: number
+  limit: number
+}
+
+export interface EscalationIncidentListResponse {
+  items: EscalationIncident[]
+  total: number
+  offset: number
+  limit: number
+}
+
+export async function listEscalationPolicies(params?: {
+  offset?: number
+  limit?: number
+  active_only?: boolean
+}): Promise<EscalationPolicyListResponse> {
+  return request('/notifications/escalation/policies', { params })
+}
+
+export async function getEscalationPolicy(id: string): Promise<EscalationPolicy> {
+  return request(`/notifications/escalation/policies/${id}`)
+}
+
+export async function createEscalationPolicy(data: {
+  name: string
+  description?: string
+  levels: EscalationLevel[]
+  auto_resolve_on_success?: boolean
+  max_escalations?: number
+  is_active?: boolean
+}): Promise<EscalationPolicy> {
+  return request('/notifications/escalation/policies', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateEscalationPolicy(
+  id: string,
+  data: {
+    name?: string
+    description?: string
+    levels?: EscalationLevel[]
+    auto_resolve_on_success?: boolean
+    max_escalations?: number
+    is_active?: boolean
+  }
+): Promise<EscalationPolicy> {
+  return request(`/notifications/escalation/policies/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteEscalationPolicy(id: string): Promise<void> {
+  return request(`/notifications/escalation/policies/${id}`, { method: 'DELETE' })
+}
+
+export async function listEscalationIncidents(params?: {
+  offset?: number
+  limit?: number
+  state?: EscalationState
+  policy_id?: string
+}): Promise<EscalationIncidentListResponse> {
+  return request('/notifications/escalation/incidents', { params })
+}
+
+export async function getEscalationIncident(id: string): Promise<EscalationIncident> {
+  return request(`/notifications/escalation/incidents/${id}`)
+}
+
+export async function listActiveEscalationIncidents(): Promise<EscalationIncidentListResponse> {
+  return request('/notifications/escalation/incidents/active')
+}
+
+export async function acknowledgeEscalationIncident(
+  id: string,
+  data: { actor: string; message?: string }
+): Promise<EscalationIncident> {
+  return request(`/notifications/escalation/incidents/${id}/acknowledge`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function resolveEscalationIncident(
+  id: string,
+  data: { actor?: string; message?: string }
+): Promise<EscalationIncident> {
+  return request(`/notifications/escalation/incidents/${id}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function getEscalationStats(): Promise<EscalationStats> {
+  return request('/notifications/escalation/stats')
+}
+
+// Combined Advanced Notification Stats
+export interface AdvancedNotificationStats {
+  routing: Record<string, number>
+  deduplication: DeduplicationStats
+  throttling: ThrottlingStats
+  escalation: EscalationStats
+}
+
+export async function getAdvancedNotificationStats(): Promise<AdvancedNotificationStats> {
+  return request('/notifications/advanced/stats')
+}
+
+// ============================================================================
+// Data Lineage (Phase 10)
+// ============================================================================
+
+/**
+ * Lineage node types.
+ */
+export type LineageNodeType = 'source' | 'transform' | 'sink'
+
+/**
+ * Lineage edge types.
+ */
+export type LineageEdgeType = 'derives_from' | 'transforms_to' | 'feeds_into'
+
+/**
+ * Lineage node.
+ */
+export interface LineageNode {
+  id: string
+  name: string
+  node_type: LineageNodeType
+  source_id: string | null
+  metadata: Record<string, unknown> | null
+  position_x: number | null
+  position_y: number | null
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * Lineage edge.
+ */
+export interface LineageEdge {
+  id: string
+  source_node_id: string
+  target_node_id: string
+  edge_type: LineageEdgeType
+  metadata: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * Full lineage graph response.
+ */
+export interface LineageGraph {
+  nodes: LineageNode[]
+  edges: LineageEdge[]
+  total_nodes: number
+  total_edges: number
+}
+
+/**
+ * Impact analysis response.
+ */
+export interface ImpactAnalysisResponse {
+  node_id: string
+  node_name: string
+  upstream: LineageNode[]
+  downstream: LineageNode[]
+  upstream_count: number
+  downstream_count: number
+  depth: number
+}
+
+/**
+ * Auto-discover result.
+ */
+export interface AutoDiscoverResponse {
+  nodes_created: number
+  edges_created: number
+  nodes: LineageNode[]
+  edges: LineageEdge[]
+  message: string
+}
+
+/**
+ * Node position update request item.
+ */
+export interface NodePositionUpdate {
+  node_id: string
+  position_x: number
+  position_y: number
+}
+
+/**
+ * Request to create a lineage node.
+ */
+export interface LineageNodeCreate {
+  name: string
+  node_type: LineageNodeType
+  source_id?: string
+  metadata?: Record<string, unknown>
+  position_x?: number
+  position_y?: number
+}
+
+/**
+ * Request to update a lineage node.
+ */
+export interface LineageNodeUpdate {
+  name?: string
+  node_type?: LineageNodeType
+  source_id?: string | null
+  metadata?: Record<string, unknown> | null
+  position_x?: number | null
+  position_y?: number | null
+}
+
+/**
+ * Request to create a lineage edge.
+ */
+export interface LineageEdgeCreate {
+  source_node_id: string
+  target_node_id: string
+  edge_type: LineageEdgeType
+  metadata?: Record<string, unknown>
+}
+
+/**
+ * Get the full lineage graph.
+ */
+export async function getLineageGraph(): Promise<LineageGraph> {
+  return request<LineageGraph>('/lineage')
+}
+
+/**
+ * Get lineage graph for a specific source.
+ */
+export async function getSourceLineage(
+  sourceId: string,
+  params?: { depth?: number }
+): Promise<LineageGraph> {
+  return request<LineageGraph>(`/lineage/sources/${sourceId}`, { params })
+}
+
+/**
+ * Create a lineage node.
+ */
+export async function createLineageNode(data: LineageNodeCreate): Promise<LineageNode> {
+  return request<LineageNode>('/lineage/nodes', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Get a lineage node by ID.
+ */
+export async function getLineageNode(nodeId: string): Promise<LineageNode> {
+  return request<LineageNode>(`/lineage/nodes/${nodeId}`)
+}
+
+/**
+ * Update a lineage node.
+ */
+export async function updateLineageNode(
+  nodeId: string,
+  data: LineageNodeUpdate
+): Promise<LineageNode> {
+  return request<LineageNode>(`/lineage/nodes/${nodeId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Delete a lineage node.
+ */
+export async function deleteLineageNode(nodeId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`/lineage/nodes/${nodeId}`, { method: 'DELETE' })
+}
+
+/**
+ * Create a lineage edge.
+ */
+export async function createLineageEdge(data: LineageEdgeCreate): Promise<LineageEdge> {
+  return request<LineageEdge>('/lineage/edges', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Delete a lineage edge.
+ */
+export async function deleteLineageEdge(edgeId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`/lineage/edges/${edgeId}`, { method: 'DELETE' })
+}
+
+/**
+ * Run impact analysis for a node.
+ */
+export async function analyzeLineageImpact(
+  nodeId: string,
+  params?: { depth?: number }
+): Promise<ImpactAnalysisResponse> {
+  return request<ImpactAnalysisResponse>(`/lineage/nodes/${nodeId}/impact`, { params })
+}
+
+/**
+ * Auto-discover lineage from database foreign keys.
+ */
+export async function autoDiscoverLineage(params?: {
+  source_ids?: string[]
+  include_fk?: boolean
+}): Promise<AutoDiscoverResponse> {
+  return request<AutoDiscoverResponse>('/lineage/auto-discover', {
+    method: 'POST',
+    body: JSON.stringify(params || {}),
+  })
+}
+
+/**
+ * Update positions of multiple nodes.
+ */
+export async function updateNodePositions(
+  updates: NodePositionUpdate[]
+): Promise<{ updated: number; message: string }> {
+  return request<{ updated: number; message: string }>('/lineage/positions', {
+    method: 'POST',
+    body: JSON.stringify({ updates }),
+  })
+}
+
+// ============================================================================
+// OpenLineage Export (Phase 10)
+// ============================================================================
+
+/**
+ * OpenLineage run state.
+ */
+export type OpenLineageRunState = 'START' | 'RUNNING' | 'COMPLETE' | 'FAIL' | 'ABORT'
+
+/**
+ * OpenLineage export format.
+ */
+export type OpenLineageExportFormat = 'json' | 'ndjson'
+
+/**
+ * OpenLineage dataset.
+ */
+export interface OpenLineageDataset {
+  namespace: string
+  name: string
+  facets: Record<string, unknown>
+}
+
+/**
+ * OpenLineage job.
+ */
+export interface OpenLineageJob {
+  namespace: string
+  name: string
+  facets: Record<string, unknown>
+}
+
+/**
+ * OpenLineage run.
+ */
+export interface OpenLineageRun {
+  run_id: string
+  facets: Record<string, unknown>
+}
+
+/**
+ * OpenLineage event.
+ */
+export interface OpenLineageEvent {
+  event_time: string
+  eventType: OpenLineageRunState
+  producer: string
+  schemaURL: string
+  run: OpenLineageRun
+  job: OpenLineageJob
+  inputs: OpenLineageDataset[]
+  outputs: OpenLineageDataset[]
+}
+
+/**
+ * OpenLineage export request.
+ */
+export interface OpenLineageExportRequest {
+  job_namespace?: string
+  job_name?: string
+  source_id?: string
+  include_schema?: boolean
+  include_quality_metrics?: boolean
+  format?: OpenLineageExportFormat
+}
+
+/**
+ * OpenLineage export response.
+ */
+export interface OpenLineageExportResponse {
+  events: OpenLineageEvent[]
+  total_events: number
+  total_datasets: number
+  total_jobs: number
+  export_time: string
+}
+
+/**
+ * OpenLineage webhook configuration.
+ */
+export interface OpenLineageWebhookConfig {
+  url: string
+  api_key?: string
+  headers?: Record<string, string>
+  batch_size?: number
+  timeout_seconds?: number
+}
+
+/**
+ * OpenLineage emit request.
+ */
+export interface OpenLineageEmitRequest {
+  webhook: OpenLineageWebhookConfig
+  source_id?: string
+  job_namespace?: string
+  job_name?: string
+}
+
+/**
+ * OpenLineage emit response.
+ */
+export interface OpenLineageEmitResponse {
+  success: boolean
+  events_sent: number
+  failed_events: number
+  error_message?: string
+}
+
+/**
+ * OpenLineage specification info.
+ */
+export interface OpenLineageSpec {
+  spec_version: string
+  producer: string
+  supported_facets: {
+    dataset: string[]
+    job: string[]
+    run: string[]
+  }
+  supported_event_types: string[]
+  export_formats: string[]
+  documentation_url: string
+}
+
+/**
+ * Export lineage as OpenLineage events.
+ */
+export async function exportOpenLineage(
+  request?: OpenLineageExportRequest
+): Promise<OpenLineageExportResponse> {
+  return requestFn<OpenLineageExportResponse>('/lineage/openlineage/export', {
+    method: 'POST',
+    body: JSON.stringify(request || {}),
+  })
+}
+
+/**
+ * Export lineage as granular OpenLineage events (one job per transformation).
+ */
+export async function exportOpenLineageGranular(
+  request?: OpenLineageExportRequest
+): Promise<OpenLineageExportResponse> {
+  return requestFn<OpenLineageExportResponse>('/lineage/openlineage/export/granular', {
+    method: 'POST',
+    body: JSON.stringify(request || {}),
+  })
+}
+
+/**
+ * Emit OpenLineage events to an external endpoint.
+ */
+export async function emitOpenLineage(
+  request: OpenLineageEmitRequest
+): Promise<OpenLineageEmitResponse> {
+  return requestFn<OpenLineageEmitResponse>('/lineage/openlineage/emit', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+/**
+ * Get OpenLineage specification info.
+ */
+export async function getOpenLineageSpec(): Promise<OpenLineageSpec> {
+  return requestFn<OpenLineageSpec>('/lineage/openlineage/spec')
+}
+
+/**
+ * Download OpenLineage events as JSON file.
+ */
+export function downloadOpenLineageJson(
+  events: OpenLineageEvent[],
+  filename = 'openlineage-events.json'
+): void {
+  const blob = new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+/**
+ * Download OpenLineage events as NDJSON file (newline-delimited JSON).
+ */
+export function downloadOpenLineageNdjson(
+  events: OpenLineageEvent[],
+  filename = 'openlineage-events.ndjson'
+): void {
+  const ndjson = events.map((e) => JSON.stringify(e)).join('\n')
+  const blob = new Blob([ndjson], { type: 'application/x-ndjson' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+// ============================================================================
+// OpenLineage Webhooks
+// ============================================================================
+
+/**
+ * OpenLineage webhook event type.
+ */
+export type WebhookEventType = 'job' | 'dataset' | 'all'
+
+/**
+ * OpenLineage webhook configuration.
+ */
+export interface OpenLineageWebhook {
+  id: string
+  name: string
+  url: string
+  is_active: boolean
+  headers: Record<string, string>
+  event_types: WebhookEventType
+  batch_size: number
+  timeout_seconds: number
+  last_sent_at: string | null
+  success_count: number
+  failure_count: number
+  last_error: string | null
+  created_at: string
+  updated_at: string | null
+}
+
+/**
+ * Create webhook request.
+ */
+export interface CreateWebhookRequest {
+  name: string
+  url: string
+  is_active?: boolean
+  headers?: Record<string, string>
+  api_key?: string
+  event_types?: WebhookEventType
+  batch_size?: number
+  timeout_seconds?: number
+}
+
+/**
+ * Update webhook request.
+ */
+export interface UpdateWebhookRequest {
+  name?: string
+  url?: string
+  is_active?: boolean
+  headers?: Record<string, string>
+  api_key?: string
+  event_types?: WebhookEventType
+  batch_size?: number
+  timeout_seconds?: number
+}
+
+/**
+ * Webhook list response.
+ */
+export interface WebhookListResponse {
+  data: OpenLineageWebhook[]
+  total: number
+}
+
+/**
+ * Webhook test request.
+ */
+export interface WebhookTestRequest {
+  url: string
+  headers?: Record<string, string>
+  api_key?: string
+  timeout_seconds?: number
+}
+
+/**
+ * Webhook test result.
+ */
+export interface WebhookTestResult {
+  success: boolean
+  status_code: number | null
+  response_time_ms: number | null
+  error_message: string | null
+  response_body: string | null
+}
+
+/**
+ * List all configured webhooks.
+ */
+export async function listWebhooks(activeOnly = false): Promise<WebhookListResponse> {
+  return request<WebhookListResponse>('/lineage/openlineage/webhooks', {
+    params: activeOnly ? { active_only: true } : undefined,
+  })
+}
+
+/**
+ * Get a specific webhook.
+ */
+export async function getWebhook(webhookId: string): Promise<OpenLineageWebhook> {
+  return request<OpenLineageWebhook>(`/lineage/openlineage/webhooks/${webhookId}`)
+}
+
+/**
+ * Create a new webhook.
+ */
+export async function createWebhook(data: CreateWebhookRequest): Promise<OpenLineageWebhook> {
+  return request<OpenLineageWebhook>('/lineage/openlineage/webhooks', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Update an existing webhook.
+ */
+export async function updateWebhook(
+  webhookId: string,
+  data: UpdateWebhookRequest
+): Promise<OpenLineageWebhook> {
+  return request<OpenLineageWebhook>(`/lineage/openlineage/webhooks/${webhookId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Delete a webhook.
+ */
+export async function deleteWebhook(webhookId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`/lineage/openlineage/webhooks/${webhookId}`, {
+    method: 'DELETE',
+  })
+}
+
+/**
+ * Test webhook connectivity.
+ */
+export async function testWebhook(data: WebhookTestRequest): Promise<WebhookTestResult> {
+  return request<WebhookTestResult>('/lineage/openlineage/webhooks/test', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+// Alias for request function to avoid naming conflict
+const requestFn = request
+
+// ============================================================================
+// Anomaly Detection (Phase 10)
+// ============================================================================
+
+/**
+ * Anomaly detection algorithms.
+ */
+export type AnomalyAlgorithm =
+  | 'isolation_forest'
+  | 'lof'
+  | 'one_class_svm'
+  | 'dbscan'
+  | 'statistical'
+  | 'autoencoder'
+
+/**
+ * Anomaly detection status.
+ */
+export type AnomalyStatus = 'pending' | 'running' | 'success' | 'error'
+
+/**
+ * Algorithm category for UI grouping.
+ */
+export type AlgorithmCategory = 'tree' | 'density' | 'svm' | 'clustering' | 'statistical' | 'neural'
+
+/**
+ * Anomaly detection algorithms with descriptions.
+ */
+export const ANOMALY_ALGORITHMS: {
+  value: AnomalyAlgorithm
+  label: string
+  description: string
+  category: AlgorithmCategory
+}[] = [
+  {
+    value: 'isolation_forest',
+    label: 'Isolation Forest',
+    description: 'Tree-based algorithm that isolates anomalies by random partitioning',
+    category: 'tree',
+  },
+  {
+    value: 'lof',
+    label: 'Local Outlier Factor',
+    description: 'Density-based algorithm comparing local density with neighbors',
+    category: 'density',
+  },
+  {
+    value: 'one_class_svm',
+    label: 'One-Class SVM',
+    description: 'SVM trained on normal data to create a decision boundary',
+    category: 'svm',
+  },
+  {
+    value: 'dbscan',
+    label: 'DBSCAN',
+    description: 'Density-based clustering that identifies outliers',
+    category: 'clustering',
+  },
+  {
+    value: 'statistical',
+    label: 'Statistical',
+    description: 'Z-score, IQR, or MAD based detection',
+    category: 'statistical',
+  },
+  {
+    value: 'autoencoder',
+    label: 'Autoencoder',
+    description: 'Neural network with high reconstruction error for anomalies',
+    category: 'neural',
+  },
+]
+
+/**
+ * Single anomaly record.
+ */
+export interface AnomalyRecord {
+  row_index: number
+  anomaly_score: number
+  column_values: Record<string, unknown>
+  is_anomaly: boolean
+}
+
+/**
+ * Column anomaly summary.
+ */
+export interface ColumnAnomalySummary {
+  column: string
+  dtype: string
+  anomaly_count: number
+  anomaly_rate: number
+  mean_anomaly_score: number
+  min_value: number | null
+  max_value: number | null
+  top_anomaly_indices: number[]
+}
+
+/**
+ * Anomaly detection result.
+ */
+export interface AnomalyDetection {
+  id: string
+  source_id: string
+  status: AnomalyStatus
+  algorithm: AnomalyAlgorithm
+  config: Record<string, unknown> | null
+  total_rows: number | null
+  anomaly_count: number | null
+  anomaly_rate: number | null
+  columns_analyzed: string[] | null
+  column_summaries: ColumnAnomalySummary[] | null
+  anomalies: AnomalyRecord[] | null
+  duration_ms: number | null
+  error_message: string | null
+  created_at: string
+  started_at: string | null
+  completed_at: string | null
+}
+
+/**
+ * Anomaly detection list response.
+ */
+export interface AnomalyDetectionListResponse {
+  data: AnomalyDetection[]
+  total: number
+  offset: number
+  limit: number
+}
+
+/**
+ * Algorithm parameter definition.
+ */
+export interface AlgorithmParameter {
+  name: string
+  label: string
+  type: 'integer' | 'float' | 'string' | 'select' | 'boolean'
+  default: unknown
+  min_value: number | null
+  max_value: number | null
+  options: string[] | null
+  description: string
+}
+
+/**
+ * Algorithm info.
+ */
+export interface AlgorithmInfo {
+  name: AnomalyAlgorithm
+  display_name: string
+  description: string
+  category: AlgorithmCategory
+  parameters: AlgorithmParameter[]
+  pros: string[]
+  cons: string[]
+  best_for: string
+  requires_scaling: boolean
+}
+
+/**
+ * Algorithm list response.
+ */
+export interface AlgorithmListResponse {
+  algorithms: AlgorithmInfo[]
+  total: number
+}
+
+/**
+ * Anomaly detection request options.
+ */
+export interface AnomalyDetectionRequest {
+  algorithm?: AnomalyAlgorithm
+  columns?: string[]
+  config?: Record<string, unknown>
+  sample_size?: number
+}
+
+/**
+ * Anomaly detection config used in the UI.
+ */
+export interface AnomalyDetectionConfig {
+  algorithm: AnomalyAlgorithm
+  columns: string[]
+  params?: Record<string, unknown>
+  sample_size?: number
+}
+
+/**
+ * Run anomaly detection on a source.
+ */
+export async function runAnomalyDetection(
+  sourceId: string,
+  options?: AnomalyDetectionRequest
+): Promise<AnomalyDetection> {
+  return request<AnomalyDetection>(`/sources/${sourceId}/anomaly/detect`, {
+    method: 'POST',
+    body: JSON.stringify(options || {}),
+  })
+}
+
+/**
+ * Get an anomaly detection result by ID.
+ */
+export async function getAnomalyDetection(detectionId: string): Promise<AnomalyDetection> {
+  return request<AnomalyDetection>(`/anomaly/${detectionId}`)
+}
+
+/**
+ * List anomaly detections for a source.
+ */
+export async function listAnomalyDetections(
+  sourceId: string,
+  params?: { offset?: number; limit?: number }
+): Promise<AnomalyDetectionListResponse> {
+  return request<AnomalyDetectionListResponse>(`/sources/${sourceId}/anomaly/detections`, {
+    params,
+  })
+}
+
+/**
+ * Get the latest anomaly detection for a source.
+ */
+export async function getLatestAnomalyDetection(sourceId: string): Promise<AnomalyDetection> {
+  return request<AnomalyDetection>(`/sources/${sourceId}/anomaly/latest`)
+}
+
+/**
+ * Get information about available anomaly detection algorithms.
+ */
+export async function listAnomalyAlgorithms(): Promise<AlgorithmListResponse> {
+  return request<AlgorithmListResponse>('/anomaly/algorithms')
+}
+
+// ============================================================================
+// Anomaly Explainability (SHAP/LIME)
+// ============================================================================
+
+/**
+ * Feature contribution to anomaly score.
+ */
+export interface FeatureContribution {
+  feature: string
+  value: number
+  shap_value: number
+  contribution: number
+}
+
+/**
+ * Explanation for a single anomalous row.
+ */
+export interface AnomalyExplanationResult {
+  row_index: number
+  anomaly_score: number
+  feature_contributions: FeatureContribution[]
+  total_shap: number
+  summary: string
+}
+
+/**
+ * Response containing anomaly explanations.
+ */
+export interface ExplainabilityResponse {
+  detection_id: string
+  algorithm: string
+  row_indices: number[]
+  feature_names: string[]
+  explanations: AnomalyExplanationResult[]
+  generated_at: string
+  error?: string | null
+}
+
+/**
+ * Request to generate explanations for anomalies.
+ */
+export interface ExplainabilityRequest {
+  row_indices: number[]
+  max_features?: number
+  sample_background?: number
+}
+
+/**
+ * Generate SHAP/LIME explanations for specific anomaly rows.
+ */
+export async function explainAnomaly(
+  detectionId: string,
+  rowIndices: number[],
+  options?: {
+    maxFeatures?: number
+    sampleBackground?: number
+  }
+): Promise<ExplainabilityResponse> {
+  const response = await request<ExplainabilityResponse>(
+    `/anomaly/${detectionId}/explain`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        row_indices: rowIndices,
+        max_features: options?.maxFeatures,
+        sample_background: options?.sampleBackground,
+      }),
+    }
+  )
+  return response
+}
+
+/**
+ * Cached explanation from database.
+ */
+export interface CachedExplanation {
+  id: string
+  detection_id: string
+  row_index: number
+  anomaly_score: number
+  feature_contributions: FeatureContribution[]
+  total_shap: number
+  summary: string
+  generated_at: string | null
+}
+
+/**
+ * Response containing list of cached explanations.
+ */
+export interface CachedExplanationsResponse {
+  detection_id: string
+  explanations: CachedExplanation[]
+  total: number
+}
+
+/**
+ * Get cached explanations for a detection.
+ */
+export async function getCachedExplanations(
+  detectionId: string,
+  rowIndices?: number[]
+): Promise<CachedExplanationsResponse> {
+  const params: Record<string, string> = {}
+  if (rowIndices && rowIndices.length > 0) {
+    params.row_indices = rowIndices.join(',')
+  }
+  return request<CachedExplanationsResponse>(
+    `/anomaly/${detectionId}/explanations`,
+    { params }
+  )
+}
+
+// ============================================================================
+// Batch Anomaly Detection (Phase 10)
+// ============================================================================
+
+/**
+ * Batch detection job status.
+ */
+export type BatchDetectionStatus =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'partial'
+  | 'error'
+  | 'cancelled'
+
+/**
+ * Result for a single source in a batch job.
+ */
+export interface BatchSourceResult {
+  source_id: string
+  source_name: string | null
+  detection_id: string | null
+  status: string
+  anomaly_count: number | null
+  anomaly_rate: number | null
+  total_rows: number | null
+  error_message: string | null
+}
+
+/**
+ * Batch anomaly detection job.
+ */
+export interface BatchDetectionJob {
+  id: string
+  name: string | null
+  status: BatchDetectionStatus
+  algorithm: AnomalyAlgorithm
+  config: Record<string, unknown> | null
+  total_sources: number
+  completed_sources: number
+  failed_sources: number
+  progress_percent: number
+  current_source_id: string | null
+  total_anomalies: number
+  total_rows_analyzed: number
+  average_anomaly_rate: number
+  results: BatchSourceResult[] | null
+  duration_ms: number | null
+  error_message: string | null
+  created_at: string
+  started_at: string | null
+  completed_at: string | null
+}
+
+/**
+ * Batch detection list response.
+ */
+export interface BatchDetectionListResponse {
+  data: BatchDetectionJob[]
+  total: number
+  offset: number
+  limit: number
+}
+
+/**
+ * Request to create a batch anomaly detection job.
+ */
+export interface BatchDetectionRequest {
+  source_ids: string[]
+  name?: string
+  algorithm?: AnomalyAlgorithm
+  config?: Record<string, unknown>
+  sample_size?: number
+}
+
+/**
+ * Create a batch anomaly detection job.
+ */
+export async function createBatchDetection(
+  batchRequest: BatchDetectionRequest
+): Promise<BatchDetectionJob> {
+  return request<BatchDetectionJob>('/anomaly/batch', {
+    method: 'POST',
+    body: JSON.stringify(batchRequest),
+  })
+}
+
+/**
+ * Get batch detection job status.
+ */
+export async function getBatchDetection(batchId: string): Promise<BatchDetectionJob> {
+  return request<BatchDetectionJob>(`/anomaly/batch/${batchId}`)
+}
+
+/**
+ * Get batch detection results.
+ */
+export async function getBatchDetectionResults(batchId: string): Promise<BatchSourceResult[]> {
+  return request<BatchSourceResult[]>(`/anomaly/batch/${batchId}/results`)
+}
+
+/**
+ * List batch detection jobs.
+ */
+export async function listBatchDetections(params?: {
+  offset?: number
+  limit?: number
+}): Promise<BatchDetectionListResponse> {
+  return request<BatchDetectionListResponse>('/anomaly/batch', { params })
+}
+
+/**
+ * Cancel a batch detection job.
+ */
+export async function cancelBatchDetection(batchId: string): Promise<BatchDetectionJob> {
+  return request<BatchDetectionJob>(`/anomaly/batch/${batchId}/cancel`, {
+    method: 'POST',
+  })
+}
+
+/**
+ * Delete a batch detection job.
+ */
+export async function deleteBatchDetection(batchId: string): Promise<void> {
+  await request(`/anomaly/batch/${batchId}`, { method: 'DELETE' })
+}
+
+// ============================================================================
+// Algorithm Comparison
+// ============================================================================
+
+/**
+ * Level of agreement among algorithms.
+ */
+export type AgreementLevel = 'all' | 'majority' | 'some' | 'one'
+
+/**
+ * Request to compare multiple anomaly detection algorithms.
+ */
+export interface AlgorithmComparisonRequest {
+  algorithms: AnomalyAlgorithm[]
+  columns?: string[]
+  config?: Record<string, Record<string, unknown>>
+  sample_size?: number
+}
+
+/**
+ * Single algorithm result within a comparison.
+ */
+export interface AlgorithmComparisonResultItem {
+  algorithm: AnomalyAlgorithm
+  display_name: string
+  status: AnomalyStatus
+  anomaly_count: number | null
+  anomaly_rate: number | null
+  duration_ms: number | null
+  error_message: string | null
+  anomaly_indices: number[]
+}
+
+/**
+ * A row with its agreement information across algorithms.
+ */
+export interface AgreementRecord {
+  row_index: number
+  detected_by: AnomalyAlgorithm[]
+  detection_count: number
+  agreement_level: AgreementLevel
+  confidence_score: number
+  column_values: Record<string, unknown>
+}
+
+/**
+ * Summary of algorithm agreement.
+ */
+export interface AgreementSummary {
+  total_algorithms: number
+  total_unique_anomalies: number
+  all_agree_count: number
+  majority_agree_count: number
+  some_agree_count: number
+  one_only_count: number
+  agreement_matrix: number[][]
+}
+
+/**
+ * Algorithm comparison result.
+ */
+export interface AlgorithmComparisonResult {
+  id: string
+  source_id: string
+  status: AnomalyStatus
+  total_rows: number | null
+  columns_analyzed: string[] | null
+  algorithm_results: AlgorithmComparisonResultItem[]
+  agreement_summary: AgreementSummary | null
+  agreement_records: AgreementRecord[] | null
+  total_duration_ms: number | null
+  error_message: string | null
+  created_at: string
+  completed_at: string | null
+}
+
+/**
+ * Run multiple algorithms and compare results.
+ */
+export async function compareAlgorithms(
+  sourceId: string,
+  comparisonRequest: AlgorithmComparisonRequest
+): Promise<AlgorithmComparisonResult> {
+  return request<AlgorithmComparisonResult>(`/anomaly/compare?source_id=${sourceId}`, {
+    method: 'POST',
+    body: JSON.stringify(comparisonRequest),
+  })
+}
+
+/**
+ * Get a comparison result by ID.
+ * Note: Comparison results are computed on-the-fly and not persisted.
+ */
+export async function getAlgorithmComparison(comparisonId: string): Promise<AlgorithmComparisonResult> {
+  return request<AlgorithmComparisonResult>(`/anomaly/compare/${comparisonId}`)
+}
+
+// =============================================================================
+// Streaming Anomaly Detection
+// =============================================================================
+
+/**
+ * Streaming anomaly detection algorithm.
+ */
+export type StreamingAlgorithm =
+  | 'zscore_rolling'
+  | 'ema'
+  | 'isolation_forest_incremental'
+  | 'half_space_trees'
+  | 'rrcf'
+
+/**
+ * Streaming session status.
+ */
+export type StreamingSessionStatus = 'created' | 'running' | 'paused' | 'stopped' | 'error'
+
+/**
+ * Rolling statistics for a column.
+ */
+export interface StreamingStatistics {
+  count: number
+  mean: number
+  std: number
+  min: number | null
+  max: number | null
+  anomaly_count: number
+  anomaly_rate: number
+}
+
+/**
+ * Streaming session configuration for creation.
+ */
+export interface StreamingSessionCreate {
+  source_id?: string
+  algorithm?: StreamingAlgorithm
+  window_size?: number
+  threshold?: number
+  columns?: string[]
+  config?: Record<string, unknown>
+}
+
+/**
+ * Streaming session response.
+ */
+export interface StreamingSession {
+  id: string
+  source_id: string | null
+  algorithm: StreamingAlgorithm
+  window_size: number
+  threshold: number
+  columns: string[]
+  status: StreamingSessionStatus
+  config: Record<string, unknown> | null
+  statistics: Record<string, StreamingStatistics> | null
+  total_points: number
+  total_alerts: number
+  created_at: string
+  started_at: string | null
+  stopped_at: string | null
+}
+
+/**
+ * Streaming session list response.
+ */
+export interface StreamingSessionListResponse {
+  success: boolean
+  data: StreamingSession[]
+  total: number
+  offset: number
+  limit: number
+}
+
+/**
+ * Data point to push to streaming session.
+ */
+export interface StreamingDataPoint {
+  data: Record<string, unknown>
+  timestamp?: string
+}
+
+/**
+ * Batch of data points.
+ */
+export interface StreamingDataBatch {
+  data_points: StreamingDataPoint[]
+}
+
+/**
+ * Streaming anomaly alert.
+ */
+export interface StreamingAlert {
+  id: string
+  session_id: string
+  timestamp: string
+  data_point: Record<string, unknown>
+  anomaly_score: number
+  is_anomaly: boolean
+  algorithm: StreamingAlgorithm
+  details: Record<string, unknown>
+}
+
+/**
+ * Streaming alert list response.
+ */
+export interface StreamingAlertListResponse {
+  success: boolean
+  data: StreamingAlert[]
+  total: number
+  offset: number
+  limit: number
+}
+
+/**
+ * Streaming session status response.
+ */
+export interface StreamingStatusResponse {
+  session_id: string
+  status: StreamingSessionStatus
+  total_points: number
+  total_alerts: number
+  buffer_utilization: number
+  statistics: Record<string, StreamingStatistics>
+  recent_alerts: StreamingAlert[]
+}
+
+/**
+ * Recent data response.
+ */
+export interface StreamingRecentDataResponse {
+  session_id: string
+  data_points: Array<{ timestamp: string; data: Record<string, unknown> }>
+  total: number
+}
+
+/**
+ * Streaming algorithm info.
+ */
+export interface StreamingAlgorithmInfo {
+  name: StreamingAlgorithm
+  display_name: string
+  description: string
+  supports_online_learning: boolean
+  parameters: AlgorithmParameter[]
+  best_for: string
+}
+
+/**
+ * Streaming algorithm list response.
+ */
+export interface StreamingAlgorithmListResponse {
+  algorithms: StreamingAlgorithmInfo[]
+  total: number
+}
+
+/**
+ * Start a new streaming anomaly detection session.
+ */
+export async function startStreamingSession(
+  config: StreamingSessionCreate
+): Promise<StreamingSession> {
+  return request<StreamingSession>('/anomaly/streaming/start', {
+    method: 'POST',
+    body: JSON.stringify(config),
+  })
+}
+
+/**
+ * Push a data point to a streaming session.
+ */
+export async function pushStreamingData(
+  sessionId: string,
+  dataPoint: StreamingDataPoint
+): Promise<StreamingAlert | null> {
+  return request<StreamingAlert | null>(`/anomaly/streaming/${sessionId}/data`, {
+    method: 'POST',
+    body: JSON.stringify(dataPoint),
+  })
+}
+
+/**
+ * Push a batch of data points to a streaming session.
+ */
+export async function pushStreamingBatch(
+  sessionId: string,
+  batch: StreamingDataBatch
+): Promise<StreamingAlert[]> {
+  return request<StreamingAlert[]>(`/anomaly/streaming/${sessionId}/batch`, {
+    method: 'POST',
+    body: JSON.stringify(batch),
+  })
+}
+
+/**
+ * Get streaming session status.
+ */
+export async function getStreamingStatus(
+  sessionId: string
+): Promise<StreamingStatusResponse> {
+  return request<StreamingStatusResponse>(`/anomaly/streaming/${sessionId}/status`)
+}
+
+/**
+ * Stop a streaming session.
+ */
+export async function stopStreamingSession(
+  sessionId: string
+): Promise<StreamingSession> {
+  return request<StreamingSession>(`/anomaly/streaming/${sessionId}/stop`, {
+    method: 'POST',
+  })
+}
+
+/**
+ * Delete a streaming session.
+ */
+export async function deleteStreamingSession(sessionId: string): Promise<void> {
+  await request(`/anomaly/streaming/${sessionId}`, { method: 'DELETE' })
+}
+
+/**
+ * List alerts from a streaming session.
+ */
+export async function listStreamingAlerts(
+  sessionId: string,
+  params?: { offset?: number; limit?: number }
+): Promise<StreamingAlertListResponse> {
+  return request<StreamingAlertListResponse>(
+    `/anomaly/streaming/${sessionId}/alerts`,
+    { params }
+  )
+}
+
+/**
+ * Get recent data from a streaming session.
+ */
+export async function getStreamingRecentData(
+  sessionId: string,
+  limit?: number
+): Promise<StreamingRecentDataResponse> {
+  return request<StreamingRecentDataResponse>(
+    `/anomaly/streaming/${sessionId}/data`,
+    { params: limit ? { limit } : undefined }
+  )
+}
+
+/**
+ * List all streaming sessions.
+ */
+export async function listStreamingSessions(
+  params?: { offset?: number; limit?: number }
+): Promise<StreamingSessionListResponse> {
+  return request<StreamingSessionListResponse>('/anomaly/streaming/sessions', {
+    params,
+  })
+}
+
+/**
+ * Get information about available streaming algorithms.
+ */
+export async function listStreamingAlgorithms(): Promise<StreamingAlgorithmListResponse> {
+  return request<StreamingAlgorithmListResponse>('/anomaly/streaming/algorithms')
+}
+
+/**
+ * Get WebSocket URL for streaming session.
+ */
+export function getStreamingWebSocketUrl(sessionId: string): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const host = window.location.host
+  return `${protocol}//${host}/api/v1/anomaly/streaming/${sessionId}/ws`
 }
 
 // API client helper for direct requests

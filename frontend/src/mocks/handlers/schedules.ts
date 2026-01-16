@@ -79,7 +79,9 @@ export const schedulesHandlers = [
     let body: {
       source_id: string
       name: string
-      cron_expression: string
+      cron_expression?: string
+      trigger_type?: string
+      trigger_config?: Record<string, unknown>
       notify_on_failure?: boolean
       config?: Record<string, unknown>
     }
@@ -102,22 +104,35 @@ export const schedulesHandlers = [
       )
     }
 
-    // Validate cron expression format (basic validation: 5 or 6 space-separated parts)
-    const cronParts = body.cron_expression.trim().split(/\s+/)
-    if (cronParts.length < 5 || cronParts.length > 6) {
-      return HttpResponse.json(
-        { detail: 'Invalid cron expression. Must have 5 or 6 space-separated parts.' },
-        { status: 400 }
-      )
+    // Handle trigger type
+    const triggerType = body.trigger_type || 'cron'
+    let cronExpression = body.cron_expression || '0 0 * * *'
+
+    // For cron triggers, validate cron expression format
+    if (triggerType === 'cron' && body.cron_expression) {
+      const cronParts = body.cron_expression.trim().split(/\s+/)
+      if (cronParts.length < 5 || cronParts.length > 6) {
+        return HttpResponse.json(
+          { detail: 'Invalid cron expression. Must have 5 or 6 space-separated parts.' },
+          { status: 400 }
+        )
+      }
+      cronExpression = body.cron_expression
     }
 
+    // Create schedule with trigger configuration
     const schedule = createSchedule({
       id: createId(),
       sourceId: body.source_id,
+      triggerType: triggerType as 'cron' | 'interval' | 'data_change' | 'composite' | 'event' | 'manual',
+      triggerConfig: body.trigger_config,
     })
 
     schedule.name = body.name
-    schedule.cron_expression = body.cron_expression
+    schedule.cron_expression = cronExpression
+    schedule.trigger_type = triggerType as 'cron' | 'interval' | 'data_change' | 'composite' | 'event' | 'manual'
+    schedule.trigger_config = body.trigger_config || { type: triggerType }
+    schedule.trigger_count = 0
     schedule.notify_on_failure = body.notify_on_failure ?? false
     schedule.config = body.config
     schedule.source_name = source.name
@@ -138,6 +153,8 @@ export const schedulesHandlers = [
     let body: Partial<{
       name: string
       cron_expression: string
+      trigger_type: string
+      trigger_config: Record<string, unknown>
       notify_on_failure: boolean
       config: Record<string, unknown>
     }>

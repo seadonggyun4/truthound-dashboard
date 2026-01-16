@@ -37,8 +37,82 @@ export default {
           "database": "Database",
           "postgresql": "PostgreSQL",
           "mysql": "MySQL",
+          "sqlite": "SQLite",
+          "oracle": "Oracle",
+          "sqlserver": "SQL Server",
           "snowflake": "Snowflake",
-          "bigquery": "BigQuery"
+          "bigquery": "BigQuery",
+          "redshift": "Amazon Redshift",
+          "databricks": "Databricks",
+          "spark": "Apache Spark"
+        },
+        "categories": {
+          "all": "All",
+          "file": "Files",
+          "database": "Databases",
+          "warehouse": "Data Warehouses",
+          "bigdata": "Big Data"
+        },
+        "dialog": {
+          "title": "Add Data Source",
+          "description": "Connect to a new data source for validation and monitoring.",
+          "selectType": "Select Type",
+          "configure": "Configure",
+          "testCreate": "Test & Create",
+          "sourceName": "Source Name",
+          "sourceNamePlaceholder": "e.g., Production Database",
+          "sourceDescription": "Description",
+          "sourceDescriptionPlaceholder": "Optional description",
+          "required": "Required",
+          "optional": "Optional",
+          "next": "Next",
+          "back": "Back",
+          "cancel": "Cancel",
+          "createSource": "Create Source",
+          "creating": "Creating...",
+          "docs": "Docs"
+        },
+        "testConnection": {
+          "title": "Test Connection",
+          "description": "Verify the connection before creating the source.",
+          "test": "Test Connection",
+          "testing": "Testing...",
+          "success": "Connection successful!",
+          "failed": "Connection failed"
+        },
+        "summary": {
+          "title": "Connection Summary",
+          "name": "Name",
+          "type": "Type",
+          "description": "Description"
+        },
+        "createSuccess": "Source created successfully",
+        "createFailed": "Failed to create source",
+        "loadTypesError": "Failed to load source types",
+        "validationErrorMsg": "Please select a source type",
+        "nameRequired": "Name is required",
+        "fieldRequired": "is required",
+        "edit": {
+          "description": "Edit source configuration and connection settings.",
+          "generalTab": "General",
+          "connectionTab": "Connection",
+          "sourceInfo": "Source Information",
+          "createdAt": "Created",
+          "sensitiveFieldsNotice": "Sensitive fields are masked for security.",
+          "sensitiveFieldsHint": "Leave password fields empty to keep the existing value.",
+          "testConnectionHint": "Test the connection with current settings.",
+          "sensitiveFieldsModified": "{count} sensitive field(s) modified",
+          "saving": "Saving...",
+          "updateSuccess": "Source updated successfully",
+          "updateFailed": "Failed to update source",
+          "unsupportedType": "Unable to load configuration for this source type."
+        },
+        "connectionInfo": {
+          "title": "Connection Details",
+          "showValue": "Show",
+          "hideValue": "Hide",
+          "masked": "(masked)",
+          "notSet": "Not set"
         }
       },
       "ko": {
@@ -74,8 +148,82 @@ export default {
           "database": "데이터베이스",
           "postgresql": "PostgreSQL",
           "mysql": "MySQL",
+          "sqlite": "SQLite",
+          "oracle": "Oracle",
+          "sqlserver": "SQL Server",
           "snowflake": "Snowflake",
-          "bigquery": "BigQuery"
+          "bigquery": "BigQuery",
+          "redshift": "Amazon Redshift",
+          "databricks": "Databricks",
+          "spark": "Apache Spark"
+        },
+        "categories": {
+          "all": "전체",
+          "file": "파일",
+          "database": "데이터베이스",
+          "warehouse": "데이터 웨어하우스",
+          "bigdata": "빅데이터"
+        },
+        "dialog": {
+          "title": "데이터 소스 추가",
+          "description": "검증 및 모니터링을 위해 새로운 데이터 소스에 연결합니다.",
+          "selectType": "유형 선택",
+          "configure": "구성",
+          "testCreate": "테스트 및 생성",
+          "sourceName": "소스 이름",
+          "sourceNamePlaceholder": "예: 프로덕션 데이터베이스",
+          "sourceDescription": "설명",
+          "sourceDescriptionPlaceholder": "선택적 설명",
+          "required": "필수",
+          "optional": "선택",
+          "next": "다음",
+          "back": "이전",
+          "cancel": "취소",
+          "createSource": "소스 생성",
+          "creating": "생성 중...",
+          "docs": "문서"
+        },
+        "testConnection": {
+          "title": "연결 테스트",
+          "description": "소스를 생성하기 전에 연결을 확인합니다.",
+          "test": "연결 테스트",
+          "testing": "테스트 중...",
+          "success": "연결 성공!",
+          "failed": "연결 실패"
+        },
+        "summary": {
+          "title": "연결 요약",
+          "name": "이름",
+          "type": "유형",
+          "description": "설명"
+        },
+        "createSuccess": "소스가 성공적으로 생성되었습니다",
+        "createFailed": "소스 생성에 실패했습니다",
+        "loadTypesError": "소스 유형을 불러오지 못했습니다",
+        "validationErrorMsg": "소스 유형을 선택하세요",
+        "nameRequired": "이름은 필수입니다",
+        "fieldRequired": "필수 항목입니다",
+        "edit": {
+          "description": "소스 구성 및 연결 설정을 편집합니다.",
+          "generalTab": "일반",
+          "connectionTab": "연결",
+          "sourceInfo": "소스 정보",
+          "createdAt": "생성일",
+          "sensitiveFieldsNotice": "보안을 위해 민감한 필드는 마스킹됩니다.",
+          "sensitiveFieldsHint": "기존 값을 유지하려면 비밀번호 필드를 비워두세요.",
+          "testConnectionHint": "현재 설정으로 연결을 테스트합니다.",
+          "sensitiveFieldsModified": "{count}개의 민감한 필드가 수정됨",
+          "saving": "저장 중...",
+          "updateSuccess": "소스가 성공적으로 업데이트되었습니다",
+          "updateFailed": "소스 업데이트에 실패했습니다",
+          "unsupportedType": "이 소스 유형의 구성을 불러올 수 없습니다."
+        },
+        "connectionInfo": {
+          "title": "연결 세부 정보",
+          "showValue": "표시",
+          "hideValue": "숨기기",
+          "masked": "(마스킹됨)",
+          "notSet": "설정되지 않음"
         }
       }
     }

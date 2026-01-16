@@ -44,6 +44,17 @@ import {
   createDiverseAssets,
   createDiverseComments,
   createDiverseActivities,
+  // Advanced Notifications
+  createDiverseRoutingRules,
+  createDiverseDeduplicationConfigs,
+  createDiverseThrottlingConfigs,
+  createDiverseEscalationPolicies,
+  createDiverseEscalationIncidents,
+  type RoutingRule,
+  type DeduplicationConfig,
+  type ThrottlingConfig,
+  type EscalationPolicy,
+  type EscalationIncident,
 } from '../factories'
 
 // ============================================================================
@@ -71,6 +82,12 @@ interface MockStore {
   assetTags: Map<string, AssetTag>
   comments: Map<string, Comment>
   activities: Map<string, Activity>
+  // Phase 14: Advanced Notifications
+  routingRules: Map<string, RoutingRule>
+  deduplicationConfigs: Map<string, DeduplicationConfig>
+  throttlingConfigs: Map<string, ThrottlingConfig>
+  escalationPolicies: Map<string, EscalationPolicy>
+  escalationIncidents: Map<string, EscalationIncident>
 }
 
 let store: MockStore | null = null
@@ -180,6 +197,23 @@ function initializeStore(): MockStore {
   const activities = createDiverseActivities(termIds, assetIds, columnIds)
   const activitiesMap = new Map(activities.map((a) => [a.id, a]))
 
+  // ========== Phase 14: Advanced Notifications ==========
+  const routingRules = createDiverseRoutingRules(channelIds)
+  const routingRulesMap = new Map(routingRules.map((r) => [r.id, r]))
+
+  const deduplicationConfigs = createDiverseDeduplicationConfigs()
+  const deduplicationConfigsMap = new Map(deduplicationConfigs.map((c) => [c.id, c]))
+
+  const throttlingConfigs = createDiverseThrottlingConfigs(channelIds)
+  const throttlingConfigsMap = new Map(throttlingConfigs.map((c) => [c.id, c]))
+
+  const escalationPolicies = createDiverseEscalationPolicies(channelIds)
+  const escalationPoliciesMap = new Map(escalationPolicies.map((p) => [p.id, p]))
+
+  const policyIds = escalationPolicies.map((p) => p.id)
+  const escalationIncidents = createDiverseEscalationIncidents(policyIds)
+  const escalationIncidentsMap = new Map(escalationIncidents.map((i) => [i.id, i]))
+
   return {
     sources: sourcesMap,
     validations: validationsMap,
@@ -201,6 +235,12 @@ function initializeStore(): MockStore {
     assetTags: tagsMap,
     comments: commentsMap,
     activities: activitiesMap,
+    // Phase 14: Advanced Notifications
+    routingRules: routingRulesMap,
+    deduplicationConfigs: deduplicationConfigsMap,
+    throttlingConfigs: throttlingConfigsMap,
+    escalationPolicies: escalationPoliciesMap,
+    escalationIncidents: escalationIncidentsMap,
   }
 }
 
@@ -348,4 +388,48 @@ export function getLogsByChannelId(channelId: string): NotificationLog[] {
   return getAll(getStore().notificationLogs)
     .filter((l) => l.channel_id === channelId)
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+}
+
+// ============================================================================
+// Phase 14: Advanced Notifications Query Helpers
+// ============================================================================
+
+export function getActiveRoutingRules(): RoutingRule[] {
+  return getAll(getStore().routingRules)
+    .filter((r) => r.is_active)
+    .sort((a, b) => b.priority - a.priority)
+}
+
+export function getActiveDeduplicationConfigs(): DeduplicationConfig[] {
+  return getAll(getStore().deduplicationConfigs).filter((c) => c.is_active)
+}
+
+export function getActiveThrottlingConfigs(): ThrottlingConfig[] {
+  return getAll(getStore().throttlingConfigs).filter((c) => c.is_active)
+}
+
+export function getThrottlingConfigByChannelId(channelId: string): ThrottlingConfig | undefined {
+  return getAll(getStore().throttlingConfigs).find(
+    (c) => c.channel_id === channelId && c.is_active
+  )
+}
+
+export function getActiveEscalationPolicies(): EscalationPolicy[] {
+  return getAll(getStore().escalationPolicies).filter((p) => p.is_active)
+}
+
+export function getIncidentsByPolicyId(policyId: string): EscalationIncident[] {
+  return getAll(getStore().escalationIncidents)
+    .filter((i) => i.policy_id === policyId)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+}
+
+export function getActiveIncidents(): EscalationIncident[] {
+  return getAll(getStore().escalationIncidents)
+    .filter((i) => i.state !== 'resolved')
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+}
+
+export function getIncidentByRef(incidentRef: string): EscalationIncident | undefined {
+  return getAll(getStore().escalationIncidents).find((i) => i.incident_ref === incidentRef)
 }

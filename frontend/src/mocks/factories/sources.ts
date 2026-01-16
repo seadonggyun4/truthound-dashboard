@@ -24,8 +24,20 @@ export interface SourceFactoryOptions {
   validationStatus?: 'success' | 'failed' | null
 }
 
-// Backend SourceType: 'file' | 'postgresql' | 'mysql' | 'snowflake' | 'bigquery'
-const SOURCE_TYPES = ['file', 'postgresql', 'mysql', 'snowflake', 'bigquery'] as const
+// All supported source types
+const SOURCE_TYPES = [
+  'file',
+  'postgresql',
+  'mysql',
+  'sqlite',
+  'snowflake',
+  'bigquery',
+  'redshift',
+  'databricks',
+  'oracle',
+  'sqlserver',
+  'spark',
+] as const
 
 const SOURCE_CONFIGS: Record<string, () => Record<string, unknown>> = {
   file: () => ({
@@ -41,11 +53,19 @@ const SOURCE_CONFIGS: Record<string, () => Record<string, unknown>> = {
     database: faker.database.column(),
     table: faker.database.column(),
     schema: randomChoice(['public', 'analytics', 'raw', 'staging']),
+    username: 'postgres',
+    ssl_mode: randomChoice(['disable', 'require']),
   }),
   mysql: () => ({
     host: randomChoice(['localhost', 'mysql.example.com', 'db.internal']),
     port: 3306,
     database: faker.database.column(),
+    table: faker.database.column(),
+    username: 'root',
+    ssl: faker.datatype.boolean(0.3),
+  }),
+  sqlite: () => ({
+    path: `/data/${faker.database.column()}.db`,
     table: faker.database.column(),
   }),
   snowflake: () => ({
@@ -54,12 +74,54 @@ const SOURCE_CONFIGS: Record<string, () => Record<string, unknown>> = {
     database: faker.database.column().toUpperCase(),
     schema: randomChoice(['PUBLIC', 'RAW', 'ANALYTICS']),
     table: faker.database.column().toUpperCase(),
+    username: 'ANALYST_USER',
+    role: randomChoice(['ANALYST', 'ACCOUNTADMIN', undefined]),
   }),
   bigquery: () => ({
     project: faker.string.alphanumeric(12),
     dataset: faker.database.column(),
     table: faker.database.column(),
     location: randomChoice(['US', 'EU', 'asia-northeast1']),
+  }),
+  redshift: () => ({
+    host: `cluster-${faker.string.alphanumeric(8)}.us-east-1.redshift.amazonaws.com`,
+    port: 5439,
+    database: randomChoice(['dev', 'prod', 'analytics']),
+    username: 'admin',
+    schema: randomChoice(['public', 'analytics', 'raw']),
+    table: faker.database.column(),
+  }),
+  databricks: () => ({
+    host: `adb-${faker.string.numeric(15)}.azuredatabricks.net`,
+    http_path: `/sql/1.0/warehouses/${faker.string.alphanumeric(16)}`,
+    token: `dapi${faker.string.alphanumeric(32)}`,
+    catalog: randomChoice(['main', 'unity_catalog', undefined]),
+    schema: randomChoice(['default', 'analytics', 'raw']),
+    table: faker.database.column(),
+  }),
+  oracle: () => ({
+    host: randomChoice(['localhost', 'oracle.internal', 'db.oracle.com']),
+    port: 1521,
+    service_name: randomChoice(['ORCLPDB1', 'XEPDB1', undefined]),
+    sid: randomChoice(['ORCL', 'XE', undefined]),
+    username: randomChoice(['SYSTEM', 'ADMIN', 'APP_USER']),
+    table: faker.database.column().toUpperCase(),
+  }),
+  sqlserver: () => ({
+    host: randomChoice(['localhost', 'mssql.internal', 'sql.example.com']),
+    port: 1433,
+    database: faker.database.column(),
+    username: 'sa',
+    schema: 'dbo',
+    table: faker.database.column(),
+    driver: 'ODBC Driver 17 for SQL Server',
+  }),
+  spark: () => ({
+    connection_type: randomChoice(['hive', 'spark_thrift']),
+    host: randomChoice(['localhost', 'spark.internal', 'hive.internal']),
+    port: 10000,
+    database: randomChoice(['default', 'analytics', 'raw']),
+    table: faker.database.column(),
   }),
 }
 
@@ -109,7 +171,7 @@ const SOURCE_NAMES = [
 ]
 
 export function createSource(options: SourceFactoryOptions = {}): Source {
-  const type = options.type ?? randomChoice([...SOURCE_TYPES])
+  const type = (options.type ?? randomChoice([...SOURCE_TYPES])) as Source['type']
   const configGenerator = SOURCE_CONFIGS[type] ?? SOURCE_CONFIGS.file
 
   const createdAt = createTimestamp(faker.number.int({ min: 7, max: 180 }))

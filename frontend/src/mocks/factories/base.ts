@@ -22,7 +22,7 @@ export function createRecentTimestamp(): string {
   return createTimestamp(faker.number.int({ min: 0, max: 30 }))
 }
 
-export function randomChoice<T>(items: T[]): T {
+export function randomChoice<T>(items: readonly T[]): T {
   if (items.length === 0) {
     throw new Error('randomChoice: items array cannot be empty')
   }
