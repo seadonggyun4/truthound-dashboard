@@ -164,3 +164,6 @@ htmlcov/
 .claude/
 CLAUDE.md
 .truthound_docs/
+# Build artifacts
+src/truthound_dashboard/static/assets/*.js
+src/truthound_dashboard/static/assets/*.css
