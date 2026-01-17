@@ -26,6 +26,12 @@ import DriftMonitoring from './pages/DriftMonitoring'
 import NotificationsAdvanced from './pages/NotificationsAdvanced'
 import ModelMonitoring from './pages/ModelMonitoring'
 import Alerts from './pages/Alerts'
+import TriggerMonitoring from './pages/TriggerMonitoring'
+import SchemaEvolution from './pages/SchemaEvolution'
+import ProfileComparison from './pages/ProfileComparison'
+import RuleSuggestions from './pages/RuleSuggestions'
+import Plugins from './pages/Plugins'
+import Reports from './pages/Reports'
 
 function App() {
   return (
@@ -60,6 +66,18 @@ function App() {
           <Route path="model-monitoring" element={<ModelMonitoring />} />
           {/* Unified Alerts */}
           <Route path="alerts" element={<Alerts />} />
+          {/* Trigger Monitoring */}
+          <Route path="triggers" element={<TriggerMonitoring />} />
+          {/* Schema Evolution */}
+          <Route path="schema-evolution" element={<SchemaEvolution />} />
+          {/* Profile Comparison */}
+          <Route path="profile-comparison" element={<ProfileComparison />} />
+          {/* Rule Suggestions */}
+          <Route path="rule-suggestions" element={<RuleSuggestions />} />
+          {/* Phase 9: Plugin System */}
+          <Route path="plugins" element={<Plugins />} />
+          {/* Reports & History */}
+          <Route path="reports" element={<Reports />} />
         </Route>
       </Routes>
     </Suspense>

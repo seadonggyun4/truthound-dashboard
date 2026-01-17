@@ -404,23 +404,133 @@ export interface ColumnProfile {
   std?: number
 }
 
+// Pattern detection result
+export interface DetectedPattern {
+  patternType: string
+  confidence: number
+  matchCount: number
+  matchPercentage: number
+  sampleMatches?: string[] | null
+}
+
+// Histogram bucket
+export interface HistogramBucket {
+  bucket: string
+  count: number
+  percentage: number
+}
+
+// Enhanced column profile with pattern detection
+export interface EnhancedColumnProfile extends ColumnProfile {
+  // Inferred semantic type
+  inferredType?: string | null
+  // Completeness
+  nullCount?: number | null
+  // Uniqueness
+  isUnique?: boolean | null
+  // Extended statistics
+  median?: number | null
+  q1?: number | null
+  q3?: number | null
+  skewness?: number | null
+  kurtosis?: number | null
+  // String stats
+  minLength?: number | null
+  maxLength?: number | null
+  avgLength?: number | null
+  // Pattern detection
+  patterns?: DetectedPattern[] | null
+  primaryPattern?: string | null
+  // Distribution
+  mostCommon?: Array<{ value: string; count: number }> | null
+  histogram?: HistogramBucket[] | null
+  // Cardinality
+  cardinalityEstimate?: number | null
+}
+
+// Sampling metadata
+export interface SamplingMetadata {
+  strategyUsed: string
+  sampleSize: number
+  totalRows: number
+  samplingRatio: number
+  seed?: number | null
+  confidenceLevel?: number | null
+  marginOfError?: number | null
+}
+
 export interface ProfileResult {
   source: string
   row_count: number
   column_count: number
   size_bytes: number
   columns: ColumnProfile[]
+  // Enhanced fields
+  sampling?: SamplingMetadata | null
+  detected_patterns_summary?: Record<string, number> | null
+  profiled_at?: string | null
+  profiling_duration_ms?: number | null
+}
+
+// Sampling strategy type
+export type SamplingStrategy =
+  | 'none'
+  | 'head'
+  | 'random'
+  | 'systematic'
+  | 'stratified'
+  | 'reservoir'
+  | 'adaptive'
+  | 'hash'
+
+// Sampling configuration
+export interface SamplingConfig {
+  strategy: SamplingStrategy
+  sample_size?: number | null
+  confidence_level?: number
+  margin_of_error?: number
+  strata_column?: string | null
+  seed?: number | null
+}
+
+// Pattern detection configuration
+export interface PatternDetectionConfig {
+  enabled: boolean
+  sample_size?: number
+  min_confidence?: number
+  patterns_to_detect?: string[] | null
 }
 
 /**
- * Options for data profiling.
+ * Options for data profiling with enhanced features.
  */
 export interface ProfileOptions {
   /**
    * Maximum number of rows to sample for profiling.
    * If undefined, profiles all data. Useful for large datasets.
+   * @deprecated Use sampling.sample_size for advanced control
    */
   sample_size?: number
+  /**
+   * Advanced sampling configuration
+   */
+  sampling?: SamplingConfig
+  /**
+   * Pattern detection configuration
+   */
+  pattern_detection?: PatternDetectionConfig
+  /**
+   * Include histograms in the profile
+   */
+  include_histograms?: boolean
+  /**
+   * Include correlation analysis
+   */
+  include_correlations?: boolean
+  /**
+   * Include cardinality estimates
+   */
+  include_cardinality?: boolean
 }
 
 export async function profileSource(
@@ -984,9 +1094,10 @@ export async function getLatestDataMask(sourceId: string): Promise<DataMask> {
 export interface NotificationChannel {
   id: string
   name: string
-  type: 'slack' | 'email' | 'webhook'
+  type: 'slack' | 'email' | 'webhook' | 'discord' | 'telegram' | 'pagerduty' | 'opsgenie' | 'teams' | 'github'
   is_active: boolean
   config_summary: string
+  config?: Record<string, unknown>
   created_at: string
   updated_at: string
 }
@@ -1710,6 +1821,138 @@ export async function getValidator(name: string): Promise<ValidatorDefinition | 
 }
 
 // ============================================================================
+// Unified Validators (Built-in + Custom)
+// ============================================================================
+
+/**
+ * Validator source type.
+ */
+export type ValidatorSource = 'builtin' | 'custom'
+
+/**
+ * Unified validator definition (both built-in and custom).
+ */
+export interface UnifiedValidatorDefinition {
+  id: string | null
+  name: string
+  display_name: string
+  category: string
+  description: string
+  parameters: ParameterDefinition[]
+  tags: string[]
+  severity_default: 'low' | 'medium' | 'high' | 'critical'
+  source: ValidatorSource
+  is_enabled: boolean
+  requires_extra: string | null
+  experimental: boolean
+  deprecated: boolean
+  usage_count: number
+  is_verified: boolean
+}
+
+/**
+ * Category summary with counts.
+ */
+export interface ValidatorCategorySummary {
+  name: string
+  label: string
+  builtin_count: number
+  custom_count: number
+  total: number
+}
+
+/**
+ * Unified validator list response.
+ */
+export interface UnifiedValidatorListResponse {
+  data: UnifiedValidatorDefinition[]
+  total: number
+  builtin_count: number
+  custom_count: number
+  categories: ValidatorCategorySummary[]
+}
+
+/**
+ * Get all validators (built-in + custom) in a unified list.
+ */
+export async function listUnifiedValidators(params?: {
+  category?: string
+  source?: ValidatorSource
+  search?: string
+  enabled_only?: boolean
+  offset?: number
+  limit?: number
+}): Promise<UnifiedValidatorListResponse> {
+  return request<UnifiedValidatorListResponse>('/validators/unified', {
+    params: params as Record<string, string | number | boolean>,
+  })
+}
+
+/**
+ * Request to execute a custom validator.
+ */
+export interface CustomValidatorExecuteRequest {
+  source_id: string
+  column_name: string
+  param_values?: Record<string, unknown>
+  sample_size?: number
+}
+
+/**
+ * Response from custom validator execution.
+ */
+export interface CustomValidatorExecuteResponse {
+  success: boolean
+  passed: boolean | null
+  execution_time_ms: number
+  issues: Array<{
+    row?: number
+    message: string
+    severity?: string
+  }>
+  message: string
+  details: Record<string, unknown>
+  error?: string
+}
+
+/**
+ * Execute a custom validator against a data source.
+ */
+export async function executeCustomValidator(
+  validatorId: string,
+  executeRequest: CustomValidatorExecuteRequest
+): Promise<CustomValidatorExecuteResponse> {
+  return request<CustomValidatorExecuteResponse>(
+    `/validators/custom/${validatorId}/execute`,
+    {
+      method: 'POST',
+      body: JSON.stringify(executeRequest),
+    }
+  )
+}
+
+/**
+ * Preview custom validator execution with test data.
+ */
+export async function previewCustomValidatorExecution(
+  validatorId: string,
+  testData: {
+    column_name: string
+    values: unknown[]
+    params?: Record<string, unknown>
+    schema?: Record<string, unknown>
+  }
+): Promise<CustomValidatorExecuteResponse> {
+  return request<CustomValidatorExecuteResponse>(
+    `/validators/custom/${validatorId}/execute-preview`,
+    {
+      method: 'POST',
+      body: JSON.stringify(testData),
+    }
+  )
+}
+
+// ============================================================================
 // Reports (Phase 4)
 // ============================================================================
 
@@ -1724,11 +1967,44 @@ export type ReportFormat = 'html' | 'csv' | 'json' | 'markdown' | 'pdf' | 'junit
 export type ReportTheme = 'light' | 'dark' | 'professional' | 'minimal' | 'high_contrast'
 
 /**
+ * Report locale types (15 languages supported).
+ * Matches truthound documentation for i18n support.
+ */
+export type ReportLocale =
+  | 'en' // English
+  | 'ko' // Korean
+  | 'ja' // Japanese
+  | 'zh' // Chinese
+  | 'de' // German
+  | 'fr' // French
+  | 'es' // Spanish
+  | 'pt' // Portuguese
+  | 'it' // Italian
+  | 'ru' // Russian
+  | 'ar' // Arabic
+  | 'th' // Thai
+  | 'vi' // Vietnamese
+  | 'id' // Indonesian
+  | 'tr' // Turkish
+
+/**
+ * Locale information for API responses.
+ */
+export interface LocaleInfo {
+  code: ReportLocale
+  english_name: string
+  native_name: string
+  flag: string
+  rtl: boolean
+}
+
+/**
  * Options for generating a report.
  */
 export interface ReportGenerateOptions {
   format?: ReportFormat
   theme?: ReportTheme
+  locale?: ReportLocale
   title?: string
   include_samples?: boolean
   include_statistics?: boolean
@@ -1759,18 +2035,26 @@ export interface ReportResponse {
 }
 
 /**
- * Available formats response.
+ * Available formats response with locales.
  */
 export interface AvailableFormatsResponse {
   formats: string[]
   themes: string[]
+  locales?: LocaleInfo[]
 }
 
 /**
- * Get available report formats and themes.
+ * Get available report formats, themes, and locales.
  */
 export async function getReportFormats(): Promise<AvailableFormatsResponse> {
   return request<AvailableFormatsResponse>('/reports/formats')
+}
+
+/**
+ * Get available report locales (15 languages).
+ */
+export async function getReportLocales(): Promise<LocaleInfo[]> {
+  return request<LocaleInfo[]>('/reports/locales')
 }
 
 /**
@@ -1794,6 +2078,7 @@ export async function downloadValidationReport(
   options?: {
     format?: ReportFormat
     theme?: ReportTheme
+    locale?: ReportLocale
     include_samples?: boolean
     include_statistics?: boolean
   }
@@ -1801,6 +2086,7 @@ export async function downloadValidationReport(
   const params = new URLSearchParams()
   if (options?.format) params.append('format', options.format)
   if (options?.theme) params.append('theme', options.theme)
+  if (options?.locale) params.append('locale', options.locale)
   if (options?.include_samples !== undefined)
     params.append('include_samples', String(options.include_samples))
   if (options?.include_statistics !== undefined)
@@ -1822,9 +2108,10 @@ export async function downloadValidationReport(
 export async function previewValidationReport(
   validationId: string,
   format: ReportFormat = 'html',
-  theme: ReportTheme = 'professional'
+  theme: ReportTheme = 'professional',
+  locale: ReportLocale = 'en'
 ): Promise<string> {
-  const params = new URLSearchParams({ format, theme })
+  const params = new URLSearchParams({ format, theme, locale })
   const url = `${API_BASE}/reports/validations/${validationId}/preview?${params}`
   const response = await fetch(url)
 
@@ -1998,12 +2285,18 @@ export async function clearCache(options?: {
 /**
  * Type of schema change.
  */
-export type SchemaChangeType = 'column_added' | 'column_removed' | 'type_changed'
+export type SchemaChangeType =
+  | 'column_added'
+  | 'column_removed'
+  | 'type_changed'
+  | 'nullable_changed'
+  | 'constraint_changed'
+  | 'column_renamed'
 
 /**
  * Severity of schema change.
  */
-export type SchemaChangeSeverity = 'breaking' | 'non_breaking'
+export type SchemaChangeSeverity = 'breaking' | 'warning' | 'non_breaking'
 
 /**
  * Summary of a schema version for listings.
@@ -2032,6 +2325,18 @@ export interface SchemaVersionResponse {
 }
 
 /**
+ * Details about a schema change (type compatibility, reason, etc.).
+ */
+export interface SchemaChangeDetails {
+  is_compatible?: boolean
+  old_type_normalized?: string
+  new_type_normalized?: string
+  constraint_type?: string
+  nullable?: boolean
+  reason?: string
+}
+
+/**
  * Schema change record.
  */
 export interface SchemaChangeResponse {
@@ -2045,6 +2350,7 @@ export interface SchemaChangeResponse {
   new_value: string | null
   severity: SchemaChangeSeverity
   description: string
+  details?: SchemaChangeDetails
   created_at: string
 }
 
@@ -2123,8 +2429,42 @@ export async function getSchemaEvolutionSummary(sourceId: string): Promise<Schem
 }
 
 // ============================================================================
-// Rule Suggestions (Phase 6)
+// Rule Suggestions (Phase 6) - Advanced Options
 // ============================================================================
+
+/**
+ * Strictness level for rule generation.
+ */
+export type StrictnessLevel = 'loose' | 'medium' | 'strict'
+
+/**
+ * Preset templates for rule generation.
+ */
+export type RulePreset =
+  | 'default'
+  | 'strict'
+  | 'loose'
+  | 'minimal'
+  | 'comprehensive'
+  | 'ci_cd'
+  | 'schema_only'
+  | 'format_only'
+
+/**
+ * Export format for generated rules.
+ */
+export type RuleExportFormat = 'yaml' | 'json' | 'python' | 'toml'
+
+/**
+ * Categories of validation rules.
+ */
+export type RuleCategory =
+  | 'schema'
+  | 'stats'
+  | 'pattern'
+  | 'completeness'
+  | 'uniqueness'
+  | 'distribution'
 
 /**
  * A single suggested validation rule.
@@ -2137,7 +2477,42 @@ export interface SuggestedRule {
   confidence: number
   reason: string
   severity_suggestion: string
-  category: string
+  category: RuleCategory | string
+}
+
+/**
+ * Cross-column rule type.
+ */
+export type CrossColumnRuleType =
+  | 'composite_key'
+  | 'column_sum'
+  | 'column_product'
+  | 'column_difference'
+  | 'column_ratio'
+  | 'column_percentage'
+  | 'column_comparison'
+  | 'column_chain_comparison'
+  | 'column_dependency'
+  | 'column_implication'
+  | 'column_coexistence'
+  | 'column_mutual_exclusivity'
+  | 'column_correlation'
+  | 'referential_integrity'
+
+/**
+ * A cross-column rule suggestion.
+ */
+export interface CrossColumnRuleSuggestion {
+  id: string
+  rule_type: CrossColumnRuleType
+  columns: string[]
+  validator_name: string
+  params: Record<string, unknown>
+  confidence: number
+  reason: string
+  severity_suggestion: string
+  evidence: Record<string, unknown>
+  sample_violations: Array<Record<string, unknown>>
 }
 
 /**
@@ -2147,8 +2522,17 @@ export interface RuleSuggestionRequest {
   use_latest_profile?: boolean
   profile_id?: string
   min_confidence?: number
+  // Advanced options
+  strictness?: StrictnessLevel
+  preset?: RulePreset
+  include_categories?: RuleCategory[]
+  exclude_categories?: RuleCategory[]
   include_types?: string[]
   exclude_columns?: string[]
+  // Cross-column options
+  enable_cross_column?: boolean
+  include_cross_column_types?: CrossColumnRuleType[]
+  exclude_cross_column_types?: CrossColumnRuleType[]
 }
 
 /**
@@ -2162,6 +2546,15 @@ export interface RuleSuggestionResponse {
   total_suggestions: number
   high_confidence_count: number
   generated_at: string
+  // Generation settings
+  strictness: StrictnessLevel
+  preset: RulePreset | null
+  categories_included: RuleCategory[]
+  by_category: Record<string, number>
+  // Cross-column suggestions
+  cross_column_suggestions?: CrossColumnRuleSuggestion[]
+  cross_column_count?: number
+  by_cross_column_type?: Record<string, number>
 }
 
 /**
@@ -2184,6 +2577,50 @@ export interface ApplyRulesResponse {
   applied_count: number
   validators: string[]
   created_at: string
+}
+
+/**
+ * Request to export rules.
+ */
+export interface ExportRulesRequest {
+  suggestions: SuggestedRule[]
+  format: RuleExportFormat
+  include_metadata?: boolean
+  rule_name?: string
+  description?: string
+}
+
+/**
+ * Response containing exported rules.
+ */
+export interface ExportRulesResponse {
+  content: string
+  format: RuleExportFormat
+  filename: string
+  rule_count: number
+  generated_at: string
+}
+
+/**
+ * Information about a preset.
+ */
+export interface PresetInfo {
+  name: RulePreset
+  display_name: string
+  description: string
+  strictness: StrictnessLevel
+  categories: RuleCategory[]
+  recommended_for: string
+}
+
+/**
+ * Response listing available presets and options.
+ */
+export interface PresetsResponse {
+  presets: PresetInfo[]
+  strictness_levels: StrictnessLevel[]
+  categories: RuleCategory[]
+  export_formats: RuleExportFormat[]
 }
 
 /**
@@ -2210,6 +2647,46 @@ export async function applyRuleSuggestions(
     method: 'POST',
     body: JSON.stringify(data),
   })
+}
+
+/**
+ * Export rules in specified format.
+ */
+export async function exportRules(
+  sourceId: string,
+  data: ExportRulesRequest
+): Promise<ExportRulesResponse> {
+  return request(`/sources/${sourceId}/rules/export`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Download exported rules as a file.
+ */
+export async function downloadExportedRules(
+  sourceId: string,
+  data: ExportRulesRequest
+): Promise<Blob> {
+  const response = await fetch(`${API_BASE}/sources/${sourceId}/rules/export/download`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    throw new Error(`Export failed: ${response.statusText}`)
+  }
+  return response.blob()
+}
+
+/**
+ * Get available rule generation presets and options.
+ */
+export async function getRuleSuggestionPresets(): Promise<PresetsResponse> {
+  return request('/rule-suggestions/presets')
 }
 
 // ============================================================================
@@ -2718,6 +3195,75 @@ export async function getRuleTypes(): Promise<{ rule_types: RuleTypeInfo[] }> {
   return request('/notifications/routing/rules/types')
 }
 
+// Expression Validation
+export interface ExpressionValidateRequest {
+  expression: string
+  timeout_seconds?: number
+}
+
+export interface ExpressionValidateResponse {
+  valid: boolean
+  error: string | null
+  error_line: number | null
+  preview_result: boolean | null
+  preview_error: string | null
+  warnings: string[]
+}
+
+/**
+ * Validate a Python-like expression for use in routing rules.
+ */
+export async function validateExpression(
+  data: ExpressionValidateRequest
+): Promise<ExpressionValidateResponse> {
+  return request('/notifications/routing/rules/validate-expression', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Request type for Jinja2 template validation.
+ */
+export interface Jinja2ValidateRequest {
+  /** The Jinja2 template string to validate */
+  template: string
+  /** Optional sample event data for rendering preview */
+  sample_data?: Record<string, unknown>
+  /** Optional expected result ("true" or "false") */
+  expected_result?: string
+}
+
+/**
+ * Response type for Jinja2 template validation.
+ */
+export interface Jinja2ValidateResponse {
+  /** Whether the template is syntactically valid */
+  valid: boolean
+  /** Error message if validation failed */
+  error: string | null
+  /** Line number where error occurred (if applicable) */
+  error_line: number | null
+  /** The rendered output if sample_data was provided */
+  rendered_output: string | null
+  /** Whether the rendered output matches expected result */
+  matches_expected?: boolean
+  /** Error during rendering (template valid but render failed) */
+  render_error?: string
+}
+
+/**
+ * Validate a Jinja2 template for use in routing rules.
+ */
+export async function validateJinja2Template(
+  data: Jinja2ValidateRequest
+): Promise<Jinja2ValidateResponse> {
+  return request('/notifications/routing/rules/validate-jinja2', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
 // Deduplication
 export type DeduplicationStrategy = 'sliding' | 'tumbling' | 'session' | 'adaptive'
 export type DeduplicationPolicy = 'none' | 'basic' | 'severity' | 'issue_based' | 'strict' | 'custom'
@@ -3044,6 +3590,81 @@ export async function getEscalationStats(): Promise<EscalationStats> {
   return request('/notifications/escalation/stats')
 }
 
+// Escalation Scheduler
+export interface EscalationSchedulerStatus {
+  is_running: boolean
+  check_interval_seconds: number
+  last_check_at: string | null
+  next_check_at: string | null
+  total_checks: number
+  total_escalations_triggered: number
+  errors_count: number
+}
+
+export interface EscalationSchedulerConfig {
+  check_interval_seconds: number
+}
+
+export async function getEscalationSchedulerStatus(): Promise<EscalationSchedulerStatus> {
+  return request('/notifications/escalation/scheduler/status')
+}
+
+export async function startEscalationScheduler(): Promise<{ message: string; status: EscalationSchedulerStatus }> {
+  return request('/notifications/escalation/scheduler/start', { method: 'POST' })
+}
+
+export async function stopEscalationScheduler(): Promise<{ message: string; status: EscalationSchedulerStatus }> {
+  return request('/notifications/escalation/scheduler/stop', { method: 'POST' })
+}
+
+export async function triggerEscalationCheck(): Promise<{
+  message: string
+  incidents_checked: number
+  escalations_triggered: number
+}> {
+  return request('/notifications/escalation/scheduler/trigger', { method: 'POST' })
+}
+
+export async function updateEscalationSchedulerConfig(
+  config: EscalationSchedulerConfig
+): Promise<{ message: string; status: EscalationSchedulerStatus }> {
+  return request('/notifications/escalation/scheduler/config', {
+    method: 'PUT',
+    body: JSON.stringify(config),
+  })
+}
+
+// Rule Testing / Dry-Run
+export interface RuleTestContext {
+  checkpoint_name?: string
+  status?: 'success' | 'failure' | 'error'
+  severity?: 'critical' | 'high' | 'medium' | 'low' | 'info'
+  issue_count?: number
+  pass_rate?: number
+  tags?: string[]
+  data_asset?: string
+  metadata?: Record<string, unknown>
+  timestamp?: string
+}
+
+export interface RuleTestResult {
+  matched: boolean
+  rule_type: string
+  evaluation_time_ms: number
+  match_details: Record<string, unknown>
+  error?: string
+}
+
+export async function testRoutingRule(
+  ruleConfig: Record<string, unknown>,
+  context: RuleTestContext
+): Promise<RuleTestResult> {
+  return request('/notifications/routing/rules/test', {
+    method: 'POST',
+    body: JSON.stringify({ rule_config: ruleConfig, context }),
+  })
+}
+
 // Combined Advanced Notification Stats
 export interface AdvancedNotificationStats {
   routing: Record<string, number>
@@ -3054,6 +3675,156 @@ export interface AdvancedNotificationStats {
 
 export async function getAdvancedNotificationStats(): Promise<AdvancedNotificationStats> {
   return request('/notifications/advanced/stats')
+}
+
+// Config Import/Export Types
+export type ConfigType = 'routing_rule' | 'deduplication' | 'throttling' | 'escalation'
+export type ConflictResolution = 'skip' | 'overwrite' | 'rename'
+
+export interface NotificationConfigBundle {
+  version: string
+  exported_at: string
+  routing_rules: RoutingRule[]
+  deduplication_configs: DeduplicationConfig[]
+  throttling_configs: ThrottlingConfig[]
+  escalation_policies: EscalationPolicy[]
+}
+
+export interface ConfigImportItem {
+  config_type: ConfigType
+  config_id: string
+  action: 'create' | 'skip' | 'overwrite'
+}
+
+export interface ConfigImportRequest {
+  bundle: NotificationConfigBundle
+  conflict_resolution: ConflictResolution
+  selected_items?: ConfigImportItem[] | null
+}
+
+export interface ConfigImportConflict {
+  config_type: ConfigType
+  config_id: string
+  config_name: string
+  existing_name: string
+  suggested_action: ConflictResolution
+}
+
+export interface ConfigImportPreview {
+  total_configs: number
+  new_configs: number
+  conflicts: ConfigImportConflict[]
+  routing_rules_count: number
+  deduplication_configs_count: number
+  throttling_configs_count: number
+  escalation_policies_count: number
+}
+
+export interface ConfigImportResult {
+  success: boolean
+  message: string
+  created_count: number
+  skipped_count: number
+  overwritten_count: number
+  errors: string[]
+  created_ids: Record<string, string[]>
+}
+
+export interface ConfigExportOptions {
+  include_routing_rules?: boolean
+  include_deduplication?: boolean
+  include_throttling?: boolean
+  include_escalation?: boolean
+}
+
+/**
+ * Export notification configurations as a JSON bundle.
+ */
+export async function exportNotificationConfig(
+  options?: ConfigExportOptions
+): Promise<NotificationConfigBundle> {
+  const params: Record<string, string> = {}
+  if (options?.include_routing_rules !== undefined) {
+    params.include_routing_rules = String(options.include_routing_rules)
+  }
+  if (options?.include_deduplication !== undefined) {
+    params.include_deduplication = String(options.include_deduplication)
+  }
+  if (options?.include_throttling !== undefined) {
+    params.include_throttling = String(options.include_throttling)
+  }
+  if (options?.include_escalation !== undefined) {
+    params.include_escalation = String(options.include_escalation)
+  }
+  return request('/notifications/config/export', { params })
+}
+
+/**
+ * Download notification config as a JSON file.
+ */
+export async function downloadNotificationConfigAsFile(
+  options?: ConfigExportOptions
+): Promise<Blob> {
+  const bundle = await exportNotificationConfig(options)
+  const json = JSON.stringify(bundle, null, 2)
+  return new Blob([json], { type: 'application/json' })
+}
+
+/**
+ * Preview import operation to detect conflicts.
+ */
+export async function previewNotificationConfigImport(
+  bundle: NotificationConfigBundle
+): Promise<ConfigImportPreview> {
+  return request('/notifications/config/import/preview', {
+    method: 'POST',
+    body: JSON.stringify(bundle),
+  })
+}
+
+/**
+ * Import notification configurations from a bundle.
+ */
+export async function importNotificationConfig(
+  request_data: ConfigImportRequest
+): Promise<ConfigImportResult> {
+  return request('/notifications/config/import', {
+    method: 'POST',
+    body: JSON.stringify(request_data),
+  })
+}
+
+/**
+ * Parse an uploaded config file and validate its structure.
+ */
+export async function parseNotificationConfigFile(file: File): Promise<NotificationConfigBundle> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string
+        const bundle = JSON.parse(content) as NotificationConfigBundle
+
+        // Basic validation
+        if (!bundle.version || !bundle.exported_at) {
+          reject(new Error('Invalid config file: missing version or exported_at'))
+          return
+        }
+
+        // Ensure arrays exist
+        bundle.routing_rules = bundle.routing_rules || []
+        bundle.deduplication_configs = bundle.deduplication_configs || []
+        bundle.throttling_configs = bundle.throttling_configs || []
+        bundle.escalation_policies = bundle.escalation_policies || []
+
+        resolve(bundle)
+      } catch (err) {
+        reject(new Error(`Failed to parse config file: ${err instanceof Error ? err.message : 'Unknown error'}`))
+      }
+    }
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.readAsText(file)
+  })
 }
 
 // ============================================================================
@@ -4472,6 +5243,837 @@ export function getStreamingWebSocketUrl(sessionId: string): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   const host = window.location.host
   return `${protocol}//${host}/api/v1/anomaly/streaming/${sessionId}/ws`
+}
+
+// ============================================================================
+// Trigger Monitoring Types
+// ============================================================================
+
+export interface TriggerEvaluation {
+  should_trigger: boolean
+  reason: string
+  evaluated_at: string
+}
+
+export interface TriggerCheckStatus {
+  schedule_id: string
+  schedule_name: string
+  trigger_type: string
+  last_check_at: string | null
+  next_check_at: string | null
+  last_triggered_at: string | null
+  check_count: number
+  trigger_count: number
+  is_due_for_check: boolean
+  priority: number
+  cooldown_remaining_seconds: number
+  last_evaluation: TriggerEvaluation | null
+}
+
+export interface TriggerMonitoringStats {
+  total_schedules: number
+  active_data_change_triggers: number
+  active_webhook_triggers: number
+  active_composite_triggers: number
+  total_checks_last_hour: number
+  total_triggers_last_hour: number
+  average_check_interval_seconds: number
+  next_scheduled_check_at: string | null
+}
+
+export interface TriggerMonitoringResponse {
+  stats: TriggerMonitoringStats
+  schedules: TriggerCheckStatus[]
+  checker_running: boolean
+  checker_interval_seconds: number
+  last_checker_run_at: string | null
+}
+
+export interface WebhookTriggerRequest {
+  source: string
+  event_type?: string
+  payload?: Record<string, unknown>
+  schedule_id?: string
+  source_id?: string
+  timestamp?: string
+}
+
+export interface WebhookTriggerResponse {
+  accepted: boolean
+  triggered_schedules: string[]
+  message: string
+  request_id: string
+}
+
+// ============================================================================
+// Trigger Monitoring API
+// ============================================================================
+
+/**
+ * Get trigger monitoring status.
+ */
+export async function getTriggerMonitoring(): Promise<TriggerMonitoringResponse> {
+  return request<TriggerMonitoringResponse>('/triggers/monitoring')
+}
+
+/**
+ * Get trigger status for a specific schedule.
+ */
+export async function getScheduleTriggerStatus(
+  scheduleId: string
+): Promise<TriggerCheckStatus> {
+  return request<TriggerCheckStatus>(`/triggers/schedules/${scheduleId}/status`)
+}
+
+/**
+ * Send webhook trigger.
+ */
+export async function sendWebhookTrigger(
+  data: WebhookTriggerRequest,
+  signature?: string
+): Promise<WebhookTriggerResponse> {
+  const headers: Record<string, string> = {}
+  if (signature) {
+    headers['X-Webhook-Signature'] = signature
+  }
+  return request<WebhookTriggerResponse>('/triggers/webhook', {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers,
+  })
+}
+
+/**
+ * Test webhook endpoint connectivity.
+ */
+export async function testWebhookEndpoint(
+  source: string = 'test',
+  eventType: string = 'test_event'
+): Promise<{ success: boolean; message: string; received: { source: string; event_type: string } }> {
+  return request('/triggers/webhook/test', {
+    method: 'POST',
+    params: { source, event_type: eventType },
+  })
+}
+
+// ============================================================================
+// Plugin System Types
+// ============================================================================
+
+export type PluginType = 'validator' | 'reporter' | 'connector' | 'transformer'
+export type PluginStatus = 'available' | 'installed' | 'enabled' | 'disabled' | 'update_available' | 'error'
+export type PluginSource = 'official' | 'community' | 'local' | 'private'
+export type SecurityLevel = 'trusted' | 'verified' | 'unverified' | 'sandboxed'
+export type ValidatorParamType = 'string' | 'integer' | 'float' | 'boolean' | 'column' | 'column_list' | 'select' | 'multi_select' | 'regex' | 'json'
+export type ReporterOutputFormat = 'pdf' | 'html' | 'json' | 'csv' | 'excel' | 'markdown' | 'custom'
+
+export interface PluginAuthor {
+  name: string
+  email?: string
+  url?: string
+}
+
+export interface PluginDependency {
+  plugin_id: string
+  version_constraint: string
+  optional?: boolean
+}
+
+export interface Plugin {
+  id: string
+  name: string
+  display_name: string
+  description: string
+  version: string
+  latest_version?: string
+  type: PluginType
+  source: PluginSource
+  status: PluginStatus
+  security_level: SecurityLevel
+  author?: PluginAuthor
+  license?: string
+  homepage?: string
+  repository?: string
+  keywords: string[]
+  categories: string[]
+  dependencies: PluginDependency[]
+  permissions: string[]
+  python_version?: string
+  dashboard_version?: string
+  icon_url?: string
+  banner_url?: string
+  documentation_url?: string
+  changelog?: string
+  readme?: string
+  is_enabled: boolean
+  install_count: number
+  rating?: number
+  rating_count: number
+  validators_count: number
+  reporters_count: number
+  installed_at?: string
+  last_updated?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface PluginListResponse {
+  data: Plugin[]
+  total: number
+  offset: number
+  limit: number
+}
+
+export interface MarketplaceStats {
+  total_plugins: number
+  total_validators: number
+  total_reporters: number
+  total_installs: number
+  categories: Array<{
+    name: string
+    display_name: string
+    description: string
+    icon?: string
+    plugin_count: number
+  }>
+  featured_plugins: Plugin[]
+  popular_plugins: Plugin[]
+  recent_plugins: Plugin[]
+}
+
+export interface PluginInstallResponse {
+  success: boolean
+  plugin_id: string
+  installed_version?: string
+  message?: string
+  warnings: string[]
+}
+
+export interface PluginUninstallResponse {
+  success: boolean
+  plugin_id: string
+  message?: string
+}
+
+export interface ValidatorParamDefinition {
+  name: string
+  type: ValidatorParamType
+  description: string
+  required?: boolean
+  default?: unknown
+  options?: string[]
+  min_value?: number
+  max_value?: number
+  pattern?: string
+}
+
+export interface CustomValidator {
+  id: string
+  plugin_id?: string
+  name: string
+  display_name: string
+  description: string
+  category: string
+  severity: 'error' | 'warning' | 'info'
+  tags: string[]
+  parameters: ValidatorParamDefinition[]
+  code: string
+  test_cases: Array<Record<string, unknown>>
+  is_enabled: boolean
+  is_verified: boolean
+  usage_count: number
+  last_used_at?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomValidatorListResponse {
+  data: CustomValidator[]
+  total: number
+  offset: number
+  limit: number
+}
+
+export interface ValidatorTestRequest {
+  code: string
+  parameters: ValidatorParamDefinition[]
+  test_data: Record<string, unknown>
+  param_values?: Record<string, unknown>
+}
+
+export interface ValidatorTestResponse {
+  success: boolean
+  passed?: boolean
+  execution_time_ms: number
+  result?: Record<string, unknown>
+  error?: string
+  warnings: string[]
+}
+
+export interface ReporterFieldDefinition {
+  name: string
+  type: string
+  label: string
+  description?: string
+  required?: boolean
+  default?: unknown
+  options?: Array<{ label: string; value: string }>
+}
+
+export interface CustomReporter {
+  id: string
+  plugin_id?: string
+  name: string
+  display_name: string
+  description: string
+  output_formats: ReporterOutputFormat[]
+  config_fields: ReporterFieldDefinition[]
+  template?: string
+  code?: string
+  preview_image_url?: string
+  is_enabled: boolean
+  is_verified: boolean
+  usage_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomReporterListResponse {
+  data: CustomReporter[]
+  total: number
+  offset: number
+  limit: number
+}
+
+export interface ReporterGenerateResponse {
+  success: boolean
+  report_id?: string
+  download_url?: string
+  preview_html?: string
+  error?: string
+  generation_time_ms: number
+}
+
+// ============================================================================
+// Plugin System API Functions
+// ============================================================================
+
+/**
+ * List plugins with optional filtering.
+ */
+export async function listPlugins(params?: {
+  type?: PluginType
+  status?: PluginStatus
+  search?: string
+  offset?: number
+  limit?: number
+}): Promise<PluginListResponse> {
+  return request<PluginListResponse>('/plugins', { params: params as Record<string, string | number | boolean> })
+}
+
+/**
+ * Get marketplace statistics.
+ */
+export async function getMarketplaceStats(): Promise<MarketplaceStats> {
+  return request<MarketplaceStats>('/plugins/stats')
+}
+
+/**
+ * Search plugins in marketplace.
+ */
+export async function searchPlugins(query: {
+  query?: string
+  types?: PluginType[]
+  sources?: PluginSource[]
+  categories?: string[]
+  min_rating?: number
+  verified_only?: boolean
+  sort_by?: 'relevance' | 'rating' | 'installs' | 'updated' | 'name'
+  sort_order?: 'asc' | 'desc'
+  offset?: number
+  limit?: number
+}): Promise<PluginListResponse> {
+  return request<PluginListResponse>('/plugins/search', {
+    method: 'POST',
+    body: JSON.stringify(query),
+  })
+}
+
+/**
+ * Get a plugin by ID.
+ */
+export async function getPlugin(pluginId: string): Promise<Plugin> {
+  return request<Plugin>(`/plugins/${pluginId}`)
+}
+
+/**
+ * Register a new plugin.
+ */
+export async function registerPlugin(data: Partial<Plugin>): Promise<Plugin> {
+  return request<Plugin>('/plugins', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Update a plugin.
+ */
+export async function updatePlugin(pluginId: string, data: Partial<Plugin>): Promise<Plugin> {
+  return request<Plugin>(`/plugins/${pluginId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Install a plugin.
+ */
+export async function installPlugin(pluginId: string, options?: {
+  version?: string
+  force?: boolean
+  enable_after_install?: boolean
+}): Promise<PluginInstallResponse> {
+  return request<PluginInstallResponse>(`/plugins/${pluginId}/install`, {
+    method: 'POST',
+    body: JSON.stringify({ plugin_id: pluginId, ...options }),
+  })
+}
+
+/**
+ * Uninstall a plugin.
+ */
+export async function uninstallPlugin(pluginId: string, removeData?: boolean): Promise<PluginUninstallResponse> {
+  return request<PluginUninstallResponse>(`/plugins/${pluginId}/uninstall`, {
+    method: 'POST',
+    body: JSON.stringify({ plugin_id: pluginId, remove_data: removeData }),
+  })
+}
+
+/**
+ * Enable a plugin.
+ */
+export async function enablePlugin(pluginId: string): Promise<Plugin> {
+  return request<Plugin>(`/plugins/${pluginId}/enable`, { method: 'POST' })
+}
+
+/**
+ * Disable a plugin.
+ */
+export async function disablePlugin(pluginId: string): Promise<Plugin> {
+  return request<Plugin>(`/plugins/${pluginId}/disable`, { method: 'POST' })
+}
+
+/**
+ * List custom validators.
+ */
+export async function listCustomValidators(params?: {
+  plugin_id?: string
+  category?: string
+  enabled_only?: boolean
+  search?: string
+  offset?: number
+  limit?: number
+}): Promise<CustomValidatorListResponse> {
+  return request<CustomValidatorListResponse>('/validators/custom', { params: params as Record<string, string | number | boolean> })
+}
+
+/**
+ * Get validator categories.
+ */
+export async function getValidatorCategories(): Promise<string[]> {
+  return request<string[]>('/validators/custom/categories')
+}
+
+/**
+ * Get validator template.
+ */
+export async function getValidatorTemplate(): Promise<{ template: string }> {
+  return request<{ template: string }>('/validators/custom/template')
+}
+
+/**
+ * Get a custom validator by ID.
+ */
+export async function getCustomValidator(validatorId: string): Promise<CustomValidator> {
+  return request<CustomValidator>(`/validators/custom/${validatorId}`)
+}
+
+/**
+ * Create a custom validator.
+ */
+export async function createCustomValidator(data: Partial<CustomValidator>): Promise<CustomValidator> {
+  return request<CustomValidator>('/validators/custom', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Update a custom validator.
+ */
+export async function updateCustomValidator(validatorId: string, data: Partial<CustomValidator>): Promise<CustomValidator> {
+  return request<CustomValidator>(`/validators/custom/${validatorId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Delete a custom validator.
+ */
+export async function deleteCustomValidator(validatorId: string): Promise<void> {
+  return request<void>(`/validators/custom/${validatorId}`, { method: 'DELETE' })
+}
+
+/**
+ * Test a custom validator.
+ */
+export async function testCustomValidator(data: ValidatorTestRequest): Promise<ValidatorTestResponse> {
+  return request<ValidatorTestResponse>('/validators/custom/test', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * List custom reporters.
+ */
+export async function listCustomReporters(params?: {
+  plugin_id?: string
+  is_enabled?: boolean
+  enabled_only?: boolean
+  search?: string
+  offset?: number
+  limit?: number
+}): Promise<CustomReporterListResponse> {
+  // Map is_enabled to enabled_only for API compatibility
+  const apiParams: Record<string, string | number | boolean> = {}
+  if (params) {
+    if (params.plugin_id) apiParams.plugin_id = params.plugin_id
+    if (params.is_enabled !== undefined) apiParams.enabled_only = params.is_enabled
+    if (params.enabled_only !== undefined) apiParams.enabled_only = params.enabled_only
+    if (params.search) apiParams.search = params.search
+    if (params.offset !== undefined) apiParams.offset = params.offset
+    if (params.limit !== undefined) apiParams.limit = params.limit
+  }
+  return request<CustomReporterListResponse>('/reporters/custom', { params: apiParams })
+}
+
+/**
+ * Get reporter templates.
+ */
+export async function getReporterTemplates(): Promise<{ code_template: string; jinja2_template: string }> {
+  return request<{ code_template: string; jinja2_template: string }>('/reporters/custom/templates')
+}
+
+/**
+ * Get a custom reporter by ID.
+ */
+export async function getCustomReporter(reporterId: string): Promise<CustomReporter> {
+  return request<CustomReporter>(`/reporters/custom/${reporterId}`)
+}
+
+/**
+ * Create a custom reporter.
+ */
+export async function createCustomReporter(data: Partial<CustomReporter>): Promise<CustomReporter> {
+  return request<CustomReporter>('/reporters/custom', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Update a custom reporter.
+ */
+export async function updateCustomReporter(reporterId: string, data: Partial<CustomReporter>): Promise<CustomReporter> {
+  return request<CustomReporter>(`/reporters/custom/${reporterId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Delete a custom reporter.
+ */
+export async function deleteCustomReporter(reporterId: string): Promise<void> {
+  return request<void>(`/reporters/custom/${reporterId}`, { method: 'DELETE' })
+}
+
+/**
+ * Preview a custom reporter.
+ */
+export async function previewCustomReporter(data: {
+  template?: string
+  code?: string
+  sample_data?: Record<string, unknown>
+  config?: Record<string, unknown>
+  format?: string
+}): Promise<ReporterGenerateResponse> {
+  return request<ReporterGenerateResponse>('/reporters/custom/preview', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Generate a report using a custom reporter.
+ * Supports two modes:
+ * 1. Provide validation_id to auto-fetch validation data
+ * 2. Provide data directly for custom report generation
+ */
+export async function generateCustomReport(reporterId: string, data: {
+  output_format: ReporterOutputFormat
+  config?: Record<string, unknown>
+  validation_id?: string
+  data?: Record<string, unknown>
+  source_ids?: string[]
+}): Promise<ReporterGenerateResponse> {
+  return request<ReporterGenerateResponse>(`/reporters/custom/${reporterId}/generate`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Download a report generated by a custom reporter.
+ * Returns the file as a blob for download.
+ */
+export async function downloadCustomReport(
+  reporterId: string,
+  validationId: string,
+  options?: {
+    output_format?: string
+    config?: Record<string, unknown>
+  }
+): Promise<Blob> {
+  const params = new URLSearchParams({
+    validation_id: validationId,
+    output_format: options?.output_format || 'html',
+  })
+  if (options?.config) {
+    params.append('config', JSON.stringify(options.config))
+  }
+
+  const response = await fetch(`${API_BASE}/reporters/custom/${reporterId}/download?${params}`, {
+    headers: {
+      'Accept': '*/*',
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Download failed' }))
+    throw new ApiError(error.detail || 'Download failed', String(response.status))
+  }
+
+  return response.blob()
+}
+
+// =============================================================================
+// Report History API
+// =============================================================================
+
+export type ReportStatus = 'pending' | 'generating' | 'completed' | 'failed' | 'expired'
+
+export interface GeneratedReport {
+  id: string
+  name: string
+  description?: string
+  format: string
+  theme?: string
+  locale: string
+  config?: Record<string, unknown>
+  metadata?: Record<string, unknown>
+  validation_id?: string
+  source_id?: string
+  reporter_id?: string
+  status: ReportStatus
+  file_path?: string
+  file_size?: number
+  content_hash?: string
+  error_message?: string
+  generation_time_ms?: number
+  expires_at?: string
+  downloaded_count: number
+  last_downloaded_at?: string
+  created_at: string
+  updated_at: string
+  // Enriched fields
+  source_name?: string
+  reporter_name?: string
+  download_url?: string
+}
+
+export interface GeneratedReportListResponse {
+  items: GeneratedReport[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface ReportStatistics {
+  total_reports: number
+  total_size_bytes: number
+  reports_by_format: Record<string, number>
+  reports_by_status: Record<string, number>
+  total_downloads: number
+  avg_generation_time_ms?: number
+  expired_count: number
+  reporters_used: number
+}
+
+export interface BulkReportGenerateRequest {
+  validation_ids: string[]
+  format?: string
+  theme?: string
+  locale?: string
+  reporter_id?: string
+  config?: Record<string, unknown>
+  save_to_history?: boolean
+  expires_in_days?: number
+}
+
+export interface BulkReportGenerateResponse {
+  total: number
+  successful: number
+  failed: number
+  reports: GeneratedReport[]
+  errors: Array<{ validation_id: string; error: string }>
+}
+
+/**
+ * List generated reports with filtering and pagination.
+ */
+export async function listReportHistory(params?: {
+  source_id?: string
+  validation_id?: string
+  reporter_id?: string
+  format?: string
+  status?: string
+  include_expired?: boolean
+  search?: string
+  sort_by?: string
+  sort_order?: 'asc' | 'desc'
+  page?: number
+  page_size?: number
+}): Promise<GeneratedReportListResponse> {
+  const apiParams: Record<string, string | number | boolean> = {}
+  if (params) {
+    if (params.source_id) apiParams.source_id = params.source_id
+    if (params.validation_id) apiParams.validation_id = params.validation_id
+    if (params.reporter_id) apiParams.reporter_id = params.reporter_id
+    if (params.format) apiParams.format = params.format
+    if (params.status) apiParams.status = params.status
+    if (params.include_expired !== undefined) apiParams.include_expired = params.include_expired
+    if (params.search) apiParams.search = params.search
+    if (params.sort_by) apiParams.sort_by = params.sort_by
+    if (params.sort_order) apiParams.sort_order = params.sort_order
+    if (params.page !== undefined) apiParams.page = params.page
+    if (params.page_size !== undefined) apiParams.page_size = params.page_size
+  }
+  return request<GeneratedReportListResponse>('/reports/history', { params: apiParams })
+}
+
+/**
+ * Get report statistics.
+ */
+export async function getReportStatistics(): Promise<ReportStatistics> {
+  return request<ReportStatistics>('/reports/history/statistics')
+}
+
+/**
+ * Get a specific generated report by ID.
+ */
+export async function getGeneratedReport(reportId: string): Promise<GeneratedReport> {
+  return request<GeneratedReport>(`/reports/history/${reportId}`)
+}
+
+/**
+ * Create a new report record (without generating content).
+ */
+export async function createReportRecord(data: {
+  name: string
+  format: string
+  validation_id?: string
+  source_id?: string
+  reporter_id?: string
+  description?: string
+  theme?: string
+  locale?: string
+  config?: Record<string, unknown>
+  metadata?: Record<string, unknown>
+  expires_in_days?: number
+}): Promise<GeneratedReport> {
+  return request<GeneratedReport>('/reports/history', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Update a report record.
+ */
+export async function updateReportRecord(reportId: string, data: {
+  name?: string
+  description?: string
+  metadata?: Record<string, unknown>
+}): Promise<GeneratedReport> {
+  return request<GeneratedReport>(`/reports/history/${reportId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Delete a report record.
+ */
+export async function deleteReportRecord(reportId: string): Promise<void> {
+  return request<void>(`/reports/history/${reportId}`, { method: 'DELETE' })
+}
+
+/**
+ * Download a saved report.
+ */
+export async function downloadSavedReport(reportId: string): Promise<Blob> {
+  const response = await fetch(`${API_BASE}/reports/history/${reportId}/download`, {
+    headers: {
+      Accept: '*/*',
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Download failed' }))
+    throw new ApiError(error.detail || 'Download failed', String(response.status))
+  }
+
+  return response.blob()
+}
+
+/**
+ * Generate content for an existing report record.
+ */
+export async function generateReportContent(reportId: string): Promise<GeneratedReport> {
+  return request<GeneratedReport>(`/reports/history/${reportId}/generate`, {
+    method: 'POST',
+  })
+}
+
+/**
+ * Clean up expired reports.
+ */
+export async function cleanupExpiredReports(): Promise<{ deleted: number }> {
+  return request<{ deleted: number }>('/reports/history/cleanup', { method: 'POST' })
+}
+
+/**
+ * Generate reports in bulk.
+ */
+export async function generateBulkReports(data: BulkReportGenerateRequest): Promise<BulkReportGenerateResponse> {
+  return request<BulkReportGenerateResponse>('/reports/bulk', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
 }
 
 // API client helper for direct requests

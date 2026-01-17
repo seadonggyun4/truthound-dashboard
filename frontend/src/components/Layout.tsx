@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { useIntlayer, useLocale, LOCALE_INFO } from '@/providers'
+import { useIntlayer } from '@/providers'
 import {
   LayoutDashboard,
   Database,
@@ -9,8 +9,6 @@ import {
   GitCompare,
   Clock,
   Bell,
-  Globe,
-  Check,
   BookOpen,
   FolderOpen,
   Activity,
@@ -22,22 +20,19 @@ import {
   Cpu,
   BellRing,
   AlertCircle,
+  FileText,
+  Puzzle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { useTheme } from '@/components/theme-provider'
+import { LanguageSelector } from '@/components/common'
 import { useState, useEffect } from 'react'
 import logoImg from '@/assets/logo.png'
 import { apiClient } from '@/api/client'
 
-type NavKey = 'dashboard' | 'sources' | 'catalog' | 'glossary' | 'drift' | 'lineage' | 'schedules' | 'activity' | 'notifications' | 'maintenance' | 'anomaly' | 'privacy' | 'driftMonitoring' | 'modelMonitoring' | 'notificationsAdvanced' | 'alerts'
+type NavKey = 'dashboard' | 'sources' | 'catalog' | 'glossary' | 'drift' | 'lineage' | 'schedules' | 'activity' | 'notifications' | 'maintenance' | 'anomaly' | 'privacy' | 'driftMonitoring' | 'modelMonitoring' | 'notificationsAdvanced' | 'alerts' | 'reports' | 'plugins'
 
 interface NavItem {
   key: NavKey
@@ -67,13 +62,14 @@ const navigation: NavItem[] = [
   { key: 'activity', href: '/activity', icon: Activity, section: 'system' },
   { key: 'notifications', href: '/notifications', icon: Bell, section: 'system' },
   { key: 'notificationsAdvanced', href: '/notifications/advanced', icon: BellRing, section: 'system' },
+  { key: 'reports', href: '/reports', icon: FileText, section: 'system' },
+  { key: 'plugins', href: '/plugins', icon: Puzzle, section: 'system' },
   { key: 'maintenance', href: '/maintenance', icon: Settings, section: 'system' },
 ]
 
 export default function Layout() {
   const location = useLocation()
   const nav = useIntlayer('nav')
-  const { locale, setLocale } = useLocale()
   const { theme, setTheme } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [alertCount, setAlertCount] = useState(0)
@@ -94,8 +90,6 @@ export default function Layout() {
     const interval = setInterval(fetchAlertCount, 60000)
     return () => clearInterval(interval)
   }, [])
-
-  const currentLang = LOCALE_INFO.find((l) => l.code === locale)
 
   return (
     <div className="min-h-screen bg-background">
@@ -174,31 +168,7 @@ export default function Layout() {
           </Button>
           <div className="flex-1" />
           <div className="flex items-center gap-1">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title={currentLang?.nativeName}
-                >
-                  <Globe className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {LOCALE_INFO.map((lang) => (
-                  <DropdownMenuItem
-                    key={lang.code}
-                    onClick={() => setLocale(lang.code)}
-                    className="flex items-center justify-between gap-2"
-                  >
-                    <span>{lang.nativeName}</span>
-                    {locale === lang.code && (
-                      <Check className="h-4 w-4 text-primary" />
-                    )}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <LanguageSelector iconOnly />
             <Button
               variant="ghost"
               size="icon"

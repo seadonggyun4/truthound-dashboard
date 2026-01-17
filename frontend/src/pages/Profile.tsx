@@ -28,6 +28,11 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
+import {
   getSource,
   profileSource,
   learnSchema,
@@ -71,6 +76,9 @@ import {
   Sparkles,
   TrendingUp,
   Loader2,
+  Settings2,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 
 // Import feature components
@@ -79,6 +87,14 @@ import { RuleSuggestionDialog } from '@/components/rules/RuleSuggestionDialog'
 import { ProfileComparisonTable } from '@/components/profile/ProfileComparisonTable'
 import { ProfileTrendChart } from '@/components/profile/ProfileTrendChart'
 import { ProfileVersionSelector } from '@/components/profile/ProfileVersionSelector'
+import {
+  SamplingConfigPanel,
+  PatternDetectionPanel,
+  DEFAULT_SAMPLING_CONFIG,
+  DEFAULT_PATTERN_CONFIG,
+  type SamplingConfig,
+  type PatternDetectionConfig,
+} from '@/components/profile'
 
 // Component-level type for SuggestedRule (UI format)
 interface UISuggestedRule {
@@ -186,6 +202,13 @@ export default function Profile() {
   const [trendData, setTrendData] = useState<ProfileTrendResponse | null>(null)
   const [loadingComparison, setLoadingComparison] = useState(false)
   const [trendGranularity, setTrendGranularity] = useState<'daily' | 'weekly' | 'monthly'>('daily')
+
+  // ============================================================================
+  // Advanced Profiling Configuration State
+  // ============================================================================
+  const [samplingConfig, setSamplingConfig] = useState<SamplingConfig>(DEFAULT_SAMPLING_CONFIG)
+  const [patternConfig, setPatternConfig] = useState<PatternDetectionConfig>(DEFAULT_PATTERN_CONFIG)
+  const [showAdvancedConfig, setShowAdvancedConfig] = useState(false)
 
   // ============================================================================
   // Load Source Data
@@ -636,6 +659,51 @@ export default function Profile() {
         {/* Profile Tab */}
         {/* ================================================================== */}
         <TabsContent value="profile" className="space-y-6">
+          {/* Advanced Profiling Settings - Collapsible */}
+          <Collapsible open={showAdvancedConfig} onOpenChange={setShowAdvancedConfig}>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Settings2 className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <CardTitle className="text-base">Advanced Profiling Settings</CardTitle>
+                        <CardDescription className="text-sm">
+                          Configure sampling strategies and pattern detection options
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      {showAdvancedConfig ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <SamplingConfigPanel
+                      config={samplingConfig}
+                      onChange={setSamplingConfig}
+                      columns={profile?.columns.map((c) => c.name) || []}
+                      disabled={profiling}
+                    />
+                    <PatternDetectionPanel
+                      config={patternConfig}
+                      onChange={setPatternConfig}
+                      disabled={profiling}
+                    />
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+
           {/* Profile not run yet */}
           {!profile && (
             <Card>

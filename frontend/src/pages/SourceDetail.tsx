@@ -42,6 +42,7 @@ import {
   runValidation,
   learnSchema,
   listValidators,
+  listUnifiedValidators,
   testSourceConnection,
   getSupportedSourceTypes,
   type Source,
@@ -50,7 +51,9 @@ import {
   type ValidatorDefinition,
   type ValidatorConfig,
   type SourceTypeDefinition,
+  type UnifiedValidatorDefinition,
 } from '@/api/client'
+import type { CustomValidatorSelectionConfig } from '@/components/validators/ValidatorSelector'
 import { formatDate, formatDuration, formatNumber } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -87,6 +90,8 @@ export default function SourceDetail() {
   const [validationDialogOpen, setValidationDialogOpen] = useState(false)
   const [validators, setValidators] = useState<ValidatorDefinition[]>([])
   const [validatorConfigs, setValidatorConfigs] = useState<ValidatorConfig[]>([])
+  const [customValidators, setCustomValidators] = useState<UnifiedValidatorDefinition[]>([])
+  const [customValidatorConfigs, setCustomValidatorConfigs] = useState<CustomValidatorSelectionConfig[]>([])
   const [loadingValidators, setLoadingValidators] = useState(false)
   const { toast } = useToast()
   const sources_t = useIntlayer('sources')
@@ -143,8 +148,13 @@ export default function SourceDetail() {
     if (validators.length > 0) return // Already loaded
     try {
       setLoadingValidators(true)
-      const validatorDefs = await listValidators()
+      // Load both built-in and custom validators
+      const [validatorDefs, unifiedResponse] = await Promise.all([
+        listValidators(),
+        listUnifiedValidators({ source: 'custom', enabled_only: true }),
+      ])
       setValidators(validatorDefs)
+      setCustomValidators(unifiedResponse.data)
     } catch {
       toast({
         title: 'Error',
@@ -166,7 +176,24 @@ export default function SourceDetail() {
       setValidating(true)
       // Get enabled validators with their configurations
       const enabledConfigs = validatorConfigs.filter((c) => c.enabled)
-      const options = enabledConfigs.length > 0 ? { validator_configs: enabledConfigs } : {}
+
+      // Get enabled custom validators
+      const enabledCustomConfigs = customValidatorConfigs
+        .filter((c) => c.enabled && c.column)
+        .map((c) => ({
+          validator_id: c.validator_id,
+          column: c.column,
+          params: c.params || {},
+        }))
+
+      const options: Parameters<typeof runValidation>[1] = {}
+      if (enabledConfigs.length > 0) {
+        options.validator_configs = enabledConfigs
+      }
+      if (enabledCustomConfigs.length > 0) {
+        options.custom_validators = enabledCustomConfigs
+      }
+
       const result = await runValidation(id, options)
       setValidations((prev) => [result, ...prev])
       setValidationDialogOpen(false)
@@ -412,6 +439,9 @@ export default function SourceDetail() {
                     configs={validatorConfigs}
                     onChange={setValidatorConfigs}
                     columns={schema?.columns || []}
+                    customValidators={customValidators}
+                    customValidatorConfigs={customValidatorConfigs}
+                    onCustomValidatorChange={setCustomValidatorConfigs}
                   />
                 )}
               </div>
