@@ -22,10 +22,13 @@ import {
   AlertCircle,
   FileText,
   Puzzle,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { useTheme } from '@/components/theme-provider'
 import { LanguageSelector } from '@/components/common'
 import { useState, useEffect } from 'react'
@@ -67,12 +70,39 @@ const navigation: NavItem[] = [
   { key: 'maintenance', href: '/maintenance', icon: Settings, section: 'system' },
 ]
 
+const sectionLabels = {
+  data: 'Data Management',
+  quality: 'Data Quality',
+  ml: 'ML & Monitoring',
+  system: 'System',
+}
+
 export default function Layout() {
   const location = useLocation()
   const nav = useIntlayer('nav')
   const { theme, setTheme } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [alertCount, setAlertCount] = useState(0)
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
+
+  const toggleSection = (section: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev)
+      if (next.has(section)) {
+        next.delete(section)
+      } else {
+        next.add(section)
+      }
+      return next
+    })
+  }
+
+  const groupedNav = navigation.reduce((acc, item) => {
+    const section = item.section || 'other'
+    if (!acc[section]) acc[section] = []
+    acc[section].push(item)
+    return acc
+  }, {} as Record<string, NavItem[]>)
 
   // Fetch alert count for badge
   useEffect(() => {
@@ -116,39 +146,63 @@ export default function Layout() {
           <span className="font-semibold text-lg">Truthound</span>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 p-4">
-          {navigation.map((item) => {
-            const isActive =
-              item.href === '/'
-                ? location.pathname === '/'
-                : location.pathname.startsWith(item.href)
-            return (
-              <Link
-                key={item.key}
-                to={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="flex-1">{nav[item.key]}</span>
-                {item.showBadge && alertCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="h-5 min-w-[20px] px-1.5 text-xs"
+        {/* Navigation with ScrollArea */}
+        <ScrollArea className="flex-1 px-3 py-4">
+          <nav className="space-y-2">
+            {Object.entries(groupedNav).map(([section, items]) => {
+              const isCollapsed = collapsedSections.has(section)
+              return (
+                <div key={section} className="space-y-1">
+                  <button
+                    onClick={() => toggleSection(section)}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent transition-colors"
                   >
-                    {alertCount > 99 ? '99+' : alertCount}
-                  </Badge>
-                )}
-              </Link>
-            )
-          })}
-        </nav>
+                    {isCollapsed ? (
+                      <ChevronRight className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                    <span>{sectionLabels[section as keyof typeof sectionLabels]}</span>
+                  </button>
+                  {!isCollapsed && (
+                    <div className="space-y-0.5 pl-1">
+                      {items.map((item) => {
+                        const isActive =
+                          item.href === '/'
+                            ? location.pathname === '/'
+                            : location.pathname.startsWith(item.href)
+                        return (
+                          <Link
+                            key={item.key}
+                            to={item.href}
+                            onClick={() => setSidebarOpen(false)}
+                            className={cn(
+                              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                              isActive
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                            )}
+                          >
+                            <item.icon className="h-4 w-4" />
+                            <span className="flex-1 text-xs">{nav[item.key]}</span>
+                            {item.showBadge && alertCount > 0 && (
+                              <Badge
+                                variant="destructive"
+                                className="h-5 min-w-[20px] px-1.5 text-xs"
+                              >
+                                {alertCount > 99 ? '99+' : alertCount}
+                              </Badge>
+                            )}
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </nav>
+        </ScrollArea>
 
       </aside>
 
