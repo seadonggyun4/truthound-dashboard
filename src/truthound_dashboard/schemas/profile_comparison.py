@@ -54,6 +54,16 @@ class ProfileListResponse(BaseSchema):
 # =============================================================================
 
 
+class StatisticalTestInfo(BaseSchema):
+    """Information about statistical significance test results."""
+
+    test_name: str = Field(..., description="Name of the statistical test used")
+    p_value: float = Field(..., description="P-value from the test")
+    is_significant: bool = Field(..., description="Whether result is significant at alpha=0.05")
+    effect_size: float | None = Field(default=None, description="Effect size (Cohen's d or r)")
+    interpretation: str = Field(default="", description="Human-readable interpretation")
+
+
 class ColumnComparison(BaseSchema):
     """Comparison result for a single column metric."""
 
@@ -72,6 +82,10 @@ class ColumnComparison(BaseSchema):
     )
     trend: TrendDirection = Field(
         default=TrendDirection.STABLE, description="Direction of change"
+    )
+    statistical_test: dict[str, Any] | None = Field(
+        default=None,
+        description="Statistical test results (test_name, p_value, effect_size, interpretation)"
     )
 
 

@@ -2,6 +2,13 @@
 
 This module provides functionality for comparing profiles
 over time, including time-series trends and version comparison.
+
+Features:
+    - Profile history listing
+    - Two-profile comparison with statistical significance tests
+    - Latest comparison (current vs previous)
+    - Time-series trend analysis with significance testing
+    - Column-level trend tracking
 """
 
 from __future__ import annotations
@@ -15,6 +22,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from truthound_dashboard.db import Profile, Source
 from truthound_dashboard.core.services import ProfileRepository
+from truthound_dashboard.core.statistics import (
+    StatisticalTestResult,
+    comprehensive_comparison,
+    trend_significance_test,
+    SignificanceLevel,
+)
 from truthound_dashboard.schemas.profile_comparison import (
     ColumnComparison,
     ColumnTrend,
@@ -126,6 +139,7 @@ class ProfileComparisonService:
         baseline_cols: list[dict[str, Any]],
         current_cols: list[dict[str, Any]],
         significance_threshold: float = 0.1,
+        use_statistical_test: bool = True,
     ) -> list[ColumnComparison]:
         """Compare column statistics between two profiles.
 
@@ -133,6 +147,7 @@ class ProfileComparisonService:
             baseline_cols: Baseline column profiles.
             current_cols: Current column profiles.
             significance_threshold: Threshold for significant change.
+            use_statistical_test: Whether to use statistical significance tests.
 
         Returns:
             List of column comparisons.
@@ -156,6 +171,18 @@ class ProfileComparisonService:
             null_change, null_change_pct = _calculate_change(baseline_null, current_null)
             is_null_significant = abs(null_change) >= significance_threshold * 100
 
+            # Statistical test details for null_pct
+            stat_test_result = None
+            if use_statistical_test:
+                # Use sample data if available for statistical test
+                baseline_samples = baseline.get("samples", [])
+                current_samples = current.get("samples", [])
+                if baseline_samples and current_samples:
+                    stat_test_result = self._run_statistical_test(
+                        baseline_samples, current_samples
+                    )
+                    is_null_significant = stat_test_result.get("is_significant", is_null_significant)
+
             comparisons.append(
                 ColumnComparison(
                     column=col_name,
@@ -166,6 +193,7 @@ class ProfileComparisonService:
                     change_pct=null_change_pct,
                     is_significant=is_null_significant,
                     trend=_determine_trend(null_change, significance_threshold * 100),
+                    statistical_test=stat_test_result,
                 )
             )
 
@@ -217,7 +245,64 @@ class ProfileComparisonService:
                     )
                 )
 
+            # Compare numeric statistics if available (mean, std, min, max)
+            for stat_name in ["mean", "std", "min", "max"]:
+                baseline_val = baseline.get(stat_name)
+                current_val = current.get(stat_name)
+                if baseline_val is not None and current_val is not None:
+                    try:
+                        b_val = float(baseline_val)
+                        c_val = float(current_val)
+                        change, change_pct = _calculate_change(b_val, c_val)
+                        is_sig = (
+                            change_pct is not None
+                            and abs(change_pct) >= significance_threshold * 100
+                        )
+
+                        comparisons.append(
+                            ColumnComparison(
+                                column=col_name,
+                                metric=stat_name,
+                                baseline_value=b_val,
+                                current_value=c_val,
+                                change=change,
+                                change_pct=change_pct,
+                                is_significant=is_sig,
+                                trend=_determine_trend(
+                                    change_pct or 0, significance_threshold * 100
+                                ),
+                            )
+                        )
+                    except (ValueError, TypeError):
+                        pass
+
         return comparisons
+
+    def _run_statistical_test(
+        self,
+        baseline_values: list[float],
+        current_values: list[float],
+    ) -> dict[str, Any]:
+        """Run statistical significance test on sample data.
+
+        Args:
+            baseline_values: Baseline sample values.
+            current_values: Current sample values.
+
+        Returns:
+            Dictionary with test results.
+        """
+        try:
+            result = comprehensive_comparison(baseline_values, current_values)
+            return {
+                "test_name": result.recommended_test,
+                "p_value": result.t_test.p_value if "t-test" in result.recommended_test.lower() else result.mann_whitney.p_value,
+                "is_significant": result.overall_significant,
+                "effect_size": result.t_test.effect_size or result.mann_whitney.effect_size,
+                "interpretation": result.summary,
+            }
+        except Exception:
+            return {}
 
     async def compare_profiles(
         self,
@@ -455,9 +540,30 @@ class ProfileComparisonService:
                         )
                     )
 
-        # Determine overall row count trend
+        # Determine overall row count trend with statistical significance
         row_count_trend = TrendDirection.STABLE
-        if len(data_points) >= 2:
+        row_count_significance = None
+        if len(data_points) >= 3:
+            row_counts = [p.row_count for p in data_points]
+            first_rows = data_points[0].row_count
+            last_rows = data_points[-1].row_count
+
+            if first_rows > 0:
+                row_pct_change = (last_rows - first_rows) / first_rows * 100
+                row_count_trend = _determine_trend(row_pct_change, 5.0)
+
+            # Run trend significance test
+            try:
+                trend_result = trend_significance_test(row_counts)
+                row_count_significance = {
+                    "p_value": round(trend_result.p_value, 4),
+                    "is_significant": trend_result.is_significant,
+                    "slope": trend_result.effect_size,
+                    "interpretation": trend_result.interpretation,
+                }
+            except Exception:
+                pass
+        elif len(data_points) >= 2:
             first_rows = data_points[0].row_count
             last_rows = data_points[-1].row_count
             if first_rows > 0:
@@ -477,6 +583,10 @@ class ProfileComparisonService:
             summary["avg_rows"] = int(
                 sum(p.row_count for p in data_points) / len(data_points)
             )
+
+        # Add trend significance info
+        if row_count_significance:
+            summary["row_count_trend_significance"] = row_count_significance
 
         return ProfileTrendResponse(
             source_id=source.id,

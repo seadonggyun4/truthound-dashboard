@@ -29,7 +29,7 @@ router = APIRouter()
     "/sources/{source_id}/profile",
     response_model=ProfileResponse,
     summary="Profile source",
-    description="Run data profiling on a source with optional sampling",
+    description="Run data profiling on a source with optional sampling and pattern detection",
 )
 async def profile_source(
     service: ProfileServiceDep,
@@ -39,31 +39,59 @@ async def profile_source(
 ) -> ProfileResponse:
     """Run data profiling on a source.
 
+    Supports advanced configuration including:
+    - Sampling strategies: none, head, random, systematic, stratified, reservoir, adaptive, hash
+    - Pattern detection: email, phone, uuid, url, ip_address, credit_card, etc.
+    - Statistical analysis options: histograms, correlations, cardinality
+
     Args:
         service: Injected profile service.
         source_service: Injected source service.
         source_id: Source to profile.
-        request: Optional profiling configuration with sample_size.
+        request: Optional profiling configuration.
 
     Returns:
-        Profiling result with column statistics.
+        Profiling result with column statistics, detected patterns, and sampling metadata.
 
     Raises:
-        HTTPException: 404 if source not found.
+        HTTPException: 404 if source not found, 500 on profiling error.
     """
     # Verify source exists
     source = await source_service.get_by_id(source_id)
     if source is None:
         raise HTTPException(status_code=404, detail="Source not found")
 
-    # Extract sample_size from request if provided
-    sample_size = request.sample_size if request else None
+    # Build profiling kwargs from request
+    profile_kwargs: dict = {}
+
+    if request:
+        # Handle sampling configuration
+        if request.sampling:
+            # Advanced sampling config takes precedence
+            profile_kwargs["sampling_strategy"] = request.sampling.strategy
+            profile_kwargs["sample_size"] = request.sampling.sample_size
+            profile_kwargs["confidence_level"] = request.sampling.confidence_level
+            profile_kwargs["margin_of_error"] = request.sampling.margin_of_error
+            profile_kwargs["strata_column"] = request.sampling.strata_column
+            profile_kwargs["seed"] = request.sampling.seed
+        elif request.sample_size:
+            # Backward compatible simple sample_size
+            profile_kwargs["sample_size"] = request.sample_size
+
+        # Handle pattern detection configuration
+        if request.pattern_detection:
+            profile_kwargs["enable_pattern_detection"] = request.pattern_detection.enabled
+            profile_kwargs["pattern_sample_size"] = request.pattern_detection.sample_size
+            profile_kwargs["min_pattern_confidence"] = request.pattern_detection.min_confidence
+            profile_kwargs["patterns_to_detect"] = request.pattern_detection.patterns_to_detect
+
+        # Additional profiling options
+        profile_kwargs["include_histograms"] = request.include_histograms
+        profile_kwargs["include_correlations"] = request.include_correlations
+        profile_kwargs["include_cardinality"] = request.include_cardinality
 
     try:
-        result = await service.profile_source(
-            source_id,
-            sample_size=sample_size,
-        )
+        result = await service.profile_source(source_id, **profile_kwargs)
         return ProfileResponse.from_result(result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

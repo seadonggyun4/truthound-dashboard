@@ -1,7 +1,7 @@
 """Reporter registry and factory functions.
 
 This module provides a central registry for report generators and
-convenience functions for generating reports.
+convenience functions for generating reports with i18n support.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from .base import Reporter, ReportFormat, ReportResult, ReportTheme
+from .i18n import SupportedLocale, get_supported_locales
 
 if TYPE_CHECKING:
     from truthound_dashboard.db.models import Validation
@@ -144,11 +145,15 @@ def register_reporter(
     get_registry().register(format_type, reporter_class)
 
 
-def get_reporter(format_type: ReportFormat | str) -> Reporter:
-    """Get a reporter for a specific format.
+def get_reporter(
+    format_type: ReportFormat | str,
+    locale: SupportedLocale | str = SupportedLocale.ENGLISH,
+) -> Reporter:
+    """Get a reporter for a specific format with locale support.
 
     Args:
         format_type: Report format (enum or string).
+        locale: Target locale for report generation.
 
     Returns:
         Reporter instance for the format.
@@ -158,7 +163,28 @@ def get_reporter(format_type: ReportFormat | str) -> Reporter:
     """
     if isinstance(format_type, str):
         format_type = ReportFormat.from_string(format_type)
-    return get_registry().get(format_type)
+
+    # Get the reporter class from registry
+    registry = get_registry()
+    reporter_class = registry._reporters.get(format_type)
+
+    if reporter_class is None:
+        raise ValueError(
+            f"No reporter registered for format: {format_type.value}. "
+            f"Available formats: {registry.available_formats}"
+        )
+
+    # Convert locale string to enum
+    if isinstance(locale, str):
+        locale = SupportedLocale.from_string(locale)
+
+    # Create reporter with locale if supported
+    try:
+        # Try to create with locale (for reporters that support it)
+        return reporter_class(locale=locale)
+    except TypeError:
+        # Fall back to no-arg constructor for reporters without locale
+        return reporter_class()
 
 
 def get_available_formats() -> list[str]:
@@ -175,6 +201,7 @@ async def generate_report(
     *,
     format: ReportFormat | str = ReportFormat.HTML,
     theme: ReportTheme | str = ReportTheme.PROFESSIONAL,
+    locale: SupportedLocale | str = SupportedLocale.ENGLISH,
     title: str | None = None,
     include_samples: bool = True,
     include_statistics: bool = True,
@@ -182,12 +209,13 @@ async def generate_report(
 ) -> ReportResult:
     """Generate a report for a validation result.
 
-    High-level convenience function for report generation.
+    High-level convenience function for report generation with i18n support.
 
     Args:
         validation: Validation model with results.
         format: Output format (enum or string).
         theme: Visual theme (enum or string).
+        locale: Report language (supports 15 languages).
         title: Custom report title.
         include_samples: Include sample problematic values.
         include_statistics: Include data statistics.
@@ -197,7 +225,13 @@ async def generate_report(
         ReportResult with generated content.
 
     Example:
-        report = await generate_report(validation, format="html", theme="dark")
+        # Generate Korean HTML report with dark theme
+        report = await generate_report(
+            validation,
+            format="html",
+            theme="dark",
+            locale="ko"
+        )
         with open(report.filename, "w") as f:
             f.write(report.content)
     """
@@ -207,7 +241,7 @@ async def generate_report(
     if isinstance(theme, str):
         theme = ReportTheme(theme)
 
-    reporter = get_reporter(format)
+    reporter = get_reporter(format, locale=locale)
 
     return await reporter.generate(
         validation,
@@ -217,6 +251,19 @@ async def generate_report(
         include_statistics=include_statistics,
         custom_metadata=custom_metadata,
     )
+
+
+def get_report_locales() -> list[dict[str, Any]]:
+    """Get list of supported report locales.
+
+    Returns:
+        List of locale info dictionaries with code, name, and metadata.
+
+    Example:
+        locales = get_report_locales()
+        # [{"code": "en", "english_name": "English", "native_name": "English", ...}, ...]
+    """
+    return get_supported_locales()
 
 
 def reset_registry() -> None:

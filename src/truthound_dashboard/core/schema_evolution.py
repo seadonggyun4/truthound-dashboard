@@ -2,12 +2,19 @@
 
 This module provides functionality for detecting and tracking
 schema changes over time, enabling schema evolution monitoring.
+
+Features:
+    - Automatic schema change detection
+    - Breaking change identification
+    - Version history tracking
+    - Notification integration for schema changes
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
@@ -30,6 +37,8 @@ from truthound_dashboard.schemas.schema_evolution import (
     SchemaVersionResponse,
     SchemaVersionSummary,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class SchemaVersionRepository(BaseRepository[SchemaVersion]):
@@ -179,17 +188,35 @@ class SchemaChangeRepository(BaseRepository[SchemaChange]):
 
 
 class SchemaEvolutionService:
-    """Service for schema evolution detection and tracking."""
+    """Service for schema evolution detection and tracking.
 
-    def __init__(self, session: AsyncSession):
+    This service handles:
+    - Schema version creation and tracking
+    - Change detection between versions
+    - Breaking change identification
+    - Automatic notification dispatch for schema changes
+
+    Notifications are sent automatically when:
+    - Any schema changes are detected (event_type: schema_changed)
+    - Breaking changes are detected (triggers breaking_schema_change rules)
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        *,
+        enable_notifications: bool = True,
+    ):
         """Initialize service.
 
         Args:
             session: Database session.
+            enable_notifications: Whether to send notifications on schema changes.
         """
         self.session = session
         self.version_repo = SchemaVersionRepository(session)
         self.change_repo = SchemaChangeRepository(session)
+        self._enable_notifications = enable_notifications
 
     def _compute_schema_hash(self, schema_json: dict[str, Any]) -> str:
         """Compute deterministic hash of schema structure.
@@ -235,6 +262,142 @@ class SchemaEvolutionService:
             }
         return snapshot
 
+    # Type compatibility matrix: (old_type, new_type) -> is_compatible
+    # Compatible means data can be safely converted without loss
+    TYPE_COMPATIBILITY_MATRIX: dict[tuple[str, str], bool] = {
+        # Safe widening conversions
+        ("int8", "int16"): True,
+        ("int8", "int32"): True,
+        ("int8", "int64"): True,
+        ("int16", "int32"): True,
+        ("int16", "int64"): True,
+        ("int32", "int64"): True,
+        ("float32", "float64"): True,
+        ("int8", "float32"): True,
+        ("int8", "float64"): True,
+        ("int16", "float32"): True,
+        ("int16", "float64"): True,
+        ("int32", "float64"): True,
+        # String conversions (anything can become string)
+        ("int8", "string"): True,
+        ("int16", "string"): True,
+        ("int32", "string"): True,
+        ("int64", "string"): True,
+        ("float32", "string"): True,
+        ("float64", "string"): True,
+        ("boolean", "string"): True,
+        ("date", "string"): True,
+        ("datetime", "string"): True,
+        # Same type aliases
+        ("integer", "int64"): True,
+        ("int64", "integer"): True,
+        ("float", "float64"): True,
+        ("float64", "float"): True,
+        ("str", "string"): True,
+        ("string", "str"): True,
+        ("bool", "boolean"): True,
+        ("boolean", "bool"): True,
+    }
+
+    # Types that can be widened (ordered by width)
+    TYPE_WIDTH_ORDER: dict[str, int] = {
+        "int8": 1, "int16": 2, "int32": 3, "int64": 4, "integer": 4,
+        "float32": 5, "float64": 6, "float": 6,
+        "string": 10, "str": 10, "text": 10,
+    }
+
+    def _normalize_type(self, dtype: str | None) -> str:
+        """Normalize type name for comparison.
+
+        Args:
+            dtype: Data type string.
+
+        Returns:
+            Normalized type name.
+        """
+        if not dtype:
+            return "unknown"
+
+        dtype_lower = dtype.lower().strip()
+
+        # Normalize common aliases
+        type_aliases = {
+            "int": "int64",
+            "integer": "int64",
+            "bigint": "int64",
+            "smallint": "int16",
+            "tinyint": "int8",
+            "float": "float64",
+            "double": "float64",
+            "real": "float32",
+            "str": "string",
+            "text": "string",
+            "varchar": "string",
+            "char": "string",
+            "bool": "boolean",
+            "timestamp": "datetime",
+            "timestamptz": "datetime",
+        }
+
+        return type_aliases.get(dtype_lower, dtype_lower)
+
+    def _is_type_compatible(self, old_type: str, new_type: str) -> bool:
+        """Check if type change is backward compatible (widening).
+
+        Args:
+            old_type: Old data type.
+            new_type: New data type.
+
+        Returns:
+            True if change is compatible (widening conversion).
+        """
+        old_norm = self._normalize_type(old_type)
+        new_norm = self._normalize_type(new_type)
+
+        # Same type is always compatible
+        if old_norm == new_norm:
+            return True
+
+        # Check explicit compatibility matrix
+        if (old_norm, new_norm) in self.TYPE_COMPATIBILITY_MATRIX:
+            return self.TYPE_COMPATIBILITY_MATRIX[(old_norm, new_norm)]
+
+        # Check width-based compatibility
+        old_width = self.TYPE_WIDTH_ORDER.get(old_norm)
+        new_width = self.TYPE_WIDTH_ORDER.get(new_norm)
+
+        if old_width is not None and new_width is not None:
+            # Widening is compatible, narrowing is not
+            return new_width >= old_width
+
+        return False
+
+    def _get_type_change_severity(
+        self, old_type: str, new_type: str
+    ) -> SchemaChangeSeverity:
+        """Determine severity of a type change.
+
+        Args:
+            old_type: Old data type.
+            new_type: New data type.
+
+        Returns:
+            Severity level of the change.
+        """
+        old_norm = self._normalize_type(old_type)
+        new_norm = self._normalize_type(new_type)
+
+        # Same type = no change
+        if old_norm == new_norm:
+            return SchemaChangeSeverity.NON_BREAKING
+
+        # Compatible widening conversion
+        if self._is_type_compatible(old_type, new_type):
+            return SchemaChangeSeverity.NON_BREAKING
+
+        # Narrowing or incompatible conversion = breaking
+        return SchemaChangeSeverity.BREAKING
+
     def _detect_column_changes(
         self,
         old_columns: dict[str, Any],
@@ -253,15 +416,29 @@ class SchemaEvolutionService:
         old_names = set(old_columns.keys())
         new_names = set(new_columns.keys())
 
-        # Added columns
+        # Added columns (non-breaking if nullable, warning if not nullable)
         for col_name in new_names - old_names:
             col_def = new_columns[col_name]
+            is_nullable = col_def.get("nullable", True)
+            severity = (
+                SchemaChangeSeverity.NON_BREAKING
+                if is_nullable
+                else SchemaChangeSeverity.WARNING
+            )
             changes.append({
                 "change_type": SchemaChangeType.COLUMN_ADDED.value,
                 "column_name": col_name,
                 "old_value": None,
                 "new_value": col_def.get("dtype"),
-                "severity": SchemaChangeSeverity.NON_BREAKING.value,
+                "severity": severity.value,
+                "details": {
+                    "nullable": is_nullable,
+                    "reason": (
+                        "New column is nullable"
+                        if is_nullable
+                        else "New non-nullable column may require default value"
+                    ),
+                },
             })
 
         # Removed columns (breaking change)
@@ -273,20 +450,89 @@ class SchemaEvolutionService:
                 "old_value": col_def.get("dtype"),
                 "new_value": None,
                 "severity": SchemaChangeSeverity.BREAKING.value,
+                "details": {
+                    "reason": "Existing column removed - queries may fail",
+                },
             })
 
-        # Type changes
+        # Check changes in common columns
         for col_name in old_names & new_names:
-            old_type = old_columns[col_name].get("dtype")
-            new_type = new_columns[col_name].get("dtype")
+            old_def = old_columns[col_name]
+            new_def = new_columns[col_name]
+
+            old_type = old_def.get("dtype")
+            new_type = new_def.get("dtype")
+
+            # Type changes with compatibility analysis
             if old_type != new_type:
-                # Type changes are usually breaking
+                severity = self._get_type_change_severity(old_type, new_type)
+                is_compatible = self._is_type_compatible(old_type, new_type)
+
                 changes.append({
                     "change_type": SchemaChangeType.TYPE_CHANGED.value,
                     "column_name": col_name,
                     "old_value": old_type,
                     "new_value": new_type,
-                    "severity": SchemaChangeSeverity.BREAKING.value,
+                    "severity": severity.value,
+                    "details": {
+                        "is_compatible": is_compatible,
+                        "old_type_normalized": self._normalize_type(old_type),
+                        "new_type_normalized": self._normalize_type(new_type),
+                        "reason": (
+                            "Compatible type widening"
+                            if is_compatible
+                            else "Incompatible type change - data may be lost"
+                        ),
+                    },
+                })
+
+            # Nullable changes
+            old_nullable = old_def.get("nullable", True)
+            new_nullable = new_def.get("nullable", True)
+
+            if old_nullable != new_nullable:
+                # nullable -> non-nullable is breaking
+                # non-nullable -> nullable is safe
+                if old_nullable and not new_nullable:
+                    severity = SchemaChangeSeverity.BREAKING
+                    reason = "Column became non-nullable - existing nulls will cause errors"
+                else:
+                    severity = SchemaChangeSeverity.NON_BREAKING
+                    reason = "Column became nullable - no impact on existing data"
+
+                changes.append({
+                    "change_type": SchemaChangeType.NULLABLE_CHANGED.value,
+                    "column_name": col_name,
+                    "old_value": old_nullable,
+                    "new_value": new_nullable,
+                    "severity": severity.value,
+                    "details": {
+                        "reason": reason,
+                    },
+                })
+
+            # Unique constraint changes
+            old_unique = old_def.get("unique", False)
+            new_unique = new_def.get("unique", False)
+
+            if old_unique != new_unique:
+                if not old_unique and new_unique:
+                    severity = SchemaChangeSeverity.WARNING
+                    reason = "Unique constraint added - duplicates will be rejected"
+                else:
+                    severity = SchemaChangeSeverity.NON_BREAKING
+                    reason = "Unique constraint removed"
+
+                changes.append({
+                    "change_type": SchemaChangeType.CONSTRAINT_CHANGED.value,
+                    "column_name": col_name,
+                    "old_value": f"unique={old_unique}",
+                    "new_value": f"unique={new_unique}",
+                    "severity": severity.value,
+                    "details": {
+                        "constraint_type": "unique",
+                        "reason": reason,
+                    },
                 })
 
         return changes
@@ -350,16 +596,83 @@ class SchemaEvolutionService:
         await self.session.commit()
         return new_version, changes
 
+    async def _send_schema_change_notification(
+        self,
+        source: Source,
+        from_version: int | None,
+        to_version: int,
+        total_changes: int,
+        breaking_changes: int,
+        changes: list[SchemaChange],
+    ) -> None:
+        """Send notification for schema changes.
+
+        Args:
+            source: Source record.
+            from_version: Previous version number (None if first version).
+            to_version: New version number.
+            total_changes: Total number of changes.
+            breaking_changes: Number of breaking changes.
+            changes: List of change records.
+        """
+        if not self._enable_notifications:
+            return
+
+        try:
+            # Import here to avoid circular imports
+            from truthound_dashboard.core.notifications.dispatcher import (
+                create_dispatcher,
+            )
+
+            dispatcher = create_dispatcher(self.session)
+
+            # Format changes for notification
+            change_details = [
+                {
+                    "type": c.change_type,
+                    "column": c.column_name,
+                    "old_value": c.old_value,
+                    "new_value": c.new_value,
+                    "breaking": c.is_breaking,
+                }
+                for c in changes[:10]  # Limit to first 10 for notification
+            ]
+
+            results = await dispatcher.notify_schema_changed(
+                source_id=source.id,
+                source_name=source.name,
+                from_version=from_version,
+                to_version=to_version,
+                total_changes=total_changes,
+                breaking_changes=breaking_changes,
+                changes=change_details,
+            )
+
+            if results:
+                successful = sum(1 for r in results if r.success)
+                logger.info(
+                    f"Schema change notification sent: {successful}/{len(results)} "
+                    f"channels (source={source.name}, changes={total_changes})"
+                )
+        except Exception as e:
+            logger.warning(f"Failed to send schema change notification: {e}")
+
     async def detect_changes(
         self,
         source: Source,
         schema: Schema,
+        *,
+        notify: bool = True,
     ) -> SchemaEvolutionResponse:
         """Detect schema changes for a source.
+
+        Automatically sends notifications when changes are detected
+        (if notifications are enabled and notify=True).
 
         Args:
             source: Source record.
             schema: Current schema.
+            notify: Whether to send notification for this detection.
 
         Returns:
             Evolution detection response.
@@ -389,6 +702,17 @@ class SchemaEvolutionService:
         ]
 
         breaking_count = sum(1 for c in changes if c.is_breaking)
+
+        # Send notification if changes were detected
+        if changes and notify:
+            await self._send_schema_change_notification(
+                source=source,
+                from_version=from_version,
+                to_version=new_version.version_number,
+                total_changes=len(changes),
+                breaking_changes=breaking_count,
+                changes=changes,
+            )
 
         return SchemaEvolutionResponse(
             source_id=source.id,

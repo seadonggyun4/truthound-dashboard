@@ -1,7 +1,7 @@
 """HTML report generator.
 
 Generates professional HTML reports with responsive design,
-theme support, and interactive features.
+theme support, internationalization, and interactive features.
 """
 
 from __future__ import annotations
@@ -10,17 +10,34 @@ from html import escape
 from typing import TYPE_CHECKING, Any
 
 from .base import Reporter, ReportFormat, ReportMetadata, ReportTheme
+from .i18n import ReportLocalizer, SupportedLocale, get_localizer
 
 if TYPE_CHECKING:
     from truthound_dashboard.db.models import Validation
 
 
 class HTMLReporter(Reporter):
-    """HTML report generator with theme support.
+    """HTML report generator with theme and i18n support.
 
     Produces standalone HTML documents with embedded CSS.
-    Supports multiple themes and responsive design.
+    Supports multiple themes, responsive design, and 15 languages.
+
+    Example:
+        reporter = HTMLReporter(locale="ko")
+        result = await reporter.generate(validation, theme=ReportTheme.DARK)
     """
+
+    def __init__(self, locale: SupportedLocale | str = SupportedLocale.ENGLISH) -> None:
+        """Initialize the HTML reporter.
+
+        Args:
+            locale: Target locale for report generation.
+        """
+        super().__init__()
+        if isinstance(locale, str):
+            locale = SupportedLocale.from_string(locale)
+        self._locale = locale
+        self._localizer = get_localizer(locale)
 
     @property
     def format(self) -> ReportFormat:
@@ -34,6 +51,16 @@ class HTMLReporter(Reporter):
     def file_extension(self) -> str:
         return ".html"
 
+    @property
+    def locale(self) -> SupportedLocale:
+        """Get the current locale."""
+        return self._locale
+
+    @property
+    def localizer(self) -> ReportLocalizer:
+        """Get the localizer instance."""
+        return self._localizer
+
     async def _render_content(
         self,
         validation: Validation,
@@ -44,19 +71,24 @@ class HTMLReporter(Reporter):
         """Render HTML report content."""
         issues = self._extract_issues(validation)
         theme = metadata.theme
+        t = self._localizer  # Shorthand for translations
 
         # Build HTML sections
         css = self._generate_css(theme)
-        header = self._render_header(validation, metadata)
-        summary = self._render_summary(validation, theme)
+        header = self._render_header(validation, metadata, t)
+        summary = self._render_summary(validation, theme, t)
         statistics = (
-            self._render_statistics(validation, theme) if include_statistics else ""
+            self._render_statistics(validation, theme, t) if include_statistics else ""
         )
-        issues_section = self._render_issues(issues, theme, include_samples)
-        footer = self._render_footer(metadata)
+        issues_section = self._render_issues(issues, theme, include_samples, t)
+        footer = self._render_footer(metadata, t)
+
+        # Determine text direction for RTL languages
+        text_dir = t.text_direction
+        lang_code = self._locale.value
 
         return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{lang_code}" dir="{text_dir}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -133,6 +165,18 @@ class HTMLReporter(Reporter):
         }
 
         c = theme_colors.get(theme, theme_colors[ReportTheme.PROFESSIONAL])
+
+        # RTL support
+        rtl_css = ""
+        if self._locale.is_rtl:
+            rtl_css = """
+        [dir="rtl"] .stat-row {
+            flex-direction: row-reverse;
+        }
+        [dir="rtl"] th, [dir="rtl"] td {
+            text-align: right;
+        }
+        """
 
         return f"""
         * {{
@@ -356,102 +400,124 @@ class HTMLReporter(Reporter):
                 break-inside: avoid;
             }}
         }}
+        {rtl_css}
         """
 
-    def _render_header(self, validation: Validation, metadata: ReportMetadata) -> str:
+    def _render_header(
+        self,
+        validation: Validation,
+        metadata: ReportMetadata,
+        t: ReportLocalizer,
+    ) -> str:
         """Render report header."""
         source_name = escape(metadata.source_name or validation.source_id)
-        generated = metadata.generated_at.strftime("%Y-%m-%d %H:%M:%S UTC")
+        generated = t.format_date(metadata.generated_at)
 
         return f"""
         <header class="header">
             <h1>{escape(metadata.title)}</h1>
             <p class="subtitle">
-                Source: <strong>{source_name}</strong> |
-                Generated: {generated}
+                {t.t("report.source")}: <strong>{source_name}</strong> |
+                {t.t("report.generated_at")}: {generated}
             </p>
         </header>
         """
 
-    def _render_summary(self, validation: Validation, theme: ReportTheme) -> str:
+    def _render_summary(
+        self,
+        validation: Validation,
+        theme: ReportTheme,
+        t: ReportLocalizer,
+    ) -> str:
         """Render validation summary card."""
         passed = validation.passed
         status_class = "status-passed" if passed else "status-failed"
-        status_text = self._get_status_indicator(passed)
+
+        if passed is None:
+            status_text = f"⏳ {t.t('status.pending')}"
+        elif passed:
+            status_text = f"✅ {t.t('status.passed')}"
+        else:
+            status_text = f"❌ {t.t('status.failed')}"
 
         return f"""
         <section class="card">
-            <h2 class="card-title">Validation Summary</h2>
+            <h2 class="card-title">{t.t("summary.title")}</h2>
             <div style="text-align: center; margin-bottom: 1rem;">
                 <span class="status-badge {status_class}">{status_text}</span>
             </div>
             <div class="summary-grid">
                 <div class="summary-item">
-                    <span class="value">{validation.total_issues or 0}</span>
-                    <span class="label">Total Issues</span>
+                    <span class="value">{t.format_number(validation.total_issues or 0)}</span>
+                    <span class="label">{t.t("summary.total_issues")}</span>
                 </div>
                 <div class="summary-item">
-                    <span class="value severity-critical">{validation.critical_issues or 0}</span>
-                    <span class="label">Critical</span>
+                    <span class="value severity-critical">{t.format_number(validation.critical_issues or 0)}</span>
+                    <span class="label">{t.t("severity.critical")}</span>
                 </div>
                 <div class="summary-item">
-                    <span class="value severity-high">{validation.high_issues or 0}</span>
-                    <span class="label">High</span>
+                    <span class="value severity-high">{t.format_number(validation.high_issues or 0)}</span>
+                    <span class="label">{t.t("severity.high")}</span>
                 </div>
                 <div class="summary-item">
-                    <span class="value severity-medium">{validation.medium_issues or 0}</span>
-                    <span class="label">Medium</span>
+                    <span class="value severity-medium">{t.format_number(validation.medium_issues or 0)}</span>
+                    <span class="label">{t.t("severity.medium")}</span>
                 </div>
                 <div class="summary-item">
-                    <span class="value severity-low">{validation.low_issues or 0}</span>
-                    <span class="label">Low</span>
+                    <span class="value severity-low">{t.format_number(validation.low_issues or 0)}</span>
+                    <span class="label">{t.t("severity.low")}</span>
                 </div>
             </div>
         </section>
         """
 
-    def _render_statistics(self, validation: Validation, theme: ReportTheme) -> str:
+    def _render_statistics(
+        self,
+        validation: Validation,
+        theme: ReportTheme,
+        t: ReportLocalizer,
+    ) -> str:
         """Render data statistics card."""
         duration = validation.duration_ms
-        duration_str = f"{duration / 1000:.2f}s" if duration else "N/A"
+        na_text = t.t("statistics.na")
 
-        started = (
-            validation.started_at.strftime("%Y-%m-%d %H:%M:%S")
-            if validation.started_at
-            else "N/A"
-        )
-        completed = (
-            validation.completed_at.strftime("%Y-%m-%d %H:%M:%S")
-            if validation.completed_at
-            else "N/A"
-        )
+        if duration:
+            duration_str = t.format("time.seconds", value=f"{duration / 1000:.2f}")
+        else:
+            duration_str = na_text
+
+        started = t.format_date(validation.started_at) if validation.started_at else na_text
+        completed = t.format_date(validation.completed_at) if validation.completed_at else na_text
+
+        row_count = t.format_number(validation.row_count) if validation.row_count else na_text
+        col_count = t.format_number(validation.column_count) if validation.column_count else na_text
 
         return f"""
         <section class="card">
-            <h2 class="card-title">Data Statistics</h2>
+            <h2 class="card-title">{t.t("statistics.title")}</h2>
             <div class="stats-grid">
                 <div class="stat-row">
-                    <span>Row Count</span>
-                    <strong>{validation.row_count or 'N/A':,}</strong>
+                    <span>{t.t("statistics.row_count")}</span>
+                    <strong>{row_count}</strong>
                 </div>
                 <div class="stat-row">
-                    <span>Column Count</span>
-                    <strong>{validation.column_count or 'N/A'}</strong>
+                    <span>{t.t("statistics.column_count")}</span>
+                    <strong>{col_count}</strong>
                 </div>
                 <div class="stat-row">
-                    <span>Duration</span>
+                    <span>{t.t("statistics.duration")}</span>
                     <strong>{duration_str}</strong>
                 </div>
                 <div class="stat-row">
-                    <span>Status</span>
+                    <span>{t.t("summary.status")}</span>
                     <strong>{escape(validation.status)}</strong>
                 </div>
                 <div class="stat-row">
-                    <span>Started At</span>
+                    <span>{t.t("statistics.started_at")}</span>
                     <strong>{started}</strong>
                 </div>
                 <div class="stat-row">
-                    <span>Completed At</span>
+                    <span>{t.t("statistics.completed_at")}</span>
                     <strong>{completed}</strong>
                 </div>
             </div>
@@ -463,14 +529,15 @@ class HTMLReporter(Reporter):
         issues: list[dict[str, Any]],
         theme: ReportTheme,
         include_samples: bool,
+        t: ReportLocalizer,
     ) -> str:
         """Render issues table."""
         if not issues:
-            return """
+            return f"""
             <section class="card">
-                <h2 class="card-title">Issues</h2>
+                <h2 class="card-title">{t.t("issues.title")}</h2>
                 <p style="text-align: center; color: var(--text-muted); padding: 2rem;">
-                    No issues found. All validations passed.
+                    {t.t("issues.no_issues")}
                 </p>
             </section>
             """
@@ -479,6 +546,7 @@ class HTMLReporter(Reporter):
         for issue in issues:
             severity = issue.get("severity", "medium").lower()
             badge_class = f"badge-{severity}"
+            severity_label = t.t(f"severity.{severity}")
 
             samples_html = ""
             if include_samples and issue.get("sample_values"):
@@ -487,10 +555,10 @@ class HTMLReporter(Reporter):
 
             rows.append(f"""
                 <tr>
-                    <td>{escape(issue.get('column', 'N/A'))}</td>
+                    <td>{escape(issue.get('column', t.t('statistics.na')))}</td>
                     <td>{escape(issue.get('issue_type', 'Unknown'))}</td>
-                    <td><span class="severity-badge {badge_class}">{severity}</span></td>
-                    <td>{issue.get('count', 0):,}</td>
+                    <td><span class="severity-badge {badge_class}">{severity_label}</span></td>
+                    <td>{t.format_number(issue.get('count', 0))}</td>
                     <td>
                         {escape(issue.get('details', '') or '')}
                         {samples_html}
@@ -498,17 +566,19 @@ class HTMLReporter(Reporter):
                 </tr>
             """)
 
+        issue_count_text = t.plural("issues.count", len(issues))
+
         return f"""
         <section class="card">
-            <h2 class="card-title">Issues ({len(issues)})</h2>
+            <h2 class="card-title">{t.t("issues.title")} ({issue_count_text})</h2>
             <table>
                 <thead>
                     <tr>
-                        <th>Column</th>
-                        <th>Issue Type</th>
-                        <th>Severity</th>
-                        <th>Count</th>
-                        <th>Details</th>
+                        <th>{t.t("issues.column")}</th>
+                        <th>{t.t("issues.type")}</th>
+                        <th>{t.t("issues.severity")}</th>
+                        <th>{t.t("issues.count")}</th>
+                        <th>{t.t("issues.details")}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -518,11 +588,11 @@ class HTMLReporter(Reporter):
         </section>
         """
 
-    def _render_footer(self, metadata: ReportMetadata) -> str:
+    def _render_footer(self, metadata: ReportMetadata, t: ReportLocalizer) -> str:
         """Render report footer."""
         return f"""
         <footer class="footer">
-            <p>Generated by Truthound Dashboard</p>
-            <p>Validation ID: {escape(metadata.validation_id or 'N/A')}</p>
+            <p>{t.t("report.generated_by")}</p>
+            <p>{t.t("report.validation_id")}: {escape(metadata.validation_id or t.t("statistics.na"))}</p>
         </footer>
         """
