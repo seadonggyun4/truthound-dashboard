@@ -60,11 +60,42 @@ from .models import (
     StateTransition,
     TargetType,
 )
+from .backends import (
+    BackendType,
+    InMemorySchedulerBackend,
+    JobData,
+    JobExecutionResult,
+    JobState,
+    MisfirePolicy,
+    SchedulerBackend,
+    SchedulerBackendConfig,
+    SQLAlchemySchedulerBackend,
+    create_scheduler_backend,
+)
+from .scheduler import (
+    DefaultEscalationHandler,
+    EscalationHandler,
+    EscalationResult,
+    EscalationSchedulerConfig,
+    EscalationSchedulerService,
+    EscalationStrategy,
+    ImmediateEscalationStrategy,
+    LoggingEscalationHandler,
+    TimeBasedEscalationStrategy,
+    get_escalation_scheduler,
+    reset_escalation_scheduler,
+    start_escalation_scheduler,
+    stop_escalation_scheduler,
+)
 from .state_machine import EscalationStateMachine
 from .stores import (
     BaseEscalationStore,
+    EscalationMetrics,
+    EscalationStoreType,
     InMemoryEscalationStore,
+    RedisEscalationStore,
     SQLiteEscalationStore,
+    create_escalation_store,
 )
 
 __all__ = [
@@ -81,9 +112,38 @@ __all__ = [
     "EscalationStateMachine",
     # Stores
     "BaseEscalationStore",
+    "EscalationMetrics",
+    "EscalationStoreType",
     "InMemoryEscalationStore",
+    "RedisEscalationStore",
     "SQLiteEscalationStore",
+    "create_escalation_store",
     # Engine
     "EscalationEngine",
     "EscalationEngineConfig",
+    # Scheduler Backends
+    "BackendType",
+    "JobState",
+    "MisfirePolicy",
+    "SchedulerBackendConfig",
+    "JobData",
+    "JobExecutionResult",
+    "SchedulerBackend",
+    "InMemorySchedulerBackend",
+    "SQLAlchemySchedulerBackend",
+    "create_scheduler_backend",
+    # Scheduler
+    "EscalationSchedulerService",
+    "EscalationSchedulerConfig",
+    "EscalationHandler",
+    "EscalationResult",
+    "EscalationStrategy",
+    "DefaultEscalationHandler",
+    "LoggingEscalationHandler",
+    "TimeBasedEscalationStrategy",
+    "ImmediateEscalationStrategy",
+    "get_escalation_scheduler",
+    "reset_escalation_scheduler",
+    "start_escalation_scheduler",
+    "stop_escalation_scheduler",
 ]
