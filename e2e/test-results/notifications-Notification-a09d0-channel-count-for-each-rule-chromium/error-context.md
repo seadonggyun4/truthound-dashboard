@@ -1,0 +1,372 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - img "Truthound" [ref=e7]
+        - generic [ref=e8]: Truthound
+      - navigation [ref=e9]:
+        - link "Dashboard" [ref=e10] [cursor=pointer]:
+          - /url: /
+          - img [ref=e11]
+          - generic [ref=e16]: Dashboard
+        - link "Data Sources" [ref=e17] [cursor=pointer]:
+          - /url: /sources
+          - img [ref=e18]
+          - generic [ref=e22]: Data Sources
+        - link "Catalog" [ref=e23] [cursor=pointer]:
+          - /url: /catalog
+          - img [ref=e24]
+          - generic [ref=e26]: Catalog
+        - link "Glossary" [ref=e27] [cursor=pointer]:
+          - /url: /glossary
+          - img [ref=e28]
+          - generic [ref=e31]: Glossary
+        - link "Drift" [ref=e32] [cursor=pointer]:
+          - /url: /drift
+          - img [ref=e33]
+          - generic [ref=e38]: Drift
+        - link "Drift Monitoring" [ref=e39] [cursor=pointer]:
+          - /url: /drift-monitoring
+          - img [ref=e40]
+          - generic [ref=e46]: Drift Monitoring
+        - link "Privacy" [ref=e47] [cursor=pointer]:
+          - /url: /privacy
+          - img [ref=e48]
+          - generic [ref=e50]: Privacy
+        - link "Lineage" [ref=e51] [cursor=pointer]:
+          - /url: /lineage
+          - img [ref=e52]
+          - generic [ref=e57]: Lineage
+        - link "Anomaly Detection" [ref=e58] [cursor=pointer]:
+          - /url: /anomaly
+          - img [ref=e59]
+          - generic [ref=e61]: Anomaly Detection
+        - link "Model Monitoring" [ref=e62] [cursor=pointer]:
+          - /url: /model-monitoring
+          - img [ref=e63]
+          - generic [ref=e66]: Model Monitoring
+        - link "Alerts" [ref=e67] [cursor=pointer]:
+          - /url: /alerts
+          - img [ref=e68]
+          - generic [ref=e70]: Alerts
+        - link "Schedules" [ref=e71] [cursor=pointer]:
+          - /url: /schedules
+          - img [ref=e72]
+          - generic [ref=e75]: Schedules
+        - link "Activity" [ref=e76] [cursor=pointer]:
+          - /url: /activity
+          - img [ref=e77]
+          - generic [ref=e79]: Activity
+        - link "Notifications" [ref=e80] [cursor=pointer]:
+          - /url: /notifications
+          - img [ref=e81]
+          - generic [ref=e84]: Notifications
+        - link "Advanced Notifications" [ref=e85] [cursor=pointer]:
+          - /url: /notifications/advanced
+          - img [ref=e86]
+          - generic [ref=e91]: Advanced Notifications
+        - link "Reports" [ref=e92] [cursor=pointer]:
+          - /url: /reports
+          - img [ref=e93]
+          - generic [ref=e96]: Reports
+        - link "Plugins" [ref=e97] [cursor=pointer]:
+          - /url: /plugins
+          - img [ref=e98]
+          - generic [ref=e100]: Plugins
+        - link "Maintenance" [ref=e101] [cursor=pointer]:
+          - /url: /maintenance
+          - img [ref=e102]
+          - generic [ref=e105]: Maintenance
+    - generic [ref=e106]:
+      - banner [ref=e107]:
+        - generic [ref=e108]:
+          - button [ref=e109] [cursor=pointer]:
+            - img [ref=e110]
+          - button "Toggle theme" [ref=e113] [cursor=pointer]:
+            - img [ref=e114]
+      - main [ref=e120]:
+        - generic [ref=e121]:
+          - generic [ref=e123]:
+            - heading "Notifications" [level=1] [ref=e124]
+            - paragraph [ref=e125]: Configure notification channels and rules
+          - generic [ref=e126]:
+            - generic [ref=e127]:
+              - heading "Total (24h)" [level=3] [ref=e129]
+              - generic [ref=e131]: "0"
+            - generic [ref=e132]:
+              - heading "Success Rate" [level=3] [ref=e134]
+              - generic [ref=e136]: 0%
+            - generic [ref=e137]:
+              - heading "Sent" [level=3] [ref=e139]
+              - generic [ref=e141]: "0"
+            - generic [ref=e142]:
+              - heading "Failed" [level=3] [ref=e144]
+              - generic [ref=e146]: "0"
+          - generic [ref=e147]:
+            - tablist [ref=e148]:
+              - tab "Channels (20)" [ref=e149] [cursor=pointer]
+              - tab "Rules (16)" [active] [selected] [ref=e150] [cursor=pointer]
+              - tab "Logs (50)" [ref=e151] [cursor=pointer]
+            - tabpanel "Rules (16)" [ref=e152]:
+              - generic [ref=e153]:
+                - button "Refresh" [ref=e154] [cursor=pointer]:
+                  - img [ref=e155]
+                  - text: Refresh
+                - button "Add Rule" [ref=e160] [cursor=pointer]:
+                  - img [ref=e161]
+                  - text: Add Rule
+              - table [ref=e164]:
+                - rowgroup [ref=e165]:
+                  - row "Name Condition Channels Status Actions" [ref=e166]:
+                    - columnheader "Name" [ref=e167]
+                    - columnheader "Condition" [ref=e168]
+                    - columnheader "Channels" [ref=e169]
+                    - columnheader "Status" [ref=e170]
+                    - columnheader "Actions" [ref=e171]
+                - rowgroup [ref=e172]:
+                  - row "Validation Failed Rule Validation Failed" [ref=e173]:
+                    - cell "Validation Failed Rule" [ref=e174]
+                    - cell "Validation Failed" [ref=e175]:
+                      - generic [ref=e176]: Validation Failed
+                    - cell [ref=e177]:
+                      - generic [ref=e178]:
+                        - img [ref=e180]
+                        - img [ref=e183]
+                    - cell [ref=e186]:
+                      - switch [checked] [ref=e187] [cursor=pointer]
+                    - cell [ref=e188]:
+                      - generic [ref=e189]:
+                        - button [ref=e190] [cursor=pointer]:
+                          - img [ref=e191]
+                        - button [ref=e193] [cursor=pointer]:
+                          - img [ref=e194]
+                  - row "Critical Issues Rule Critical Issues Detected" [ref=e197]:
+                    - cell "Critical Issues Rule" [ref=e198]
+                    - cell "Critical Issues Detected" [ref=e199]:
+                      - generic [ref=e200]: Critical Issues Detected
+                    - cell [ref=e201]:
+                      - generic [ref=e202]:
+                        - img [ref=e204]
+                        - img [ref=e207]
+                    - cell [ref=e210]:
+                      - switch [checked] [ref=e211] [cursor=pointer]
+                    - cell [ref=e212]:
+                      - generic [ref=e213]:
+                        - button [ref=e214] [cursor=pointer]:
+                          - img [ref=e215]
+                        - button [ref=e217] [cursor=pointer]:
+                          - img [ref=e218]
+                  - row "High Issues Rule High Severity Issues" [ref=e221]:
+                    - cell "High Issues Rule" [ref=e222]
+                    - cell "High Severity Issues" [ref=e223]:
+                      - generic [ref=e224]: High Severity Issues
+                    - cell [ref=e225]:
+                      - generic [ref=e226]:
+                        - img [ref=e228]
+                        - img [ref=e231]
+                    - cell [ref=e234]:
+                      - switch [checked] [ref=e235] [cursor=pointer]
+                    - cell [ref=e236]:
+                      - generic [ref=e237]:
+                        - button [ref=e238] [cursor=pointer]:
+                          - img [ref=e239]
+                        - button [ref=e241] [cursor=pointer]:
+                          - img [ref=e242]
+                  - row "Schedule Failed Rule Schedule Failed" [ref=e245]:
+                    - cell "Schedule Failed Rule" [ref=e246]
+                    - cell "Schedule Failed" [ref=e247]:
+                      - generic [ref=e248]: Schedule Failed
+                    - cell [ref=e249]:
+                      - generic [ref=e250]:
+                        - img [ref=e252]
+                        - img [ref=e255]
+                    - cell [ref=e258]:
+                      - switch [checked] [ref=e259] [cursor=pointer]
+                    - cell [ref=e260]:
+                      - generic [ref=e261]:
+                        - button [ref=e262] [cursor=pointer]:
+                          - img [ref=e263]
+                        - button [ref=e265] [cursor=pointer]:
+                          - img [ref=e266]
+                  - row "Drift Detected Rule Drift Detected" [ref=e269]:
+                    - cell "Drift Detected Rule" [ref=e270]
+                    - cell "Drift Detected" [ref=e271]:
+                      - generic [ref=e272]: Drift Detected
+                    - cell [ref=e273]:
+                      - generic [ref=e274]:
+                        - img [ref=e276]
+                        - img [ref=e279]
+                    - cell [ref=e282]:
+                      - switch [checked] [ref=e283] [cursor=pointer]
+                    - cell [ref=e284]:
+                      - generic [ref=e285]:
+                        - button [ref=e286] [cursor=pointer]:
+                          - img [ref=e287]
+                        - button [ref=e289] [cursor=pointer]:
+                          - img [ref=e290]
+                  - row "Single Channel Alert Validation Failed" [ref=e293]:
+                    - cell "Single Channel Alert" [ref=e294]
+                    - cell "Validation Failed" [ref=e295]:
+                      - generic [ref=e296]: Validation Failed
+                    - cell [ref=e297]:
+                      - img [ref=e300]
+                    - cell [ref=e302]:
+                      - switch [checked] [ref=e303] [cursor=pointer]
+                    - cell [ref=e304]:
+                      - generic [ref=e305]:
+                        - button [ref=e306] [cursor=pointer]:
+                          - img [ref=e307]
+                        - button [ref=e309] [cursor=pointer]:
+                          - img [ref=e310]
+                  - row "Multi-Channel Alert Critical Issues Detected +1" [ref=e313]:
+                    - cell "Multi-Channel Alert" [ref=e314]
+                    - cell "Critical Issues Detected" [ref=e315]:
+                      - generic [ref=e316]: Critical Issues Detected
+                    - cell "+1" [ref=e317]:
+                      - generic [ref=e318]:
+                        - img [ref=e320]
+                        - img [ref=e323]
+                        - img [ref=e327]
+                        - generic [ref=e330]: "+1"
+                    - cell [ref=e331]:
+                      - switch [checked] [ref=e332] [cursor=pointer]
+                    - cell [ref=e333]:
+                      - generic [ref=e334]:
+                        - button [ref=e335] [cursor=pointer]:
+                          - img [ref=e336]
+                        - button [ref=e338] [cursor=pointer]:
+                          - img [ref=e339]
+                  - row "Source-Specific Alert Validation Failed" [ref=e342]:
+                    - cell "Source-Specific Alert" [ref=e343]
+                    - cell "Validation Failed" [ref=e344]:
+                      - generic [ref=e345]: Validation Failed
+                    - cell [ref=e346]:
+                      - img [ref=e349]
+                    - cell [ref=e351]:
+                      - switch [checked] [ref=e352] [cursor=pointer]
+                    - cell [ref=e353]:
+                      - generic [ref=e354]:
+                        - button [ref=e355] [cursor=pointer]:
+                          - img [ref=e356]
+                        - button [ref=e358] [cursor=pointer]:
+                          - img [ref=e359]
+                  - row "Multi-Source Alert Critical Issues Detected" [ref=e362]:
+                    - cell "Multi-Source Alert" [ref=e363]
+                    - cell "Critical Issues Detected" [ref=e364]:
+                      - generic [ref=e365]: Critical Issues Detected
+                    - cell [ref=e366]:
+                      - generic [ref=e367]:
+                        - img [ref=e369]
+                        - img [ref=e372]
+                    - cell [ref=e375]:
+                      - switch [checked] [ref=e376] [cursor=pointer]
+                    - cell [ref=e377]:
+                      - generic [ref=e378]:
+                        - button [ref=e379] [cursor=pointer]:
+                          - img [ref=e380]
+                        - button [ref=e382] [cursor=pointer]:
+                          - img [ref=e383]
+                  - row "Global Alert Rule Critical Issues Detected" [ref=e386]:
+                    - cell "Global Alert Rule" [ref=e387]
+                    - cell "Critical Issues Detected" [ref=e388]:
+                      - generic [ref=e389]: Critical Issues Detected
+                    - cell [ref=e390]:
+                      - img [ref=e393]
+                    - cell [ref=e395]:
+                      - switch [checked] [ref=e396] [cursor=pointer]
+                    - cell [ref=e397]:
+                      - generic [ref=e398]:
+                        - button [ref=e399] [cursor=pointer]:
+                          - img [ref=e400]
+                        - button [ref=e402] [cursor=pointer]:
+                          - img [ref=e403]
+                  - row "Paused Alert Rule Validation Failed" [ref=e406]:
+                    - cell "Paused Alert Rule" [ref=e407]
+                    - cell "Validation Failed" [ref=e408]:
+                      - generic [ref=e409]: Validation Failed
+                    - cell [ref=e410]:
+                      - img [ref=e413]
+                    - cell [ref=e415]:
+                      - switch [ref=e416] [cursor=pointer]
+                    - cell [ref=e417]:
+                      - generic [ref=e418]:
+                        - button [ref=e419] [cursor=pointer]:
+                          - img [ref=e420]
+                        - button [ref=e422] [cursor=pointer]:
+                          - img [ref=e423]
+                  - row "Disabled Schedule Alert Schedule Failed" [ref=e426]:
+                    - cell "Disabled Schedule Alert" [ref=e427]
+                    - cell "Schedule Failed" [ref=e428]:
+                      - generic [ref=e429]: Schedule Failed
+                    - cell [ref=e430]:
+                      - img [ref=e433]
+                    - cell [ref=e435]:
+                      - switch [ref=e436] [cursor=pointer]
+                    - cell [ref=e437]:
+                      - generic [ref=e438]:
+                        - button [ref=e439] [cursor=pointer]:
+                          - img [ref=e440]
+                        - button [ref=e442] [cursor=pointer]:
+                          - img [ref=e443]
+                  - row "High Issues Alert (>5 issues) High Severity Issues" [ref=e446]:
+                    - cell "High Issues Alert (>5 issues)" [ref=e447]
+                    - cell "High Severity Issues" [ref=e448]:
+                      - generic [ref=e449]: High Severity Issues
+                    - cell [ref=e450]:
+                      - img [ref=e453]
+                    - cell [ref=e455]:
+                      - switch [checked] [ref=e456] [cursor=pointer]
+                    - cell [ref=e457]:
+                      - generic [ref=e458]:
+                        - button [ref=e459] [cursor=pointer]:
+                          - img [ref=e460]
+                        - button [ref=e462] [cursor=pointer]:
+                          - img [ref=e463]
+                  - row "High Priority Issues (IWJ) Validation Failed" [ref=e466]:
+                    - cell "High Priority Issues (IWJ)" [ref=e467]
+                    - cell "Validation Failed" [ref=e468]:
+                      - generic [ref=e469]: Validation Failed
+                    - cell [ref=e470]:
+                      - img [ref=e473]
+                    - cell [ref=e475]:
+                      - switch [checked] [ref=e476] [cursor=pointer]
+                    - cell [ref=e477]:
+                      - generic [ref=e478]:
+                        - button [ref=e479] [cursor=pointer]:
+                          - img [ref=e480]
+                        - button [ref=e482] [cursor=pointer]:
+                          - img [ref=e483]
+                  - row "Business Critical Alert (s22) Critical Issues Detected" [ref=e486]:
+                    - cell "Business Critical Alert (s22)" [ref=e487]
+                    - cell "Critical Issues Detected" [ref=e488]:
+                      - generic [ref=e489]: Critical Issues Detected
+                    - cell [ref=e490]:
+                      - img [ref=e493]
+                    - cell [ref=e496]:
+                      - switch [checked] [ref=e497] [cursor=pointer]
+                    - cell [ref=e498]:
+                      - generic [ref=e499]:
+                        - button [ref=e500] [cursor=pointer]:
+                          - img [ref=e501]
+                        - button [ref=e503] [cursor=pointer]:
+                          - img [ref=e504]
+                  - row "Warning Notification (bvq) Schedule Failed" [ref=e507]:
+                    - cell "Warning Notification (bvq)" [ref=e508]
+                    - cell "Schedule Failed" [ref=e509]:
+                      - generic [ref=e510]: Schedule Failed
+                    - cell [ref=e511]:
+                      - img [ref=e514]
+                    - cell [ref=e517]:
+                      - switch [ref=e518] [cursor=pointer]
+                    - cell [ref=e519]:
+                      - generic [ref=e520]:
+                        - button [ref=e521] [cursor=pointer]:
+                          - img [ref=e522]
+                        - button [ref=e524] [cursor=pointer]:
+                          - img [ref=e525]
+  - region "Notifications (F8)":
+    - list
+```

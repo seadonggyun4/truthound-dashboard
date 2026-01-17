@@ -1331,6 +1331,201 @@ Retrieve activity feed.
 
 ---
 
+## Advanced Features
+
+### Anomaly Detection
+
+#### POST /anomaly/detect
+
+Run ML-based anomaly detection.
+
+**Request:**
+```json
+{
+  "source_id": "abc123",
+  "algorithms": ["IsolationForest", "LOF"],
+  "contamination": 0.1,
+  "columns": ["price", "quantity"]
+}
+```
+
+**Algorithms:**
+- `IsolationForest` - Tree-based isolation
+- `LOF` - Local Outlier Factor
+- `DBSCAN` - Density-based clustering
+- `OneClassSVM` - SVM-based boundary
+- `EllipticEnvelope` - Gaussian distribution
+
+---
+
+### Data Lineage
+
+#### GET /lineage
+
+Retrieve data lineage information.
+
+#### POST /lineage/openlineage/webhook
+
+Configure OpenLineage webhook.
+
+**Request:**
+```json
+{
+  "url": "https://your-lineage-backend.com/api/lineage",
+  "auth_header": "Bearer token",
+  "events": ["START", "COMPLETE", "FAIL"]
+}
+```
+
+---
+
+### Schema Evolution
+
+#### GET /schema-evolution/{source_id}
+
+Get schema change history.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "changes": [
+      {
+        "version": 2,
+        "change_type": "column_added",
+        "column": "new_column",
+        "breaking": false,
+        "detected_at": "2024-01-15T10:30:00Z"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### Advanced Notifications
+
+#### GET /notifications-advanced/routing
+
+Get routing rules.
+
+#### POST /notifications-advanced/routing
+
+Create routing rule.
+
+**Request:**
+```json
+{
+  "name": "Critical to PagerDuty",
+  "condition": {
+    "type": "severity",
+    "operator": "equals",
+    "value": "critical"
+  },
+  "actions": ["pagerduty", "slack"]
+}
+```
+
+#### GET /notifications-advanced/dedup
+
+Get deduplication settings.
+
+#### GET /notifications-advanced/throttle
+
+Get throttling settings.
+
+#### GET /notifications-advanced/escalation
+
+Get escalation policies.
+
+---
+
+### Model Monitoring
+
+#### POST /model-monitoring/models
+
+Register a model for monitoring.
+
+**Request:**
+```json
+{
+  "name": "fraud_detector",
+  "version": "1.0.0",
+  "metrics": ["accuracy", "precision", "recall"],
+  "thresholds": {
+    "accuracy": {"operator": "less_than", "value": 0.85}
+  }
+}
+```
+
+#### POST /model-monitoring/metrics
+
+Record model metrics.
+
+---
+
+### Triggers
+
+#### GET /triggers
+
+List all triggers.
+
+#### POST /triggers
+
+Create a trigger.
+
+**Request:**
+```json
+{
+  "name": "Daily validation",
+  "type": "cron",
+  "expression": "0 9 * * *",
+  "source_id": "abc123",
+  "is_active": true
+}
+```
+
+#### POST /triggers/webhook
+
+External webhook trigger endpoint.
+
+---
+
+### Plugins
+
+#### GET /plugins
+
+List available plugins.
+
+#### POST /plugins/{id}/install
+
+Install a plugin.
+
+#### POST /plugins/{id}/uninstall
+
+Uninstall a plugin.
+
+#### GET /validators/custom
+
+List custom validators.
+
+#### POST /validators/custom
+
+Create custom validator.
+
+**Request:**
+```json
+{
+  "name": "custom_check",
+  "code": "def validate(df, column): ...",
+  "description": "Custom validation logic"
+}
+```
+
+---
+
 ## Error Codes
 
 | Code | Description |

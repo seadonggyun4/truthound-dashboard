@@ -636,3 +636,25 @@ Automatic cleanup tasks are scheduled:
 - Delete validation results older than 90 days
 - Delete notification logs older than 30 days
 - Weekly VACUUM execution
+
+---
+
+## Advanced Features
+
+For detailed documentation on advanced features, see [Advanced Features](./advanced-features.md).
+
+### Quick Reference
+
+| Feature | Description | Endpoint |
+|---------|-------------|----------|
+| **Anomaly Detection** | ML-based outlier detection | `/anomaly` |
+| **Data Lineage** | Data flow visualization | `/lineage` |
+| **Schema Evolution** | Schema change tracking | `/schema-evolution` |
+| **Result Versioning** | Validation result versioning | `/versioning` |
+| **Profile Comparison** | Profile trend analysis | `/profile-comparison` |
+| **Rule Suggestions** | AI-powered rule generation | `/rule-suggestions` |
+| **Reports** | Multi-format report export | `/reports` |
+| **Model Monitoring** | ML model performance tracking | `/model-monitoring` |
+| **Advanced Notifications** | Routing, deduplication, escalation | `/notifications-advanced` |
+| **Triggers** | Advanced trigger system | `/triggers` |
+| **Plugins** | Custom validators/reporters | `/plugins` |

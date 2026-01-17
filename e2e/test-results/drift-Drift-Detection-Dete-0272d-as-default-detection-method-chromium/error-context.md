@@ -1,0 +1,1154 @@
+# Page snapshot
+
+```yaml
+- generic:
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - generic:
+            - img
+          - generic: Truthound
+        - navigation:
+          - link:
+            - /url: /
+            - img
+            - generic: Dashboard
+          - link:
+            - /url: /sources
+            - img
+            - generic: Data Sources
+          - link:
+            - /url: /catalog
+            - img
+            - generic: Catalog
+          - link:
+            - /url: /glossary
+            - img
+            - generic: Glossary
+          - link:
+            - /url: /drift
+            - img
+            - generic: Drift
+          - link:
+            - /url: /drift-monitoring
+            - img
+            - generic: Drift Monitoring
+          - link:
+            - /url: /privacy
+            - img
+            - generic: Privacy
+          - link:
+            - /url: /lineage
+            - img
+            - generic: Lineage
+          - link:
+            - /url: /anomaly
+            - img
+            - generic: Anomaly Detection
+          - link:
+            - /url: /model-monitoring
+            - img
+            - generic: Model Monitoring
+          - link:
+            - /url: /alerts
+            - img
+            - generic: Alerts
+          - link:
+            - /url: /schedules
+            - img
+            - generic: Schedules
+          - link:
+            - /url: /activity
+            - img
+            - generic: Activity
+          - link:
+            - /url: /notifications
+            - img
+            - generic: Notifications
+          - link:
+            - /url: /notifications/advanced
+            - img
+            - generic: Advanced Notifications
+          - link:
+            - /url: /reports
+            - img
+            - generic: Reports
+          - link:
+            - /url: /plugins
+            - img
+            - generic: Plugins
+          - link:
+            - /url: /maintenance
+            - img
+            - generic: Maintenance
+      - generic:
+        - banner:
+          - generic:
+            - button:
+              - img
+            - button:
+              - img
+        - main:
+          - generic:
+            - generic:
+              - generic:
+                - heading [level=1]: Drift Detection
+                - paragraph: Compare datasets to detect data drift
+              - button [expanded]:
+                - img
+                - text: New Comparison
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Churn Analysis (aXYm)
+                          - img
+                          - text: Churn Analysis (aXYm)
+                        - paragraph: 2026년 1월 17일 오전 10:41
+                    - generic:
+                      - generic: No Drift
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "15"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "0"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 0.0%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: js
+                        - img
+                  - generic:
+                    - generic: Column Details
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Payroll Data (8egM)
+                          - img
+                          - text: Payroll Data (8egM)
+                        - paragraph: 2026년 1월 15일 오전 10:41
+                    - generic:
+                      - generic: High Drift
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "13"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "1"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 7.7%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: auto
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (int64)
+                        - generic:
+                          - generic: wasserstein
+                          - generic: high
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Error Logs (5IWO)
+                          - img
+                          - text: Error Logs (5IWO)
+                        - paragraph: 2026년 1월 15일 오전 10:41
+                    - generic:
+                      - generic: No Drift
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "20"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "0"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 0.0%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: psi
+                        - img
+                  - generic:
+                    - generic: Column Details
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Customer Feedback (UDXa)
+                          - img
+                          - text: Customer Feedback (UDXa)
+                        - paragraph: 2026년 1월 13일 오전 10:41
+                    - generic:
+                      - generic: Drift Detected
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "20"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "6"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 30.0%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: auto
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (category)
+                        - generic:
+                          - generic: kl
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: gross_revenue
+                          - generic: (category)
+                        - generic:
+                          - generic: anderson
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: net_revenue
+                          - generic: (float64)
+                        - generic:
+                          - generic: chi2
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: mrr
+                          - generic: (category)
+                        - generic:
+                          - generic: psi
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: arr
+                          - generic: (float64)
+                        - generic:
+                          - generic: cvm
+                          - generic: medium
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Marketing Campaigns (Ag6H)
+                          - img
+                          - text: Marketing Campaigns (Ag6H)
+                        - paragraph: 2026년 1월 13일 오전 10:41
+                    - generic:
+                      - generic: High Drift
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "12"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "6"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 50.0%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: auto
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (float64)
+                        - generic:
+                          - generic: anderson
+                          - generic: high
+                      - generic:
+                        - generic:
+                          - text: gross_revenue
+                          - generic: (object)
+                        - generic:
+                          - generic: js
+                          - generic: high
+                      - generic:
+                        - generic:
+                          - text: net_revenue
+                          - generic: (float64)
+                        - generic:
+                          - generic: js
+                          - generic: high
+                      - generic:
+                        - generic:
+                          - text: mrr
+                          - generic: (datetime64)
+                        - generic:
+                          - generic: ks
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: arr
+                          - generic: (int64)
+                        - generic:
+                          - generic: js
+                          - generic: medium
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Revenue Analytics (9Lv9)
+                          - img
+                          - text: Revenue Analytics (9Lv9)
+                        - paragraph: 2026년 1월 12일 오전 10:41
+                    - generic:
+                      - generic: High Drift
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "6"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "1"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 16.7%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: chi2
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (bool)
+                        - generic:
+                          - generic: ks
+                          - generic: high
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Weather Feed (Io7B)
+                          - img
+                          - text: Weather Feed (Io7B)
+                        - paragraph: 2026년 1월 11일 오전 10:41
+                    - generic:
+                      - generic: Drift Detected
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "15"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "8"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 53.3%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: kl
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (float64)
+                        - generic:
+                          - generic: chi2
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: gross_revenue
+                          - generic: (float64)
+                        - generic:
+                          - generic: psi
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: net_revenue
+                          - generic: (datetime64)
+                        - generic:
+                          - generic: js
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: mrr
+                          - generic: (category)
+                        - generic:
+                          - generic: chi2
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: arr
+                          - generic: (int64)
+                        - generic:
+                          - generic: chi2
+                          - generic: medium
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Inactive Archive Source
+                          - img
+                          - text: Inactive Archive Source
+                        - paragraph: 2026년 1월 8일 오전 10:41
+                    - generic:
+                      - generic: No Drift
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "7"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "0"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 0.0%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: psi
+                        - img
+                  - generic:
+                    - generic: Column Details
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Warehouse Data (5voF)
+                          - img
+                          - text: Warehouse Data (5voF)
+                        - paragraph: 2026년 1월 8일 오전 10:41
+                    - generic:
+                      - generic: Drift Detected
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "14"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "7"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 50.0%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: auto
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (datetime64)
+                        - generic:
+                          - generic: psi
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: gross_revenue
+                          - generic: (datetime64)
+                        - generic:
+                          - generic: anderson
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: net_revenue
+                          - generic: (int64)
+                        - generic:
+                          - generic: cvm
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: mrr
+                          - generic: (float64)
+                        - generic:
+                          - generic: kl
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: arr
+                          - generic: (float64)
+                        - generic:
+                          - generic: wasserstein
+                          - generic: medium
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Server Logs (8ws7)
+                          - img
+                          - text: Server Logs (8ws7)
+                        - paragraph: 2026년 1월 5일 오전 10:41
+                    - generic:
+                      - generic: Drift Detected
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "15"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "4"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 26.7%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: auto
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (bool)
+                        - generic:
+                          - generic: psi
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: gross_revenue
+                          - generic: (datetime64)
+                        - generic:
+                          - generic: js
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: net_revenue
+                          - generic: (category)
+                        - generic:
+                          - generic: chi2
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: mrr
+                          - generic: (object)
+                        - generic:
+                          - generic: wasserstein
+                          - generic: medium
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Performance Reviews (hI9I)
+                          - img
+                          - text: Performance Reviews (hI9I)
+                        - paragraph: 2026년 1월 4일 오전 10:41
+                    - generic:
+                      - generic: High Drift
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "7"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "1"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 14.3%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: ks
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (float64)
+                        - generic:
+                          - generic: wasserstein
+                          - generic: high
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Supplier Data (OJRs)
+                          - img
+                          - text: Supplier Data (OJRs)
+                        - paragraph: 2026년 1월 3일 오전 10:41
+                    - generic:
+                      - generic: High Drift
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "25"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "20"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 80.0%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: auto
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (float64)
+                        - generic:
+                          - generic: kl
+                          - generic: high
+                      - generic:
+                        - generic:
+                          - text: gross_revenue
+                          - generic: (datetime64)
+                        - generic:
+                          - generic: wasserstein
+                          - generic: high
+                      - generic:
+                        - generic:
+                          - text: net_revenue
+                          - generic: (float64)
+                        - generic:
+                          - generic: chi2
+                          - generic: high
+                      - generic:
+                        - generic:
+                          - text: mrr
+                          - generic: (int64)
+                        - generic:
+                          - generic: ks
+                          - generic: high
+                      - generic:
+                        - generic:
+                          - text: arr
+                          - generic: (bool)
+                        - generic:
+                          - generic: kl
+                          - generic: high
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Server Logs (8ws7)
+                          - img
+                          - text: Server Logs (8ws7)
+                        - paragraph: 2025년 12월 31일 오전 10:41
+                    - generic:
+                      - generic: Drift Detected
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "23"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "3"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 13.0%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: anderson
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (datetime64)
+                        - generic:
+                          - generic: psi
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: gross_revenue
+                          - generic: (bool)
+                        - generic:
+                          - generic: js
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: net_revenue
+                          - generic: (object)
+                        - generic:
+                          - generic: kl
+                          - generic: medium
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Active Production Source
+                          - img
+                          - text: Active Production Source
+                        - paragraph: 2025년 12월 31일 오전 10:41
+                    - generic:
+                      - generic: High Drift
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "10"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "2"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 20.0%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: psi
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (object)
+                        - generic:
+                          - generic: cvm
+                          - generic: high
+                      - generic:
+                        - generic:
+                          - text: gross_revenue
+                          - generic: (int64)
+                        - generic:
+                          - generic: ks
+                          - generic: medium
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Churn Analysis (jWlc)
+                          - img
+                          - text: Churn Analysis (jWlc)
+                        - paragraph: 2025년 12월 30일 오전 10:41
+                    - generic:
+                      - generic: High Drift
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "20"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "5"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 25.0%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: psi
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (category)
+                        - generic:
+                          - generic: wasserstein
+                          - generic: high
+                      - generic:
+                        - generic:
+                          - text: gross_revenue
+                          - generic: (object)
+                        - generic:
+                          - generic: psi
+                          - generic: high
+                      - generic:
+                        - generic:
+                          - text: net_revenue
+                          - generic: (int64)
+                        - generic:
+                          - generic: psi
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: mrr
+                          - generic: (object)
+                        - generic:
+                          - generic: ks
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: arr
+                          - generic: (int64)
+                        - generic:
+                          - generic: anderson
+                          - generic: medium
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Warehouse Data (5voF)
+                          - img
+                          - text: Warehouse Data (5voF)
+                        - paragraph: 2025년 12월 30일 오전 10:41
+                    - generic:
+                      - generic: Drift Detected
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "19"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "12"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 63.2%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: wasserstein
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (int64)
+                        - generic:
+                          - generic: cvm
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: gross_revenue
+                          - generic: (object)
+                        - generic:
+                          - generic: ks
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: net_revenue
+                          - generic: (datetime64)
+                        - generic:
+                          - generic: wasserstein
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: mrr
+                          - generic: (object)
+                        - generic:
+                          - generic: cvm
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: arr
+                          - generic: (int64)
+                        - generic:
+                          - generic: anderson
+                          - generic: medium
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: User Analytics (gJR5)
+                          - img
+                          - text: Customer Feedback (UDXa)
+                        - paragraph: 2025년 12월 28일 오전 10:41
+                    - generic:
+                      - generic: High Drift
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "3"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "2"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 66.7%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: auto
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (bool)
+                        - generic:
+                          - generic: wasserstein
+                          - generic: high
+                      - generic:
+                        - generic:
+                          - text: gross_revenue
+                          - generic: (object)
+                        - generic:
+                          - generic: anderson
+                          - generic: medium
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Fully Configured Source
+                          - img
+                          - text: Fully Configured Source
+                        - paragraph: 2025년 12월 28일 오전 10:41
+                    - generic:
+                      - generic: High Drift
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "15"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "2"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 13.3%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: psi
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (category)
+                        - generic:
+                          - generic: chi2
+                          - generic: high
+                      - generic:
+                        - generic:
+                          - text: gross_revenue
+                          - generic: (int64)
+                        - generic:
+                          - generic: wasserstein
+                          - generic: medium
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Payroll Data (8egM)
+                          - img
+                          - text: Payroll Data (8egM)
+                        - paragraph: 2025년 12월 26일 오전 10:41
+                    - generic:
+                      - generic: Drift Detected
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "20"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "3"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 15.0%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: cvm
+                        - img
+                  - generic:
+                    - generic: Column Details
+                    - generic:
+                      - generic:
+                        - generic:
+                          - text: revenue
+                          - generic: (int64)
+                        - generic:
+                          - generic: js
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: gross_revenue
+                          - generic: (float64)
+                        - generic:
+                          - generic: wasserstein
+                          - generic: medium
+                      - generic:
+                        - generic:
+                          - text: net_revenue
+                          - generic: (bool)
+                        - generic:
+                          - generic: cvm
+                          - generic: medium
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic:
+                        - heading [level=3]:
+                          - text: Order History (rMRE)
+                          - img
+                          - text: Order History (rMRE)
+                        - paragraph: 2025년 12월 25일 오전 10:41
+                    - generic:
+                      - generic: No Drift
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Columns Compared
+                      - generic: "10"
+                    - generic:
+                      - generic: Drifted Columns
+                      - generic: "0"
+                    - generic:
+                      - generic: Drift Percentage
+                      - generic: 0.0%
+                    - generic:
+                      - generic: Detection Method
+                      - generic:
+                        - generic: auto
+                        - img
+                  - generic:
+                    - generic: Column Details
+    - list
+  - dialog "Compare Datasets" [ref=e2]:
+    - generic [ref=e3]:
+      - heading "Compare Datasets" [level=2] [ref=e4]
+      - paragraph [ref=e5]: Select baseline and current datasets to compare for drift
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - text: Baseline Source
+        - combobox [active] [ref=e8] [cursor=pointer]:
+          - generic: Select baseline...
+          - img [ref=e9]
+      - generic [ref=e11]:
+        - text: Current Source
+        - combobox [ref=e12] [cursor=pointer]:
+          - generic: Select current...
+          - img [ref=e13]
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - text: "[object Object]"
+          - combobox [ref=e19] [cursor=pointer]:
+            - generic:
+              - generic:
+                - img
+                - generic: "[object Object]"
+                - generic: "[object Object]"
+                - generic: (0.05)
+            - img [ref=e20]
+        - button "[object Object]" [ref=e23] [cursor=pointer]:
+          - generic [ref=e24]:
+            - img [ref=e25]
+            - text: "[object Object]"
+          - img [ref=e28]
+    - generic [ref=e30]:
+      - button "Cancel" [ref=e31] [cursor=pointer]
+      - button "Compare" [ref=e32] [cursor=pointer]
+    - button "Close" [ref=e33] [cursor=pointer]:
+      - img [ref=e34]
+      - generic [ref=e37]: Close
+```
