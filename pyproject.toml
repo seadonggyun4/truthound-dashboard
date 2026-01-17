@@ -40,6 +40,7 @@ dependencies = [
     "aiosmtplib>=3.0.0",
     "polars>=0.20.0",
     "cryptography>=41.0.0",
+    "jinja2>=3.1.0",
 ]
 
 [project.optional-dependencies]
@@ -55,6 +56,9 @@ dev = [
 translate = [
     # Translation module uses httpx which is already a core dependency
     # No additional dependencies needed - all API calls use httpx
+]
+redis = [
+    "redis>=5.0.0",
 ]
 
 [project.scripts]
