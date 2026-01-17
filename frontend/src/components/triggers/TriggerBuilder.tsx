@@ -7,20 +7,25 @@
  * - DataChange: Profile-based change detection
  * - Composite: Combine multiple triggers
  * - Event: Respond to system events
+ * - Webhook: External HTTP triggers
  * - Manual: API-only execution
  */
 
 import { useState, useCallback, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { TriggerTypeSelector } from './TriggerTypeSelector'
 import { CronTriggerForm } from './CronTriggerForm'
 import { IntervalTriggerForm } from './IntervalTriggerForm'
 import { DataChangeTriggerForm } from './DataChangeTriggerForm'
 import { CompositeTriggerForm } from './CompositeTriggerForm'
 import { TriggerPreview } from './TriggerPreview'
-import { Clock, Timer, TrendingUp, Layers, Zap, Hand } from 'lucide-react'
+import { Clock, Timer, TrendingUp, Layers, Zap, Hand, Webhook, Copy, Check, Plus, X } from 'lucide-react'
 
-export type TriggerType = 'cron' | 'interval' | 'data_change' | 'composite' | 'event' | 'manual'
+export type TriggerType = 'cron' | 'interval' | 'data_change' | 'composite' | 'event' | 'webhook' | 'manual'
 
 export interface TriggerConfig {
   type: TriggerType
@@ -42,6 +47,11 @@ export interface TriggerConfig {
   // Event specific
   event_types?: string[]
   source_filter?: string[]
+  // Webhook specific
+  webhook_secret?: string
+  allowed_sources?: string[]
+  require_signature?: boolean
+  cooldown_minutes?: number
 }
 
 interface TriggerBuilderProps {
@@ -82,6 +92,11 @@ const TRIGGER_TYPE_INFO: Record<TriggerType, {
     icon: Zap,
     label: 'Event',
     description: 'Trigger in response to system events (e.g., schema changes)',
+  },
+  webhook: {
+    icon: Webhook,
+    label: 'Webhook',
+    description: 'Trigger from external HTTP requests (e.g., data pipelines)',
   },
   manual: {
     icon: Hand,
@@ -132,6 +147,12 @@ export function TriggerBuilder({
       event: {
         type: 'event',
         event_types: ['schema_changed'],
+      },
+      webhook: {
+        type: 'webhook',
+        allowed_sources: [],
+        require_signature: false,
+        cooldown_minutes: 15,
       },
       manual: { type: 'manual' },
     }
@@ -217,6 +238,21 @@ export function TriggerBuilder({
             />
           )}
 
+          {triggerType === 'webhook' && (
+            <WebhookTriggerForm
+              allowedSources={value.allowed_sources || []}
+              requireSignature={value.require_signature || false}
+              cooldownMinutes={value.cooldown_minutes || 15}
+              onChange={(config) =>
+                handleConfigChange({
+                  allowed_sources: config.allowedSources,
+                  require_signature: config.requireSignature,
+                  cooldown_minutes: config.cooldownMinutes,
+                })
+              }
+            />
+          )}
+
           {triggerType === 'manual' && (
             <div className="text-sm text-muted-foreground py-4 text-center">
               Manual triggers only execute when explicitly invoked via the API or "Run Now" button.
@@ -279,6 +315,169 @@ function EventTriggerForm({
       {eventTypes.length === 0 && (
         <p className="text-sm text-amber-600">Select at least one event type</p>
       )}
+    </div>
+  )
+}
+
+// Webhook Trigger Form
+function WebhookTriggerForm({
+  allowedSources,
+  requireSignature,
+  cooldownMinutes,
+  onChange,
+}: {
+  allowedSources: string[]
+  requireSignature: boolean
+  cooldownMinutes: number
+  onChange: (config: {
+    allowedSources: string[]
+    requireSignature: boolean
+    cooldownMinutes: number
+  }) => void
+}) {
+  const [newSource, setNewSource] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  // Generate webhook URL (in real implementation this would come from backend)
+  const webhookUrl = `${window.location.origin}/api/v1/triggers/webhook`
+
+  const addSource = () => {
+    if (newSource.trim() && !allowedSources.includes(newSource.trim())) {
+      onChange({
+        allowedSources: [...allowedSources, newSource.trim()],
+        requireSignature,
+        cooldownMinutes,
+      })
+      setNewSource('')
+    }
+  }
+
+  const removeSource = (source: string) => {
+    onChange({
+      allowedSources: allowedSources.filter((s) => s !== source),
+      requireSignature,
+      cooldownMinutes,
+    })
+  }
+
+  const copyUrl = async () => {
+    await navigator.clipboard.writeText(webhookUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Webhook URL */}
+      <div className="space-y-2">
+        <Label>Webhook URL</Label>
+        <div className="flex gap-2">
+          <Input
+            value={webhookUrl}
+            readOnly
+            className="font-mono text-sm"
+          />
+          <Button type="button" variant="outline" size="icon" onClick={copyUrl}>
+            {copied ? (
+              <Check className="h-4 w-4 text-green-500" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          POST requests to this URL will trigger the validation
+        </p>
+      </div>
+
+      {/* Allowed Sources */}
+      <div className="space-y-2">
+        <Label>Allowed Sources (optional)</Label>
+        <p className="text-xs text-muted-foreground">
+          Restrict which systems can trigger this webhook. Leave empty to allow all.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            value={newSource}
+            onChange={(e) => setNewSource(e.target.value)}
+            placeholder="e.g., airflow, jenkins, github"
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSource())}
+          />
+          <Button type="button" variant="outline" size="icon" onClick={addSource}>
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        {allowedSources.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {allowedSources.map((source) => (
+              <Badge key={source} variant="secondary" className="gap-1">
+                {source}
+                <button
+                  type="button"
+                  onClick={() => removeSource(source)}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Security Options */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={requireSignature}
+              onChange={(e) =>
+                onChange({
+                  allowedSources,
+                  requireSignature: e.target.checked,
+                  cooldownMinutes,
+                })
+              }
+              className="rounded"
+            />
+            <span className="text-sm">Require HMAC signature</span>
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Verify X-Webhook-Signature header
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label>Cooldown (minutes)</Label>
+          <Input
+            type="number"
+            min={1}
+            max={1440}
+            value={cooldownMinutes}
+            onChange={(e) =>
+              onChange({
+                allowedSources,
+                requireSignature,
+                cooldownMinutes: parseInt(e.target.value) || 15,
+              })
+            }
+          />
+        </div>
+      </div>
+
+      {/* Request Example */}
+      <div className="space-y-2">
+        <Label>Example Request</Label>
+        <pre className="bg-muted p-3 rounded text-xs font-mono overflow-x-auto">
+{`curl -X POST "${webhookUrl}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "source": "airflow",
+    "event_type": "dag_completed",
+    "payload": {"dag_id": "etl_pipeline"}
+  }'`}
+        </pre>
+      </div>
     </div>
   )
 }

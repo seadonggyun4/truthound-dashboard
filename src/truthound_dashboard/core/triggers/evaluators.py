@@ -487,3 +487,123 @@ class ManualTrigger(BaseTrigger):
     def get_description(self) -> str:
         """Get human-readable description."""
         return "Manual trigger only"
+
+
+@TriggerRegistry.register("webhook")
+class WebhookTrigger(BaseTrigger):
+    """Webhook-based trigger.
+
+    Triggers when receiving webhook requests from external systems.
+
+    Config:
+        webhook_secret: Optional secret for HMAC validation
+        allowed_sources: List of allowed source identifiers
+        payload_filters: JSON path filters for payload matching
+        require_signature: Whether to require signature validation
+    """
+
+    def _validate_config(self) -> None:
+        """Validate webhook configuration."""
+        # Webhook config is optional, but if require_signature is True,
+        # webhook_secret must be provided
+        if self.config.get("require_signature") and not self.config.get("webhook_secret"):
+            raise ValueError(
+                "webhook_secret is required when require_signature is True"
+            )
+
+    async def evaluate(self, context: TriggerContext) -> TriggerEvaluation:
+        """Evaluate if webhook trigger should fire.
+
+        Checks:
+        1. Webhook data exists in context
+        2. Source is in allowed_sources (if configured)
+        3. Payload matches filters (if configured)
+        4. Signature is valid (if required)
+        """
+        # Check for webhook data in context
+        webhook_data = context.custom_data.get("webhook_data")
+        if webhook_data is None:
+            return TriggerEvaluation(
+                should_trigger=False,
+                reason="No webhook data in context",
+                details={"waiting_for_webhook": True},
+            )
+
+        source = webhook_data.get("source", "")
+        payload = webhook_data.get("payload", {})
+        signature_valid = webhook_data.get("signature_valid", True)
+
+        # Check signature if required
+        require_signature = self.config.get("require_signature", False)
+        if require_signature and not signature_valid:
+            return TriggerEvaluation(
+                should_trigger=False,
+                reason="Invalid webhook signature",
+                details={"error": "invalid_signature", "source": source},
+            )
+
+        # Check allowed sources
+        allowed_sources = self.config.get("allowed_sources")
+        if allowed_sources and source not in allowed_sources:
+            return TriggerEvaluation(
+                should_trigger=False,
+                reason=f"Source '{source}' not in allowed sources",
+                details={
+                    "source": source,
+                    "allowed_sources": allowed_sources,
+                },
+            )
+
+        # Check payload filters
+        payload_filters = self.config.get("payload_filters", {})
+        if payload_filters:
+            filters_match = self._check_payload_filters(payload, payload_filters)
+            if not filters_match:
+                return TriggerEvaluation(
+                    should_trigger=False,
+                    reason="Payload does not match filters",
+                    details={
+                        "source": source,
+                        "filters": payload_filters,
+                    },
+                )
+
+        return TriggerEvaluation(
+            should_trigger=True,
+            reason=f"Webhook received from '{source}'",
+            details={
+                "source": source,
+                "event_type": webhook_data.get("event_type", "unknown"),
+                "payload_keys": list(payload.keys()) if payload else [],
+            },
+        )
+
+    def _check_payload_filters(
+        self, payload: dict[str, Any], filters: dict[str, Any]
+    ) -> bool:
+        """Check if payload matches the configured filters.
+
+        Simple key-value matching. For nested paths, use dot notation.
+        """
+        for key, expected_value in filters.items():
+            # Support dot notation for nested keys
+            parts = key.split(".")
+            value = payload
+            for part in parts:
+                if isinstance(value, dict):
+                    value = value.get(part)
+                else:
+                    value = None
+                    break
+
+            if value != expected_value:
+                return False
+
+        return True
+
+    def get_description(self) -> str:
+        """Get human-readable description."""
+        allowed = self.config.get("allowed_sources", [])
+        if allowed:
+            return f"Webhook: {', '.join(allowed[:2])}{'...' if len(allowed) > 2 else ''}"
+        return "Webhook trigger"

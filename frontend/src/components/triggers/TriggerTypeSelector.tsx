@@ -2,7 +2,7 @@
  * TriggerTypeSelector - Select trigger type with visual cards.
  */
 
-import { Clock, Timer, TrendingUp, Layers, Zap, Hand } from 'lucide-react'
+import { Clock, Timer, TrendingUp, Layers, Zap, Hand, Webhook } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TriggerType } from './TriggerBuilder'
 
@@ -49,6 +49,12 @@ const TRIGGER_TYPES: {
     shortDesc: 'System events',
   },
   {
+    type: 'webhook',
+    icon: Webhook,
+    label: 'Webhook',
+    shortDesc: 'External triggers',
+  },
+  {
     type: 'manual',
     icon: Hand,
     label: 'Manual',
@@ -62,7 +68,7 @@ export function TriggerTypeSelector({
   compact = false,
 }: TriggerTypeSelectorProps) {
   return (
-    <div className={cn('grid gap-2', compact ? 'grid-cols-6' : 'grid-cols-3')}>
+    <div className={cn('grid gap-2', compact ? 'grid-cols-7' : 'grid-cols-4')}>
       {TRIGGER_TYPES.map(({ type, icon: Icon, label, shortDesc }) => (
         <button
           key={type}
