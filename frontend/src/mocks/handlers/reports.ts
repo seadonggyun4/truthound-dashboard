@@ -1,5 +1,6 @@
 /**
  * MSW handlers for Reports API
+ * Supports 15 languages for report generation (as per truthound documentation)
  */
 
 import { http, HttpResponse } from "msw";
@@ -16,13 +17,56 @@ const REPORT_THEMES = [
   "high_contrast",
 ];
 
-// Sample HTML report content
-const generateHtmlReport = (validationId: string): string => `
+// Supported locales (15 languages per truthound documentation)
+const REPORT_LOCALES = [
+  { code: "en", english_name: "English", native_name: "English", flag: "🇺🇸", rtl: false },
+  { code: "ko", english_name: "Korean", native_name: "한국어", flag: "🇰🇷", rtl: false },
+  { code: "ja", english_name: "Japanese", native_name: "日本語", flag: "🇯🇵", rtl: false },
+  { code: "zh", english_name: "Chinese", native_name: "中文", flag: "🇨🇳", rtl: false },
+  { code: "de", english_name: "German", native_name: "Deutsch", flag: "🇩🇪", rtl: false },
+  { code: "fr", english_name: "French", native_name: "Français", flag: "🇫🇷", rtl: false },
+  { code: "es", english_name: "Spanish", native_name: "Español", flag: "🇪🇸", rtl: false },
+  { code: "pt", english_name: "Portuguese", native_name: "Português", flag: "🇧🇷", rtl: false },
+  { code: "it", english_name: "Italian", native_name: "Italiano", flag: "🇮🇹", rtl: false },
+  { code: "ru", english_name: "Russian", native_name: "Русский", flag: "🇷🇺", rtl: false },
+  { code: "ar", english_name: "Arabic", native_name: "العربية", flag: "🇸🇦", rtl: true },
+  { code: "th", english_name: "Thai", native_name: "ไทย", flag: "🇹🇭", rtl: false },
+  { code: "vi", english_name: "Vietnamese", native_name: "Tiếng Việt", flag: "🇻🇳", rtl: false },
+  { code: "id", english_name: "Indonesian", native_name: "Bahasa Indonesia", flag: "🇮🇩", rtl: false },
+  { code: "tr", english_name: "Turkish", native_name: "Türkçe", flag: "🇹🇷", rtl: false },
+];
+
+// Localized report title strings
+const LOCALIZED_TITLES: Record<string, string> = {
+  en: "Validation Report",
+  ko: "검증 리포트",
+  ja: "検証レポート",
+  zh: "验证报告",
+  de: "Validierungsbericht",
+  fr: "Rapport de Validation",
+  es: "Informe de Validación",
+  pt: "Relatório de Validação",
+  it: "Rapporto di Validazione",
+  ru: "Отчёт о валидации",
+  ar: "تقرير التحقق",
+  th: "รายงานการตรวจสอบ",
+  vi: "Báo cáo Xác thực",
+  id: "Laporan Validasi",
+  tr: "Doğrulama Raporu",
+};
+
+// Sample HTML report content with locale support
+const generateHtmlReport = (validationId: string, locale: string = "en"): string => {
+  const title = LOCALIZED_TITLES[locale] || LOCALIZED_TITLES["en"];
+  const isRtl = locale === "ar";
+  const dir = isRtl ? 'dir="rtl"' : '';
+
+  return `
 <!DOCTYPE html>
-<html lang="en">
+<html lang="${locale}" ${dir}>
 <head>
     <meta charset="UTF-8">
-    <title>Validation Report</title>
+    <title>${title}</title>
     <style>
         body { font-family: -apple-system, system-ui, sans-serif; padding: 2rem; }
         .header { text-align: center; border-bottom: 2px solid #fd9e4b; }
@@ -31,7 +75,7 @@ const generateHtmlReport = (validationId: string): string => `
 </head>
 <body>
     <header class="header">
-        <h1>Validation Report</h1>
+        <h1>${title}</h1>
         <p>ID: ${validationId}</p>
     </header>
     <section class="card">
@@ -42,6 +86,7 @@ const generateHtmlReport = (validationId: string): string => `
 </body>
 </html>
 `;
+};
 
 // Sample CSV report content
 const generateCsvReport = (): string => `# Validation Report
@@ -215,12 +260,18 @@ const generateMarkdownReport = (validationId: string): string => `# Validation R
 `;
 
 export const reportHandlers = [
-  // GET /reports/formats - List available formats
+  // GET /reports/formats - List available formats, themes, and locales
   http.get(`${API_BASE}/formats`, () => {
     return HttpResponse.json({
       formats: REPORT_FORMATS,
       themes: REPORT_THEMES,
+      locales: REPORT_LOCALES,
     });
+  }),
+
+  // GET /reports/locales - List available locales (15 languages)
+  http.get(`${API_BASE}/locales`, () => {
+    return HttpResponse.json(REPORT_LOCALES);
   }),
 
   // POST /reports/validations/:validationId/report - Generate report metadata
@@ -267,12 +318,13 @@ export const reportHandlers = [
     }
   ),
 
-  // GET /reports/validations/:validationId/download - Download report
+  // GET /reports/validations/:validationId/download - Download report with locale support
   http.get<{ validationId: string }>(
     `${API_BASE}/validations/:validationId/download`,
     ({ params, request }) => {
       const url = new URL(request.url);
       const format = url.searchParams.get("format") || "html";
+      const locale = url.searchParams.get("locale") || "en";
 
       let content: string;
       let contentType: string;
@@ -299,14 +351,14 @@ export const reportHandlers = [
           contentType = "application/xml; charset=utf-8";
           break;
         default:
-          content = generateHtmlReport(params.validationId);
+          content = generateHtmlReport(params.validationId, locale);
           contentType = "text/html; charset=utf-8";
       }
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const extension =
         format === "markdown" ? "md" : format === "json" ? "json" : format === "junit" ? "xml" : format;
-      const filename = `validation_report_${timestamp}.${extension}`;
+      const filename = `validation_report_${locale}_${timestamp}.${extension}`;
 
       return new HttpResponse(content, {
         status: 200,
@@ -319,12 +371,13 @@ export const reportHandlers = [
     }
   ),
 
-  // GET /reports/validations/:validationId/preview - Preview report
+  // GET /reports/validations/:validationId/preview - Preview report with locale support
   http.get<{ validationId: string }>(
     `${API_BASE}/validations/:validationId/preview`,
     ({ params, request }) => {
       const url = new URL(request.url);
       const format = url.searchParams.get("format") || "html";
+      const locale = url.searchParams.get("locale") || "en";
 
       let content: string;
       let contentType: string;
@@ -351,7 +404,7 @@ export const reportHandlers = [
           contentType = "application/xml; charset=utf-8";
           break;
         default:
-          content = generateHtmlReport(params.validationId);
+          content = generateHtmlReport(params.validationId, locale);
           contentType = "text/html; charset=utf-8";
       }
 

@@ -1,5 +1,6 @@
 /**
  * Profile API handlers
+ * Supports enhanced profiling with sampling strategies and pattern detection
  */
 
 import { http, HttpResponse, delay } from 'msw'
@@ -16,10 +17,39 @@ import {
 const API_BASE = '/api/v1'
 
 /**
- * Request body for profile endpoint
+ * Sampling configuration
+ */
+interface SamplingConfig {
+  strategy?: string
+  sample_size?: number | null
+  confidence_level?: number
+  margin_of_error?: number
+  strata_column?: string | null
+  seed?: number | null
+}
+
+/**
+ * Pattern detection configuration
+ */
+interface PatternDetectionConfig {
+  enabled?: boolean
+  sample_size?: number
+  min_confidence?: number
+  patterns_to_detect?: string[] | null
+}
+
+/**
+ * Enhanced request body for profile endpoint
  */
 interface ProfileRequest {
+  // Legacy field
   sample_size?: number
+  // New fields
+  sampling?: SamplingConfig
+  pattern_detection?: PatternDetectionConfig
+  include_histograms?: boolean
+  include_correlations?: boolean
+  include_cardinality?: boolean
 }
 
 // In-memory store for profile history per source
@@ -34,7 +64,7 @@ function getOrCreateProfileHistory(sourceId: string): ProfileSummary[] {
 }
 
 export const profileHandlers = [
-  // Profile a source
+  // Profile a source with enhanced options
   http.post(`${API_BASE}/sources/:sourceId/profile`, async ({ params, request }) => {
     await delay(1200) // Simulate profiling time
 
@@ -48,7 +78,7 @@ export const profileHandlers = [
       )
     }
 
-    // Parse request body if present (sample_size support)
+    // Parse request body if present
     let profileRequest: ProfileRequest | undefined
     try {
       const body = await request.text()
@@ -59,15 +89,27 @@ export const profileHandlers = [
       // Empty body or invalid JSON, continue without options
     }
 
-    // Create profile result
-    // In mock mode, sample_size doesn't actually affect the result,
-    // but we acknowledge it was received for API compatibility
+    // Determine sample size from either legacy or new format
+    let sampleSize: number | undefined
+    let samplingStrategy: string | undefined
+
+    if (profileRequest?.sampling) {
+      sampleSize = profileRequest.sampling.sample_size ?? undefined
+      samplingStrategy = profileRequest.sampling.strategy
+    } else if (profileRequest?.sample_size) {
+      sampleSize = profileRequest.sample_size
+    }
+
+    // Determine if pattern detection is enabled
+    const includePatterns = profileRequest?.pattern_detection?.enabled !== false
+
+    // Create profile result with enhanced options
     const profile = createProfileResult({
       sourceName: source.name,
-      // If sample_size is provided, simulate smaller dataset
-      rowCount: profileRequest?.sample_size
-        ? Math.min(profileRequest.sample_size, 1000000)
-        : undefined,
+      rowCount: sampleSize ? Math.min(sampleSize, 1000000) : undefined,
+      includePatterns,
+      includeSamplingMetadata: Boolean(profileRequest?.sampling),
+      samplingStrategy,
     })
 
     return HttpResponse.json(profile)

@@ -29,6 +29,9 @@ import { anomalyHandlers } from './anomaly'
 import { modelMonitoringHandlers } from './model-monitoring'
 import { alertsHandlers } from './alerts'
 import { crossAlertsHandlers } from './cross-alerts'
+import { triggersHandlers } from './triggers'
+import { pluginHandlers } from './plugins'
+import { reportHistoryHandlers } from './report-history'
 
 export const handlers = [
   ...healthHandlers,
@@ -58,4 +61,7 @@ export const handlers = [
   ...modelMonitoringHandlers,
   ...alertsHandlers,
   ...crossAlertsHandlers,
+  ...triggersHandlers,
+  ...pluginHandlers,
+  ...reportHistoryHandlers,
 ]

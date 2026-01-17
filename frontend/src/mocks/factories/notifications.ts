@@ -1,6 +1,7 @@
 /**
  * Notification factory - generates notification channels, rules, and logs
  * Extended for comprehensive test coverage
+ * Supports all 9 channel types: slack, email, webhook, discord, telegram, pagerduty, opsgenie, teams, github
  */
 
 import type {
@@ -12,15 +13,51 @@ import type {
 import { createId, createTimestamp, randomChoice, randomInt, faker } from './base'
 
 // ============================================================================
+// Channel Types - All 9 types supported
+// ============================================================================
+
+export type ChannelType =
+  | 'slack'
+  | 'email'
+  | 'webhook'
+  | 'discord'
+  | 'telegram'
+  | 'pagerduty'
+  | 'opsgenie'
+  | 'teams'
+  | 'github'
+
+export const ALL_CHANNEL_TYPES: ChannelType[] = [
+  'slack',
+  'email',
+  'webhook',
+  'discord',
+  'telegram',
+  'pagerduty',
+  'opsgenie',
+  'teams',
+  'github',
+]
+
+// Channel categories for grouping
+export const CHANNEL_CATEGORIES: Record<string, ChannelType[]> = {
+  basic: ['slack', 'email', 'webhook'],
+  chat: ['discord', 'telegram', 'teams'],
+  incident: ['pagerduty', 'opsgenie'],
+  devops: ['github'],
+}
+
+// ============================================================================
 // Channels
 // ============================================================================
 
 export interface ChannelFactoryOptions {
   id?: string
   name?: string
-  type?: NotificationChannel['type']
+  type?: ChannelType
   isActive?: boolean
   configSummary?: string
+  config?: Record<string, unknown>
 }
 
 // Realistic Slack channel names
@@ -39,41 +76,174 @@ const SLACK_CHANNELS = [
   '#data-team',
 ]
 
+// Discord channel names
+const DISCORD_CHANNELS = [
+  '#alerts',
+  '#bot-notifications',
+  '#data-quality',
+  '#team-updates',
+  '#monitoring',
+]
+
+// Teams channel names
+const TEAMS_CHANNELS = [
+  'Data Quality Alerts',
+  'Engineering Notifications',
+  'Incident Response',
+  'Platform Updates',
+]
+
+// GitHub repos
+const GITHUB_REPOS = [
+  'data-quality-issues',
+  'pipeline-tracker',
+  'incident-reports',
+  'monitoring-alerts',
+]
+
 // Realistic webhook endpoints
 const WEBHOOK_SERVICES = [
-  'PagerDuty',
-  'OpsGenie',
+  'Custom Integration',
   'Datadog',
   'ServiceNow',
   'Jira',
-  'Custom Integration',
-  'Microsoft Teams',
-  'Discord',
   'Zapier',
   'n8n',
 ]
 
-const CHANNEL_CONFIGS: Record<string, (options?: { configSummary?: string }) => { summary: string }> = {
-  slack: (options) => ({
-    summary: options?.configSummary ?? `Slack: ${faker.helpers.arrayElement(SLACK_CHANNELS)}`,
-  }),
+// Channel config generators with realistic data
+const CHANNEL_CONFIGS: Record<ChannelType, (options?: { configSummary?: string }) => { summary: string; config: Record<string, unknown> }> = {
+  slack: (options) => {
+    const channel = faker.helpers.arrayElement(SLACK_CHANNELS)
+    return {
+      summary: options?.configSummary ?? `Slack: ${channel}`,
+      config: {
+        webhook_url: `https://hooks.slack.com/services/${faker.string.alphanumeric(9)}/${faker.string.alphanumeric(11)}/${faker.string.alphanumeric(24)}`,
+        channel,
+        username: 'TruthoundBot',
+        icon_emoji: ':robot_face:',
+      },
+    }
+  },
   email: (options) => {
-    if (options?.configSummary) return { summary: options.configSummary }
+    if (options?.configSummary) {
+      return {
+        summary: options.configSummary,
+        config: {
+          smtp_host: 'smtp.company.com',
+          smtp_port: 587,
+          smtp_user: 'notifications@company.com',
+          from_email: 'notifications@company.com',
+          recipients: ['team@company.com'],
+          use_tls: true,
+        },
+      }
+    }
     const emails = Array.from(
       { length: randomInt(1, 5) },
       () => faker.internet.email()
     )
     return {
       summary: `Email: ${emails.slice(0, 2).join(', ')}${emails.length > 2 ? ` (+${emails.length - 2} more)` : ''}`,
+      config: {
+        smtp_host: 'smtp.company.com',
+        smtp_port: 587,
+        smtp_user: 'notifications@company.com',
+        from_email: 'notifications@company.com',
+        recipients: emails,
+        use_tls: true,
+      },
     }
   },
-  webhook: (options) => ({
-    summary: options?.configSummary ?? `Webhook: ${faker.helpers.arrayElement(WEBHOOK_SERVICES)} - ${faker.internet.domainName()}`,
-  }),
+  webhook: (options) => {
+    const service = faker.helpers.arrayElement(WEBHOOK_SERVICES)
+    return {
+      summary: options?.configSummary ?? `Webhook: ${service} - ${faker.internet.domainName()}`,
+      config: {
+        url: `https://${faker.internet.domainName()}/api/webhooks/${faker.string.uuid()}`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        include_event_data: true,
+      },
+    }
+  },
+  discord: (options) => {
+    const channel = faker.helpers.arrayElement(DISCORD_CHANNELS)
+    return {
+      summary: options?.configSummary ?? `Discord: ${channel}`,
+      config: {
+        webhook_url: `https://discord.com/api/webhooks/${faker.string.numeric(18)}/${faker.string.alphanumeric(68)}`,
+        username: 'Truthound Alerts',
+        avatar_url: 'https://example.com/avatar.png',
+      },
+    }
+  },
+  telegram: (options) => {
+    const chatId = faker.datatype.boolean() ? `-${faker.string.numeric(10)}` : faker.string.numeric(9)
+    return {
+      summary: options?.configSummary ?? `Telegram: Chat ${chatId}`,
+      config: {
+        bot_token: `${faker.string.numeric(10)}:${faker.string.alphanumeric(35)}`,
+        chat_id: chatId,
+        parse_mode: 'markdown',
+        disable_notification: false,
+      },
+    }
+  },
+  pagerduty: (options) => {
+    return {
+      summary: options?.configSummary ?? 'PagerDuty: Data Quality Service',
+      config: {
+        routing_key: faker.string.alphanumeric(32),
+        severity: randomChoice(['critical', 'error', 'warning', 'info']),
+        component: 'data-quality',
+        group: 'data-platform',
+        class_type: 'data_quality_alert',
+      },
+    }
+  },
+  opsgenie: (options) => {
+    return {
+      summary: options?.configSummary ?? 'OpsGenie: Data Team',
+      config: {
+        api_key: faker.string.alphanumeric(36),
+        priority: randomChoice(['P1', 'P2', 'P3', 'P4', 'P5']),
+        tags: ['data-quality', 'automated'],
+        team: 'Data Engineering',
+        responders: [
+          { type: 'team', name: 'Data Engineering' },
+          { type: 'user', username: 'oncall@company.com' },
+        ],
+      },
+    }
+  },
+  teams: (options) => {
+    const channel = faker.helpers.arrayElement(TEAMS_CHANNELS)
+    return {
+      summary: options?.configSummary ?? `Teams: ${channel}`,
+      config: {
+        webhook_url: `https://company.webhook.office.com/webhookb2/${faker.string.uuid()}@${faker.string.uuid()}/IncomingWebhook/${faker.string.alphanumeric(32)}/${faker.string.uuid()}`,
+        theme_color: '#fd9e4b',
+      },
+    }
+  },
+  github: (options) => {
+    const repo = faker.helpers.arrayElement(GITHUB_REPOS)
+    return {
+      summary: options?.configSummary ?? `GitHub: company/${repo}`,
+      config: {
+        token: `ghp_${faker.string.alphanumeric(36)}`,
+        owner: 'company',
+        repo,
+        labels: ['data-quality', 'automated'],
+        assignees: [],
+      },
+    }
+  },
 }
 
-// Realistic channel names
-const CHANNEL_NAME_TEMPLATES = {
+// Realistic channel names for each type
+const CHANNEL_NAME_TEMPLATES: Record<ChannelType, string[]> = {
   slack: [
     'Production Alerts',
     'Data Quality Team',
@@ -93,29 +263,67 @@ const CHANNEL_NAME_TEMPLATES = {
     'Stakeholder Updates',
   ],
   webhook: [
-    'PagerDuty Integration',
-    'OpsGenie Alerts',
-    'ServiceNow Tickets',
+    'Custom Integration',
     'Datadog Events',
-    'Custom Webhook',
-    'Teams Notifications',
+    'ServiceNow Tickets',
+    'Zapier Automation',
     'ITSM Integration',
+  ],
+  discord: [
+    'Dev Team Alerts',
+    'Bot Notifications',
+    'Data Quality Discord',
+    'Team Updates',
+  ],
+  telegram: [
+    'Ops Telegram Bot',
+    'Alert Notifications',
+    'Team Chat',
+    'On-Call Alerts',
+  ],
+  pagerduty: [
+    'Critical Incidents',
+    'Data Quality Service',
+    'Production Alerts',
+    'On-Call Integration',
+  ],
+  opsgenie: [
+    'Data Team Alerts',
+    'Incident Management',
+    'On-Call Schedule',
+    'Critical Alerts',
+  ],
+  teams: [
+    'Data Quality Channel',
+    'Engineering Updates',
+    'Incident Response',
+    'Platform Monitoring',
+  ],
+  github: [
+    'Issue Tracker',
+    'Quality Issues',
+    'Incident Reports',
+    'Automated Tickets',
   ],
 }
 
 export function createNotificationChannel(
   options: ChannelFactoryOptions = {}
 ): NotificationChannel {
-  const type = options.type ?? randomChoice(['slack', 'email', 'webhook'] as const)
-  const { summary } = CHANNEL_CONFIGS[type]({ configSummary: options.configSummary })
+  const type = options.type ?? randomChoice(ALL_CHANNEL_TYPES)
+  const { summary, config } = CHANNEL_CONFIGS[type]({ configSummary: options.configSummary })
   const nameTemplates = CHANNEL_NAME_TEMPLATES[type]
+
+  // Cast type to API-expected type (backend supports all 9 types)
+  const apiType = type as NotificationChannel['type']
 
   return {
     id: options.id ?? createId(),
     name: options.name ?? `${randomChoice(nameTemplates)} (${faker.string.alphanumeric(3)})`,
-    type,
+    type: apiType,
     is_active: options.isActive ?? faker.datatype.boolean(0.85),
     config_summary: summary,
+    config: options.config ?? config,
     created_at: createTimestamp(randomInt(14, 180)),
     updated_at: createTimestamp(randomInt(0, 14)),
   }
@@ -126,10 +334,14 @@ export function createNotificationChannels(count: number): NotificationChannel[]
 }
 
 /**
- * Create notification channels with guaranteed coverage of all test scenarios
+ * Create notification channels with guaranteed coverage of all 9 channel types
  */
 export function createDiverseChannels(): NotificationChannel[] {
   const channels: NotificationChannel[] = []
+
+  // ============================================================================
+  // Basic channels (Slack, Email, Webhook)
+  // ============================================================================
 
   // 1. Active Slack channel
   channels.push(createNotificationChannel({
@@ -157,13 +369,77 @@ export function createDiverseChannels(): NotificationChannel[] {
 
   // 4. Active Webhook channel
   channels.push(createNotificationChannel({
-    name: 'PagerDuty Integration',
+    name: 'Custom Webhook Integration',
     type: 'webhook',
     isActive: true,
-    configSummary: 'Webhook: PagerDuty - events.pagerduty.com',
+    configSummary: 'Webhook: Custom Integration - api.example.com',
   }))
 
-  // 5. Inactive Slack channel
+  // ============================================================================
+  // Chat channels (Discord, Telegram, Teams)
+  // ============================================================================
+
+  // 5. Discord channel
+  channels.push(createNotificationChannel({
+    name: 'Dev Team Discord',
+    type: 'discord',
+    isActive: true,
+    configSummary: 'Discord: #alerts',
+  }))
+
+  // 6. Telegram channel
+  channels.push(createNotificationChannel({
+    name: 'Ops Telegram Bot',
+    type: 'telegram',
+    isActive: true,
+    configSummary: 'Telegram: Chat -1234567890',
+  }))
+
+  // 7. Microsoft Teams channel
+  channels.push(createNotificationChannel({
+    name: 'Data Quality Teams Channel',
+    type: 'teams',
+    isActive: true,
+    configSummary: 'Teams: Data Quality Alerts',
+  }))
+
+  // ============================================================================
+  // Incident Management channels (PagerDuty, OpsGenie)
+  // ============================================================================
+
+  // 8. PagerDuty integration
+  channels.push(createNotificationChannel({
+    name: 'PagerDuty Critical Alerts',
+    type: 'pagerduty',
+    isActive: true,
+    configSummary: 'PagerDuty: Data Quality Service',
+  }))
+
+  // 9. OpsGenie integration
+  channels.push(createNotificationChannel({
+    name: 'OpsGenie Data Team',
+    type: 'opsgenie',
+    isActive: true,
+    configSummary: 'OpsGenie: Data Team',
+  }))
+
+  // ============================================================================
+  // DevOps channels (GitHub)
+  // ============================================================================
+
+  // 10. GitHub issues
+  channels.push(createNotificationChannel({
+    name: 'GitHub Issue Tracker',
+    type: 'github',
+    isActive: true,
+    configSummary: 'GitHub: company/data-quality-issues',
+  }))
+
+  // ============================================================================
+  // Inactive channels (for testing status toggle)
+  // ============================================================================
+
+  // 11. Inactive Slack channel
   channels.push(createNotificationChannel({
     name: 'Legacy Slack Channel',
     type: 'slack',
@@ -171,23 +447,27 @@ export function createDiverseChannels(): NotificationChannel[] {
     configSummary: 'Slack: #old-alerts',
   }))
 
-  // 6. Inactive Email channel
+  // 12. Inactive Discord channel
   channels.push(createNotificationChannel({
-    name: 'Deprecated Mailing List',
-    type: 'email',
+    name: 'Old Discord Bot',
+    type: 'discord',
     isActive: false,
-    configSummary: 'Email: deprecated@company.com',
+    configSummary: 'Discord: #deprecated',
   }))
 
-  // 7. Inactive Webhook
+  // 13. Inactive PagerDuty
   channels.push(createNotificationChannel({
-    name: 'Old OpsGenie Integration',
-    type: 'webhook',
+    name: 'Legacy PagerDuty Service',
+    type: 'pagerduty',
     isActive: false,
-    configSummary: 'Webhook: OpsGenie - api.opsgenie.com',
+    configSummary: 'PagerDuty: Old Service',
   }))
 
-  // 8. Multiple active channels of same type
+  // ============================================================================
+  // Additional channels (variety)
+  // ============================================================================
+
+  // Multiple active channels of same type
   channels.push(createNotificationChannel({
     name: 'Secondary Slack Alert',
     type: 'slack',
@@ -202,14 +482,7 @@ export function createDiverseChannels(): NotificationChannel[] {
     configSummary: 'Email: exec@company.com, cto@company.com',
   }))
 
-  channels.push(createNotificationChannel({
-    name: 'Datadog Events',
-    type: 'webhook',
-    isActive: true,
-    configSummary: 'Webhook: Datadog - app.datadoghq.com',
-  }))
-
-  // Add a few random channels
+  // Add a few random channels for additional variety
   for (let i = 0; i < 5; i++) {
     channels.push(createNotificationChannel())
   }
@@ -597,10 +870,18 @@ export function createNotificationStats(options: StatsFactoryOptions = {}): Noti
   // Ensure pending is never negative
   const pending = Math.max(0, total - sent - failed)
 
-  // Distribute by channel proportionally
-  const slackPct = faker.number.float({ min: 0.3, max: 0.5 })
-  const emailPct = faker.number.float({ min: 0.2, max: 0.4 })
-  const webhookPct = 1 - slackPct - emailPct
+  // Distribute by channel proportionally across all 9 channel types
+  const slackPct = faker.number.float({ min: 0.15, max: 0.25 })
+  const emailPct = faker.number.float({ min: 0.10, max: 0.20 })
+  const webhookPct = faker.number.float({ min: 0.05, max: 0.15 })
+  const discordPct = faker.number.float({ min: 0.05, max: 0.10 })
+  const telegramPct = faker.number.float({ min: 0.05, max: 0.10 })
+  const pagerdutyPct = faker.number.float({ min: 0.05, max: 0.10 })
+  const opsgeniePct = faker.number.float({ min: 0.03, max: 0.08 })
+  const teamsPct = faker.number.float({ min: 0.05, max: 0.10 })
+  // GitHub gets the remainder to ensure total adds up
+  const totalPct = slackPct + emailPct + webhookPct + discordPct + telegramPct + pagerdutyPct + opsgeniePct + teamsPct
+  const githubPct = Math.max(0, 1 - totalPct)
 
   return {
     period_hours: hours,
@@ -610,6 +891,12 @@ export function createNotificationStats(options: StatsFactoryOptions = {}): Noti
       slack: Math.floor(total * slackPct),
       email: Math.floor(total * emailPct),
       webhook: Math.floor(total * webhookPct),
+      discord: Math.floor(total * discordPct),
+      telegram: Math.floor(total * telegramPct),
+      pagerduty: Math.floor(total * pagerdutyPct),
+      opsgenie: Math.floor(total * opsgeniePct),
+      teams: Math.floor(total * teamsPct),
+      github: Math.floor(total * githubPct),
     },
     success_rate: (sent / total) * 100,
   }

@@ -2209,11 +2209,70 @@ const CATEGORY_LABELS: { value: ValidatorCategory; label: string; description: s
 ]
 
 // =============================================================================
+// Unified Validator Types
+// =============================================================================
+
+type ValidatorSource = 'builtin' | 'custom'
+
+interface UnifiedValidatorDefinition {
+  id: string | null
+  name: string
+  display_name: string
+  category: string
+  description: string
+  parameters: ValidatorDefinition['parameters']
+  tags: string[]
+  severity_default: 'low' | 'medium' | 'high' | 'critical'
+  source: ValidatorSource
+  is_enabled: boolean
+  requires_extra: string | null
+  experimental: boolean
+  deprecated: boolean
+  usage_count: number
+  is_verified: boolean
+}
+
+interface UnifiedValidatorListResponse {
+  data: UnifiedValidatorDefinition[]
+  total: number
+  builtin_count: number
+  custom_count: number
+  categories: Array<{
+    name: string
+    label: string
+    builtin_count: number
+    custom_count: number
+    total: number
+  }>
+}
+
+// Convert builtin validators to unified format
+function toUnifiedValidator(v: ValidatorDefinition): UnifiedValidatorDefinition {
+  return {
+    id: null,
+    name: v.name,
+    display_name: v.display_name,
+    category: v.category,
+    description: v.description,
+    parameters: v.parameters,
+    tags: v.tags,
+    severity_default: v.severity_default,
+    source: 'builtin',
+    is_enabled: true,
+    requires_extra: v.requires_extra || null,
+    experimental: v.experimental || false,
+    deprecated: v.deprecated || false,
+    usage_count: 0,
+    is_verified: true,
+  }
+}
+
+// =============================================================================
 // Handlers
 // =============================================================================
 
 export const validatorsHandlers = [
-  // GET /api/v1/validators - List all validators
+  // GET /api/v1/validators - List all validators (builtin only)
   http.get('/api/v1/validators', ({ request }) => {
     const url = new URL(request.url)
     const category = url.searchParams.get('category') as ValidatorCategory | null
@@ -2241,6 +2300,111 @@ export const validatorsHandlers = [
     return HttpResponse.json(result)
   }),
 
+  // GET /api/v1/validators/unified - List all validators (builtin + custom)
+  http.get('/api/v1/validators/unified', ({ request }) => {
+    const url = new URL(request.url)
+    const category = url.searchParams.get('category')
+    const source = url.searchParams.get('source') as ValidatorSource | null
+    const search = url.searchParams.get('search')
+    const enabledOnly = url.searchParams.get('enabled_only') === 'true'
+    const offset = parseInt(url.searchParams.get('offset') || '0')
+    const limit = parseInt(url.searchParams.get('limit') || '100')
+
+    // Get builtin validators
+    let builtinValidators: UnifiedValidatorDefinition[] = []
+    if (!source || source === 'builtin') {
+      builtinValidators = MOCK_VALIDATORS.map(toUnifiedValidator)
+    }
+
+    // Get custom validators from mock store (import from plugins handler)
+    let customValidators: UnifiedValidatorDefinition[] = []
+    if (!source || source === 'custom') {
+      // Import custom validators from the store
+      const { mockStore } = require('../data/store')
+      const customFromStore = mockStore.customValidators || []
+      customValidators = customFromStore.map((cv: { id: string; name: string; display_name: string; category: string; description: string; parameters?: unknown[]; tags?: string[]; severity?: string; is_enabled: boolean; is_verified: boolean; usage_count: number }) => ({
+        id: cv.id,
+        name: `custom:${cv.name}`,
+        display_name: cv.display_name,
+        category: cv.category,
+        description: cv.description,
+        parameters: cv.parameters || [],
+        tags: cv.tags || [],
+        severity_default: cv.severity || 'medium',
+        source: 'custom' as const,
+        is_enabled: cv.is_enabled,
+        requires_extra: null,
+        experimental: false,
+        deprecated: false,
+        usage_count: cv.usage_count || 0,
+        is_verified: cv.is_verified || false,
+      }))
+    }
+
+    // Combine
+    let allValidators = [...builtinValidators, ...customValidators]
+
+    // Filter by category
+    if (category) {
+      allValidators = allValidators.filter((v) => v.category === category)
+    }
+
+    // Filter by enabled
+    if (enabledOnly) {
+      allValidators = allValidators.filter((v) => v.is_enabled)
+    }
+
+    // Filter by search
+    if (search) {
+      const query = search.toLowerCase()
+      allValidators = allValidators.filter(
+        (v) =>
+          v.name.toLowerCase().includes(query) ||
+          v.display_name.toLowerCase().includes(query) ||
+          v.description.toLowerCase().includes(query) ||
+          v.tags.some((t) => t.toLowerCase().includes(query))
+      )
+    }
+
+    // Calculate category summary
+    const categoryMap = new Map<string, { builtin: number; custom: number }>()
+    allValidators.forEach((v) => {
+      const counts = categoryMap.get(v.category) || { builtin: 0, custom: 0 }
+      if (v.source === 'builtin') {
+        counts.builtin++
+      } else {
+        counts.custom++
+      }
+      categoryMap.set(v.category, counts)
+    })
+
+    const categories = Array.from(categoryMap.entries()).map(([name, counts]) => ({
+      name,
+      label: name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      builtin_count: counts.builtin,
+      custom_count: counts.custom,
+      total: counts.builtin + counts.custom,
+    })).sort((a, b) => a.name.localeCompare(b.name))
+
+    // Count
+    const builtinCount = allValidators.filter((v) => v.source === 'builtin').length
+    const customCount = allValidators.filter((v) => v.source === 'custom').length
+
+    // Paginate
+    const total = allValidators.length
+    const paginated = allValidators.slice(offset, offset + limit)
+
+    const response: UnifiedValidatorListResponse = {
+      data: paginated,
+      total,
+      builtin_count: builtinCount,
+      custom_count: customCount,
+      categories,
+    }
+
+    return HttpResponse.json(response)
+  }),
+
   // GET /api/v1/validators/categories - List all categories
   http.get('/api/v1/validators/categories', () => {
     return HttpResponse.json(CATEGORY_LABELS)
@@ -2253,6 +2417,90 @@ export const validatorsHandlers = [
       (v) => v.name.toLowerCase() === (name as string).toLowerCase()
     )
     return HttpResponse.json(validator || null)
+  }),
+
+  // POST /api/v1/validators/custom/:validatorId/execute - Execute custom validator
+  http.post('/api/v1/validators/custom/:validatorId/execute', async ({ params, request }) => {
+    const { validatorId } = params
+    const body = await request.json() as {
+      source_id: string
+      column_name: string
+      param_values?: Record<string, unknown>
+    }
+
+    // Get custom validator from store
+    const { mockStore } = require('../data/store')
+    const validator = mockStore.customValidators?.find((v: { id: string }) => v.id === validatorId)
+
+    if (!validator) {
+      return HttpResponse.json({ detail: `Custom validator ${validatorId} not found` }, { status: 404 })
+    }
+
+    if (!validator.is_enabled) {
+      return HttpResponse.json({ detail: `Custom validator ${validator.name} is disabled` }, { status: 400 })
+    }
+
+    // Simulate execution
+    const passed = Math.random() > 0.3 // 70% pass rate
+    const issues = passed ? [] : [
+      {
+        row: Math.floor(Math.random() * 1000),
+        message: `Validation failed for ${body.column_name}`,
+        severity: 'warning',
+      },
+    ]
+
+    return HttpResponse.json({
+      success: true,
+      passed,
+      execution_time_ms: Math.random() * 100 + 10,
+      issues,
+      message: passed ? 'Validation passed' : `Found ${issues.length} issues`,
+      details: {
+        column: body.column_name,
+        validator: validator.name,
+        params_used: body.param_values || {},
+      },
+    })
+  }),
+
+  // POST /api/v1/validators/custom/:validatorId/execute-preview - Preview execution
+  http.post('/api/v1/validators/custom/:validatorId/execute-preview', async ({ params, request }) => {
+    const { validatorId } = params
+    const body = await request.json() as {
+      column_name?: string
+      values?: unknown[]
+      params?: Record<string, unknown>
+    }
+
+    // Get custom validator from store
+    const { mockStore } = require('../data/store')
+    const validator = mockStore.customValidators?.find((v: { id: string }) => v.id === validatorId)
+
+    if (!validator) {
+      return HttpResponse.json({ detail: `Custom validator ${validatorId} not found` }, { status: 404 })
+    }
+
+    const values = body.values || []
+    const nullCount = values.filter((v) => v === null || v === undefined).length
+    const passed = nullCount === 0
+
+    return HttpResponse.json({
+      success: true,
+      passed,
+      execution_time_ms: Math.random() * 50 + 5,
+      issues: passed ? [] : [
+        {
+          message: `Found ${nullCount} null values`,
+          severity: 'warning',
+        },
+      ],
+      message: passed ? 'All values valid' : `Found ${nullCount} issues`,
+      details: {
+        total_values: values.length,
+        null_count: nullCount,
+      },
+    })
   }),
 ]
 

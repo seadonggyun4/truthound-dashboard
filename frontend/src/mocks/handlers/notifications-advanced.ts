@@ -177,6 +177,397 @@ export const notificationsAdvancedHandlers = [
     return HttpResponse.json({ success: true, message: 'Routing rule deleted' })
   }),
 
+  // Validate routing rule configuration
+  http.post(`${API_BASE}/notifications/routing/rules/validate`, async ({ request }) => {
+    await delay(200)
+
+    interface NestedRuleConfig {
+      type: string
+      params?: Record<string, unknown>
+      rules?: NestedRuleConfig[]
+      rule?: NestedRuleConfig
+    }
+
+    let body: NestedRuleConfig
+
+    try {
+      body = await request.json() as NestedRuleConfig
+    } catch {
+      return HttpResponse.json(
+        { detail: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
+
+    const url = new URL(request.url)
+    const maxDepth = parseInt(url.searchParams.get('max_depth') ?? '10')
+    const maxRulesPerCombinator = parseInt(url.searchParams.get('max_rules_per_combinator') ?? '50')
+    const checkCircularRefs = url.searchParams.get('check_circular_refs') !== 'false'
+
+    // Simple mock validation
+    const errors: string[] = []
+    const warnings: string[] = []
+    const circularPaths: string[] = []
+    let ruleCount = 0
+    let maxDepthFound = 0
+
+    const COMBINATOR_TYPES = ['all_of', 'any_of', 'not']
+    const VALID_RULE_TYPES = [
+      'severity', 'issue_count', 'pass_rate', 'time_window', 'tag',
+      'data_asset', 'metadata', 'status', 'error', 'always', 'never',
+      'expression', ...COMBINATOR_TYPES
+    ]
+
+    function validateRecursive(config: NestedRuleConfig, depth: number, path: string): void {
+      ruleCount++
+      maxDepthFound = Math.max(maxDepthFound, depth)
+
+      if (depth > maxDepth) {
+        errors.push(`Maximum nesting depth (${maxDepth}) exceeded at depth ${depth}`)
+        return
+      }
+
+      if (!config.type) {
+        errors.push(`Rule missing required field 'type' at ${path || 'root'}`)
+        return
+      }
+
+      if (!VALID_RULE_TYPES.includes(config.type)) {
+        errors.push(`Unknown rule type '${config.type}' at ${path || 'root'}`)
+        return
+      }
+
+      if (config.type === 'not') {
+        if (!config.rule) {
+          errors.push(`'not' combinator requires a 'rule' field at ${path || 'root'}`)
+        } else {
+          validateRecursive(config.rule, depth + 1, path ? `${path}.rule` : 'rule')
+        }
+      } else if (config.type === 'all_of' || config.type === 'any_of') {
+        if (!config.rules || config.rules.length === 0) {
+          errors.push(`'${config.type}' combinator requires a non-empty 'rules' array at ${path || 'root'}`)
+        } else {
+          if (config.rules.length > maxRulesPerCombinator) {
+            errors.push(`Combinator has ${config.rules.length} rules, exceeds maximum of ${maxRulesPerCombinator}`)
+          }
+          if (config.rules.length === 1) {
+            warnings.push(`'${config.type}' combinator with only 1 rule is redundant at ${path || 'root'}`)
+          }
+          config.rules.forEach((nestedRule, idx) => {
+            const nestedPath = path ? `${path}.rules[${idx}]` : `rules[${idx}]`
+            validateRecursive(nestedRule, depth + 1, nestedPath)
+          })
+        }
+      }
+    }
+
+    validateRecursive(body, 0, '')
+
+    return HttpResponse.json({
+      valid: errors.length === 0,
+      errors,
+      warnings,
+      rule_count: ruleCount,
+      max_depth: maxDepthFound,
+      circular_paths: circularPaths,
+    })
+  }),
+
+  // Validate expression
+  http.post(`${API_BASE}/notifications/routing/rules/validate-expression`, async ({ request }) => {
+    await delay(300)
+
+    interface ExpressionValidateRequest {
+      expression: string
+      timeout_seconds?: number
+    }
+
+    let body: ExpressionValidateRequest
+
+    try {
+      body = await request.json() as ExpressionValidateRequest
+    } catch {
+      return HttpResponse.json(
+        { detail: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
+
+    const { expression } = body
+    // timeout_seconds is accepted but not used in mock - it's used by the real backend
+
+    // Empty expression check
+    if (!expression || !expression.trim()) {
+      return HttpResponse.json({
+        valid: false,
+        error: 'Expression cannot be empty',
+        error_line: null,
+        preview_result: null,
+        preview_error: null,
+        warnings: [],
+      })
+    }
+
+    // Check for balanced parentheses
+    let parenCount = 0
+    let bracketCount = 0
+    let braceCount = 0
+    for (const char of expression) {
+      if (char === '(') parenCount++
+      else if (char === ')') parenCount--
+      else if (char === '[') bracketCount++
+      else if (char === ']') bracketCount--
+      else if (char === '{') braceCount++
+      else if (char === '}') braceCount--
+    }
+
+    if (parenCount !== 0) {
+      return HttpResponse.json({
+        valid: false,
+        error: 'Unbalanced parentheses',
+        error_line: null,
+        preview_result: null,
+        preview_error: null,
+        warnings: [],
+      })
+    }
+
+    if (bracketCount !== 0) {
+      return HttpResponse.json({
+        valid: false,
+        error: 'Unbalanced square brackets',
+        error_line: null,
+        preview_result: null,
+        preview_error: null,
+        warnings: [],
+      })
+    }
+
+    if (braceCount !== 0) {
+      return HttpResponse.json({
+        valid: false,
+        error: 'Unbalanced curly braces',
+        error_line: null,
+        preview_result: null,
+        preview_error: null,
+        warnings: [],
+      })
+    }
+
+    // Check for dangerous patterns
+    const dangerousPatterns = [
+      /__\w+__/,        // Dunder attributes
+      /\bimport\b/,     // Import statements
+      /\bexec\b/,       // exec function
+      /\beval\b/,       // eval function
+      /\bcompile\b/,    // compile function
+      /\bglobals\b/,    // globals access
+      /\blocals\b/,     // locals access
+    ]
+
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(expression)) {
+        return HttpResponse.json({
+          valid: false,
+          error: `Expression contains disallowed pattern: ${pattern.source}`,
+          error_line: null,
+          preview_result: null,
+          preview_error: null,
+          warnings: [],
+        })
+      }
+    }
+
+    // Simple expression evaluation simulation with mock data
+    const sampleContext = {
+      severity: 'high',
+      issue_count: 5,
+      status: 'failure',
+      pass_rate: 0.85,
+      tags: ['production', 'orders'],
+      metadata: { environment: 'production', table: 'orders' },
+      checkpoint_name: 'sample_validation',
+      action_type: 'check',
+      issues: ['null_values', 'duplicates'],
+    }
+
+    // Simulate preview result based on simple patterns
+    let previewResult: boolean | null = null
+    let previewError: string | null = null
+
+    try {
+      // Simple pattern matching for common expressions
+      if (expression.includes("severity == 'critical'")) {
+        previewResult = sampleContext.severity === 'critical'
+      } else if (expression.includes("severity == 'high'")) {
+        previewResult = sampleContext.severity === 'high'
+      } else if (expression.includes("pass_rate <")) {
+        const match = expression.match(/pass_rate\s*<\s*(\d+\.?\d*)/)
+        if (match) {
+          previewResult = sampleContext.pass_rate < parseFloat(match[1])
+        }
+      } else if (expression.includes("issue_count >")) {
+        const match = expression.match(/issue_count\s*>\s*(\d+)/)
+        if (match) {
+          previewResult = sampleContext.issue_count > parseInt(match[1])
+        }
+      } else if (expression.includes("'production' in tags")) {
+        previewResult = sampleContext.tags.includes('production')
+      } else if (expression.includes("status == 'failure'")) {
+        previewResult = sampleContext.status === 'failure'
+      } else {
+        // Default: assume valid expression evaluates to true for demo
+        previewResult = true
+      }
+    } catch (e) {
+      previewError = e instanceof Error ? e.message : 'Evaluation error'
+    }
+
+    // Generate warnings
+    const warnings: string[] = []
+    if (expression.includes('metadata[') && !expression.includes('.get(')) {
+      warnings.push(
+        "Consider using metadata.get('key') instead of metadata['key'] to handle missing keys gracefully"
+      )
+    }
+    if (expression.length > 500) {
+      warnings.push('Expression is quite long. Consider breaking it into multiple rules.')
+    }
+
+    return HttpResponse.json({
+      valid: true,
+      error: null,
+      error_line: null,
+      preview_result: previewResult,
+      preview_error: previewError,
+      warnings,
+    })
+  }),
+
+  // Validate Jinja2 template
+  http.post(`${API_BASE}/notifications/routing/rules/validate-jinja2`, async ({ request }) => {
+    await delay(150)
+
+    const body = (await request.json()) as {
+      template?: string
+      sample_data?: Record<string, unknown>
+      expected_result?: string
+    }
+
+    const { template, sample_data, expected_result } = body
+
+    // Validate empty template
+    if (!template || template.trim() === '') {
+      return HttpResponse.json({
+        valid: false,
+        error: 'Template cannot be empty',
+        error_line: null,
+        rendered_output: null,
+      })
+    }
+
+    // Check for basic Jinja2 syntax errors
+    const openBraces = (template.match(/\{\{/g) || []).length
+    const closeBraces = (template.match(/\}\}/g) || []).length
+    if (openBraces !== closeBraces) {
+      return HttpResponse.json({
+        valid: false,
+        error: 'Unbalanced template braces: {{ and }} must be paired',
+        error_line: 1,
+        rendered_output: null,
+      })
+    }
+
+    const openBlocks = (template.match(/\{%/g) || []).length
+    const closeBlocks = (template.match(/%\}/g) || []).length
+    if (openBlocks !== closeBlocks) {
+      return HttpResponse.json({
+        valid: false,
+        error: 'Unbalanced block tags: {% and %} must be paired',
+        error_line: 1,
+        rendered_output: null,
+      })
+    }
+
+    // Simulate rendering with sample data
+    let renderedOutput: string | null = null
+    let matchesExpected = false
+
+    if (sample_data) {
+      try {
+        // Simple variable replacement simulation
+        renderedOutput = template.replace(/\{\{\s*(\w+(?:\.\w+)*)\s*\}\}/g, (match, varPath) => {
+          const parts = varPath.split('.')
+          let value: unknown = sample_data
+          for (const part of parts) {
+            if (value && typeof value === 'object' && part in value) {
+              value = (value as Record<string, unknown>)[part]
+            } else {
+              return match
+            }
+          }
+          if (typeof value === 'object') {
+            return JSON.stringify(value)
+          }
+          return String(value)
+        })
+
+        // Simple boolean expression evaluation
+        if (
+          renderedOutput.includes('==') ||
+          renderedOutput.includes('!=') ||
+          renderedOutput.includes('<') ||
+          renderedOutput.includes('>')
+        ) {
+          const boolMatch = renderedOutput.match(/^\{\{\s*(.+)\s*\}\}$/)
+          if (boolMatch) {
+            try {
+              const expr = boolMatch[1]
+                .replace(/==/g, '===')
+                .replace(/!=/g, '!==')
+                .replace(/\band\b/gi, '&&')
+                .replace(/\bor\b/gi, '||')
+                .replace(/\bnot\b/gi, '!')
+                .replace(/\bTrue\b/gi, 'true')
+                .replace(/\bFalse\b/gi, 'false')
+
+              // eslint-disable-next-line no-new-func
+              const evalResult = new Function(...Object.keys(sample_data), `return ${expr}`)(
+                ...Object.values(sample_data)
+              )
+              renderedOutput = String(evalResult)
+            } catch {
+              // Keep original on eval error
+            }
+          }
+        }
+
+        // Check if output matches expected result
+        if (expected_result) {
+          const renderedLower = renderedOutput.toLowerCase().trim()
+          const expectedLower = expected_result.toLowerCase().trim()
+          matchesExpected = renderedLower === expectedLower
+        }
+      } catch (e) {
+        return HttpResponse.json({
+          valid: true,
+          error: null,
+          error_line: null,
+          rendered_output: null,
+          render_error: e instanceof Error ? e.message : 'Rendering failed',
+        })
+      }
+    }
+
+    return HttpResponse.json({
+      valid: true,
+      error: null,
+      error_line: null,
+      rendered_output: renderedOutput,
+      matches_expected: matchesExpected,
+    })
+  }),
+
   // ============================================================================
   // Deduplication
   // ============================================================================
@@ -773,5 +1164,358 @@ export const notificationsAdvancedHandlers = [
     const policies = getAll(getStore().escalationPolicies)
 
     return HttpResponse.json(createEscalationStats(policies.length))
+  }),
+
+  // ============================================================================
+  // Config Import/Export
+  // ============================================================================
+
+  // Export notification config
+  http.get(`${API_BASE}/notifications/config/export`, async ({ request }) => {
+    await delay(300)
+
+    const url = new URL(request.url)
+    const includeRoutingRules = url.searchParams.get('include_routing_rules') !== 'false'
+    const includeDeduplication = url.searchParams.get('include_deduplication') !== 'false'
+    const includeThrottling = url.searchParams.get('include_throttling') !== 'false'
+    const includeEscalation = url.searchParams.get('include_escalation') !== 'false'
+
+    const bundle: {
+      version: string
+      exported_at: string
+      routing_rules: RoutingRule[]
+      deduplication_configs: DeduplicationConfig[]
+      throttling_configs: ThrottlingConfig[]
+      escalation_policies: EscalationPolicy[]
+    } = {
+      version: '1.0',
+      exported_at: new Date().toISOString(),
+      routing_rules: [],
+      deduplication_configs: [],
+      throttling_configs: [],
+      escalation_policies: [],
+    }
+
+    if (includeRoutingRules) {
+      bundle.routing_rules = getAll(getStore().routingRules)
+    }
+
+    if (includeDeduplication) {
+      bundle.deduplication_configs = getAll(getStore().deduplicationConfigs)
+    }
+
+    if (includeThrottling) {
+      bundle.throttling_configs = getAll(getStore().throttlingConfigs)
+    }
+
+    if (includeEscalation) {
+      bundle.escalation_policies = getAll(getStore().escalationPolicies)
+    }
+
+    return HttpResponse.json(bundle)
+  }),
+
+  // Preview import
+  http.post(`${API_BASE}/notifications/config/import/preview`, async ({ request }) => {
+    await delay(400)
+
+    interface ImportBundle {
+      routing_rules?: RoutingRule[]
+      deduplication_configs?: DeduplicationConfig[]
+      throttling_configs?: ThrottlingConfig[]
+      escalation_policies?: EscalationPolicy[]
+    }
+
+    let bundle: ImportBundle
+
+    try {
+      bundle = await request.json() as ImportBundle
+    } catch {
+      return HttpResponse.json(
+        { detail: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
+
+    const conflicts: Array<{
+      config_type: string
+      config_id: string
+      config_name: string
+      existing_name: string
+      suggested_action: string
+    }> = []
+
+    // Check routing rules for conflicts
+    for (const rule of bundle.routing_rules || []) {
+      const existing = getById(getStore().routingRules, rule.id)
+      if (existing) {
+        conflicts.push({
+          config_type: 'routing_rule',
+          config_id: rule.id,
+          config_name: rule.name,
+          existing_name: existing.name,
+          suggested_action: 'skip',
+        })
+      }
+    }
+
+    // Check deduplication configs for conflicts
+    for (const config of bundle.deduplication_configs || []) {
+      const existing = getById(getStore().deduplicationConfigs, config.id)
+      if (existing) {
+        conflicts.push({
+          config_type: 'deduplication',
+          config_id: config.id,
+          config_name: config.name,
+          existing_name: existing.name,
+          suggested_action: 'skip',
+        })
+      }
+    }
+
+    // Check throttling configs for conflicts
+    for (const config of bundle.throttling_configs || []) {
+      const existing = getById(getStore().throttlingConfigs, config.id)
+      if (existing) {
+        conflicts.push({
+          config_type: 'throttling',
+          config_id: config.id,
+          config_name: config.name,
+          existing_name: existing.name,
+          suggested_action: 'skip',
+        })
+      }
+    }
+
+    // Check escalation policies for conflicts
+    for (const policy of bundle.escalation_policies || []) {
+      const existing = getById(getStore().escalationPolicies, policy.id)
+      if (existing) {
+        conflicts.push({
+          config_type: 'escalation',
+          config_id: policy.id,
+          config_name: policy.name,
+          existing_name: existing.name,
+          suggested_action: 'skip',
+        })
+      }
+    }
+
+    const totalConfigs =
+      (bundle.routing_rules?.length || 0) +
+      (bundle.deduplication_configs?.length || 0) +
+      (bundle.throttling_configs?.length || 0) +
+      (bundle.escalation_policies?.length || 0)
+
+    return HttpResponse.json({
+      total_configs: totalConfigs,
+      new_configs: totalConfigs - conflicts.length,
+      conflicts,
+      routing_rules_count: bundle.routing_rules?.length || 0,
+      deduplication_configs_count: bundle.deduplication_configs?.length || 0,
+      throttling_configs_count: bundle.throttling_configs?.length || 0,
+      escalation_policies_count: bundle.escalation_policies?.length || 0,
+    })
+  }),
+
+  // Import notification config
+  http.post(`${API_BASE}/notifications/config/import`, async ({ request }) => {
+    await delay(500)
+
+    interface ImportRequest {
+      bundle: {
+        routing_rules?: RoutingRule[]
+        deduplication_configs?: DeduplicationConfig[]
+        throttling_configs?: ThrottlingConfig[]
+        escalation_policies?: EscalationPolicy[]
+      }
+      conflict_resolution: 'skip' | 'overwrite' | 'rename'
+    }
+
+    let body: ImportRequest
+
+    try {
+      body = await request.json() as ImportRequest
+    } catch {
+      return HttpResponse.json(
+        { detail: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
+
+    const { bundle, conflict_resolution } = body
+    let createdCount = 0
+    let skippedCount = 0
+    let overwrittenCount = 0
+    const errors: string[] = []
+    const createdIds: Record<string, string[]> = {
+      routing_rules: [],
+      deduplication_configs: [],
+      throttling_configs: [],
+      escalation_policies: [],
+    }
+
+    // Import routing rules
+    for (const rule of bundle.routing_rules || []) {
+      const existing = getById(getStore().routingRules, rule.id)
+      if (existing) {
+        if (conflict_resolution === 'skip') {
+          skippedCount++
+        } else if (conflict_resolution === 'overwrite') {
+          update(getStore().routingRules, rule.id, {
+            ...rule,
+            updated_at: new Date().toISOString(),
+          })
+          overwrittenCount++
+          createdIds.routing_rules.push(rule.id)
+        } else {
+          // rename
+          const newId = createId()
+          const newRule = {
+            ...rule,
+            id: newId,
+            name: `${rule.name} (imported)`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+          create(getStore().routingRules, newRule)
+          createdCount++
+          createdIds.routing_rules.push(newId)
+        }
+      } else {
+        const newRule = {
+          ...rule,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+        create(getStore().routingRules, newRule)
+        createdCount++
+        createdIds.routing_rules.push(rule.id)
+      }
+    }
+
+    // Import deduplication configs
+    for (const config of bundle.deduplication_configs || []) {
+      const existing = getById(getStore().deduplicationConfigs, config.id)
+      if (existing) {
+        if (conflict_resolution === 'skip') {
+          skippedCount++
+        } else if (conflict_resolution === 'overwrite') {
+          update(getStore().deduplicationConfigs, config.id, {
+            ...config,
+            updated_at: new Date().toISOString(),
+          })
+          overwrittenCount++
+          createdIds.deduplication_configs.push(config.id)
+        } else {
+          const newId = createId()
+          const newConfig = {
+            ...config,
+            id: newId,
+            name: `${config.name} (imported)`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+          create(getStore().deduplicationConfigs, newConfig)
+          createdCount++
+          createdIds.deduplication_configs.push(newId)
+        }
+      } else {
+        const newConfig = {
+          ...config,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+        create(getStore().deduplicationConfigs, newConfig)
+        createdCount++
+        createdIds.deduplication_configs.push(config.id)
+      }
+    }
+
+    // Import throttling configs
+    for (const config of bundle.throttling_configs || []) {
+      const existing = getById(getStore().throttlingConfigs, config.id)
+      if (existing) {
+        if (conflict_resolution === 'skip') {
+          skippedCount++
+        } else if (conflict_resolution === 'overwrite') {
+          update(getStore().throttlingConfigs, config.id, {
+            ...config,
+            updated_at: new Date().toISOString(),
+          })
+          overwrittenCount++
+          createdIds.throttling_configs.push(config.id)
+        } else {
+          const newId = createId()
+          const newConfig = {
+            ...config,
+            id: newId,
+            name: `${config.name} (imported)`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+          create(getStore().throttlingConfigs, newConfig)
+          createdCount++
+          createdIds.throttling_configs.push(newId)
+        }
+      } else {
+        const newConfig = {
+          ...config,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+        create(getStore().throttlingConfigs, newConfig)
+        createdCount++
+        createdIds.throttling_configs.push(config.id)
+      }
+    }
+
+    // Import escalation policies
+    for (const policy of bundle.escalation_policies || []) {
+      const existing = getById(getStore().escalationPolicies, policy.id)
+      if (existing) {
+        if (conflict_resolution === 'skip') {
+          skippedCount++
+        } else if (conflict_resolution === 'overwrite') {
+          update(getStore().escalationPolicies, policy.id, {
+            ...policy,
+            updated_at: new Date().toISOString(),
+          })
+          overwrittenCount++
+          createdIds.escalation_policies.push(policy.id)
+        } else {
+          const newId = createId()
+          const newPolicy = {
+            ...policy,
+            id: newId,
+            name: `${policy.name} (imported)`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+          create(getStore().escalationPolicies, newPolicy)
+          createdCount++
+          createdIds.escalation_policies.push(newId)
+        }
+      } else {
+        const newPolicy = {
+          ...policy,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+        create(getStore().escalationPolicies, newPolicy)
+        createdCount++
+        createdIds.escalation_policies.push(policy.id)
+      }
+    }
+
+    return HttpResponse.json({
+      success: errors.length === 0,
+      message: `Import completed: ${createdCount} created, ${skippedCount} skipped, ${overwrittenCount} overwritten`,
+      created_count: createdCount,
+      skipped_count: skippedCount,
+      overwritten_count: overwrittenCount,
+      errors,
+      created_ids: createdIds,
+    })
   }),
 ]

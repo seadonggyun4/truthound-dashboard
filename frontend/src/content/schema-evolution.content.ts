@@ -70,6 +70,29 @@ const schemaEvolutionContent = {
     // Badges
     current: t({ en: 'Current', ko: '현재' }),
     latest: t({ en: 'Latest', ko: '최신' }),
+
+    // Additional fields
+    columnName: t({ en: 'Column', ko: '컬럼' }),
+    oldValue: t({ en: 'Old Value', ko: '이전 값' }),
+    newValue: t({ en: 'New Value', ko: '새 값' }),
+    compatibility: t({ en: 'Compatibility', ko: '호환성' }),
+    compatible: t({ en: 'Compatible', ko: '호환됨' }),
+    incompatible: t({ en: 'Incompatible', ko: '호환되지 않음' }),
+    reason: t({ en: 'Reason', ko: '사유' }),
+    warning: t({ en: 'Warning', ko: '경고' }),
+    nullableChanged: t({ en: 'Nullable Changed', ko: 'Nullable 변경' }),
+    constraintChanged: t({ en: 'Constraint Changed', ko: '제약조건 변경' }),
+    columnRenamed: t({ en: 'Renamed', ko: '이름 변경' }),
+    compareVersions: t({ en: 'Compare Versions', ko: '버전 비교' }),
+    schemaHash: t({ en: 'Schema Hash', ko: '스키마 해시' }),
+    selectSource: t({ en: 'Select a source...', ko: '소스 선택...' }),
+    selectVersion: t({ en: 'Select version...', ko: '버전 선택...' }),
+    refresh: t({ en: 'Refresh', ko: '새로고침' }),
+    viewDiff: t({ en: 'View Diff', ko: '변경 비교' }),
+    summary: t({ en: 'Summary', ko: '요약' }),
+    noSources: t({ en: 'No data sources available', ko: '데이터 소스가 없습니다' }),
+    fetchError: t({ en: 'Failed to fetch schema evolution data', ko: '스키마 변경 데이터 가져오기 실패' }),
+    timeSinceCreation: t({ en: 'Time since creation', ko: '생성 이후 시간' }),
   },
 } satisfies Dictionary
 

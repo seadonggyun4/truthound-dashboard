@@ -77,7 +77,7 @@ export const notificationsHandlers = [
     })
   }),
 
-  // Create channel
+  // Create channel - supports all 9 channel types
   http.post(`${API_BASE}/notifications/channels`, async ({ request }) => {
     await delay(300)
 
@@ -97,8 +97,8 @@ export const notificationsHandlers = [
       )
     }
 
-    // Validate channel type
-    const validTypes = ['slack', 'email', 'webhook']
+    // Validate channel type - all 9 types supported
+    const validTypes = ['slack', 'email', 'webhook', 'discord', 'telegram', 'pagerduty', 'opsgenie', 'teams', 'github']
     if (!validTypes.includes(body.type)) {
       return HttpResponse.json(
         { detail: `Invalid channel type. Must be one of: ${validTypes.join(', ')}` },
@@ -108,8 +108,9 @@ export const notificationsHandlers = [
 
     const channel = createNotificationChannel({
       id: createId(),
-      type: body.type as 'slack' | 'email' | 'webhook',
+      type: body.type as 'slack' | 'email' | 'webhook' | 'discord' | 'telegram' | 'pagerduty' | 'opsgenie' | 'teams' | 'github',
       isActive: body.is_active,
+      config: body.config,
     })
 
     channel.name = body.name
@@ -204,27 +205,79 @@ export const notificationsHandlers = [
     })
   }),
 
-  // Get channel types
+  // Get channel types - all 9 channel types with full schema information
   http.get(`${API_BASE}/notifications/channels/types`, async () => {
     await delay(100)
 
     return HttpResponse.json({
       success: true,
       data: {
+        // Basic channels
         slack: {
           name: 'Slack',
+          category: 'basic',
+          description: 'Send notifications to Slack channels via webhooks',
           required_fields: ['webhook_url'],
           optional_fields: ['channel', 'username', 'icon_emoji'],
         },
         email: {
           name: 'Email',
-          required_fields: ['recipients'],
-          optional_fields: ['smtp_host', 'smtp_port', 'from_address'],
+          category: 'basic',
+          description: 'Send notifications via SMTP email',
+          required_fields: ['smtp_host', 'smtp_port', 'from_email', 'recipients'],
+          optional_fields: ['smtp_user', 'smtp_password', 'use_tls'],
         },
         webhook: {
           name: 'Webhook',
+          category: 'basic',
+          description: 'Send notifications to custom HTTP endpoints',
           required_fields: ['url'],
-          optional_fields: ['method', 'headers', 'auth'],
+          optional_fields: ['method', 'headers', 'include_event_data'],
+        },
+        // Chat channels
+        discord: {
+          name: 'Discord',
+          category: 'chat',
+          description: 'Send notifications to Discord channels via webhooks',
+          required_fields: ['webhook_url'],
+          optional_fields: ['username', 'avatar_url'],
+        },
+        telegram: {
+          name: 'Telegram',
+          category: 'chat',
+          description: 'Send notifications via Telegram Bot API',
+          required_fields: ['bot_token', 'chat_id'],
+          optional_fields: ['parse_mode', 'disable_notification'],
+        },
+        teams: {
+          name: 'Microsoft Teams',
+          category: 'chat',
+          description: 'Send notifications to Microsoft Teams channels',
+          required_fields: ['webhook_url'],
+          optional_fields: ['theme_color'],
+        },
+        // Incident management channels
+        pagerduty: {
+          name: 'PagerDuty',
+          category: 'incident',
+          description: 'Create incidents in PagerDuty for critical alerts',
+          required_fields: ['routing_key'],
+          optional_fields: ['severity', 'component', 'group', 'class_type'],
+        },
+        opsgenie: {
+          name: 'OpsGenie',
+          category: 'incident',
+          description: 'Create alerts in OpsGenie for incident management',
+          required_fields: ['api_key'],
+          optional_fields: ['priority', 'tags', 'team', 'responders'],
+        },
+        // DevOps channels
+        github: {
+          name: 'GitHub',
+          category: 'devops',
+          description: 'Create issues in GitHub repositories for tracking',
+          required_fields: ['token', 'owner', 'repo'],
+          optional_fields: ['labels', 'assignees'],
         },
       },
     })
