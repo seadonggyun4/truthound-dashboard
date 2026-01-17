@@ -13,6 +13,7 @@ import {
   LOCALE_STORAGE_KEY,
   getBrowserLocale,
   isSupportedLocale,
+  isRtlLocale,
   type SupportedLocale,
 } from './config'
 
@@ -105,10 +106,12 @@ export function IntlayerProviderWrapper({
     }
   }, [forcedLocale, locale, handleLocaleChange])
 
-  // Update document lang attribute for accessibility
+  // Update document lang and dir attributes for accessibility and RTL support
   useEffect(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.lang = locale
+      // Set RTL direction for Arabic and other RTL languages
+      document.documentElement.dir = isRtlLocale(locale) ? 'rtl' : 'ltr'
     }
   }, [locale])
 
