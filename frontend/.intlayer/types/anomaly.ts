@@ -531,6 +531,214 @@ export default {
             "rrcf": "강건 랜덤 컷 포레스트"
           }
         }
+      },
+      "ja": {
+        "algorithms": {},
+        "categories": {},
+        "algorithmDescriptions": {},
+        "parameters": {},
+        "status": {},
+        "comparison": {
+          "agreementLevels": {}
+        },
+        "batch": {
+          "status": {}
+        },
+        "streaming": {
+          "algorithms": {}
+        }
+      },
+      "zh": {
+        "algorithms": {},
+        "categories": {},
+        "algorithmDescriptions": {},
+        "parameters": {},
+        "status": {},
+        "comparison": {
+          "agreementLevels": {}
+        },
+        "batch": {
+          "status": {}
+        },
+        "streaming": {
+          "algorithms": {}
+        }
+      },
+      "de": {
+        "algorithms": {},
+        "categories": {},
+        "algorithmDescriptions": {},
+        "parameters": {},
+        "status": {},
+        "comparison": {
+          "agreementLevels": {}
+        },
+        "batch": {
+          "status": {}
+        },
+        "streaming": {
+          "algorithms": {}
+        }
+      },
+      "fr": {
+        "algorithms": {},
+        "categories": {},
+        "algorithmDescriptions": {},
+        "parameters": {},
+        "status": {},
+        "comparison": {
+          "agreementLevels": {}
+        },
+        "batch": {
+          "status": {}
+        },
+        "streaming": {
+          "algorithms": {}
+        }
+      },
+      "es": {
+        "algorithms": {},
+        "categories": {},
+        "algorithmDescriptions": {},
+        "parameters": {},
+        "status": {},
+        "comparison": {
+          "agreementLevels": {}
+        },
+        "batch": {
+          "status": {}
+        },
+        "streaming": {
+          "algorithms": {}
+        }
+      },
+      "pt": {
+        "algorithms": {},
+        "categories": {},
+        "algorithmDescriptions": {},
+        "parameters": {},
+        "status": {},
+        "comparison": {
+          "agreementLevels": {}
+        },
+        "batch": {
+          "status": {}
+        },
+        "streaming": {
+          "algorithms": {}
+        }
+      },
+      "it": {
+        "algorithms": {},
+        "categories": {},
+        "algorithmDescriptions": {},
+        "parameters": {},
+        "status": {},
+        "comparison": {
+          "agreementLevels": {}
+        },
+        "batch": {
+          "status": {}
+        },
+        "streaming": {
+          "algorithms": {}
+        }
+      },
+      "ru": {
+        "algorithms": {},
+        "categories": {},
+        "algorithmDescriptions": {},
+        "parameters": {},
+        "status": {},
+        "comparison": {
+          "agreementLevels": {}
+        },
+        "batch": {
+          "status": {}
+        },
+        "streaming": {
+          "algorithms": {}
+        }
+      },
+      "ar": {
+        "algorithms": {},
+        "categories": {},
+        "algorithmDescriptions": {},
+        "parameters": {},
+        "status": {},
+        "comparison": {
+          "agreementLevels": {}
+        },
+        "batch": {
+          "status": {}
+        },
+        "streaming": {
+          "algorithms": {}
+        }
+      },
+      "th": {
+        "algorithms": {},
+        "categories": {},
+        "algorithmDescriptions": {},
+        "parameters": {},
+        "status": {},
+        "comparison": {
+          "agreementLevels": {}
+        },
+        "batch": {
+          "status": {}
+        },
+        "streaming": {
+          "algorithms": {}
+        }
+      },
+      "vi": {
+        "algorithms": {},
+        "categories": {},
+        "algorithmDescriptions": {},
+        "parameters": {},
+        "status": {},
+        "comparison": {
+          "agreementLevels": {}
+        },
+        "batch": {
+          "status": {}
+        },
+        "streaming": {
+          "algorithms": {}
+        }
+      },
+      "id": {
+        "algorithms": {},
+        "categories": {},
+        "algorithmDescriptions": {},
+        "parameters": {},
+        "status": {},
+        "comparison": {
+          "agreementLevels": {}
+        },
+        "batch": {
+          "status": {}
+        },
+        "streaming": {
+          "algorithms": {}
+        }
+      },
+      "tr": {
+        "algorithms": {},
+        "categories": {},
+        "algorithmDescriptions": {},
+        "parameters": {},
+        "status": {},
+        "comparison": {
+          "agreementLevels": {}
+        },
+        "batch": {
+          "status": {}
+        },
+        "streaming": {
+          "algorithms": {}
+        }
       }
     }
   },

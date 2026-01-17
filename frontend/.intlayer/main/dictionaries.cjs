@@ -15,14 +15,17 @@ const _GbKyYPPowZQ2IbERWIXA = require('../dictionary/modelMonitoring.json');
 const _5PJhDThb8CdQYoMsy0qv = require('../dictionary/nav.json');
 const _GBxybaTmyQJ7F95ncqZo = require('../dictionary/notifications.json');
 const _uIiT4CGbZklYzphHCc5D = require('../dictionary/notificationsAdvanced.json');
+const _gbCe28Bbyp3H2VfZIAsu = require('../dictionary/plugins.json');
 const _3yNa1lTDcCtfl5hDdl05 = require('../dictionary/privacy.json');
 const _lMowiawIHiaqXraaUjQE = require('../dictionary/profileComparison.json');
+const _2Chczl4Zw6Fm6oMH3648 = require('../dictionary/profiler.json');
 const _H1a2hBjDFNiJgUuXf8h9 = require('../dictionary/reports.json');
 const _FoC7Ip8bUYsGAy05ACrg = require('../dictionary/ruleSuggestions.json');
 const _Y9WvPv3e2xX4IOxYcHeX = require('../dictionary/schedules.json');
 const _9Z1dgtJGgbONzKljS0IQ = require('../dictionary/schemaEvolution.json');
 const _YFyJ1LX066W9IbdNctFh = require('../dictionary/settings.json');
 const _DpO3BslSmImztidaimhZ = require('../dictionary/sources.json');
+const _kzo9DqmWQuytOCMYvbDG = require('../dictionary/triggers.json');
 const _Pu5BFR0tGrjKDQbmF1pC = require('../dictionary/validation.json');
 const _3o136ZUwgoxuNTy7IG6K = require('../dictionary/validators.json');
 const _Q7HxnPoKN2z0AV6vxV3O = require('../dictionary/versioning.json');
@@ -45,14 +48,17 @@ const dictionaries = {
   "nav": _5PJhDThb8CdQYoMsy0qv,
   "notifications": _GBxybaTmyQJ7F95ncqZo,
   "notificationsAdvanced": _uIiT4CGbZklYzphHCc5D,
+  "plugins": _gbCe28Bbyp3H2VfZIAsu,
   "privacy": _3yNa1lTDcCtfl5hDdl05,
   "profileComparison": _lMowiawIHiaqXraaUjQE,
+  "profiler": _2Chczl4Zw6Fm6oMH3648,
   "reports": _H1a2hBjDFNiJgUuXf8h9,
   "ruleSuggestions": _FoC7Ip8bUYsGAy05ACrg,
   "schedules": _Y9WvPv3e2xX4IOxYcHeX,
   "schemaEvolution": _9Z1dgtJGgbONzKljS0IQ,
   "settings": _YFyJ1LX066W9IbdNctFh,
   "sources": _DpO3BslSmImztidaimhZ,
+  "triggers": _kzo9DqmWQuytOCMYvbDG,
   "validation": _Pu5BFR0tGrjKDQbmF1pC,
   "validators": _3o136ZUwgoxuNTy7IG6K,
   "versioning": _Q7HxnPoKN2z0AV6vxV3O

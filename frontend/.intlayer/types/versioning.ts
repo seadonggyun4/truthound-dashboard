@@ -99,6 +99,45 @@ export default {
         "timeline": "타임라인",
         "current": "현재",
         "initial": "초기"
+      },
+      "ja": {
+        "strategies": {}
+      },
+      "zh": {
+        "strategies": {}
+      },
+      "de": {
+        "strategies": {}
+      },
+      "fr": {
+        "strategies": {}
+      },
+      "es": {
+        "strategies": {}
+      },
+      "pt": {
+        "strategies": {}
+      },
+      "it": {
+        "strategies": {}
+      },
+      "ru": {
+        "strategies": {}
+      },
+      "ar": {
+        "strategies": {}
+      },
+      "th": {
+        "strategies": {}
+      },
+      "vi": {
+        "strategies": {}
+      },
+      "id": {
+        "strategies": {}
+      },
+      "tr": {
+        "strategies": {}
       }
     }
   },

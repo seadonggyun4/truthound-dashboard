@@ -619,6 +619,396 @@ export default {
           "showDetails": "상세 보기",
           "hideDetails": "숨기기"
         }
+      },
+      "ja": {
+        "tabs": {},
+        "monitor": {},
+        "status": {},
+        "severity": {},
+        "alertStatus": {},
+        "alertActions": {},
+        "stats": {},
+        "schedulePresets": {},
+        "trend": {},
+        "empty": {},
+        "messages": {},
+        "confirm": {},
+        "table": {},
+        "columnDrilldown": {
+          "tabs": {},
+          "filter": {},
+          "sort": {},
+          "levels": {}
+        },
+        "columnStats": {},
+        "preview": {},
+        "rootCause": {
+          "causes": {},
+          "actions": {}
+        },
+        "sampling": {},
+        "largeDataset": {},
+        "progress": {}
+      },
+      "zh": {
+        "tabs": {},
+        "monitor": {},
+        "status": {},
+        "severity": {},
+        "alertStatus": {},
+        "alertActions": {},
+        "stats": {},
+        "schedulePresets": {},
+        "trend": {},
+        "empty": {},
+        "messages": {},
+        "confirm": {},
+        "table": {},
+        "columnDrilldown": {
+          "tabs": {},
+          "filter": {},
+          "sort": {},
+          "levels": {}
+        },
+        "columnStats": {},
+        "preview": {},
+        "rootCause": {
+          "causes": {},
+          "actions": {}
+        },
+        "sampling": {},
+        "largeDataset": {},
+        "progress": {}
+      },
+      "de": {
+        "tabs": {},
+        "monitor": {},
+        "status": {},
+        "severity": {},
+        "alertStatus": {},
+        "alertActions": {},
+        "stats": {},
+        "schedulePresets": {},
+        "trend": {},
+        "empty": {},
+        "messages": {},
+        "confirm": {},
+        "table": {},
+        "columnDrilldown": {
+          "tabs": {},
+          "filter": {},
+          "sort": {},
+          "levels": {}
+        },
+        "columnStats": {},
+        "preview": {},
+        "rootCause": {
+          "causes": {},
+          "actions": {}
+        },
+        "sampling": {},
+        "largeDataset": {},
+        "progress": {}
+      },
+      "fr": {
+        "tabs": {},
+        "monitor": {},
+        "status": {},
+        "severity": {},
+        "alertStatus": {},
+        "alertActions": {},
+        "stats": {},
+        "schedulePresets": {},
+        "trend": {},
+        "empty": {},
+        "messages": {},
+        "confirm": {},
+        "table": {},
+        "columnDrilldown": {
+          "tabs": {},
+          "filter": {},
+          "sort": {},
+          "levels": {}
+        },
+        "columnStats": {},
+        "preview": {},
+        "rootCause": {
+          "causes": {},
+          "actions": {}
+        },
+        "sampling": {},
+        "largeDataset": {},
+        "progress": {}
+      },
+      "es": {
+        "tabs": {},
+        "monitor": {},
+        "status": {},
+        "severity": {},
+        "alertStatus": {},
+        "alertActions": {},
+        "stats": {},
+        "schedulePresets": {},
+        "trend": {},
+        "empty": {},
+        "messages": {},
+        "confirm": {},
+        "table": {},
+        "columnDrilldown": {
+          "tabs": {},
+          "filter": {},
+          "sort": {},
+          "levels": {}
+        },
+        "columnStats": {},
+        "preview": {},
+        "rootCause": {
+          "causes": {},
+          "actions": {}
+        },
+        "sampling": {},
+        "largeDataset": {},
+        "progress": {}
+      },
+      "pt": {
+        "tabs": {},
+        "monitor": {},
+        "status": {},
+        "severity": {},
+        "alertStatus": {},
+        "alertActions": {},
+        "stats": {},
+        "schedulePresets": {},
+        "trend": {},
+        "empty": {},
+        "messages": {},
+        "confirm": {},
+        "table": {},
+        "columnDrilldown": {
+          "tabs": {},
+          "filter": {},
+          "sort": {},
+          "levels": {}
+        },
+        "columnStats": {},
+        "preview": {},
+        "rootCause": {
+          "causes": {},
+          "actions": {}
+        },
+        "sampling": {},
+        "largeDataset": {},
+        "progress": {}
+      },
+      "it": {
+        "tabs": {},
+        "monitor": {},
+        "status": {},
+        "severity": {},
+        "alertStatus": {},
+        "alertActions": {},
+        "stats": {},
+        "schedulePresets": {},
+        "trend": {},
+        "empty": {},
+        "messages": {},
+        "confirm": {},
+        "table": {},
+        "columnDrilldown": {
+          "tabs": {},
+          "filter": {},
+          "sort": {},
+          "levels": {}
+        },
+        "columnStats": {},
+        "preview": {},
+        "rootCause": {
+          "causes": {},
+          "actions": {}
+        },
+        "sampling": {},
+        "largeDataset": {},
+        "progress": {}
+      },
+      "ru": {
+        "tabs": {},
+        "monitor": {},
+        "status": {},
+        "severity": {},
+        "alertStatus": {},
+        "alertActions": {},
+        "stats": {},
+        "schedulePresets": {},
+        "trend": {},
+        "empty": {},
+        "messages": {},
+        "confirm": {},
+        "table": {},
+        "columnDrilldown": {
+          "tabs": {},
+          "filter": {},
+          "sort": {},
+          "levels": {}
+        },
+        "columnStats": {},
+        "preview": {},
+        "rootCause": {
+          "causes": {},
+          "actions": {}
+        },
+        "sampling": {},
+        "largeDataset": {},
+        "progress": {}
+      },
+      "ar": {
+        "tabs": {},
+        "monitor": {},
+        "status": {},
+        "severity": {},
+        "alertStatus": {},
+        "alertActions": {},
+        "stats": {},
+        "schedulePresets": {},
+        "trend": {},
+        "empty": {},
+        "messages": {},
+        "confirm": {},
+        "table": {},
+        "columnDrilldown": {
+          "tabs": {},
+          "filter": {},
+          "sort": {},
+          "levels": {}
+        },
+        "columnStats": {},
+        "preview": {},
+        "rootCause": {
+          "causes": {},
+          "actions": {}
+        },
+        "sampling": {},
+        "largeDataset": {},
+        "progress": {}
+      },
+      "th": {
+        "tabs": {},
+        "monitor": {},
+        "status": {},
+        "severity": {},
+        "alertStatus": {},
+        "alertActions": {},
+        "stats": {},
+        "schedulePresets": {},
+        "trend": {},
+        "empty": {},
+        "messages": {},
+        "confirm": {},
+        "table": {},
+        "columnDrilldown": {
+          "tabs": {},
+          "filter": {},
+          "sort": {},
+          "levels": {}
+        },
+        "columnStats": {},
+        "preview": {},
+        "rootCause": {
+          "causes": {},
+          "actions": {}
+        },
+        "sampling": {},
+        "largeDataset": {},
+        "progress": {}
+      },
+      "vi": {
+        "tabs": {},
+        "monitor": {},
+        "status": {},
+        "severity": {},
+        "alertStatus": {},
+        "alertActions": {},
+        "stats": {},
+        "schedulePresets": {},
+        "trend": {},
+        "empty": {},
+        "messages": {},
+        "confirm": {},
+        "table": {},
+        "columnDrilldown": {
+          "tabs": {},
+          "filter": {},
+          "sort": {},
+          "levels": {}
+        },
+        "columnStats": {},
+        "preview": {},
+        "rootCause": {
+          "causes": {},
+          "actions": {}
+        },
+        "sampling": {},
+        "largeDataset": {},
+        "progress": {}
+      },
+      "id": {
+        "tabs": {},
+        "monitor": {},
+        "status": {},
+        "severity": {},
+        "alertStatus": {},
+        "alertActions": {},
+        "stats": {},
+        "schedulePresets": {},
+        "trend": {},
+        "empty": {},
+        "messages": {},
+        "confirm": {},
+        "table": {},
+        "columnDrilldown": {
+          "tabs": {},
+          "filter": {},
+          "sort": {},
+          "levels": {}
+        },
+        "columnStats": {},
+        "preview": {},
+        "rootCause": {
+          "causes": {},
+          "actions": {}
+        },
+        "sampling": {},
+        "largeDataset": {},
+        "progress": {}
+      },
+      "tr": {
+        "tabs": {},
+        "monitor": {},
+        "status": {},
+        "severity": {},
+        "alertStatus": {},
+        "alertActions": {},
+        "stats": {},
+        "schedulePresets": {},
+        "trend": {},
+        "empty": {},
+        "messages": {},
+        "confirm": {},
+        "table": {},
+        "columnDrilldown": {
+          "tabs": {},
+          "filter": {},
+          "sort": {},
+          "levels": {}
+        },
+        "columnStats": {},
+        "preview": {},
+        "rootCause": {
+          "causes": {},
+          "actions": {}
+        },
+        "sampling": {},
+        "largeDataset": {},
+        "progress": {}
       }
     }
   },

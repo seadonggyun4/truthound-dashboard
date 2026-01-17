@@ -83,7 +83,20 @@ export default {
         "vacuumFailed": "VACUUM 실행 실패",
         "cacheCleared": "캐시가 삭제되었습니다",
         "cacheClearFailed": "캐시 삭제 실패"
-      }
+      },
+      "ja": {},
+      "zh": {},
+      "de": {},
+      "fr": {},
+      "es": {},
+      "pt": {},
+      "it": {},
+      "ru": {},
+      "ar": {},
+      "th": {},
+      "vi": {},
+      "id": {},
+      "tr": {}
     }
   },
   "localIds": [

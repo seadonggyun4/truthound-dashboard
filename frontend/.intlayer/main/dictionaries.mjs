@@ -15,14 +15,17 @@ import _GbKyYPPowZQ2IbERWIXA from '../dictionary/modelMonitoring.json' with { ty
 import _5PJhDThb8CdQYoMsy0qv from '../dictionary/nav.json' with { type: 'json' };
 import _GBxybaTmyQJ7F95ncqZo from '../dictionary/notifications.json' with { type: 'json' };
 import _uIiT4CGbZklYzphHCc5D from '../dictionary/notificationsAdvanced.json' with { type: 'json' };
+import _gbCe28Bbyp3H2VfZIAsu from '../dictionary/plugins.json' with { type: 'json' };
 import _3yNa1lTDcCtfl5hDdl05 from '../dictionary/privacy.json' with { type: 'json' };
 import _lMowiawIHiaqXraaUjQE from '../dictionary/profileComparison.json' with { type: 'json' };
+import _2Chczl4Zw6Fm6oMH3648 from '../dictionary/profiler.json' with { type: 'json' };
 import _H1a2hBjDFNiJgUuXf8h9 from '../dictionary/reports.json' with { type: 'json' };
 import _FoC7Ip8bUYsGAy05ACrg from '../dictionary/ruleSuggestions.json' with { type: 'json' };
 import _Y9WvPv3e2xX4IOxYcHeX from '../dictionary/schedules.json' with { type: 'json' };
 import _9Z1dgtJGgbONzKljS0IQ from '../dictionary/schemaEvolution.json' with { type: 'json' };
 import _YFyJ1LX066W9IbdNctFh from '../dictionary/settings.json' with { type: 'json' };
 import _DpO3BslSmImztidaimhZ from '../dictionary/sources.json' with { type: 'json' };
+import _kzo9DqmWQuytOCMYvbDG from '../dictionary/triggers.json' with { type: 'json' };
 import _Pu5BFR0tGrjKDQbmF1pC from '../dictionary/validation.json' with { type: 'json' };
 import _3o136ZUwgoxuNTy7IG6K from '../dictionary/validators.json' with { type: 'json' };
 import _Q7HxnPoKN2z0AV6vxV3O from '../dictionary/versioning.json' with { type: 'json' };
@@ -45,14 +48,17 @@ const dictionaries = {
   "nav": _5PJhDThb8CdQYoMsy0qv,
   "notifications": _GBxybaTmyQJ7F95ncqZo,
   "notificationsAdvanced": _uIiT4CGbZklYzphHCc5D,
+  "plugins": _gbCe28Bbyp3H2VfZIAsu,
   "privacy": _3yNa1lTDcCtfl5hDdl05,
   "profileComparison": _lMowiawIHiaqXraaUjQE,
+  "profiler": _2Chczl4Zw6Fm6oMH3648,
   "reports": _H1a2hBjDFNiJgUuXf8h9,
   "ruleSuggestions": _FoC7Ip8bUYsGAy05ACrg,
   "schedules": _Y9WvPv3e2xX4IOxYcHeX,
   "schemaEvolution": _9Z1dgtJGgbONzKljS0IQ,
   "settings": _YFyJ1LX066W9IbdNctFh,
   "sources": _DpO3BslSmImztidaimhZ,
+  "triggers": _kzo9DqmWQuytOCMYvbDG,
   "validation": _Pu5BFR0tGrjKDQbmF1pC,
   "validators": _3o136ZUwgoxuNTy7IG6K,
   "versioning": _Q7HxnPoKN2z0AV6vxV3O

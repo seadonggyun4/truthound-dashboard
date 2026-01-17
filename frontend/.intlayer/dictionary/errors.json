@@ -1,1 +1,146 @@
-{"key":"errors","content":{"nodeType":"translation","translation":{"en":{"generic":"An error occurred. Please try again.","notFound":"The requested resource was not found.","unauthorized":"You are not authorized to perform this action.","validation":"Please check your input and try again.","network":"Network error. Please check your connection.","serverError":"Server error. Please try again later.","loadFailed":"Failed to load data"},"ko":{"generic":"오류가 발생했습니다. 다시 시도해 주세요.","notFound":"요청한 리소스를 찾을 수 없습니다.","unauthorized":"이 작업을 수행할 권한이 없습니다.","validation":"입력을 확인하고 다시 시도해 주세요.","network":"네트워크 오류입니다. 연결을 확인해 주세요.","serverError":"서버 오류입니다. 나중에 다시 시도해 주세요.","loadFailed":"데이터를 불러오지 못했습니다"}}},"localIds":["errors::local::src/content/errors.content.ts"]}
+{
+  "key": "errors",
+  "content": {
+    "nodeType": "translation",
+    "translation": {
+      "en": {
+        "generic": "An error occurred. Please try again.",
+        "notFound": "The requested resource was not found.",
+        "unauthorized": "You are not authorized to perform this action.",
+        "validation": "Please check your input and try again.",
+        "network": "Network error. Please check your connection.",
+        "serverError": "Server error. Please try again later.",
+        "loadFailed": "Failed to load data"
+      },
+      "ko": {
+        "generic": "오류가 발생했습니다. 다시 시도해 주세요.",
+        "notFound": "요청한 리소스를 찾을 수 없습니다.",
+        "unauthorized": "이 작업을 수행할 권한이 없습니다.",
+        "validation": "입력을 확인하고 다시 시도해 주세요.",
+        "network": "네트워크 오류입니다. 연결을 확인해 주세요.",
+        "serverError": "서버 오류입니다. 나중에 다시 시도해 주세요.",
+        "loadFailed": "데이터를 불러오지 못했습니다"
+      },
+      "ja": {
+        "generic": "エラーが発生しました。もう一度お試しください。",
+        "notFound": "リクエストされたリソースが見つかりませんでした。",
+        "unauthorized": "この操作を実行する権限がありません。",
+        "validation": "入力内容を確認して、もう一度お試しください。",
+        "network": "ネットワークエラーです。接続を確認してください。",
+        "serverError": "サーバーエラーです。後でもう一度お試しください。",
+        "loadFailed": "データの読み込みに失敗しました"
+      },
+      "zh": {
+        "generic": "发生错误。请重试。",
+        "notFound": "找不到请求的资源。",
+        "unauthorized": "您无权执行此操作。",
+        "validation": "请检查您的输入并重试。",
+        "network": "网络错误。请检查您的连接。",
+        "serverError": "服务器错误。请稍后重试。",
+        "loadFailed": "加载数据失败"
+      },
+      "de": {
+        "generic": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+        "notFound": "Die angeforderte Ressource wurde nicht gefunden.",
+        "unauthorized": "Sie sind nicht berechtigt, diese Aktion auszuführen.",
+        "validation": "Bitte überprüfen Sie Ihre Eingabe und versuchen Sie es erneut.",
+        "network": "Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung.",
+        "serverError": "Serverfehler. Bitte versuchen Sie es später erneut.",
+        "loadFailed": "Daten konnten nicht geladen werden"
+      },
+      "fr": {
+        "generic": "Une erreur s'est produite. Veuillez réessayer.",
+        "notFound": "La ressource demandée n'a pas été trouvée.",
+        "unauthorized": "Vous n'êtes pas autorisé à effectuer cette action.",
+        "validation": "Veuillez vérifier votre saisie et réessayer.",
+        "network": "Erreur réseau. Veuillez vérifier votre connexion.",
+        "serverError": "Erreur du serveur. Veuillez réessayer plus tard.",
+        "loadFailed": "Échec du chargement des données"
+      },
+      "es": {
+        "generic": "Se produjo un error. Por favor, inténtelo de nuevo.",
+        "notFound": "No se encontró el recurso solicitado.",
+        "unauthorized": "No está autorizado para realizar esta acción.",
+        "validation": "Por favor, verifique su entrada e inténtelo de nuevo.",
+        "network": "Error de red. Por favor, verifique su conexión.",
+        "serverError": "Error del servidor. Por favor, inténtelo más tarde.",
+        "loadFailed": "Error al cargar los datos"
+      },
+      "pt": {
+        "generic": "Ocorreu um erro. Por favor, tente novamente.",
+        "notFound": "O recurso solicitado não foi encontrado.",
+        "unauthorized": "Você não está autorizado a realizar esta ação.",
+        "validation": "Por favor, verifique sua entrada e tente novamente.",
+        "network": "Erro de rede. Por favor, verifique sua conexão.",
+        "serverError": "Erro do servidor. Por favor, tente novamente mais tarde.",
+        "loadFailed": "Falha ao carregar os dados"
+      },
+      "it": {
+        "generic": "Si è verificato un errore. Per favore riprova.",
+        "notFound": "La risorsa richiesta non è stata trovata.",
+        "unauthorized": "Non sei autorizzato a eseguire questa azione.",
+        "validation": "Per favore controlla il tuo input e riprova.",
+        "network": "Errore di rete. Per favore controlla la tua connessione.",
+        "serverError": "Errore del server. Per favore riprova più tardi.",
+        "loadFailed": "Impossibile caricare i dati"
+      },
+      "ru": {
+        "generic": "Произошла ошибка. Пожалуйста, попробуйте снова.",
+        "notFound": "Запрошенный ресурс не найден.",
+        "unauthorized": "У вас нет прав для выполнения этого действия.",
+        "validation": "Пожалуйста, проверьте введенные данные и попробуйте снова.",
+        "network": "Ошибка сети. Пожалуйста, проверьте подключение.",
+        "serverError": "Ошибка сервера. Пожалуйста, попробуйте позже.",
+        "loadFailed": "Не удалось загрузить данные"
+      },
+      "ar": {
+        "generic": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+        "notFound": "لم يتم العثور على المورد المطلوب.",
+        "unauthorized": "ليس لديك صلاحية لتنفيذ هذا الإجراء.",
+        "validation": "يرجى التحقق من إدخالك والمحاولة مرة أخرى.",
+        "network": "خطأ في الشبكة. يرجى التحقق من اتصالك.",
+        "serverError": "خطأ في الخادم. يرجى المحاولة مرة أخرى لاحقاً.",
+        "loadFailed": "فشل في تحميل البيانات"
+      },
+      "th": {
+        "generic": "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง",
+        "notFound": "ไม่พบทรัพยากรที่ร้องขอ",
+        "unauthorized": "คุณไม่ได้รับอนุญาตให้ดำเนินการนี้",
+        "validation": "กรุณาตรวจสอบข้อมูลที่ป้อนและลองอีกครั้ง",
+        "network": "ข้อผิดพลาดเครือข่าย กรุณาตรวจสอบการเชื่อมต่อของคุณ",
+        "serverError": "ข้อผิดพลาดเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง",
+        "loadFailed": "ไม่สามารถโหลดข้อมูลได้"
+      },
+      "vi": {
+        "generic": "Đã xảy ra lỗi. Vui lòng thử lại.",
+        "notFound": "Không tìm thấy tài nguyên được yêu cầu.",
+        "unauthorized": "Bạn không có quyền thực hiện hành động này.",
+        "validation": "Vui lòng kiểm tra đầu vào của bạn và thử lại.",
+        "network": "Lỗi mạng. Vui lòng kiểm tra kết nối của bạn.",
+        "serverError": "Lỗi máy chủ. Vui lòng thử lại sau.",
+        "loadFailed": "Không tải được dữ liệu"
+      },
+      "id": {
+        "generic": "Terjadi kesalahan. Silakan coba lagi.",
+        "notFound": "Sumber daya yang diminta tidak ditemukan.",
+        "unauthorized": "Anda tidak diizinkan untuk melakukan tindakan ini.",
+        "validation": "Silakan periksa input Anda dan coba lagi.",
+        "network": "Kesalahan jaringan. Silakan periksa koneksi Anda.",
+        "serverError": "Kesalahan server. Silakan coba lagi nanti.",
+        "loadFailed": "Gagal memuat data"
+      },
+      "tr": {
+        "generic": "Bir hata oluştu. Lütfen tekrar deneyin.",
+        "notFound": "İstenen kaynak bulunamadı.",
+        "unauthorized": "Bu işlemi gerçekleştirme yetkiniz yok.",
+        "validation": "Lütfen girişinizi kontrol edin ve tekrar deneyin.",
+        "network": "Ağ hatası. Lütfen bağlantınızı kontrol edin.",
+        "serverError": "Sunucu hatası. Lütfen daha sonra tekrar deneyin.",
+        "loadFailed": "Veri yüklenemedi"
+      }
+    }
+  },
+  "localIds": [
+    "errors::local::src/content/errors.content.ts"
+  ]
+}

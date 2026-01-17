@@ -57,7 +57,20 @@ export default {
         "upcomingSchedules": "예정된 스케줄",
         "noFailures": "최근 실패가 없습니다",
         "noSchedules": "예정된 스케줄이 없습니다"
-      }
+      },
+      "ja": {},
+      "zh": {},
+      "de": {},
+      "fr": {},
+      "es": {},
+      "pt": {},
+      "it": {},
+      "ru": {},
+      "ar": {},
+      "th": {},
+      "vi": {},
+      "id": {},
+      "tr": {}
     }
   },
   "localIds": [

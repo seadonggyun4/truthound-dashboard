@@ -207,6 +207,149 @@ export default {
           "minValue": "값은 최소",
           "maxValue": "값은 최대"
         }
+      },
+      "ja": {
+        "categories": {},
+        "categoryDescriptions": {},
+        "presets": {},
+        "presetDescriptions": {},
+        "parameters": {},
+        "severity": {},
+        "parameterTypes": {},
+        "tooltips": {},
+        "errors": {}
+      },
+      "zh": {
+        "categories": {},
+        "categoryDescriptions": {},
+        "presets": {},
+        "presetDescriptions": {},
+        "parameters": {},
+        "severity": {},
+        "parameterTypes": {},
+        "tooltips": {},
+        "errors": {}
+      },
+      "de": {
+        "categories": {},
+        "categoryDescriptions": {},
+        "presets": {},
+        "presetDescriptions": {},
+        "parameters": {},
+        "severity": {},
+        "parameterTypes": {},
+        "tooltips": {},
+        "errors": {}
+      },
+      "fr": {
+        "categories": {},
+        "categoryDescriptions": {},
+        "presets": {},
+        "presetDescriptions": {},
+        "parameters": {},
+        "severity": {},
+        "parameterTypes": {},
+        "tooltips": {},
+        "errors": {}
+      },
+      "es": {
+        "categories": {},
+        "categoryDescriptions": {},
+        "presets": {},
+        "presetDescriptions": {},
+        "parameters": {},
+        "severity": {},
+        "parameterTypes": {},
+        "tooltips": {},
+        "errors": {}
+      },
+      "pt": {
+        "categories": {},
+        "categoryDescriptions": {},
+        "presets": {},
+        "presetDescriptions": {},
+        "parameters": {},
+        "severity": {},
+        "parameterTypes": {},
+        "tooltips": {},
+        "errors": {}
+      },
+      "it": {
+        "categories": {},
+        "categoryDescriptions": {},
+        "presets": {},
+        "presetDescriptions": {},
+        "parameters": {},
+        "severity": {},
+        "parameterTypes": {},
+        "tooltips": {},
+        "errors": {}
+      },
+      "ru": {
+        "categories": {},
+        "categoryDescriptions": {},
+        "presets": {},
+        "presetDescriptions": {},
+        "parameters": {},
+        "severity": {},
+        "parameterTypes": {},
+        "tooltips": {},
+        "errors": {}
+      },
+      "ar": {
+        "categories": {},
+        "categoryDescriptions": {},
+        "presets": {},
+        "presetDescriptions": {},
+        "parameters": {},
+        "severity": {},
+        "parameterTypes": {},
+        "tooltips": {},
+        "errors": {}
+      },
+      "th": {
+        "categories": {},
+        "categoryDescriptions": {},
+        "presets": {},
+        "presetDescriptions": {},
+        "parameters": {},
+        "severity": {},
+        "parameterTypes": {},
+        "tooltips": {},
+        "errors": {}
+      },
+      "vi": {
+        "categories": {},
+        "categoryDescriptions": {},
+        "presets": {},
+        "presetDescriptions": {},
+        "parameters": {},
+        "severity": {},
+        "parameterTypes": {},
+        "tooltips": {},
+        "errors": {}
+      },
+      "id": {
+        "categories": {},
+        "categoryDescriptions": {},
+        "presets": {},
+        "presetDescriptions": {},
+        "parameters": {},
+        "severity": {},
+        "parameterTypes": {},
+        "tooltips": {},
+        "errors": {}
+      },
+      "tr": {
+        "categories": {},
+        "categoryDescriptions": {},
+        "presets": {},
+        "presetDescriptions": {},
+        "parameters": {},
+        "severity": {},
+        "parameterTypes": {},
+        "tooltips": {},
+        "errors": {}
       }
     }
   },

@@ -16,14 +16,17 @@ import _hG17q6HwfJfXV9vfUdOs from './modelMonitoring.ts';
 import _lxd9zHduAwv9MKe0pfux from './nav.ts';
 import _vWH8PKizbs8fJUwJUoGT from './notifications.ts';
 import _CzyFrW0bCjfT1sJEYS2Q from './notificationsAdvanced.ts';
+import _4IRGH0aONVlxNrgQbZoz from './plugins.ts';
 import _rIzCLa4m2j9ZVuTTP3kc from './privacy.ts';
 import _VYR0IDgeIfq3MnrRUIpy from './profileComparison.ts';
+import _2ZnkJjnjQxpoYkfJWLWE from './profiler.ts';
 import _IJ8EvGjoMiG48Hns8efT from './reports.ts';
 import _VAdR5Ih8o355wjoQ6Qma from './ruleSuggestions.ts';
 import _1k2hq970iLlsAKLuanhI from './schedules.ts';
 import _Xz7H6Lvwxu54CqUt1tMD from './schemaEvolution.ts';
 import _MmyL5m4Ox8ktYC55pHJm from './settings.ts';
 import _LMqIY1GosrfjGDPQt8NX from './sources.ts';
+import _eSRtAPSzNK4wvydAnwHD from './triggers.ts';
 import _914fqQfvVojp21vDKy46 from './validation.ts';
 import _gMe3bVpQfxuizrNLgwx1 from './validators.ts';
 import _naBlAMWDIZmZrZPwgpXO from './versioning.ts';
@@ -47,14 +50,17 @@ declare module 'intlayer' {
     "nav": typeof _lxd9zHduAwv9MKe0pfux;
     "notifications": typeof _vWH8PKizbs8fJUwJUoGT;
     "notificationsAdvanced": typeof _CzyFrW0bCjfT1sJEYS2Q;
+    "plugins": typeof _4IRGH0aONVlxNrgQbZoz;
     "privacy": typeof _rIzCLa4m2j9ZVuTTP3kc;
     "profileComparison": typeof _VYR0IDgeIfq3MnrRUIpy;
+    "profiler": typeof _2ZnkJjnjQxpoYkfJWLWE;
     "reports": typeof _IJ8EvGjoMiG48Hns8efT;
     "ruleSuggestions": typeof _VAdR5Ih8o355wjoQ6Qma;
     "schedules": typeof _1k2hq970iLlsAKLuanhI;
     "schemaEvolution": typeof _Xz7H6Lvwxu54CqUt1tMD;
     "settings": typeof _MmyL5m4Ox8ktYC55pHJm;
     "sources": typeof _LMqIY1GosrfjGDPQt8NX;
+    "triggers": typeof _eSRtAPSzNK4wvydAnwHD;
     "validation": typeof _914fqQfvVojp21vDKy46;
     "validators": typeof _gMe3bVpQfxuizrNLgwx1;
     "versioning": typeof _naBlAMWDIZmZrZPwgpXO;
@@ -63,11 +69,37 @@ declare module 'intlayer' {
   interface __DeclaredLocalesRegistry {
     "en": 1;
     "ko": 1;
+    "ja": 1;
+    "zh": 1;
+    "de": 1;
+    "fr": 1;
+    "es": 1;
+    "pt": 1;
+    "it": 1;
+    "ru": 1;
+    "ar": 1;
+    "th": 1;
+    "vi": 1;
+    "id": 1;
+    "tr": 1;
   }
 
   interface __RequiredLocalesRegistry {
     "en": 1;
     "ko": 1;
+    "ja": 1;
+    "zh": 1;
+    "de": 1;
+    "fr": 1;
+    "es": 1;
+    "pt": 1;
+    "it": 1;
+    "ru": 1;
+    "ar": 1;
+    "th": 1;
+    "vi": 1;
+    "id": 1;
+    "tr": 1;
   }
 
   interface __StrictModeRegistry { mode: 'inclusive' }

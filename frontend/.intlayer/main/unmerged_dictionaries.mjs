@@ -15,14 +15,17 @@ import _ySyJyBKkKOgVeq0ogznB from '../unmerged_dictionary/modelMonitoring.json' 
 import _CS4ZBheaDXved5UeTYiT from '../unmerged_dictionary/nav.json' with { type: 'json' };
 import _sg3ZrUmJodT8xcUfcD8d from '../unmerged_dictionary/notifications.json' with { type: 'json' };
 import _XWDjCahS3y3oXptSGSER from '../unmerged_dictionary/notificationsAdvanced.json' with { type: 'json' };
+import _mlvlISmBUZIQs6nSgpAT from '../unmerged_dictionary/plugins.json' with { type: 'json' };
 import _Igei5KSLe4KWTQUcFitu from '../unmerged_dictionary/privacy.json' with { type: 'json' };
 import _4ns3sPukIi1W6H86cbxa from '../unmerged_dictionary/profileComparison.json' with { type: 'json' };
+import _DY4GMpjlrLscB5hmT6UO from '../unmerged_dictionary/profiler.json' with { type: 'json' };
 import _ixCqwaaO7BEY2QmXNuVQ from '../unmerged_dictionary/reports.json' with { type: 'json' };
 import _CDyiw25c6kbrUOpz5byO from '../unmerged_dictionary/ruleSuggestions.json' with { type: 'json' };
 import _xgn6YfRH8hT7OqP2mxRN from '../unmerged_dictionary/schedules.json' with { type: 'json' };
 import _wQhNc7iOtkcmOJLyGpCv from '../unmerged_dictionary/schemaEvolution.json' with { type: 'json' };
 import _ZOAdeBI7bXfBrnKogJeu from '../unmerged_dictionary/settings.json' with { type: 'json' };
 import _mluQYzldy0M4oRk4zK6X from '../unmerged_dictionary/sources.json' with { type: 'json' };
+import _3edDZq0C7U4SJvAY8Wdh from '../unmerged_dictionary/triggers.json' with { type: 'json' };
 import _Tk2hZa9MyMPkZgDZ7y4d from '../unmerged_dictionary/validation.json' with { type: 'json' };
 import _yopRoCwvobwREyGLGqHI from '../unmerged_dictionary/validators.json' with { type: 'json' };
 import _98KED6ES81RjX6bKkbvg from '../unmerged_dictionary/versioning.json' with { type: 'json' };
@@ -45,14 +48,17 @@ const dictionaries = {
   "nav": _CS4ZBheaDXved5UeTYiT,
   "notifications": _sg3ZrUmJodT8xcUfcD8d,
   "notificationsAdvanced": _XWDjCahS3y3oXptSGSER,
+  "plugins": _mlvlISmBUZIQs6nSgpAT,
   "privacy": _Igei5KSLe4KWTQUcFitu,
   "profileComparison": _4ns3sPukIi1W6H86cbxa,
+  "profiler": _DY4GMpjlrLscB5hmT6UO,
   "reports": _ixCqwaaO7BEY2QmXNuVQ,
   "ruleSuggestions": _CDyiw25c6kbrUOpz5byO,
   "schedules": _xgn6YfRH8hT7OqP2mxRN,
   "schemaEvolution": _wQhNc7iOtkcmOJLyGpCv,
   "settings": _ZOAdeBI7bXfBrnKogJeu,
   "sources": _mluQYzldy0M4oRk4zK6X,
+  "triggers": _3edDZq0C7U4SJvAY8Wdh,
   "validation": _Tk2hZa9MyMPkZgDZ7y4d,
   "validators": _yopRoCwvobwREyGLGqHI,
   "versioning": _98KED6ES81RjX6bKkbvg

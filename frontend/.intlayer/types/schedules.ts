@@ -91,6 +91,45 @@ export default {
           "everyMonday": "매주 월요일",
           "everyMonth": "매월"
         }
+      },
+      "ja": {
+        "cronPresets": {}
+      },
+      "zh": {
+        "cronPresets": {}
+      },
+      "de": {
+        "cronPresets": {}
+      },
+      "fr": {
+        "cronPresets": {}
+      },
+      "es": {
+        "cronPresets": {}
+      },
+      "pt": {
+        "cronPresets": {}
+      },
+      "it": {
+        "cronPresets": {}
+      },
+      "ru": {
+        "cronPresets": {}
+      },
+      "ar": {
+        "cronPresets": {}
+      },
+      "th": {
+        "cronPresets": {}
+      },
+      "vi": {
+        "cronPresets": {}
+      },
+      "id": {
+        "cronPresets": {}
+      },
+      "tr": {
+        "cronPresets": {}
       }
     }
   },

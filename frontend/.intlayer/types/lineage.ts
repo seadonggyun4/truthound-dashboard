@@ -649,6 +649,214 @@ export default {
           "errorLoadingAnomalies": "이상 데이터 로드 실패",
           "errorAnalyzingImpact": "이상 영향 분석 실패"
         }
+      },
+      "ja": {
+        "nodeTypes": {},
+        "edgeTypes": {},
+        "renderers": {},
+        "layouts": {},
+        "mermaid": {},
+        "export": {},
+        "columnLineage": {
+          "transformationTypes": {}
+        },
+        "anomaly": {
+          "statusLevels": {},
+          "statusDescriptions": {},
+          "severityLevels": {}
+        }
+      },
+      "zh": {
+        "nodeTypes": {},
+        "edgeTypes": {},
+        "renderers": {},
+        "layouts": {},
+        "mermaid": {},
+        "export": {},
+        "columnLineage": {
+          "transformationTypes": {}
+        },
+        "anomaly": {
+          "statusLevels": {},
+          "statusDescriptions": {},
+          "severityLevels": {}
+        }
+      },
+      "de": {
+        "nodeTypes": {},
+        "edgeTypes": {},
+        "renderers": {},
+        "layouts": {},
+        "mermaid": {},
+        "export": {},
+        "columnLineage": {
+          "transformationTypes": {}
+        },
+        "anomaly": {
+          "statusLevels": {},
+          "statusDescriptions": {},
+          "severityLevels": {}
+        }
+      },
+      "fr": {
+        "nodeTypes": {},
+        "edgeTypes": {},
+        "renderers": {},
+        "layouts": {},
+        "mermaid": {},
+        "export": {},
+        "columnLineage": {
+          "transformationTypes": {}
+        },
+        "anomaly": {
+          "statusLevels": {},
+          "statusDescriptions": {},
+          "severityLevels": {}
+        }
+      },
+      "es": {
+        "nodeTypes": {},
+        "edgeTypes": {},
+        "renderers": {},
+        "layouts": {},
+        "mermaid": {},
+        "export": {},
+        "columnLineage": {
+          "transformationTypes": {}
+        },
+        "anomaly": {
+          "statusLevels": {},
+          "statusDescriptions": {},
+          "severityLevels": {}
+        }
+      },
+      "pt": {
+        "nodeTypes": {},
+        "edgeTypes": {},
+        "renderers": {},
+        "layouts": {},
+        "mermaid": {},
+        "export": {},
+        "columnLineage": {
+          "transformationTypes": {}
+        },
+        "anomaly": {
+          "statusLevels": {},
+          "statusDescriptions": {},
+          "severityLevels": {}
+        }
+      },
+      "it": {
+        "nodeTypes": {},
+        "edgeTypes": {},
+        "renderers": {},
+        "layouts": {},
+        "mermaid": {},
+        "export": {},
+        "columnLineage": {
+          "transformationTypes": {}
+        },
+        "anomaly": {
+          "statusLevels": {},
+          "statusDescriptions": {},
+          "severityLevels": {}
+        }
+      },
+      "ru": {
+        "nodeTypes": {},
+        "edgeTypes": {},
+        "renderers": {},
+        "layouts": {},
+        "mermaid": {},
+        "export": {},
+        "columnLineage": {
+          "transformationTypes": {}
+        },
+        "anomaly": {
+          "statusLevels": {},
+          "statusDescriptions": {},
+          "severityLevels": {}
+        }
+      },
+      "ar": {
+        "nodeTypes": {},
+        "edgeTypes": {},
+        "renderers": {},
+        "layouts": {},
+        "mermaid": {},
+        "export": {},
+        "columnLineage": {
+          "transformationTypes": {}
+        },
+        "anomaly": {
+          "statusLevels": {},
+          "statusDescriptions": {},
+          "severityLevels": {}
+        }
+      },
+      "th": {
+        "nodeTypes": {},
+        "edgeTypes": {},
+        "renderers": {},
+        "layouts": {},
+        "mermaid": {},
+        "export": {},
+        "columnLineage": {
+          "transformationTypes": {}
+        },
+        "anomaly": {
+          "statusLevels": {},
+          "statusDescriptions": {},
+          "severityLevels": {}
+        }
+      },
+      "vi": {
+        "nodeTypes": {},
+        "edgeTypes": {},
+        "renderers": {},
+        "layouts": {},
+        "mermaid": {},
+        "export": {},
+        "columnLineage": {
+          "transformationTypes": {}
+        },
+        "anomaly": {
+          "statusLevels": {},
+          "statusDescriptions": {},
+          "severityLevels": {}
+        }
+      },
+      "id": {
+        "nodeTypes": {},
+        "edgeTypes": {},
+        "renderers": {},
+        "layouts": {},
+        "mermaid": {},
+        "export": {},
+        "columnLineage": {
+          "transformationTypes": {}
+        },
+        "anomaly": {
+          "statusLevels": {},
+          "statusDescriptions": {},
+          "severityLevels": {}
+        }
+      },
+      "tr": {
+        "nodeTypes": {},
+        "edgeTypes": {},
+        "renderers": {},
+        "layouts": {},
+        "mermaid": {},
+        "export": {},
+        "columnLineage": {
+          "transformationTypes": {}
+        },
+        "anomaly": {
+          "statusLevels": {},
+          "statusDescriptions": {},
+          "severityLevels": {}
+        }
       }
     }
   },

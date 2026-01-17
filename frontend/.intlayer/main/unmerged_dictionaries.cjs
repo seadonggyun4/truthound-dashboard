@@ -15,14 +15,17 @@ const _ySyJyBKkKOgVeq0ogznB = require('../unmerged_dictionary/modelMonitoring.js
 const _CS4ZBheaDXved5UeTYiT = require('../unmerged_dictionary/nav.json');
 const _sg3ZrUmJodT8xcUfcD8d = require('../unmerged_dictionary/notifications.json');
 const _XWDjCahS3y3oXptSGSER = require('../unmerged_dictionary/notificationsAdvanced.json');
+const _mlvlISmBUZIQs6nSgpAT = require('../unmerged_dictionary/plugins.json');
 const _Igei5KSLe4KWTQUcFitu = require('../unmerged_dictionary/privacy.json');
 const _4ns3sPukIi1W6H86cbxa = require('../unmerged_dictionary/profileComparison.json');
+const _DY4GMpjlrLscB5hmT6UO = require('../unmerged_dictionary/profiler.json');
 const _ixCqwaaO7BEY2QmXNuVQ = require('../unmerged_dictionary/reports.json');
 const _CDyiw25c6kbrUOpz5byO = require('../unmerged_dictionary/ruleSuggestions.json');
 const _xgn6YfRH8hT7OqP2mxRN = require('../unmerged_dictionary/schedules.json');
 const _wQhNc7iOtkcmOJLyGpCv = require('../unmerged_dictionary/schemaEvolution.json');
 const _ZOAdeBI7bXfBrnKogJeu = require('../unmerged_dictionary/settings.json');
 const _mluQYzldy0M4oRk4zK6X = require('../unmerged_dictionary/sources.json');
+const _3edDZq0C7U4SJvAY8Wdh = require('../unmerged_dictionary/triggers.json');
 const _Tk2hZa9MyMPkZgDZ7y4d = require('../unmerged_dictionary/validation.json');
 const _yopRoCwvobwREyGLGqHI = require('../unmerged_dictionary/validators.json');
 const _98KED6ES81RjX6bKkbvg = require('../unmerged_dictionary/versioning.json');
@@ -45,14 +48,17 @@ const dictionaries = {
   "nav": _CS4ZBheaDXved5UeTYiT,
   "notifications": _sg3ZrUmJodT8xcUfcD8d,
   "notificationsAdvanced": _XWDjCahS3y3oXptSGSER,
+  "plugins": _mlvlISmBUZIQs6nSgpAT,
   "privacy": _Igei5KSLe4KWTQUcFitu,
   "profileComparison": _4ns3sPukIi1W6H86cbxa,
+  "profiler": _DY4GMpjlrLscB5hmT6UO,
   "reports": _ixCqwaaO7BEY2QmXNuVQ,
   "ruleSuggestions": _CDyiw25c6kbrUOpz5byO,
   "schedules": _xgn6YfRH8hT7OqP2mxRN,
   "schemaEvolution": _wQhNc7iOtkcmOJLyGpCv,
   "settings": _ZOAdeBI7bXfBrnKogJeu,
   "sources": _mluQYzldy0M4oRk4zK6X,
+  "triggers": _3edDZq0C7U4SJvAY8Wdh,
   "validation": _Tk2hZa9MyMPkZgDZ7y4d,
   "validators": _yopRoCwvobwREyGLGqHI,
   "versioning": _98KED6ES81RjX6bKkbvg
