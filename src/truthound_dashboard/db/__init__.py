@@ -43,6 +43,7 @@ from .models import (
     ResourceType,
     SensitivityLevel,
     TermStatus,
+    TriggerType,
     # Phase 5 Models
     Activity,
     AssetColumn,
@@ -64,6 +65,9 @@ from .models import (
     DriftMonitor,
     DriftMonitorRun,
     DriftAlert,
+    # Scheduler Job Models
+    SchedulerJob,
+    SchedulerJobState,
 )
 from .repository import BaseRepository
 
@@ -104,6 +108,7 @@ __all__ = [
     "SensitivityLevel",
     "ResourceType",
     "ActivityAction",
+    "TriggerType",
     # Phase 5 Models - Glossary
     "GlossaryCategory",
     "GlossaryTerm",
@@ -127,6 +132,9 @@ __all__ = [
     "DriftMonitor",
     "DriftMonitorRun",
     "DriftAlert",
+    # Scheduler Job Models
+    "SchedulerJob",
+    "SchedulerJobState",
     # Repository
     "BaseRepository",
 ]

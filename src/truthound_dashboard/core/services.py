@@ -379,6 +379,7 @@ class ValidationService:
     """Service for running and managing validations.
 
     Handles validation execution, result storage, and history.
+    Supports both built-in truthound validators and custom validators.
     """
 
     def __init__(self, session: AsyncSession) -> None:
@@ -399,6 +400,7 @@ class ValidationService:
         *,
         validators: list[str] | None = None,
         validator_params: dict[str, dict[str, Any]] | None = None,
+        custom_validators: list[dict[str, Any]] | None = None,
         schema_path: str | None = None,
         auto_schema: bool = False,
         columns: list[str] | None = None,
@@ -411,7 +413,8 @@ class ValidationService:
         """Run validation on a source.
 
         This method provides full access to truthound's th.check() parameters,
-        allowing fine-grained control over validation behavior.
+        allowing fine-grained control over validation behavior. It also supports
+        running custom validators alongside built-in validators.
 
         Args:
             source_id: Source ID to validate.
@@ -420,6 +423,8 @@ class ValidationService:
                 Format: {"ValidatorName": {"param1": value1, "param2": value2}}
                 Example: {"Null": {"columns": ["email"], "mostly": 0.95},
                           "CompletenessRatio": {"column": "phone", "min_ratio": 0.98}}
+            custom_validators: Optional list of custom validator configs.
+                Format: [{"validator_id": "...", "column": "...", "params": {...}}]
             schema_path: Optional schema file path.
             auto_schema: Auto-learn schema if True.
             columns: Columns to validate. If None, validates all columns.
@@ -448,7 +453,7 @@ class ValidationService:
         )
 
         try:
-            # Run validation with all supported parameters
+            # Run built-in validation with all supported parameters
             result = await self.adapter.check(
                 source.source_path or "",
                 validators=validators,
@@ -463,8 +468,19 @@ class ValidationService:
                 pushdown=pushdown,
             )
 
-            # Update validation with results
-            await self._update_validation_success(validation, result)
+            # Run custom validators if specified
+            custom_results = []
+            if custom_validators:
+                custom_results = await self._run_custom_validators(
+                    source=source,
+                    custom_validators=custom_validators,
+                    validation_id=str(validation.id),
+                )
+
+            # Update validation with combined results
+            await self._update_validation_success(
+                validation, result, custom_results=custom_results
+            )
 
             # Update source last validated
             source.last_validated_at = datetime.utcnow()
@@ -477,29 +493,156 @@ class ValidationService:
         await self.session.refresh(validation)
         return validation
 
+    async def _run_custom_validators(
+        self,
+        source: Source,
+        custom_validators: list[dict[str, Any]],
+        validation_id: str,
+    ) -> list[dict[str, Any]]:
+        """Run custom validators on source data.
+
+        Args:
+            source: Data source to validate.
+            custom_validators: List of custom validator configs.
+            validation_id: Parent validation ID.
+
+        Returns:
+            List of custom validator results.
+        """
+        from truthound_dashboard.core.plugins import CustomValidatorExecutor
+        from truthound_dashboard.core.plugins.registry import plugin_registry
+        from truthound_dashboard.core.plugins.validator_executor import ValidatorContext
+
+        results = []
+        executor = CustomValidatorExecutor()
+
+        # Load source data once
+        try:
+            import polars as pl
+
+            source_path = source.source_path or ""
+            if source.type == "csv":
+                df = pl.read_csv(source_path)
+            elif source.type == "parquet":
+                df = pl.read_parquet(source_path)
+            elif source.type == "json":
+                df = pl.read_json(source_path)
+            else:
+                # Unsupported source type for custom validators
+                return results
+        except Exception:
+            return results
+
+        for cv_config in custom_validators:
+            validator_id = cv_config.get("validator_id")
+            column_name = cv_config.get("column")
+            params = cv_config.get("params", {})
+
+            if not validator_id or not column_name:
+                continue
+
+            # Get the custom validator
+            validator = await plugin_registry.get_validator(
+                self.session, validator_id=validator_id
+            )
+            if not validator or not validator.is_enabled:
+                continue
+
+            # Check column exists
+            if column_name not in df.columns:
+                results.append({
+                    "validator_id": validator_id,
+                    "validator_name": validator.name,
+                    "column": column_name,
+                    "passed": False,
+                    "error": f"Column '{column_name}' not found",
+                })
+                continue
+
+            # Create context
+            column_values = df[column_name].to_list()
+            context = ValidatorContext(
+                column_name=column_name,
+                column_values=column_values,
+                parameters=params,
+                schema={"dtype": str(df[column_name].dtype)},
+                row_count=len(column_values),
+            )
+
+            # Execute
+            try:
+                result = await executor.execute(
+                    validator=validator,
+                    context=context,
+                    session=self.session,
+                    source_id=str(source.id),
+                )
+                results.append({
+                    "validator_id": validator_id,
+                    "validator_name": validator.name,
+                    "column": column_name,
+                    "passed": result.passed,
+                    "issues": result.issues,
+                    "message": result.message,
+                    "execution_time_ms": result.execution_time_ms,
+                })
+            except Exception as e:
+                results.append({
+                    "validator_id": validator_id,
+                    "validator_name": validator.name,
+                    "column": column_name,
+                    "passed": False,
+                    "error": str(e),
+                })
+
+        return results
+
     async def _update_validation_success(
         self,
         validation: Validation,
         result: CheckResult,
+        custom_results: list[dict[str, Any]] | None = None,
     ) -> None:
         """Update validation with successful result.
 
         Args:
             validation: Validation record to update.
-            result: Check result from adapter.
+            result: Check result from built-in validators.
+            custom_results: Optional results from custom validators.
         """
-        validation.status = "success" if result.passed else "failed"
-        validation.passed = result.passed
+        # Calculate combined pass/fail status
+        builtin_passed = result.passed
+        custom_passed = True
+        custom_issues_count = 0
+
+        if custom_results:
+            for cr in custom_results:
+                if not cr.get("passed", True):
+                    custom_passed = False
+                custom_issues_count += len(cr.get("issues", []))
+
+        combined_passed = builtin_passed and custom_passed
+
+        validation.status = "success" if combined_passed else "failed"
+        validation.passed = combined_passed
         validation.has_critical = result.has_critical
         validation.has_high = result.has_high
-        validation.total_issues = result.total_issues
+        validation.total_issues = result.total_issues + custom_issues_count
         validation.critical_issues = result.critical_issues
         validation.high_issues = result.high_issues
         validation.medium_issues = result.medium_issues
         validation.low_issues = result.low_issues
         validation.row_count = result.row_count
         validation.column_count = result.column_count
-        validation.result_json = result.to_dict()
+
+        # Combine results
+        combined_result = result.to_dict()
+        if custom_results:
+            combined_result["custom_validators"] = custom_results
+            combined_result["custom_validators_passed"] = custom_passed
+            combined_result["custom_issues_count"] = custom_issues_count
+
+        validation.result_json = combined_result
         validation.completed_at = datetime.utcnow()
 
         if validation.started_at:

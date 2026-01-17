@@ -143,6 +143,7 @@ class TriggerType(str, Enum):
     COMPOSITE = "composite"
     EVENT = "event"
     MANUAL = "manual"
+    WEBHOOK = "webhook"  # External webhook triggers
 
 
 class Source(Base, UUIDMixin, TimestampMixin):
@@ -213,6 +214,13 @@ class Source(Base, UUIDMixin, TimestampMixin):
         "CatalogAsset",
         back_populates="source",
         lazy="selectin",
+    )
+    # Generated reports for this source
+    generated_reports: Mapped[list["GeneratedReport"]] = relationship(
+        "GeneratedReport",
+        back_populates="source",
+        lazy="selectin",
+        order_by="desc(GeneratedReport.created_at)",
     )
 
     @property
@@ -435,6 +443,12 @@ class Validation(Base, UUIDMixin):
 
     # Relationships
     source: Mapped[Source] = relationship("Source", back_populates="validations")
+    generated_reports: Mapped[list["GeneratedReport"]] = relationship(
+        "GeneratedReport",
+        back_populates="validation",
+        lazy="selectin",
+        order_by="desc(GeneratedReport.created_at)",
+    )
 
     @property
     def issues(self) -> list[dict[str, Any]]:
@@ -2050,6 +2064,13 @@ class DeduplicationConfig(Base, UUIDMixin, TimestampMixin):
 
     __tablename__ = "deduplication_configs"
 
+    __table_args__ = (
+        Index("idx_dedup_config_is_active", "is_active"),
+        Index("idx_dedup_config_strategy", "strategy"),
+        Index("idx_dedup_config_policy", "policy"),
+        Index("idx_dedup_config_created_at", "created_at"),
+    )
+
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     strategy: Mapped[str] = mapped_column(
         String(20),
@@ -2083,6 +2104,11 @@ class ThrottlingConfig(Base, UUIDMixin, TimestampMixin):
     """
 
     __tablename__ = "throttling_configs"
+
+    __table_args__ = (
+        Index("idx_throttle_config_is_active", "is_active"),
+        Index("idx_throttle_config_created_at", "created_at"),
+    )
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     per_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -2172,6 +2198,8 @@ class EscalationIncidentModel(Base, UUIDMixin):
         Index("idx_escalation_incidents_policy", "policy_id"),
         Index("idx_escalation_incidents_ref", "incident_ref"),
         Index("idx_escalation_incidents_state", "state"),
+        Index("idx_escalation_incidents_created_at", "created_at"),
+        Index("idx_escalation_incidents_state_created", "state", "created_at"),
     )
 
     policy_id: Mapped[str] = mapped_column(
@@ -2229,6 +2257,66 @@ class EscalationIncidentModel(Base, UUIDMixin):
         """Check if incident is resolved."""
         return self.state == EscalationStateEnum.RESOLVED.value
 
+    def can_escalate(self, max_escalations: int) -> bool:
+        """Check if incident can be escalated further.
+
+        Args:
+            max_escalations: Maximum allowed escalations from policy.
+
+        Returns:
+            True if escalation is allowed, False otherwise.
+        """
+        # Cannot escalate resolved or acknowledged incidents
+        if self.state in (
+            EscalationStateEnum.RESOLVED.value,
+            EscalationStateEnum.ACKNOWLEDGED.value,
+        ):
+            return False
+
+        # Check escalation count limit
+        if self.escalation_count >= max_escalations:
+            return False
+
+        return True
+
+    def escalate(
+        self,
+        next_level: int,
+        next_escalation_at: datetime | None,
+        max_escalations: int,
+    ) -> bool:
+        """Attempt to escalate the incident.
+
+        Thread-safe escalation with validation. Returns False if
+        escalation is not allowed.
+
+        Args:
+            next_level: The new escalation level.
+            next_escalation_at: When the next escalation should occur.
+            max_escalations: Maximum allowed escalations.
+
+        Returns:
+            True if escalation succeeded, False if not allowed.
+        """
+        if not self.can_escalate(max_escalations):
+            return False
+
+        old_state = self.state
+        self.state = EscalationStateEnum.ESCALATED.value
+        self.current_level = next_level
+        self.escalation_count += 1
+        self.next_escalation_at = next_escalation_at
+        self.updated_at = datetime.utcnow()
+
+        self.add_event(
+            from_state=old_state,
+            to_state=EscalationStateEnum.ESCALATED.value,
+            actor="system",
+            message=f"Escalated to level {next_level}",
+        )
+
+        return True
+
     def add_event(
         self,
         from_state: str | None,
@@ -2247,6 +2335,175 @@ class EscalationIncidentModel(Base, UUIDMixin):
         if self.events is None:
             self.events = []
         self.events.append(event)
+
+
+# =============================================================================
+# Scheduler Job Model (Persistent Job Storage)
+# =============================================================================
+
+
+class SchedulerJobState(str, Enum):
+    """State of a scheduled job."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    MISFIRED = "misfired"
+    PAUSED = "paused"
+
+
+class SchedulerJob(Base, UUIDMixin):
+    """Persistent scheduler job model.
+
+    Stores scheduled jobs for APScheduler with SQLAlchemy backend,
+    enabling job persistence across restarts.
+
+    Features:
+        - Survives process restarts
+        - Supports exponential backoff retries
+        - Tracks execution history
+        - Enables job recovery on startup
+
+    Attributes:
+        id: Unique job identifier (UUID).
+        name: Human-readable job name.
+        func_ref: Reference to the function to execute (module:function).
+        trigger_type: Type of trigger (interval, cron, date).
+        trigger_args: Arguments for the trigger configuration.
+        args: Positional arguments for the function.
+        kwargs: Keyword arguments for the function.
+        next_run_time: Next scheduled execution time.
+        state: Current job state.
+        retry_count: Number of retry attempts.
+        last_run_time: Last execution time.
+        last_error: Last error message.
+        job_metadata: Additional job metadata.
+        created_at: When the job was created.
+        updated_at: Last update timestamp.
+    """
+
+    __tablename__ = "scheduler_jobs"
+
+    __table_args__ = (
+        Index("idx_scheduler_jobs_state", "state"),
+        Index("idx_scheduler_jobs_next_run", "next_run_time"),
+        Index("idx_scheduler_jobs_state_next_run", "state", "next_run_time"),
+    )
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    func_ref: Mapped[str] = mapped_column(String(512), nullable=False)
+    trigger_type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="interval",
+    )
+    trigger_args: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    args: Mapped[list[Any] | None] = mapped_column(JSON, nullable=True)
+    kwargs: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    next_run_time: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+        index=True,
+    )
+    state: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=SchedulerJobState.PENDING.value,
+        index=True,
+    )
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_run_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    job_metadata: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata",
+        JSON,
+        nullable=True,
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+    @property
+    def is_due(self) -> bool:
+        """Check if job is due for execution."""
+        if not self.next_run_time:
+            return False
+        return (
+            self.state in (SchedulerJobState.PENDING.value, SchedulerJobState.MISFIRED.value)
+            and datetime.utcnow() >= self.next_run_time
+        )
+
+    @property
+    def is_running(self) -> bool:
+        """Check if job is currently running."""
+        return self.state == SchedulerJobState.RUNNING.value
+
+    @property
+    def is_completed(self) -> bool:
+        """Check if job has completed successfully."""
+        return self.state == SchedulerJobState.COMPLETED.value
+
+    @property
+    def is_failed(self) -> bool:
+        """Check if job has failed permanently."""
+        return self.state == SchedulerJobState.FAILED.value
+
+    def mark_running(self) -> None:
+        """Mark job as running."""
+        self.state = SchedulerJobState.RUNNING.value
+        self.last_run_time = datetime.utcnow()
+        self.updated_at = datetime.utcnow()
+
+    def mark_completed(self, next_run_time: datetime | None = None) -> None:
+        """Mark job as completed.
+
+        Args:
+            next_run_time: Next scheduled run time (for recurring jobs).
+        """
+        if next_run_time:
+            self.state = SchedulerJobState.PENDING.value
+            self.next_run_time = next_run_time
+        else:
+            self.state = SchedulerJobState.COMPLETED.value
+        self.retry_count = 0
+        self.last_error = None
+        self.updated_at = datetime.utcnow()
+
+    def mark_failed(self, error: str, can_retry: bool = True) -> None:
+        """Mark job as failed.
+
+        Args:
+            error: Error message.
+            can_retry: Whether job can be retried.
+        """
+        self.last_error = error
+        self.updated_at = datetime.utcnow()
+
+        if can_retry:
+            self.state = SchedulerJobState.PENDING.value
+            self.retry_count += 1
+        else:
+            self.state = SchedulerJobState.FAILED.value
+
+    def mark_misfired(self) -> None:
+        """Mark job as misfired."""
+        self.state = SchedulerJobState.MISFIRED.value
+        self.updated_at = datetime.utcnow()
+        if self.job_metadata is None:
+            self.job_metadata = {}
+        self.job_metadata["misfire_count"] = self.job_metadata.get("misfire_count", 0) + 1
+        self.job_metadata["last_misfire_at"] = datetime.utcnow().isoformat()
 
 
 # =============================================================================
@@ -3724,3 +3981,1066 @@ class DriftAlert(Base, UUIDMixin):
         """Resolve this alert."""
         self.status = DriftAlertStatus.RESOLVED.value
         self.resolved_at = datetime.utcnow()
+
+
+# =============================================================================
+# Phase 9: Plugin System Models
+# =============================================================================
+
+
+class PluginType(str, Enum):
+    """Type of plugin."""
+
+    VALIDATOR = "validator"
+    REPORTER = "reporter"
+    CONNECTOR = "connector"
+    TRANSFORMER = "transformer"
+
+
+class PluginStatus(str, Enum):
+    """Installation status of a plugin."""
+
+    AVAILABLE = "available"
+    INSTALLED = "installed"
+    ENABLED = "enabled"
+    DISABLED = "disabled"
+    UPDATE_AVAILABLE = "update_available"
+    ERROR = "error"
+
+
+class PluginSource(str, Enum):
+    """Source of the plugin."""
+
+    OFFICIAL = "official"
+    COMMUNITY = "community"
+    LOCAL = "local"
+    PRIVATE = "private"
+
+
+class SecurityLevel(str, Enum):
+    """Security level of the plugin."""
+
+    TRUSTED = "trusted"
+    VERIFIED = "verified"
+    UNVERIFIED = "unverified"
+    SANDBOXED = "sandboxed"
+
+
+class Plugin(Base, UUIDMixin, TimestampMixin):
+    """Plugin model.
+
+    Represents an installable plugin in the plugin marketplace.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        name: Plugin name (unique identifier).
+        display_name: Human-readable display name.
+        description: Plugin description.
+        version: Current/installed version.
+        latest_version: Latest available version.
+        type: Plugin type (validator, reporter, connector, transformer).
+        source: Plugin source (official, community, local, private).
+        status: Installation status.
+        security_level: Security verification level.
+        author: Author information (JSON).
+        license: License identifier.
+        homepage: Plugin homepage URL.
+        repository: Repository URL.
+        keywords: Search keywords (JSON array).
+        categories: Plugin categories (JSON array).
+        dependencies: Plugin dependencies (JSON array).
+        permissions: Required permissions (JSON array).
+        python_version: Required Python version.
+        dashboard_version: Required dashboard version.
+        icon_url: Plugin icon URL.
+        banner_url: Plugin banner URL.
+        documentation_url: Documentation URL.
+        changelog: Changelog markdown.
+        readme: README markdown.
+        package_url: URL to download plugin package.
+        signature: Plugin signature info (JSON).
+        sandbox_config: Sandbox configuration (JSON).
+        is_enabled: Whether plugin is enabled.
+        install_count: Total installation count.
+        rating: Average rating (1-5).
+        rating_count: Number of ratings.
+        validators_count: Number of validators provided.
+        reporters_count: Number of reporters provided.
+        installed_at: When plugin was installed.
+        last_updated: When plugin was last updated.
+    """
+
+    __tablename__ = "plugins"
+
+    __table_args__ = (
+        Index("idx_plugins_name", "name", unique=True),
+        Index("idx_plugins_type", "type"),
+        Index("idx_plugins_source", "source"),
+        Index("idx_plugins_status", "status"),
+    )
+
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    version: Mapped[str] = mapped_column(String(50), nullable=False)
+    latest_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    type: Mapped[str] = mapped_column(
+        SQLEnum(PluginType, native_enum=False, length=20),
+        nullable=False,
+        index=True,
+    )
+    source: Mapped[str] = mapped_column(
+        SQLEnum(PluginSource, native_enum=False, length=20),
+        nullable=False,
+        default=PluginSource.COMMUNITY.value,
+    )
+    status: Mapped[str] = mapped_column(
+        SQLEnum(PluginStatus, native_enum=False, length=20),
+        nullable=False,
+        default=PluginStatus.AVAILABLE.value,
+        index=True,
+    )
+    security_level: Mapped[str] = mapped_column(
+        SQLEnum(SecurityLevel, native_enum=False, length=20),
+        nullable=False,
+        default=SecurityLevel.UNVERIFIED.value,
+    )
+    author: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    license: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    homepage: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    repository: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    keywords: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    categories: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    dependencies: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
+    permissions: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    python_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    dashboard_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    icon_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    banner_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    documentation_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    changelog: Mapped[str | None] = mapped_column(Text, nullable=True)
+    readme: Mapped[str | None] = mapped_column(Text, nullable=True)
+    package_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    signature: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    sandbox_config: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    install_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    rating: Mapped[float | None] = mapped_column(Float, nullable=True)
+    rating_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    validators_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    reporters_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    installed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_updated: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # Relationships
+    custom_validators: Mapped[list["CustomValidator"]] = relationship(
+        "CustomValidator",
+        back_populates="plugin",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    custom_reporters: Mapped[list["CustomReporter"]] = relationship(
+        "CustomReporter",
+        back_populates="plugin",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    ratings: Mapped[list["PluginRating"]] = relationship(
+        "PluginRating",
+        back_populates="plugin",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    signatures: Mapped[list["PluginSignature"]] = relationship(
+        "PluginSignature",
+        back_populates="plugin",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    hot_reload_config: Mapped["HotReloadConfig | None"] = relationship(
+        "HotReloadConfig",
+        back_populates="plugin",
+        cascade="all, delete-orphan",
+        uselist=False,
+        lazy="selectin",
+    )
+    hooks: Mapped[list["PluginHook"]] = relationship(
+        "PluginHook",
+        back_populates="plugin",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    def install(self) -> None:
+        """Mark plugin as installed."""
+        self.status = PluginStatus.INSTALLED.value
+        self.installed_at = datetime.utcnow()
+        self.install_count += 1
+
+    def enable(self) -> None:
+        """Enable the plugin."""
+        self.status = PluginStatus.ENABLED.value
+        self.is_enabled = True
+
+    def disable(self) -> None:
+        """Disable the plugin."""
+        self.status = PluginStatus.DISABLED.value
+        self.is_enabled = False
+
+    def uninstall(self) -> None:
+        """Mark plugin as available (uninstalled)."""
+        self.status = PluginStatus.AVAILABLE.value
+        self.is_enabled = False
+        self.installed_at = None
+
+    def update_rating(self, new_rating: float) -> None:
+        """Update average rating with a new rating."""
+        if self.rating is None:
+            self.rating = new_rating
+        else:
+            total = self.rating * self.rating_count + new_rating
+            self.rating = total / (self.rating_count + 1)
+        self.rating_count += 1
+
+
+class CustomValidator(Base, UUIDMixin, TimestampMixin):
+    """Custom validator model.
+
+    Represents a user-defined validator that can be used for data validation.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        plugin_id: Optional reference to parent plugin.
+        name: Validator name (unique).
+        display_name: Human-readable display name.
+        description: Validator description.
+        category: Validator category.
+        severity: Default severity (error, warning, info).
+        tags: Search/filter tags (JSON array).
+        parameters: Parameter definitions (JSON array).
+        code: Python code implementing the validator.
+        test_cases: Test cases for validation (JSON array).
+        is_enabled: Whether validator is enabled.
+        is_verified: Whether validator is security-verified.
+        usage_count: Number of times validator has been used.
+        last_used_at: When validator was last used.
+    """
+
+    __tablename__ = "custom_validators"
+
+    __table_args__ = (
+        Index("idx_custom_validators_name", "name", unique=True),
+        Index("idx_custom_validators_plugin", "plugin_id"),
+        Index("idx_custom_validators_category", "category"),
+    )
+
+    plugin_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("plugins.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    severity: Mapped[str] = mapped_column(String(20), nullable=False, default="error")
+    tags: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    parameters: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
+    code: Mapped[str] = mapped_column(Text, nullable=False)
+    test_cases: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
+    is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    usage_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # Relationships
+    plugin: Mapped[Plugin | None] = relationship(
+        "Plugin",
+        back_populates="custom_validators",
+    )
+
+    def increment_usage(self) -> None:
+        """Increment usage count and update last used timestamp."""
+        self.usage_count += 1
+        self.last_used_at = datetime.utcnow()
+
+
+class CustomReporter(Base, UUIDMixin, TimestampMixin):
+    """Custom reporter model.
+
+    Represents a user-defined reporter for generating custom reports.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        plugin_id: Optional reference to parent plugin.
+        name: Reporter name (unique).
+        display_name: Human-readable display name.
+        description: Reporter description.
+        output_formats: Supported output formats (JSON array).
+        config_fields: Configuration field definitions (JSON array).
+        template: Jinja2 template for HTML/text reports.
+        code: Python code for custom report generation.
+        preview_image_url: Preview image URL.
+        is_enabled: Whether reporter is enabled.
+        is_verified: Whether reporter is security-verified.
+        usage_count: Number of times reporter has been used.
+    """
+
+    __tablename__ = "custom_reporters"
+
+    __table_args__ = (
+        Index("idx_custom_reporters_name", "name", unique=True),
+        Index("idx_custom_reporters_plugin", "plugin_id"),
+    )
+
+    plugin_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("plugins.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    output_formats: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    config_fields: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
+    template: Mapped[str | None] = mapped_column(Text, nullable=True)
+    code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    preview_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    usage_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Relationships
+    plugin: Mapped[Plugin | None] = relationship(
+        "Plugin",
+        back_populates="custom_reporters",
+    )
+
+    def increment_usage(self) -> None:
+        """Increment usage count."""
+        self.usage_count += 1
+
+
+class ReportFormatType(str, Enum):
+    """Report output format types."""
+
+    HTML = "html"
+    PDF = "pdf"
+    CSV = "csv"
+    JSON = "json"
+    MARKDOWN = "markdown"
+    JUNIT = "junit"
+    EXCEL = "excel"
+    CUSTOM = "custom"
+
+
+class ReportStatus(str, Enum):
+    """Status of report generation."""
+
+    PENDING = "pending"
+    GENERATING = "generating"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    EXPIRED = "expired"
+
+
+class GeneratedReport(Base, UUIDMixin, TimestampMixin):
+    """Generated report history model.
+
+    Stores metadata and content of generated reports for history tracking,
+    caching, and audit purposes.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        validation_id: Reference to the validation run.
+        source_id: Reference to the data source.
+        reporter_id: Optional reference to custom reporter used.
+        name: Human-readable report name.
+        description: Optional description.
+        format: Report output format (html, pdf, csv, etc.).
+        theme: Theme used for HTML/PDF reports.
+        locale: Language locale used.
+        status: Generation status.
+        file_path: Path to stored report file (if persisted).
+        file_size: Size of the report file in bytes.
+        content_hash: Hash of report content for deduplication.
+        config: Configuration used for generation (JSON).
+        metadata: Additional metadata (JSON).
+        error_message: Error message if generation failed.
+        generation_time_ms: Time taken to generate in milliseconds.
+        expires_at: When the report expires and can be cleaned up.
+        downloaded_count: Number of times the report was downloaded.
+        last_downloaded_at: Last download timestamp.
+    """
+
+    __tablename__ = "generated_reports"
+
+    __table_args__ = (
+        Index("idx_generated_reports_validation", "validation_id"),
+        Index("idx_generated_reports_source", "source_id"),
+        Index("idx_generated_reports_reporter", "reporter_id"),
+        Index("idx_generated_reports_status", "status"),
+        Index("idx_generated_reports_format", "format"),
+        Index("idx_generated_reports_created", "created_at"),
+        Index("idx_generated_reports_expires", "expires_at"),
+    )
+
+    validation_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("validations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    source_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("sources.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    reporter_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("custom_reporters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    format: Mapped[str] = mapped_column(
+        SQLEnum(ReportFormatType), nullable=False, default=ReportFormatType.HTML
+    )
+    theme: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    locale: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
+    status: Mapped[str] = mapped_column(
+        SQLEnum(ReportStatus), nullable=False, default=ReportStatus.PENDING
+    )
+    file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    config: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    report_metadata: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata", JSON, nullable=True
+    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    generation_time_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    downloaded_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_downloaded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # Relationships
+    validation: Mapped["Validation | None"] = relationship(
+        "Validation",
+        back_populates="generated_reports",
+    )
+    source: Mapped["Source | None"] = relationship(
+        "Source",
+        back_populates="generated_reports",
+    )
+    reporter: Mapped[CustomReporter | None] = relationship(
+        "CustomReporter",
+        backref="generated_reports",
+    )
+
+    def increment_download(self) -> None:
+        """Increment download count and update last download timestamp."""
+        self.downloaded_count += 1
+        self.last_downloaded_at = datetime.utcnow()
+
+    def mark_completed(self, file_path: str, file_size: int, generation_time_ms: float) -> None:
+        """Mark report as completed."""
+        self.status = ReportStatus.COMPLETED
+        self.file_path = file_path
+        self.file_size = file_size
+        self.generation_time_ms = generation_time_ms
+
+    def mark_failed(self, error_message: str) -> None:
+        """Mark report as failed."""
+        self.status = ReportStatus.FAILED
+        self.error_message = error_message
+
+    def is_expired(self) -> bool:
+        """Check if report has expired."""
+        if self.expires_at is None:
+            return False
+        return datetime.utcnow() > self.expires_at
+
+
+class PluginRating(Base, UUIDMixin, TimestampMixin):
+    """Plugin rating model.
+
+    Stores user ratings and reviews for plugins.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        plugin_id: Reference to Plugin.
+        user_id: User identifier (could be from auth system).
+        rating: Rating value (1-5).
+        review: Optional review text.
+    """
+
+    __tablename__ = "plugin_ratings"
+
+    __table_args__ = (
+        Index("idx_plugin_ratings_plugin", "plugin_id"),
+        Index("idx_plugin_ratings_user", "user_id"),
+    )
+
+    plugin_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("plugins.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    review: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Relationships
+    plugin: Mapped[Plugin] = relationship(
+        "Plugin",
+        back_populates="ratings",
+    )
+
+
+class PluginExecutionLog(Base, UUIDMixin):
+    """Plugin execution log model.
+
+    Tracks plugin executions for monitoring and debugging.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        plugin_id: Reference to Plugin.
+        validator_id: Optional reference to CustomValidator.
+        reporter_id: Optional reference to CustomReporter.
+        execution_id: Unique execution identifier.
+        source_id: Optional reference to data source.
+        status: Execution status (pending, running, success, failed, error).
+        execution_time_ms: Execution duration in milliseconds.
+        memory_used_mb: Memory used in MB.
+        result: Execution result (JSON).
+        error_message: Error message if failed.
+        logs: Execution logs (JSON array).
+        started_at: When execution started.
+        completed_at: When execution completed.
+    """
+
+    __tablename__ = "plugin_execution_logs"
+
+    __table_args__ = (
+        Index("idx_plugin_exec_logs_plugin", "plugin_id", "started_at"),
+        Index("idx_plugin_exec_logs_status", "status"),
+    )
+
+    plugin_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("plugins.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    validator_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("custom_validators.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    reporter_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("custom_reporters.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    execution_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    source_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("sources.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    execution_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    memory_used_mb: Mapped[float | None] = mapped_column(Float, nullable=True)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    logs: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    def mark_started(self) -> None:
+        """Mark execution as started."""
+        self.status = "running"
+        self.started_at = datetime.utcnow()
+
+    def mark_completed(
+        self,
+        result: dict[str, Any] | None = None,
+        memory_used_mb: float | None = None,
+    ) -> None:
+        """Mark execution as completed."""
+        self.status = "success"
+        self.result = result
+        self.memory_used_mb = memory_used_mb
+        self.completed_at = datetime.utcnow()
+        if self.started_at:
+            delta = self.completed_at - self.started_at
+            self.execution_time_ms = int(delta.total_seconds() * 1000)
+
+    def mark_failed(self, error_message: str) -> None:
+        """Mark execution as failed."""
+        self.status = "failed"
+        self.error_message = error_message
+        self.completed_at = datetime.utcnow()
+        if self.started_at:
+            delta = self.completed_at - self.started_at
+            self.execution_time_ms = int(delta.total_seconds() * 1000)
+
+
+# =============================================================================
+# Phase 9: Trust Store and Security Models
+# =============================================================================
+
+
+class SignatureAlgorithmType(str, Enum):
+    """Supported signature algorithms."""
+
+    HMAC_SHA256 = "hmac_sha256"
+    HMAC_SHA512 = "hmac_sha512"
+    RSA_SHA256 = "rsa_sha256"
+    ED25519 = "ed25519"
+
+
+class TrustLevelType(str, Enum):
+    """Trust levels for signers."""
+
+    TRUSTED = "trusted"
+    VERIFIED = "verified"
+    UNVERIFIED = "unverified"
+    REVOKED = "revoked"
+
+
+class IsolationLevelType(str, Enum):
+    """Sandbox isolation levels."""
+
+    NONE = "none"
+    PROCESS = "process"
+    CONTAINER = "container"
+
+
+class TrustedSigner(Base, UUIDMixin, TimestampMixin):
+    """Trusted signer model for plugin signature verification.
+
+    Represents a trusted entity that can sign plugins.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        signer_id: Unique signer identifier (e.g., email, domain).
+        name: Display name of the signer.
+        organization: Organization name.
+        email: Contact email.
+        public_key: PEM-encoded public key.
+        algorithm: Signature algorithm used.
+        fingerprint: Key fingerprint for quick identification.
+        trust_level: Current trust level.
+        plugins_signed: Count of plugins signed.
+        expires_at: When the trust expires.
+        revoked_at: When the signer was revoked.
+        revocation_reason: Reason for revocation.
+        metadata: Additional signer metadata (JSON).
+    """
+
+    __tablename__ = "trusted_signers"
+
+    __table_args__ = (
+        Index("idx_trusted_signers_signer_id", "signer_id", unique=True),
+        Index("idx_trusted_signers_fingerprint", "fingerprint"),
+        Index("idx_trusted_signers_trust_level", "trust_level"),
+    )
+
+    signer_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    organization: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    public_key: Mapped[str] = mapped_column(Text, nullable=False)
+    algorithm: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=SignatureAlgorithmType.ED25519.value,
+    )
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    trust_level: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=TrustLevelType.VERIFIED.value,
+    )
+    plugins_signed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    revocation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    signer_metadata: Mapped[dict[str, Any]] = mapped_column(
+        "metadata", JSON, nullable=False, default=dict
+    )
+
+    def is_valid(self) -> bool:
+        """Check if the signer is currently valid."""
+        if self.trust_level == TrustLevelType.REVOKED.value:
+            return False
+        if self.revoked_at is not None:
+            return False
+        if self.expires_at and self.expires_at < datetime.utcnow():
+            return False
+        return True
+
+    def revoke(self, reason: str) -> None:
+        """Revoke this signer."""
+        self.trust_level = TrustLevelType.REVOKED.value
+        self.revoked_at = datetime.utcnow()
+        self.revocation_reason = reason
+
+    def increment_signed_count(self) -> None:
+        """Increment the plugins signed count."""
+        self.plugins_signed += 1
+
+
+class SecurityPolicy(Base, UUIDMixin, TimestampMixin):
+    """Security policy model for plugin execution.
+
+    Defines security policies for plugin sandbox execution.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        name: Policy name.
+        description: Policy description.
+        is_default: Whether this is the default policy.
+        is_active: Whether the policy is active.
+        isolation_level: Sandbox isolation level.
+        memory_limit_mb: Maximum memory in MB.
+        cpu_time_limit_sec: Maximum CPU time in seconds.
+        wall_time_limit_sec: Maximum wall clock time in seconds.
+        network_enabled: Whether network access is allowed.
+        file_read_enabled: Whether file read is allowed.
+        file_write_enabled: Whether file write is allowed.
+        allowed_modules: List of allowed Python modules.
+        blocked_modules: List of blocked Python modules.
+        allowed_builtins: List of allowed Python builtins.
+        require_signature: Whether plugin signature is required.
+        min_trust_level: Minimum trust level required.
+        max_processes: Maximum number of processes.
+        container_image: Docker image for container isolation.
+        extra_options: Additional sandbox options (JSON).
+    """
+
+    __tablename__ = "security_policies"
+
+    __table_args__ = (
+        Index("idx_security_policies_name", "name", unique=True),
+        Index("idx_security_policies_default", "is_default"),
+    )
+
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    isolation_level: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=IsolationLevelType.PROCESS.value,
+    )
+    memory_limit_mb: Mapped[int] = mapped_column(Integer, nullable=False, default=256)
+    cpu_time_limit_sec: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+    wall_time_limit_sec: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
+    network_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    file_read_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    file_write_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    allowed_modules: Mapped[list[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=lambda: [
+            "math", "statistics", "decimal", "fractions",
+            "random", "re", "json", "datetime",
+            "collections", "itertools", "functools",
+            "operator", "string", "typing", "dataclasses",
+        ],
+    )
+    blocked_modules: Mapped[list[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=lambda: [
+            "os", "sys", "subprocess", "socket", "shutil",
+            "importlib", "ctypes", "multiprocessing",
+        ],
+    )
+    allowed_builtins: Mapped[list[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=lambda: [
+            "abs", "all", "any", "ascii", "bin", "bool", "chr",
+            "dict", "divmod", "enumerate", "filter", "float",
+            "format", "frozenset", "getattr", "hasattr", "hash",
+            "hex", "int", "isinstance", "issubclass", "iter",
+            "len", "list", "map", "max", "min", "next", "oct",
+            "ord", "pow", "print", "range", "repr", "reversed",
+            "round", "set", "slice", "sorted", "str", "sum",
+            "tuple", "type", "zip",
+        ],
+    )
+    require_signature: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    min_trust_level: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=TrustLevelType.UNVERIFIED.value,
+    )
+    max_processes: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    container_image: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        default="python:3.11-slim",
+    )
+    extra_options: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+
+    @classmethod
+    def get_preset(cls, preset_name: str) -> "SecurityPolicy":
+        """Create a security policy from a preset.
+
+        Args:
+            preset_name: Name of the preset (development, testing, standard, enterprise, strict).
+
+        Returns:
+            SecurityPolicy with preset configuration.
+        """
+        presets = {
+            "development": {
+                "isolation_level": IsolationLevelType.NONE.value,
+                "network_enabled": True,
+                "file_read_enabled": True,
+                "file_write_enabled": True,
+                "require_signature": False,
+                "memory_limit_mb": 1024,
+                "wall_time_limit_sec": 300,
+            },
+            "testing": {
+                "isolation_level": IsolationLevelType.PROCESS.value,
+                "network_enabled": True,
+                "file_read_enabled": True,
+                "file_write_enabled": False,
+                "require_signature": False,
+                "memory_limit_mb": 512,
+                "wall_time_limit_sec": 120,
+            },
+            "standard": {
+                "isolation_level": IsolationLevelType.PROCESS.value,
+                "network_enabled": False,
+                "file_read_enabled": True,
+                "file_write_enabled": False,
+                "require_signature": False,
+                "min_trust_level": TrustLevelType.VERIFIED.value,
+                "memory_limit_mb": 256,
+                "wall_time_limit_sec": 60,
+            },
+            "enterprise": {
+                "isolation_level": IsolationLevelType.PROCESS.value,
+                "network_enabled": False,
+                "file_read_enabled": True,
+                "file_write_enabled": False,
+                "require_signature": True,
+                "min_trust_level": TrustLevelType.TRUSTED.value,
+                "memory_limit_mb": 512,
+                "wall_time_limit_sec": 120,
+            },
+            "strict": {
+                "isolation_level": IsolationLevelType.CONTAINER.value,
+                "network_enabled": False,
+                "file_read_enabled": False,
+                "file_write_enabled": False,
+                "require_signature": True,
+                "min_trust_level": TrustLevelType.TRUSTED.value,
+                "memory_limit_mb": 128,
+                "wall_time_limit_sec": 30,
+            },
+        }
+
+        config = presets.get(preset_name, presets["standard"])
+        return cls(
+            name=preset_name,
+            description=f"{preset_name.capitalize()} security policy preset",
+            **config,
+        )
+
+
+class PluginSignature(Base, UUIDMixin, TimestampMixin):
+    """Plugin signature model.
+
+    Stores signature information for verified plugins.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        plugin_id: Reference to Plugin.
+        signer_id: Reference to TrustedSigner.
+        algorithm: Signature algorithm used.
+        signature: Base64-encoded signature.
+        signed_hash: Hash of the signed content.
+        signed_at: When the signature was created.
+        verified_at: When the signature was last verified.
+        is_valid: Whether the signature is currently valid.
+        metadata: Additional signature metadata.
+    """
+
+    __tablename__ = "plugin_signatures"
+
+    __table_args__ = (
+        Index("idx_plugin_signatures_plugin", "plugin_id"),
+        Index("idx_plugin_signatures_signer", "signer_id"),
+    )
+
+    plugin_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("plugins.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    signer_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("trusted_signers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    algorithm: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=SignatureAlgorithmType.ED25519.value,
+    )
+    signature: Mapped[str] = mapped_column(Text, nullable=False)
+    signed_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    signed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    is_valid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    signature_metadata: Mapped[dict[str, Any]] = mapped_column(
+        "metadata", JSON, nullable=False, default=dict
+    )
+
+    # Relationships
+    plugin: Mapped["Plugin"] = relationship("Plugin", back_populates="signatures")
+    signer: Mapped["TrustedSigner"] = relationship("TrustedSigner")
+
+    def mark_verified(self) -> None:
+        """Mark the signature as verified."""
+        self.verified_at = datetime.utcnow()
+        self.is_valid = True
+
+    def invalidate(self) -> None:
+        """Invalidate the signature."""
+        self.is_valid = False
+
+
+class HotReloadConfig(Base, UUIDMixin, TimestampMixin):
+    """Hot reload configuration model.
+
+    Stores hot reload settings for plugins.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        plugin_id: Reference to Plugin.
+        enabled: Whether hot reload is enabled.
+        watch_paths: Paths to watch for changes (JSON array).
+        debounce_ms: Debounce time in milliseconds.
+        reload_strategy: Reload strategy (graceful, immediate, scheduled).
+        max_reload_attempts: Maximum reload attempts before disabling.
+        backup_on_reload: Whether to backup before reload.
+        last_reload_at: When the last reload occurred.
+        reload_count: Total reload count.
+        last_error: Last error message.
+    """
+
+    __tablename__ = "hot_reload_configs"
+
+    __table_args__ = (
+        Index("idx_hot_reload_configs_plugin", "plugin_id", unique=True),
+    )
+
+    plugin_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("plugins.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    watch_paths: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    debounce_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=500)
+    reload_strategy: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="graceful",
+    )
+    max_reload_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    backup_on_reload: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    last_reload_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    reload_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Relationships
+    plugin: Mapped["Plugin"] = relationship("Plugin", back_populates="hot_reload_config")
+
+    def record_reload(self, success: bool = True, error: str | None = None) -> None:
+        """Record a reload attempt."""
+        self.last_reload_at = datetime.utcnow()
+        self.reload_count += 1
+        if not success:
+            self.last_error = error
+
+
+class PluginHook(Base, UUIDMixin, TimestampMixin):
+    """Plugin hook registration model.
+
+    Stores registered hooks for plugins.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        plugin_id: Reference to Plugin.
+        hook_type: Type of hook (pre_validation, post_validation, etc.).
+        callback_name: Name of the callback function.
+        priority: Hook priority (lower runs first).
+        enabled: Whether the hook is enabled.
+        last_triggered_at: When the hook was last triggered.
+        trigger_count: Total trigger count.
+        total_execution_ms: Total execution time in ms.
+        last_error: Last error message.
+    """
+
+    __tablename__ = "plugin_hooks"
+
+    __table_args__ = (
+        Index("idx_plugin_hooks_plugin", "plugin_id"),
+        Index("idx_plugin_hooks_type", "hook_type"),
+        Index("idx_plugin_hooks_priority", "priority"),
+    )
+
+    plugin_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("plugins.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    hook_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    callback_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    last_triggered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    trigger_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_execution_ms: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Relationships
+    plugin: Mapped["Plugin"] = relationship("Plugin", back_populates="hooks")
+
+    @property
+    def average_execution_ms(self) -> float:
+        """Calculate average execution time."""
+        if self.trigger_count == 0:
+            return 0
+        return self.total_execution_ms / self.trigger_count
+
+    def record_trigger(self, execution_ms: float, error: str | None = None) -> None:
+        """Record a hook trigger."""
+        self.last_triggered_at = datetime.utcnow()
+        self.trigger_count += 1
+        self.total_execution_ms += execution_ms
+        if error:
+            self.last_error = error

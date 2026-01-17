@@ -46,7 +46,11 @@ from truthound_dashboard.config import get_settings
 from truthound_dashboard.core.cache import get_cache
 from truthound_dashboard.core.logging import setup_logging
 from truthound_dashboard.core.maintenance import get_maintenance_manager
+from truthound_dashboard.core.notifications.escalation.scheduler import (
+    get_escalation_scheduler,
+)
 from truthound_dashboard.core.scheduler import get_scheduler
+from truthound_dashboard.core.websocket import get_websocket_manager
 from truthound_dashboard.db import init_db
 
 logger = logging.getLogger(__name__)
@@ -94,6 +98,16 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     await scheduler.start()
     logger.info("Validation scheduler started")
 
+    # Start escalation scheduler
+    escalation_scheduler = get_escalation_scheduler()
+    await escalation_scheduler.start()
+    logger.info("Escalation scheduler started")
+
+    # Start WebSocket manager
+    ws_manager = get_websocket_manager()
+    await ws_manager.start()
+    logger.info("WebSocket manager started")
+
     # Register maintenance tasks with scheduler
     _register_maintenance_tasks()
 
@@ -101,6 +115,14 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Shutdown
     logger.info("Shutting down Truthound Dashboard")
+
+    # Stop WebSocket manager
+    await ws_manager.stop()
+    logger.info("WebSocket manager stopped")
+
+    # Stop escalation scheduler
+    await escalation_scheduler.stop()
+    logger.info("Escalation scheduler stopped")
 
     # Stop scheduler
     await scheduler.stop()

@@ -5,16 +5,21 @@ notification dispatch on failures, plus scheduled database maintenance.
 
 The scheduler:
 1. Runs scheduled validations based on flexible trigger types
-2. Supports cron, interval, data change, composite, and event triggers
+2. Supports cron, interval, data change, composite, event, and webhook triggers
 3. Triggers notifications on validation failures
 4. Updates schedule run timestamps
 5. Runs periodic database maintenance (cleanup, vacuum)
+6. Provides per-schedule check intervals and priority-based evaluation
+7. Supports webhook triggers from external data pipelines
 """
 
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import logging
+import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -46,8 +51,15 @@ class ValidationScheduler:
     - Composite: Combined triggers with AND/OR logic
     - Event: Response to system events
     - Manual: API-only execution
+    - Webhook: External webhook triggers
 
     Also manages scheduled database maintenance tasks.
+
+    Features:
+    - Per-schedule check intervals (overrides global default)
+    - Priority-based trigger evaluation (1=highest, 10=lowest)
+    - Cooldown support to prevent rapid re-triggering
+    - Trigger monitoring and status tracking
 
     Usage:
         scheduler = ValidationScheduler()
@@ -60,8 +72,10 @@ class ValidationScheduler:
     DEFAULT_MAINTENANCE_CRON = "0 3 * * *"
     # Alternative: run maintenance every 24 hours
     MAINTENANCE_INTERVAL_HOURS = 24
-    # Data change trigger check interval
-    DATA_CHANGE_CHECK_INTERVAL_SECONDS = 300  # 5 minutes
+    # Data change trigger check interval (base interval for checker loop)
+    DATA_CHANGE_CHECK_INTERVAL_SECONDS = 60  # 1 minute (reduced for better responsiveness)
+    # Default per-schedule check interval
+    DEFAULT_SCHEDULE_CHECK_INTERVAL_MINUTES = 5
 
     def __init__(
         self,
@@ -76,8 +90,8 @@ class ValidationScheduler:
             maintenance_enabled: Whether to enable scheduled maintenance.
             maintenance_cron: Cron expression for maintenance schedule.
                 Defaults to daily at 3:00 AM.
-            data_change_check_interval: Interval in seconds for checking
-                data change triggers. Defaults to 5 minutes.
+            data_change_check_interval: Interval in seconds for the checker loop.
+                Individual schedules can have their own check intervals.
         """
         self._scheduler = AsyncIOScheduler()
         self._jobs: dict[str, str] = {}  # schedule_id -> job_id mapping
@@ -88,6 +102,14 @@ class ValidationScheduler:
         self._data_change_check_interval = (
             data_change_check_interval or self.DATA_CHANGE_CHECK_INTERVAL_SECONDS
         )
+
+        # Trigger monitoring state
+        self._trigger_check_times: dict[str, datetime] = {}  # schedule_id -> last_check_at
+        self._trigger_trigger_times: dict[str, datetime] = {}  # schedule_id -> last_triggered_at
+        self._trigger_check_counts: dict[str, int] = {}  # schedule_id -> check_count
+        self._trigger_trigger_counts: dict[str, int] = {}  # schedule_id -> trigger_count
+        self._last_checker_run: datetime | None = None
+        self._checker_running = False
 
     async def start(self) -> None:
         """Start the scheduler and load existing schedules."""
@@ -483,33 +505,154 @@ class ValidationScheduler:
 
         This runs periodically to evaluate triggers that can't be
         handled by APScheduler's built-in triggers.
+
+        Features:
+        - Per-schedule check intervals (respects check_interval_minutes)
+        - Priority-based evaluation (lower priority number = higher priority)
+        - Cooldown support (prevents rapid re-triggering)
         """
+        self._checker_running = True
+        self._last_checker_run = datetime.utcnow()
         logger.debug("Checking data change triggers")
 
-        async with get_session() as session:
-            from sqlalchemy import select
+        try:
+            async with get_session() as session:
+                from sqlalchemy import select
 
-            # Get schedules with data change or composite triggers
-            result = await session.execute(
-                select(Schedule)
-                .where(Schedule.is_active == True)
-                .where(
-                    Schedule.trigger_type.in_([
-                        TriggerType.DATA_CHANGE.value,
-                        TriggerType.COMPOSITE.value,
-                    ])
+                # Get schedules with data change or composite triggers
+                result = await session.execute(
+                    select(Schedule)
+                    .where(Schedule.is_active == True)
+                    .where(
+                        Schedule.trigger_type.in_([
+                            TriggerType.DATA_CHANGE.value,
+                            TriggerType.COMPOSITE.value,
+                        ])
+                    )
                 )
-            )
-            schedules = result.scalars().all()
+                schedules = result.scalars().all()
 
-            if not schedules:
-                logger.debug("No data change/composite schedules to check")
-                return
+                if not schedules:
+                    logger.debug("No data change/composite schedules to check")
+                    return
 
-            logger.info(f"Checking {len(schedules)} data change/composite schedules")
+                # Filter schedules that are due for checking
+                now = datetime.utcnow()
+                schedules_to_check = []
 
-            for schedule in schedules:
-                await self._evaluate_and_run_if_needed(session, schedule)
+                for schedule in schedules:
+                    if self._is_schedule_due_for_check(schedule, now):
+                        schedules_to_check.append(schedule)
+
+                if not schedules_to_check:
+                    logger.debug("No schedules due for check")
+                    return
+
+                # Sort by priority (lower number = higher priority)
+                schedules_to_check.sort(
+                    key=lambda s: self._get_schedule_priority(s)
+                )
+
+                logger.info(
+                    f"Checking {len(schedules_to_check)}/{len(schedules)} "
+                    "data change/composite schedules (sorted by priority)"
+                )
+
+                for schedule in schedules_to_check:
+                    await self._evaluate_and_run_if_needed(session, schedule)
+        finally:
+            self._checker_running = False
+
+    def _is_schedule_due_for_check(self, schedule: Schedule, now: datetime) -> bool:
+        """Check if a schedule is due for evaluation.
+
+        Args:
+            schedule: Schedule to check.
+            now: Current timestamp.
+
+        Returns:
+            True if schedule should be checked.
+        """
+        schedule_id = schedule.id
+        last_check = self._trigger_check_times.get(schedule_id)
+
+        # First check - always due
+        if last_check is None:
+            return True
+
+        # Get per-schedule check interval
+        config = schedule.trigger_config or {}
+        check_interval_minutes = config.get(
+            "check_interval_minutes",
+            self.DEFAULT_SCHEDULE_CHECK_INTERVAL_MINUTES
+        )
+
+        # Calculate if due
+        next_check = last_check + timedelta(minutes=check_interval_minutes)
+        return now >= next_check
+
+    def _get_schedule_priority(self, schedule: Schedule) -> int:
+        """Get priority for a schedule (lower = higher priority).
+
+        Args:
+            schedule: Schedule to get priority for.
+
+        Returns:
+            Priority value (1-10, default 5).
+        """
+        config = schedule.trigger_config or {}
+        return config.get("priority", 5)
+
+    def _is_in_cooldown(self, schedule: Schedule, now: datetime) -> bool:
+        """Check if schedule is in cooldown period.
+
+        Args:
+            schedule: Schedule to check.
+            now: Current timestamp.
+
+        Returns:
+            True if in cooldown.
+        """
+        schedule_id = schedule.id
+        last_triggered = self._trigger_trigger_times.get(schedule_id)
+
+        if last_triggered is None:
+            return False
+
+        config = schedule.trigger_config or {}
+        cooldown_minutes = config.get("cooldown_minutes", 15)
+
+        if cooldown_minutes <= 0:
+            return False
+
+        cooldown_end = last_triggered + timedelta(minutes=cooldown_minutes)
+        return now < cooldown_end
+
+    def _get_cooldown_remaining(self, schedule: Schedule, now: datetime) -> int:
+        """Get remaining cooldown time in seconds.
+
+        Args:
+            schedule: Schedule to check.
+            now: Current timestamp.
+
+        Returns:
+            Remaining cooldown seconds (0 if not in cooldown).
+        """
+        schedule_id = schedule.id
+        last_triggered = self._trigger_trigger_times.get(schedule_id)
+
+        if last_triggered is None:
+            return 0
+
+        config = schedule.trigger_config or {}
+        cooldown_minutes = config.get("cooldown_minutes", 15)
+
+        if cooldown_minutes <= 0:
+            return 0
+
+        cooldown_end = last_triggered + timedelta(minutes=cooldown_minutes)
+        remaining = (cooldown_end - now).total_seconds()
+        return max(0, int(remaining))
 
     async def _evaluate_and_run_if_needed(
         self, session: Any, schedule: Schedule
@@ -520,12 +663,35 @@ class ValidationScheduler:
             session: Database session.
             schedule: Schedule to evaluate.
         """
+        schedule_id = schedule.id
+        now = datetime.utcnow()
+
+        # Update check tracking
+        self._trigger_check_times[schedule_id] = now
+        self._trigger_check_counts[schedule_id] = (
+            self._trigger_check_counts.get(schedule_id, 0) + 1
+        )
+
         try:
+            # Check cooldown first
+            if self._is_in_cooldown(schedule, now):
+                remaining = self._get_cooldown_remaining(schedule, now)
+                logger.debug(
+                    f"Schedule {schedule.name} in cooldown ({remaining}s remaining)"
+                )
+                return
+
             # Get profile data for data change triggers
             profile_data = None
             baseline_profile = None
 
             if schedule.trigger_type == TriggerType.DATA_CHANGE.value:
+                # Check if auto_profile is enabled
+                config = schedule.trigger_config or {}
+                if config.get("auto_profile", True):
+                    # Run a fresh profile before comparison
+                    await self._run_profile_if_needed(session, schedule.source_id)
+
                 profile_data, baseline_profile = await self._get_profile_data(
                     session, schedule.source_id
                 )
@@ -544,6 +710,11 @@ class ValidationScheduler:
                 logger.info(
                     f"Trigger fired for schedule {schedule.name}: {evaluation.reason}"
                 )
+                # Update trigger tracking
+                self._trigger_trigger_times[schedule_id] = now
+                self._trigger_trigger_counts[schedule_id] = (
+                    self._trigger_trigger_counts.get(schedule_id, 0) + 1
+                )
                 # Run validation in background
                 asyncio.create_task(self._run_validation(schedule.id))
             else:
@@ -555,6 +726,49 @@ class ValidationScheduler:
 
         except Exception as e:
             logger.error(f"Error evaluating schedule {schedule.id}: {e}")
+
+    async def _run_profile_if_needed(
+        self, session: Any, source_id: str
+    ) -> None:
+        """Run a profile for a source if needed for data change detection.
+
+        Args:
+            session: Database session.
+            source_id: Source ID to profile.
+        """
+        from sqlalchemy import select
+        from truthound_dashboard.db import Profile
+
+        try:
+            # Check if we have a recent profile (within last check interval)
+            result = await session.execute(
+                select(Profile)
+                .where(Profile.source_id == source_id)
+                .order_by(Profile.created_at.desc())
+                .limit(1)
+            )
+            latest_profile = result.scalar_one_or_none()
+
+            # Skip if recent profile exists (within 1 minute)
+            if latest_profile:
+                profile_age = datetime.utcnow() - latest_profile.created_at
+                if profile_age.total_seconds() < 60:
+                    logger.debug(f"Recent profile exists for source {source_id}")
+                    return
+
+            # Run profile using adapter
+            adapter = get_adapter()
+            result = await session.execute(
+                select(Source).where(Source.id == source_id)
+            )
+            source = result.scalar_one_or_none()
+
+            if source and source.connection_string:
+                logger.debug(f"Running auto-profile for source {source_id}")
+                await adapter.profile(source.connection_string)
+
+        except Exception as e:
+            logger.warning(f"Auto-profile failed for source {source_id}: {e}")
 
     async def _get_profile_data(
         self, session: Any, source_id: str
@@ -643,6 +857,240 @@ class ValidationScheduler:
                     triggered_schedules.append(schedule.id)
 
         return triggered_schedules
+
+    async def trigger_webhook(
+        self,
+        source: str,
+        event_type: str = "data_updated",
+        payload: dict[str, Any] | None = None,
+        schedule_id: str | None = None,
+        source_id: str | None = None,
+        signature: str | None = None,
+    ) -> dict[str, Any]:
+        """Process incoming webhook trigger.
+
+        Args:
+            source: Source identifier (e.g., "airflow", "dagster").
+            event_type: Type of event.
+            payload: Additional payload data.
+            schedule_id: Specific schedule to trigger (optional).
+            source_id: Data source ID to filter (optional).
+            signature: HMAC signature for verification (optional).
+
+        Returns:
+            Result dictionary with triggered schedules.
+        """
+        request_id = str(uuid.uuid4())[:8]
+        triggered_schedules = []
+        now = datetime.utcnow()
+
+        logger.info(f"Webhook received from '{source}' (request_id={request_id})")
+
+        async with get_session() as session:
+            from sqlalchemy import select
+
+            # Build query for webhook triggers
+            query = (
+                select(Schedule)
+                .where(Schedule.is_active == True)
+                .where(Schedule.trigger_type == TriggerType.WEBHOOK.value)
+            )
+
+            # Filter by specific schedule if provided
+            if schedule_id:
+                query = query.where(Schedule.id == schedule_id)
+
+            # Filter by source ID if provided
+            if source_id:
+                query = query.where(Schedule.source_id == source_id)
+
+            result = await session.execute(query)
+            schedules = result.scalars().all()
+
+            for schedule in schedules:
+                # Verify signature if required
+                config = schedule.trigger_config or {}
+                webhook_secret = config.get("webhook_secret")
+                require_signature = config.get("require_signature", False)
+
+                signature_valid = True
+                if require_signature and webhook_secret:
+                    signature_valid = self._verify_webhook_signature(
+                        payload or {},
+                        signature,
+                        webhook_secret,
+                    )
+
+                # Check cooldown
+                if self._is_in_cooldown(schedule, now):
+                    logger.debug(
+                        f"Schedule {schedule.name} in cooldown, skipping webhook"
+                    )
+                    continue
+
+                # Evaluate webhook trigger
+                evaluation = await TriggerFactory.evaluate_schedule(
+                    schedule,
+                    custom_data={
+                        "webhook_data": {
+                            "source": source,
+                            "event_type": event_type,
+                            "payload": payload or {},
+                            "signature_valid": signature_valid,
+                        }
+                    },
+                )
+
+                if evaluation.should_trigger:
+                    logger.info(
+                        f"Webhook triggered schedule {schedule.name} "
+                        f"(request_id={request_id})"
+                    )
+                    # Update trigger tracking
+                    self._trigger_trigger_times[schedule.id] = now
+                    self._trigger_trigger_counts[schedule.id] = (
+                        self._trigger_trigger_counts.get(schedule.id, 0) + 1
+                    )
+                    asyncio.create_task(self._run_validation(schedule.id))
+                    triggered_schedules.append(schedule.id)
+
+        return {
+            "accepted": True,
+            "triggered_schedules": triggered_schedules,
+            "message": (
+                f"Triggered {len(triggered_schedules)} schedule(s)"
+                if triggered_schedules
+                else "No matching schedules triggered"
+            ),
+            "request_id": request_id,
+        }
+
+    def _verify_webhook_signature(
+        self,
+        payload: dict[str, Any],
+        signature: str | None,
+        secret: str,
+    ) -> bool:
+        """Verify webhook HMAC signature.
+
+        Args:
+            payload: Request payload.
+            signature: Provided signature (X-Webhook-Signature header).
+            secret: Webhook secret key.
+
+        Returns:
+            True if signature is valid.
+        """
+        if not signature:
+            return False
+
+        try:
+            import json
+            payload_bytes = json.dumps(payload, sort_keys=True).encode()
+            expected = hmac.new(
+                secret.encode(),
+                payload_bytes,
+                hashlib.sha256,
+            ).hexdigest()
+            return hmac.compare_digest(signature, expected)
+        except Exception as e:
+            logger.warning(f"Webhook signature verification failed: {e}")
+            return False
+
+    def get_trigger_monitoring_status(self) -> dict[str, Any]:
+        """Get current trigger monitoring status.
+
+        Returns:
+            Dictionary with monitoring stats and schedule statuses.
+        """
+        now = datetime.utcnow()
+        one_hour_ago = now - timedelta(hours=1)
+
+        # Count checks and triggers in last hour
+        checks_last_hour = sum(
+            1 for t in self._trigger_check_times.values()
+            if t >= one_hour_ago
+        )
+        triggers_last_hour = sum(
+            1 for t in self._trigger_trigger_times.values()
+            if t >= one_hour_ago
+        )
+
+        return {
+            "checker_running": self._checker_running,
+            "checker_interval_seconds": self._data_change_check_interval,
+            "last_checker_run_at": (
+                self._last_checker_run.isoformat()
+                if self._last_checker_run else None
+            ),
+            "total_schedules_tracked": len(self._trigger_check_times),
+            "checks_last_hour": checks_last_hour,
+            "triggers_last_hour": triggers_last_hour,
+        }
+
+    async def get_trigger_check_statuses(self) -> list[dict[str, Any]]:
+        """Get detailed status for each tracked trigger.
+
+        Returns:
+            List of trigger status dictionaries.
+        """
+        now = datetime.utcnow()
+        statuses = []
+
+        async with get_session() as session:
+            from sqlalchemy import select
+
+            # Get all active data change/composite/webhook schedules
+            result = await session.execute(
+                select(Schedule)
+                .where(Schedule.is_active == True)
+                .where(
+                    Schedule.trigger_type.in_([
+                        TriggerType.DATA_CHANGE.value,
+                        TriggerType.COMPOSITE.value,
+                        TriggerType.WEBHOOK.value,
+                    ])
+                )
+            )
+            schedules = result.scalars().all()
+
+            for schedule in schedules:
+                schedule_id = schedule.id
+                config = schedule.trigger_config or {}
+
+                last_check = self._trigger_check_times.get(schedule_id)
+                last_triggered = self._trigger_trigger_times.get(schedule_id)
+                check_interval = config.get(
+                    "check_interval_minutes",
+                    self.DEFAULT_SCHEDULE_CHECK_INTERVAL_MINUTES,
+                )
+
+                # Calculate next check time
+                next_check = None
+                if last_check:
+                    next_check = last_check + timedelta(minutes=check_interval)
+
+                statuses.append({
+                    "schedule_id": schedule_id,
+                    "schedule_name": schedule.name,
+                    "trigger_type": schedule.trigger_type,
+                    "last_check_at": last_check.isoformat() if last_check else None,
+                    "next_check_at": next_check.isoformat() if next_check else None,
+                    "last_triggered_at": (
+                        last_triggered.isoformat() if last_triggered else None
+                    ),
+                    "check_count": self._trigger_check_counts.get(schedule_id, 0),
+                    "trigger_count": self._trigger_trigger_counts.get(schedule_id, 0),
+                    "is_due_for_check": self._is_schedule_due_for_check(schedule, now),
+                    "priority": self._get_schedule_priority(schedule),
+                    "cooldown_remaining_seconds": self._get_cooldown_remaining(
+                        schedule, now
+                    ),
+                })
+
+        # Sort by priority
+        statuses.sort(key=lambda s: s["priority"])
+        return statuses
 
 
 # Singleton instance
