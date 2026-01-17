@@ -29,6 +29,8 @@ import {
   DeduplicationTab,
   ThrottlingTab,
   EscalationTab,
+  ConfigImportExport,
+  TemplateLibrary,
 } from '@/components/notifications'
 import {
   getDeduplicationStats,
@@ -115,10 +117,14 @@ export default function NotificationsAdvanced() {
             Configure routing, deduplication, throttling, and escalation policies
           </p>
         </div>
-        <Button variant="outline" onClick={loadStats} disabled={isLoadingStats}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${isLoadingStats ? 'animate-spin' : ''}`} />
-          {common.refresh}
-        </Button>
+        <div className="flex items-center gap-2">
+          <ConfigImportExport onImportComplete={loadStats} />
+          <TemplateLibrary />
+          <Button variant="outline" onClick={loadStats} disabled={isLoadingStats}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoadingStats ? 'animate-spin' : ''}`} />
+            {common.refresh}
+          </Button>
+        </div>
       </div>
 
       {/* Stats Overview */}

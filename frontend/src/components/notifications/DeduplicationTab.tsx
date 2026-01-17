@@ -49,6 +49,13 @@ import {
   deleteDeduplicationConfig,
   getDeduplicationStats,
 } from '@/api/client'
+import { DeduplicationStrategyGuide, DeduplicationPolicyGuide } from './StrategyGuide'
+import { TemplateQuickSelect } from './TemplateLibrary'
+import {
+  useBulkSelection,
+  BulkActionBar,
+  SelectionCheckbox,
+} from './BulkActionBar'
 
 interface DeduplicationTabProps {
   className?: string
@@ -77,6 +84,11 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
   const [formWindowSeconds, setFormWindowSeconds] = useState(300)
   const [formIsActive, setFormIsActive] = useState(true)
   const [formSaving, setFormSaving] = useState(false)
+  const [showStrategyGuide, setShowStrategyGuide] = useState(false)
+  const [showPolicyGuide, setShowPolicyGuide] = useState(false)
+
+  // Bulk selection
+  const configSelection = useBulkSelection<DeduplicationConfig>(configs, (c) => c.id)
 
   const loadData = async () => {
     setLoading(true)
@@ -213,6 +225,46 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
     return labels[policy] || policy
   }
 
+  // Bulk action handlers
+  const handleBulkEnable = async (items: DeduplicationConfig[]) => {
+    const toEnable = items.filter((c) => !c.is_active)
+    for (const config of toEnable) {
+      await updateDeduplicationConfig(config.id, { is_active: true })
+    }
+    toast({ title: `Enabled ${toEnable.length} configs` })
+    loadData()
+  }
+
+  const handleBulkDisable = async (items: DeduplicationConfig[]) => {
+    const toDisable = items.filter((c) => c.is_active)
+    for (const config of toDisable) {
+      await updateDeduplicationConfig(config.id, { is_active: false })
+    }
+    toast({ title: `Disabled ${toDisable.length} configs` })
+    loadData()
+  }
+
+  const handleBulkDelete = async (items: DeduplicationConfig[]) => {
+    for (const config of items) {
+      await deleteDeduplicationConfig(config.id)
+    }
+    toast({ title: `Deleted ${items.length} configs` })
+    loadData()
+  }
+
+  // Template apply handler
+  const handleApplyTemplate = (template: { id: string; config: Record<string, unknown> }) => {
+    const config = template.config as {
+      strategy?: DeduplicationStrategy
+      policy?: DeduplicationPolicy
+      window_seconds?: number
+    }
+    if (config.strategy) setFormStrategy(config.strategy)
+    if (config.policy) setFormPolicy(config.policy)
+    if (config.window_seconds) setFormWindowSeconds(config.window_seconds)
+    toast({ title: `Applied template: ${template.id}` })
+  }
+
   if (loading) {
     return (
       <div className={`flex items-center justify-center py-12 ${className}`}>
@@ -233,6 +285,18 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
           {content.deduplication.addConfig}
         </Button>
       </div>
+
+      {/* Bulk Action Bar */}
+      <BulkActionBar
+        selectedItems={configSelection.selectedItems}
+        totalItems={configs.length}
+        onClearSelection={configSelection.clearSelection}
+        onEnable={handleBulkEnable}
+        onDisable={handleBulkDisable}
+        onDelete={handleBulkDelete}
+        itemLabel="config"
+        className="mb-4"
+      />
 
       {/* Stats Cards */}
       {stats && (
@@ -299,6 +363,13 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]">
+                <SelectionCheckbox
+                  checked={configSelection.allSelected}
+                  indeterminate={configSelection.someSelected && !configSelection.allSelected}
+                  onCheckedChange={configSelection.toggleAll}
+                />
+              </TableHead>
               <TableHead>{content.common.name}</TableHead>
               <TableHead>{content.deduplication.strategy}</TableHead>
               <TableHead>{content.deduplication.policy}</TableHead>
@@ -309,7 +380,13 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
           </TableHeader>
           <TableBody>
             {configs.map((config) => (
-              <TableRow key={config.id}>
+              <TableRow key={config.id} className={configSelection.isSelected(config.id) ? 'bg-muted/50' : ''}>
+                <TableCell>
+                  <SelectionCheckbox
+                    checked={configSelection.isSelected(config.id)}
+                    onCheckedChange={() => configSelection.toggleItem(config)}
+                  />
+                </TableCell>
                 <TableCell className="font-medium">{config.name}</TableCell>
                 <TableCell>
                   <Badge variant="secondary">{getStrategyLabel(config.strategy)}</Badge>
@@ -350,7 +427,7 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {editingConfig ? content.deduplication.editConfig : content.deduplication.addConfig}
@@ -358,6 +435,15 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* Template Quick Select */}
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-medium">Configuration</Label>
+              <TemplateQuickSelect
+                category="deduplication"
+                onSelect={handleApplyTemplate}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label>{content.common.name}</Label>
               <Input
@@ -369,7 +455,18 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>{content.deduplication.strategy}</Label>
+                <div className="flex items-center justify-between">
+                  <Label>{content.deduplication.strategy}</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => setShowStrategyGuide(!showStrategyGuide)}
+                  >
+                    {showStrategyGuide ? 'Hide Guide' : 'Show Guide'}
+                  </Button>
+                </div>
                 <Select value={formStrategy} onValueChange={(v) => setFormStrategy(v as DeduplicationStrategy)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -384,7 +481,18 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>{content.deduplication.policy}</Label>
+                <div className="flex items-center justify-between">
+                  <Label>{content.deduplication.policy}</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => setShowPolicyGuide(!showPolicyGuide)}
+                  >
+                    {showPolicyGuide ? 'Hide Guide' : 'Show Guide'}
+                  </Button>
+                </div>
                 <Select value={formPolicy} onValueChange={(v) => setFormPolicy(v as DeduplicationPolicy)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -399,6 +507,22 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
                 </Select>
               </div>
             </div>
+
+            {/* Strategy Guide */}
+            {showStrategyGuide && (
+              <DeduplicationStrategyGuide
+                selectedStrategy={formStrategy}
+                onSelect={(s) => setFormStrategy(s as DeduplicationStrategy)}
+              />
+            )}
+
+            {/* Policy Guide */}
+            {showPolicyGuide && (
+              <DeduplicationPolicyGuide
+                selectedPolicy={formPolicy}
+                onSelect={(p) => setFormPolicy(p as DeduplicationPolicy)}
+              />
+            )}
 
             <div className="space-y-2">
               <Label>{content.deduplication.windowSeconds}</Label>

@@ -33,7 +33,17 @@ Example:
 """
 
 from .builder import ThrottlerBuilder
-from .stores import BaseThrottlingStore, InMemoryThrottlingStore, SQLiteThrottlingStore
+from .stores import (
+    REDIS_AVAILABLE,
+    BaseThrottlingStore,
+    InMemoryThrottlingStore,
+    RedisThrottlingStore,
+    SQLiteThrottlingStore,
+    ThrottlingEntry,
+    ThrottlingMetrics,
+    ThrottlingStoreType,
+    create_throttling_store,
+)
 from .throttlers import (
     BaseThrottler,
     CompositeThrottler,
@@ -64,4 +74,10 @@ __all__ = [
     "BaseThrottlingStore",
     "InMemoryThrottlingStore",
     "SQLiteThrottlingStore",
+    "RedisThrottlingStore",
+    "ThrottlingEntry",
+    "ThrottlingMetrics",
+    "ThrottlingStoreType",
+    "create_throttling_store",
+    "REDIS_AVAILABLE",
 ]

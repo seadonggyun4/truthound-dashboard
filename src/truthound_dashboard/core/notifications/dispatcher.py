@@ -398,6 +398,42 @@ class NotificationDispatcher:
 
         return await self.dispatch(event)
 
+    async def notify_schema_changed(
+        self,
+        source_id: str,
+        source_name: str,
+        from_version: int | None,
+        to_version: int,
+        total_changes: int,
+        breaking_changes: int = 0,
+        changes: list[dict[str, Any]] | None = None,
+    ) -> list[NotificationResult]:
+        """Send notifications for schema changes.
+
+        Args:
+            source_id: ID of the source with schema changes.
+            source_name: Name of the source.
+            from_version: Previous schema version (None if first version).
+            to_version: New schema version.
+            total_changes: Total number of changes detected.
+            breaking_changes: Number of breaking changes.
+            changes: Optional list of change details.
+
+        Returns:
+            List of delivery results.
+        """
+        event = SchemaChangedEvent(
+            source_id=source_id,
+            source_name=source_name,
+            from_version=from_version,
+            to_version=to_version,
+            total_changes=total_changes,
+            breaking_changes=breaking_changes,
+            changes=changes or [],
+        )
+
+        return await self.dispatch(event)
+
     async def test_channel(self, channel_id: str) -> NotificationResult:
         """Send a test notification to a specific channel.
 

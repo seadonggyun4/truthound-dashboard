@@ -30,6 +30,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from ...validation_limits import (
+    ValidationLimitError,
+    get_time_window_limits,
+)
 from .policies import DeduplicationPolicy, FingerprintConfig, FingerprintGenerator
 from .stores import BaseDeduplicationStore, InMemoryDeduplicationStore
 from .strategies import BaseWindowStrategy, SlidingWindowStrategy
@@ -37,21 +41,62 @@ from .strategies import BaseWindowStrategy, SlidingWindowStrategy
 
 @dataclass
 class TimeWindow:
-    """Time window configuration.
+    """Time window configuration with validation.
 
-    Provides a convenient way to specify window durations.
+    Provides a convenient way to specify window durations with built-in
+    validation to prevent DoS attacks from excessive window sizes.
+
+    Validation Limits (configurable via environment variables):
+        - Total seconds: 1 to 604800 (7 days)
+        - Individual components must be non-negative
+
+    Environment Variables:
+        - TRUTHOUND_TIMEWINDOW_MIN: Minimum total duration (default: 1)
+        - TRUTHOUND_TIMEWINDOW_MAX: Maximum total duration (default: 604800)
 
     Attributes:
-        seconds: Additional seconds.
-        minutes: Additional minutes.
-        hours: Additional hours.
-        days: Additional days.
+        seconds: Additional seconds (default: 0).
+        minutes: Additional minutes (default: 0).
+        hours: Additional hours (default: 0).
+        days: Additional days (default: 0).
+
+    Raises:
+        ValidationLimitError: If total duration exceeds limits.
+        ValueError: If any component is negative.
     """
 
     seconds: int = 0
     minutes: int = 0
     hours: int = 0
     days: int = 0
+
+    def __post_init__(self) -> None:
+        """Validate window configuration after initialization.
+
+        Raises:
+            ValueError: If any component is negative.
+            ValidationLimitError: If total duration exceeds limits.
+        """
+        # Validate non-negative values
+        if self.seconds < 0:
+            raise ValueError(f"seconds must be non-negative, got {self.seconds}")
+        if self.minutes < 0:
+            raise ValueError(f"minutes must be non-negative, got {self.minutes}")
+        if self.hours < 0:
+            raise ValueError(f"hours must be non-negative, got {self.hours}")
+        if self.days < 0:
+            raise ValueError(f"days must be non-negative, got {self.days}")
+
+        # Validate total duration against limits
+        total = self.total_seconds
+        limits = get_time_window_limits()
+        valid, error = limits.validate_total_seconds(total)
+        if not valid:
+            raise ValidationLimitError(
+                error or f"Invalid total duration: {total}",
+                parameter="total_seconds",
+                value=total,
+            )
 
     @property
     def total_seconds(self) -> int:
@@ -65,7 +110,31 @@ class TimeWindow:
 
     @classmethod
     def from_seconds(cls, seconds: int) -> "TimeWindow":
-        """Create from seconds."""
+        """Create from seconds with validation.
+
+        Args:
+            seconds: Total duration in seconds.
+
+        Returns:
+            TimeWindow instance.
+
+        Raises:
+            ValidationLimitError: If seconds exceeds limits.
+            ValueError: If seconds is negative.
+        """
+        if seconds < 0:
+            raise ValueError(f"seconds must be non-negative, got {seconds}")
+
+        # Validate against limits before creating
+        limits = get_time_window_limits()
+        valid, error = limits.validate_total_seconds(seconds)
+        if not valid:
+            raise ValidationLimitError(
+                error or f"Invalid duration: {seconds}",
+                parameter="seconds",
+                value=seconds,
+            )
+
         return cls(seconds=seconds)
 
     def __repr__(self) -> str:

@@ -22,6 +22,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, ClassVar
 
+from ...validation_limits import (
+    get_deduplication_limits,
+    validate_positive_int,
+)
+
 
 class StrategyRegistry:
     """Registry for window strategies.
@@ -111,18 +116,28 @@ class BaseWindowStrategy(ABC):
 @StrategyRegistry.register("sliding")
 @dataclass
 class SlidingWindowStrategy(BaseWindowStrategy):
-    """Sliding window strategy.
+    """Sliding window strategy with validation.
 
     The window slides with each occurrence - duplicates are suppressed
     if they occur within `window_seconds` of the last occurrence.
 
     This is the most common strategy for real-time deduplication.
 
+    Validation:
+        - window_seconds must be between 1 and 86400 (configurable).
+
     Attributes:
         window_seconds: Base window duration in seconds.
     """
 
     window_seconds: int = 300
+
+    def __post_init__(self) -> None:
+        """Validate window_seconds after initialization."""
+        limits = get_deduplication_limits()
+        valid, error = limits.validate_window_seconds(self.window_seconds)
+        if not valid:
+            raise ValueError(error)
 
     def get_window_seconds(
         self,
@@ -144,13 +159,17 @@ class SlidingWindowStrategy(BaseWindowStrategy):
 @StrategyRegistry.register("tumbling")
 @dataclass
 class TumblingWindowStrategy(BaseWindowStrategy):
-    """Tumbling window strategy.
+    """Tumbling window strategy with validation.
 
     The window is divided into fixed, non-overlapping periods.
     All events within the same period share the same window.
 
     Useful for batch-style deduplication where you want at most
     one notification per time period.
+
+    Validation:
+        - window_seconds must be between 1 and 86400 (configurable).
+        - align_to must be one of 'minute', 'hour', 'day'.
 
     Attributes:
         window_seconds: Duration of each tumbling window.
@@ -159,6 +178,19 @@ class TumblingWindowStrategy(BaseWindowStrategy):
 
     window_seconds: int = 300
     align_to: str = "minute"
+
+    def __post_init__(self) -> None:
+        """Validate configuration after initialization."""
+        limits = get_deduplication_limits()
+        valid, error = limits.validate_window_seconds(self.window_seconds)
+        if not valid:
+            raise ValueError(error)
+
+        valid_alignments = ("minute", "hour", "day")
+        if self.align_to not in valid_alignments:
+            raise ValueError(
+                f"align_to must be one of {valid_alignments}, got '{self.align_to}'"
+            )
 
     def get_window_seconds(
         self,
@@ -190,13 +222,18 @@ class TumblingWindowStrategy(BaseWindowStrategy):
 @StrategyRegistry.register("session")
 @dataclass
 class SessionWindowStrategy(BaseWindowStrategy):
-    """Session window strategy.
+    """Session window strategy with validation.
 
     Groups events into sessions based on gaps between occurrences.
     A new session starts if no event occurs within `gap_seconds`.
 
     Useful for handling event bursts where you want to deduplicate
     within a burst but allow new notifications after quiet periods.
+
+    Validation:
+        - gap_seconds must be between 1 and 86400 (configurable).
+        - max_session_seconds must be between 1 and 86400 (configurable).
+        - max_session_seconds must be >= gap_seconds.
 
     Attributes:
         gap_seconds: Maximum gap between events in same session.
@@ -208,6 +245,27 @@ class SessionWindowStrategy(BaseWindowStrategy):
 
     _session_starts: dict[str, float] = field(default_factory=dict)
     _last_events: dict[str, float] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Validate configuration after initialization."""
+        limits = get_deduplication_limits()
+
+        # Validate gap_seconds
+        valid, error = limits.validate_window_seconds(self.gap_seconds)
+        if not valid:
+            raise ValueError(f"gap_seconds: {error}")
+
+        # Validate max_session_seconds
+        valid, error = limits.validate_window_seconds(self.max_session_seconds)
+        if not valid:
+            raise ValueError(f"max_session_seconds: {error}")
+
+        # max_session_seconds should be >= gap_seconds
+        if self.max_session_seconds < self.gap_seconds:
+            raise ValueError(
+                f"max_session_seconds ({self.max_session_seconds}) must be >= "
+                f"gap_seconds ({self.gap_seconds})"
+            )
 
     def get_window_seconds(
         self,
@@ -254,13 +312,20 @@ class SessionWindowStrategy(BaseWindowStrategy):
 @StrategyRegistry.register("adaptive")
 @dataclass
 class AdaptiveWindowStrategy(BaseWindowStrategy):
-    """Adaptive window strategy.
+    """Adaptive window strategy with validation.
 
     Dynamically adjusts window size based on event frequency.
     High-frequency events get longer windows, low-frequency get shorter.
 
     This helps prevent notification fatigue during incidents while
     maintaining responsiveness during normal operations.
+
+    Validation:
+        - min_window_seconds must be between 1 and 86400 (configurable).
+        - max_window_seconds must be between 1 and 86400 (configurable).
+        - max_window_seconds must be >= min_window_seconds.
+        - scale_factor must be >= 0.1.
+        - decay_seconds must be between 1 and 86400 (configurable).
 
     Attributes:
         min_window_seconds: Minimum window duration.
@@ -276,6 +341,38 @@ class AdaptiveWindowStrategy(BaseWindowStrategy):
 
     _event_counts: dict[str, int] = field(default_factory=dict)
     _last_events: dict[str, float] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Validate configuration after initialization."""
+        limits = get_deduplication_limits()
+
+        # Validate min_window_seconds
+        valid, error = limits.validate_window_seconds(self.min_window_seconds)
+        if not valid:
+            raise ValueError(f"min_window_seconds: {error}")
+
+        # Validate max_window_seconds
+        valid, error = limits.validate_window_seconds(self.max_window_seconds)
+        if not valid:
+            raise ValueError(f"max_window_seconds: {error}")
+
+        # Validate decay_seconds
+        valid, error = limits.validate_window_seconds(self.decay_seconds)
+        if not valid:
+            raise ValueError(f"decay_seconds: {error}")
+
+        # max_window_seconds must be >= min_window_seconds
+        if self.max_window_seconds < self.min_window_seconds:
+            raise ValueError(
+                f"max_window_seconds ({self.max_window_seconds}) must be >= "
+                f"min_window_seconds ({self.min_window_seconds})"
+            )
+
+        # scale_factor must be positive
+        if self.scale_factor < 0.1:
+            raise ValueError(
+                f"scale_factor must be at least 0.1, got {self.scale_factor}"
+            )
 
     def get_window_seconds(
         self,

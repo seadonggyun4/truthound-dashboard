@@ -45,6 +45,13 @@ import {
   getThrottlingStats,
   listNotificationChannels,
 } from '@/api/client'
+import { ThrottlingAlgorithmGuide, BurstAllowanceVisual } from './StrategyGuide'
+import { TemplateQuickSelect } from './TemplateLibrary'
+import {
+  useBulkSelection,
+  BulkActionBar,
+  SelectionCheckbox,
+} from './BulkActionBar'
 
 interface ThrottlingTabProps {
   className?: string
@@ -73,6 +80,10 @@ export function ThrottlingTab({ className }: ThrottlingTabProps) {
   const [formChannelId, setFormChannelId] = useState<string | null>(null)
   const [formIsActive, setFormIsActive] = useState(true)
   const [formSaving, setFormSaving] = useState(false)
+  const [showAlgorithmGuide, setShowAlgorithmGuide] = useState(false)
+
+  // Bulk selection
+  const configSelection = useBulkSelection<ThrottlingConfig>(configs, (c) => c.id)
 
   const loadData = async () => {
     setLoading(true)
@@ -206,6 +217,48 @@ export function ThrottlingTab({ className }: ThrottlingTabProps) {
     return `${limit}/${suffix}`
   }
 
+  // Bulk action handlers
+  const handleBulkEnable = async (items: ThrottlingConfig[]) => {
+    const toEnable = items.filter((c) => !c.is_active)
+    for (const config of toEnable) {
+      await updateThrottlingConfig(config.id, { is_active: true })
+    }
+    toast({ title: `Enabled ${toEnable.length} configs` })
+    loadData()
+  }
+
+  const handleBulkDisable = async (items: ThrottlingConfig[]) => {
+    const toDisable = items.filter((c) => c.is_active)
+    for (const config of toDisable) {
+      await updateThrottlingConfig(config.id, { is_active: false })
+    }
+    toast({ title: `Disabled ${toDisable.length} configs` })
+    loadData()
+  }
+
+  const handleBulkDelete = async (items: ThrottlingConfig[]) => {
+    for (const config of items) {
+      await deleteThrottlingConfig(config.id)
+    }
+    toast({ title: `Deleted ${items.length} configs` })
+    loadData()
+  }
+
+  // Template apply handler
+  const handleApplyTemplate = (template: { id: string; config: Record<string, unknown> }) => {
+    const config = template.config as {
+      per_minute?: number | null
+      per_hour?: number | null
+      per_day?: number | null
+      burst_allowance?: number
+    }
+    if (config.per_minute !== undefined) setFormPerMinute(config.per_minute)
+    if (config.per_hour !== undefined) setFormPerHour(config.per_hour)
+    if (config.per_day !== undefined) setFormPerDay(config.per_day)
+    if (config.burst_allowance !== undefined) setFormBurstAllowance(config.burst_allowance)
+    toast({ title: `Applied template: ${template.id}` })
+  }
+
   if (loading) {
     return (
       <div className={`flex items-center justify-center py-12 ${className}`}>
@@ -226,6 +279,18 @@ export function ThrottlingTab({ className }: ThrottlingTabProps) {
           {content.throttling.addConfig}
         </Button>
       </div>
+
+      {/* Bulk Action Bar */}
+      <BulkActionBar
+        selectedItems={configSelection.selectedItems}
+        totalItems={configs.length}
+        onClearSelection={configSelection.clearSelection}
+        onEnable={handleBulkEnable}
+        onDisable={handleBulkDisable}
+        onDelete={handleBulkDelete}
+        itemLabel="config"
+        className="mb-4"
+      />
 
       {/* Stats Cards */}
       {stats && (
@@ -292,6 +357,13 @@ export function ThrottlingTab({ className }: ThrottlingTabProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]">
+                <SelectionCheckbox
+                  checked={configSelection.allSelected}
+                  indeterminate={configSelection.someSelected && !configSelection.allSelected}
+                  onCheckedChange={configSelection.toggleAll}
+                />
+              </TableHead>
               <TableHead>{content.common.name}</TableHead>
               <TableHead>Channel</TableHead>
               <TableHead>{content.throttling.perMinute}</TableHead>
@@ -304,7 +376,13 @@ export function ThrottlingTab({ className }: ThrottlingTabProps) {
           </TableHeader>
           <TableBody>
             {configs.map((config) => (
-              <TableRow key={config.id}>
+              <TableRow key={config.id} className={configSelection.isSelected(config.id) ? 'bg-muted/50' : ''}>
+                <TableCell>
+                  <SelectionCheckbox
+                    checked={configSelection.isSelected(config.id)}
+                    onCheckedChange={() => configSelection.toggleItem(config)}
+                  />
+                </TableCell>
                 <TableCell className="font-medium">{config.name}</TableCell>
                 <TableCell>
                   <Badge variant={config.channel_id ? 'outline' : 'secondary'}>
@@ -347,7 +425,7 @@ export function ThrottlingTab({ className }: ThrottlingTabProps) {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {editingConfig ? content.throttling.editConfig : content.throttling.addConfig}
@@ -355,6 +433,31 @@ export function ThrottlingTab({ className }: ThrottlingTabProps) {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* Template Quick Select */}
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-medium">Configuration</Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setShowAlgorithmGuide(!showAlgorithmGuide)}
+                >
+                  {showAlgorithmGuide ? 'Hide Algorithm Guide' : 'Show Algorithm Guide'}
+                </Button>
+                <TemplateQuickSelect
+                  category="throttling"
+                  onSelect={handleApplyTemplate}
+                />
+              </div>
+            </div>
+
+            {/* Algorithm Guide */}
+            {showAlgorithmGuide && (
+              <ThrottlingAlgorithmGuide />
+            )}
+
             <div className="space-y-2">
               <Label>{content.common.name}</Label>
               <Input
@@ -425,14 +528,20 @@ export function ThrottlingTab({ className }: ThrottlingTabProps) {
 
             <div className="space-y-2">
               <Label>{content.throttling.burstAllowance}</Label>
-              <Input
-                type="number"
-                value={formBurstAllowance}
-                onChange={(e) => setFormBurstAllowance(parseFloat(e.target.value) || 1.0)}
-                step={0.1}
-                min={1.0}
-                max={10.0}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  type="number"
+                  value={formBurstAllowance}
+                  onChange={(e) => setFormBurstAllowance(parseFloat(e.target.value) || 1.0)}
+                  step={0.1}
+                  min={1.0}
+                  max={10.0}
+                />
+                <BurstAllowanceVisual
+                  burstAllowance={formBurstAllowance}
+                  baseLimit={formPerHour || 100}
+                />
+              </div>
             </div>
 
             <div className="flex items-center gap-2">

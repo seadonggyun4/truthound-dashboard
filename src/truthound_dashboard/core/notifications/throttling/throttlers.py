@@ -19,6 +19,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
+from ...validation_limits import get_throttling_limits
 from .stores import BaseThrottlingStore, InMemoryThrottlingStore, ThrottlingEntry
 
 
@@ -104,7 +105,7 @@ class BaseThrottler(ABC):
 
 @ThrottlerRegistry.register("token_bucket")
 class TokenBucketThrottler(BaseThrottler):
-    """Token bucket throttler.
+    """Token bucket throttler with validation.
 
     Implements the token bucket algorithm for smooth rate limiting
     with support for bursts.
@@ -112,6 +113,10 @@ class TokenBucketThrottler(BaseThrottler):
     Tokens are added at a constant rate up to a maximum capacity.
     Each request consumes one token. Requests are allowed as long
     as tokens are available.
+
+    Validation:
+        - capacity must be between 1 and 100000 (configurable).
+        - refill_rate must be between 0.001 and 10000 (reasonable range).
 
     Attributes:
         capacity: Maximum tokens (burst capacity).
@@ -125,13 +130,38 @@ class TokenBucketThrottler(BaseThrottler):
         refill_rate: float = 1.0,
         store: BaseThrottlingStore | None = None,
     ) -> None:
-        """Initialize token bucket throttler.
+        """Initialize token bucket throttler with validation.
 
         Args:
             capacity: Maximum token capacity.
             refill_rate: Tokens refilled per second.
             store: Storage backend.
+
+        Raises:
+            ValueError: If capacity or refill_rate are invalid.
         """
+        limits = get_throttling_limits()
+
+        # Validate capacity
+        if capacity < limits.limit_min:
+            raise ValueError(
+                f"capacity must be at least {limits.limit_min}, got {capacity}"
+            )
+        if capacity > limits.limit_max:
+            raise ValueError(
+                f"capacity must not exceed {limits.limit_max}, got {capacity}"
+            )
+
+        # Validate refill_rate
+        if refill_rate < 0.001:
+            raise ValueError(
+                f"refill_rate must be at least 0.001, got {refill_rate}"
+            )
+        if refill_rate > 10000:
+            raise ValueError(
+                f"refill_rate must not exceed 10000, got {refill_rate}"
+            )
+
         self.capacity = capacity
         self.refill_rate = refill_rate
         self.store = store or InMemoryThrottlingStore()
@@ -198,10 +228,14 @@ class TokenBucketThrottler(BaseThrottler):
 
 @ThrottlerRegistry.register("fixed_window")
 class FixedWindowThrottler(BaseThrottler):
-    """Fixed window throttler.
+    """Fixed window throttler with validation.
 
     Simple counter-based rate limiting with fixed time windows.
     All requests within a window share the same counter.
+
+    Validation:
+        - limit must be between 1 and 100000 (configurable).
+        - window_seconds must be between 1 and 86400 (configurable).
 
     Attributes:
         limit: Maximum requests per window.
@@ -215,13 +249,28 @@ class FixedWindowThrottler(BaseThrottler):
         window_seconds: int = 60,
         store: BaseThrottlingStore | None = None,
     ) -> None:
-        """Initialize fixed window throttler.
+        """Initialize fixed window throttler with validation.
 
         Args:
             limit: Maximum requests per window.
             window_seconds: Window duration.
             store: Storage backend.
+
+        Raises:
+            ValueError: If limit or window_seconds are invalid.
         """
+        limits = get_throttling_limits()
+
+        # Validate limit
+        valid, error = limits.validate_rate_limit(limit, "limit")
+        if not valid:
+            raise ValueError(error)
+
+        # Validate window_seconds
+        valid, error = limits.validate_window_seconds(window_seconds)
+        if not valid:
+            raise ValueError(error)
+
         self.limit = limit
         self.window_seconds = window_seconds
         self.store = store or InMemoryThrottlingStore()
@@ -263,13 +312,17 @@ class FixedWindowThrottler(BaseThrottler):
 
 @ThrottlerRegistry.register("sliding_window")
 class SlidingWindowThrottler(BaseThrottler):
-    """Sliding window throttler.
+    """Sliding window throttler with validation.
 
     More accurate than fixed window by interpolating between
     the current and previous window.
 
     Uses weighted average of current and previous window counts
     to approximate a true sliding window.
+
+    Validation:
+        - limit must be between 1 and 100000 (configurable).
+        - window_seconds must be between 1 and 86400 (configurable).
 
     Attributes:
         limit: Maximum requests per window.
@@ -283,13 +336,28 @@ class SlidingWindowThrottler(BaseThrottler):
         window_seconds: int = 60,
         store: BaseThrottlingStore | None = None,
     ) -> None:
-        """Initialize sliding window throttler.
+        """Initialize sliding window throttler with validation.
 
         Args:
             limit: Maximum requests per window.
             window_seconds: Window duration.
             store: Storage backend.
+
+        Raises:
+            ValueError: If limit or window_seconds are invalid.
         """
+        limits = get_throttling_limits()
+
+        # Validate limit
+        valid, error = limits.validate_rate_limit(limit, "limit")
+        if not valid:
+            raise ValueError(error)
+
+        # Validate window_seconds
+        valid, error = limits.validate_window_seconds(window_seconds)
+        if not valid:
+            raise ValueError(error)
+
         self.limit = limit
         self.window_seconds = window_seconds
         self.store = store or InMemoryThrottlingStore()
