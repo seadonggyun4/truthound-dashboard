@@ -89,14 +89,8 @@ const SCHEDULE_PRESETS = [
   { label: 'Weekly (Sunday)', value: '0 0 * * 0' },
 ]
 
-const METHODS = [
-  { label: 'Auto (recommended)', value: 'auto' },
-  { label: 'Kolmogorov-Smirnov', value: 'ks' },
-  { label: 'Population Stability Index', value: 'psi' },
-  { label: 'Chi-Square', value: 'chi2' },
-  { label: 'Jensen-Shannon', value: 'js' },
-  { label: 'Wasserstein', value: 'wasserstein' },
-]
+import { DriftMethodSelector } from './DriftMethodSelector'
+import type { DriftMethod } from '@/api/client'
 
 type FormStep = 'configure' | 'preview'
 
@@ -356,24 +350,15 @@ export function DriftMonitorForm({
               </Select>
             </div>
 
-            {/* Method */}
+            {/* Method - Using reusable DriftMethodSelector */}
             <div className="space-y-2">
               <Label>{t.monitor.method}</Label>
-              <Select
-                value={formData.method}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, method: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {METHODS.map((method) => (
-                    <SelectItem key={method.value} value={method.value}>
-                      {method.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <DriftMethodSelector
+                value={formData.method as DriftMethod}
+                onChange={(method) => setFormData((prev) => ({ ...prev, method }))}
+                variant="compact"
+                showThresholdHints
+              />
             </div>
 
             {/* Threshold */}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useIntlayer } from '@/providers'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -21,16 +21,25 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
   listSources,
   listDriftComparisons,
   compareDrift,
+  getSourceSchema,
   type Source,
   type DriftComparison,
+  DEFAULT_THRESHOLDS,
 } from '@/api/client'
+import { DriftConfigPanel, type DriftConfig } from '@/components/drift'
 import { formatDate } from '@/lib/utils'
 import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
-import { GitCompare, Plus, AlertTriangle, CheckCircle, ArrowRight } from 'lucide-react'
+import { GitCompare, Plus, AlertTriangle, CheckCircle, ArrowRight, Settings2, Info } from 'lucide-react'
 
 export default function Drift() {
   const drift_t = useIntlayer('drift')
@@ -46,7 +55,14 @@ export default function Drift() {
   // New comparison form
   const [baselineId, setBaselineId] = useState('')
   const [currentId, setCurrentId] = useState('')
-  const [method, setMethod] = useState<'auto' | 'ks' | 'psi' | 'chi2' | 'js'>('auto')
+  const [driftConfig, setDriftConfig] = useState<DriftConfig>({
+    method: 'auto',
+    threshold: null,
+    correction: null,
+    columns: null,
+  })
+  const [availableColumns, setAvailableColumns] = useState<string[]>([])
+  const [loadingColumns, setLoadingColumns] = useState(false)
 
   useEffect(() => {
     async function fetchData() {
@@ -71,7 +87,49 @@ export default function Drift() {
     fetchData()
   }, [toast, common, errors])
 
-  const handleCompare = async () => {
+  // Load columns when baseline source changes
+  useEffect(() => {
+    async function loadColumns() {
+      if (!baselineId) {
+        setAvailableColumns([])
+        return
+      }
+
+      setLoadingColumns(true)
+      try {
+        const schema = await getSourceSchema(baselineId)
+        if (schema?.columns) {
+          setAvailableColumns(schema.columns.map((c) => c.name))
+        } else {
+          setAvailableColumns([])
+        }
+      } catch {
+        // Schema might not exist yet, that's ok
+        setAvailableColumns([])
+      } finally {
+        setLoadingColumns(false)
+      }
+    }
+
+    loadColumns()
+  }, [baselineId])
+
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!dialogOpen) {
+      setBaselineId('')
+      setCurrentId('')
+      setDriftConfig({
+        method: 'auto',
+        threshold: null,
+        correction: null,
+        columns: null,
+      })
+      setAvailableColumns([])
+    }
+  }, [dialogOpen])
+
+  const handleCompare = useCallback(async () => {
     if (!baselineId || !currentId) {
       toast({
         variant: 'destructive',
@@ -95,13 +153,14 @@ export default function Drift() {
       const result = await compareDrift({
         baseline_source_id: baselineId,
         current_source_id: currentId,
-        method,
+        method: driftConfig.method,
+        ...(driftConfig.threshold !== null && { threshold: driftConfig.threshold }),
+        ...(driftConfig.correction !== null && { correction: driftConfig.correction }),
+        ...(driftConfig.columns !== null && { columns: driftConfig.columns }),
       })
 
       setComparisons((prev) => [result.data, ...prev])
       setDialogOpen(false)
-      setBaselineId('')
-      setCurrentId('')
 
       toast({
         title: str(drift_t.comparisonComplete),
@@ -118,7 +177,7 @@ export default function Drift() {
     } finally {
       setComparing(false)
     }
-  }
+  }, [baselineId, currentId, driftConfig, toast, common, drift_t, errors])
 
   const getSourceName = (id: string) => {
     const source = sources.find((s) => s.id === id)
@@ -157,7 +216,8 @@ export default function Drift() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+              {/* Source Selection */}
               <div className="space-y-2">
                 <Label>{drift_t.baselineSource}</Label>
                 <Select value={baselineId} onValueChange={setBaselineId}>
@@ -190,21 +250,49 @@ export default function Drift() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>{drift_t.detectionMethod}</Label>
-                <Select value={method} onValueChange={(v) => setMethod(v as typeof method)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">{drift_t.methods.auto}</SelectItem>
-                    <SelectItem value="ks">{drift_t.methods.ks}</SelectItem>
-                    <SelectItem value="psi">{drift_t.methods.psi}</SelectItem>
-                    <SelectItem value="chi2">{drift_t.methods.chi2}</SelectItem>
-                    <SelectItem value="js">{drift_t.methods.js}</SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Drift Configuration Panel */}
+              <div className="pt-2 border-t">
+                <DriftConfigPanel
+                  config={driftConfig}
+                  onChange={setDriftConfig}
+                  availableColumns={availableColumns}
+                  methodVariant="compact"
+                  collapsedByDefault={true}
+                  showColumnSelector={availableColumns.length > 0}
+                  disabled={comparing || loadingColumns}
+                />
               </div>
+
+              {/* Current Config Summary */}
+              {(driftConfig.method !== 'auto' || driftConfig.threshold !== null || driftConfig.correction !== null || driftConfig.columns !== null) && (
+                <div className="p-3 bg-muted/50 rounded-lg space-y-1 text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Settings2 className="h-4 w-4" />
+                    <span className="font-medium">Configuration Summary</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <span className="text-muted-foreground">Method:</span>
+                    <span className="font-mono">{driftConfig.method}</span>
+                    <span className="text-muted-foreground">Threshold:</span>
+                    <span className="font-mono">
+                      {driftConfig.threshold ?? DEFAULT_THRESHOLDS[driftConfig.method]} (
+                      {driftConfig.threshold === null ? 'default' : 'custom'})
+                    </span>
+                    {driftConfig.correction && (
+                      <>
+                        <span className="text-muted-foreground">Correction:</span>
+                        <span className="font-mono">{driftConfig.correction}</span>
+                      </>
+                    )}
+                    {driftConfig.columns && (
+                      <>
+                        <span className="text-muted-foreground">Columns:</span>
+                        <span className="font-mono">{driftConfig.columns.length} selected</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <DialogFooter>
@@ -270,7 +358,7 @@ export default function Drift() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                   <div>
                     <div className="text-sm text-muted-foreground">{drift_t.columnsCompared}</div>
                     <div className="text-xl font-semibold">{c.total_columns || 0}</div>
@@ -286,6 +374,39 @@ export default function Drift() {
                     <div className="text-xl font-semibold">
                       {c.drift_percentage?.toFixed(1) || 0}%
                     </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">{drift_t.detectionMethod}</div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-center gap-1 cursor-help">
+                            <span className="text-lg font-semibold font-mono">
+                              {(c.config as Record<string, unknown>)?.method || 'auto'}
+                            </span>
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-xs">
+                          <div className="space-y-1 text-xs">
+                            <div>
+                              <span className="text-muted-foreground">Threshold: </span>
+                              <span className="font-mono">
+                                {(c.config as Record<string, unknown>)?.threshold ?? 'default'}
+                              </span>
+                            </div>
+                            {(c.config as Record<string, unknown>)?.correction && (
+                              <div>
+                                <span className="text-muted-foreground">Correction: </span>
+                                <span className="font-mono">
+                                  {String((c.config as Record<string, unknown>)?.correction)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
 
