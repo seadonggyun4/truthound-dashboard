@@ -117,6 +117,20 @@ from .sampling import (
     get_sampler,
     reset_sampler,
 )
+from .validation_limits import (
+    DeduplicationLimits,
+    EscalationLimits,
+    ThrottlingLimits,
+    TimeWindowLimits,
+    ValidationLimitError,
+    clear_limits_cache,
+    get_deduplication_limits,
+    get_escalation_limits,
+    get_throttling_limits,
+    get_time_window_limits,
+    validate_positive_float,
+    validate_positive_int,
+)
 from .scheduler import (
     ValidationScheduler,
     get_scheduler,
@@ -281,4 +295,17 @@ __all__ = [
     "CatalogService",
     "CollaborationService",
     "ActivityLogger",
+    # Validation Limits (DoS Prevention)
+    "ValidationLimitError",
+    "DeduplicationLimits",
+    "ThrottlingLimits",
+    "EscalationLimits",
+    "TimeWindowLimits",
+    "get_deduplication_limits",
+    "get_throttling_limits",
+    "get_escalation_limits",
+    "get_time_window_limits",
+    "clear_limits_cache",
+    "validate_positive_int",
+    "validate_positive_float",
 ]

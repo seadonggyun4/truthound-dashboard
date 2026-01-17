@@ -42,15 +42,30 @@ class ValidationIssue(BaseSchema):
     )
 
 
+class CustomValidatorConfig(BaseSchema):
+    """Configuration for running a custom validator."""
+
+    validator_id: str = Field(
+        ..., description="ID of the custom validator to run"
+    )
+    column: str = Field(
+        ..., description="Column to validate"
+    )
+    params: dict[str, Any] | None = Field(
+        default=None, description="Parameter values for the validator"
+    )
+
+
 class ValidationRunRequest(BaseSchema):
     """Request to run validation on a source.
 
     This schema maps to truthound's th.check() parameters for maximum flexibility.
     All optional parameters default to None/False to use truthound's defaults.
 
-    Supports two modes:
+    Supports three modes:
     1. Simple mode: Use `validators` list with validator names (backward compatible)
     2. Advanced mode: Use `validator_configs` for per-validator parameter configuration
+    3. Custom validators: Use `custom_validators` to include user-defined validators
     """
 
     # Core validation options - Simple mode (backward compatible)
@@ -66,6 +81,15 @@ class ValidationRunRequest(BaseSchema):
         description=(
             "Advanced: Configure individual validators with specific parameters. "
             "Takes precedence over 'validators' list if provided."
+        ),
+    )
+
+    # Custom validators - User-defined validators
+    custom_validators: list[CustomValidatorConfig] | None = Field(
+        default=None,
+        description=(
+            "Custom validators to run alongside built-in validators. "
+            "Each config specifies the validator_id, target column, and parameters."
         ),
     )
 

@@ -38,8 +38,66 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import JSONResponse
 
 from truthound_dashboard.core.exceptions import ErrorCode
+from truthound_dashboard.core.i18n import SupportedLocale, detect_locale
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Locale Detection
+# =============================================================================
+
+
+class LocaleDetectionMiddleware(BaseHTTPMiddleware):
+    """Middleware to detect and set user locale from request.
+
+    Detection priority:
+    1. Query parameter: ?lang=ko
+    2. Accept-Language header
+    3. Default locale (English)
+
+    The detected locale is stored in request.state.locale for use by
+    API endpoints that need to return localized error messages.
+
+    Example:
+        # In endpoint
+        locale = getattr(request.state, "locale", SupportedLocale.ENGLISH)
+        message = get_message("source_not_found", locale)
+    """
+
+    def __init__(
+        self,
+        app: Any,
+        default_locale: SupportedLocale = SupportedLocale.ENGLISH,
+    ) -> None:
+        """Initialize locale detection middleware.
+
+        Args:
+            app: ASGI application.
+            default_locale: Default locale when detection fails.
+        """
+        super().__init__(app)
+        self._default_locale = default_locale
+
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
+        """Detect locale and store in request state."""
+        # Detect locale from request
+        locale = detect_locale(request, default=self._default_locale)
+
+        # Store in request state
+        request.state.locale = locale
+
+        # Process request
+        response = await call_next(request)
+
+        # Add Content-Language header
+        response.headers["Content-Language"] = locale.value
+
+        return response
 
 
 # =============================================================================
@@ -587,6 +645,296 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
 
 
 # =============================================================================
+# Notification Throttling Middleware
+# =============================================================================
+
+
+@dataclass
+class NotificationThrottleConfig:
+    """Configuration for notification-specific throttling.
+
+    This middleware integrates with the notification throttling system
+    to provide endpoint-specific rate limiting for notification operations.
+
+    Attributes:
+        enabled: Whether throttling is enabled.
+        per_minute: Default requests per minute for notification endpoints.
+        per_hour: Default requests per hour for notification endpoints.
+        per_day: Default requests per day for notification endpoints.
+        burst_allowance: Burst allowance factor (e.g., 1.5 = 50% extra burst).
+        endpoint_overrides: Per-endpoint limit overrides.
+    """
+
+    enabled: bool = True
+    per_minute: int = 60
+    per_hour: int = 500
+    per_day: int = 5000
+    burst_allowance: float = 1.5
+    endpoint_overrides: dict[str, dict[str, int]] = field(default_factory=dict)
+
+
+class NotificationThrottleMiddleware(BaseHTTPMiddleware):
+    """Middleware for notification-specific throttling.
+
+    Provides fine-grained rate limiting for notification operations with:
+    - Per-minute, per-hour, and per-day limits
+    - Endpoint-specific overrides
+    - Burst allowance
+    - Integration with notification throttling metrics
+
+    Response Headers:
+        X-RateLimit-Limit: Maximum requests in current window
+        X-RateLimit-Remaining: Remaining requests in current window
+        X-RateLimit-Reset: Unix timestamp when the limit resets
+        X-RateLimit-Window: Current limiting window (minute/hour/day)
+        Retry-After: Seconds until the limit resets (on 429 only)
+    """
+
+    NOTIFICATION_PATHS = [
+        "/api/v1/notifications",
+    ]
+
+    def __init__(
+        self,
+        app: Any,
+        config: NotificationThrottleConfig | None = None,
+    ) -> None:
+        """Initialize notification throttle middleware.
+
+        Args:
+            app: ASGI application.
+            config: Throttling configuration.
+        """
+        super().__init__(app)
+        self._config = config or NotificationThrottleConfig()
+
+        # Separate counters for minute/hour/day windows
+        self._minute_counts: dict[str, list[float]] = defaultdict(list)
+        self._hour_counts: dict[str, list[float]] = defaultdict(list)
+        self._day_counts: dict[str, list[float]] = defaultdict(list)
+
+        # Metrics
+        self._total_requests = 0
+        self._throttled_requests = 0
+
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
+        """Process request with notification-specific throttling."""
+        # Only apply to notification endpoints
+        if not self._config.enabled or not self._is_notification_endpoint(request.url.path):
+            return await call_next(request)
+
+        # Get client key
+        client_ip = request.client.host if request.client else "unknown"
+        key = f"notif:{client_ip}"
+
+        self._total_requests += 1
+
+        # Get limits for this endpoint
+        limits = self._get_limits(request.url.path)
+
+        # Check all windows
+        now = time.time()
+        allowed, info = self._check_limits(key, limits, now)
+
+        if not allowed:
+            self._throttled_requests += 1
+            logger.warning(
+                f"Notification throttle exceeded for {key}",
+                extra={
+                    "path": request.url.path,
+                    "window": info["window"],
+                    "limit": info["limit"],
+                },
+            )
+
+            retry_after = info["reset_at"] - int(now)
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "success": False,
+                    "error": {
+                        "code": ErrorCode.RATE_LIMIT_EXCEEDED.value,
+                        "message": f"Rate limit exceeded for {info['window']} window. "
+                                   f"Try again in {retry_after} seconds.",
+                        "details": {
+                            "window": info["window"],
+                            "limit": info["limit"],
+                            "remaining": 0,
+                            "reset_at": info["reset_at"],
+                        },
+                    },
+                },
+                headers=self._build_headers(info, retry_after),
+            )
+
+        # Record request
+        self._record_request(key, now)
+
+        # Process request
+        response = await call_next(request)
+
+        # Add rate limit headers
+        response.headers.update(self._build_headers(info))
+
+        return response
+
+    def _is_notification_endpoint(self, path: str) -> bool:
+        """Check if path is a notification endpoint."""
+        return any(path.startswith(p) for p in self.NOTIFICATION_PATHS)
+
+    def _get_limits(self, path: str) -> dict[str, int]:
+        """Get rate limits for a specific path."""
+        # Check for endpoint-specific overrides
+        for pattern, limits in self._config.endpoint_overrides.items():
+            if path.startswith(pattern):
+                return {
+                    "minute": limits.get("per_minute", self._config.per_minute),
+                    "hour": limits.get("per_hour", self._config.per_hour),
+                    "day": limits.get("per_day", self._config.per_day),
+                }
+
+        # Return default limits with burst allowance
+        burst = self._config.burst_allowance
+        return {
+            "minute": int(self._config.per_minute * burst),
+            "hour": int(self._config.per_hour * burst),
+            "day": int(self._config.per_day * burst),
+        }
+
+    def _check_limits(
+        self,
+        key: str,
+        limits: dict[str, int],
+        now: float,
+    ) -> tuple[bool, dict[str, Any]]:
+        """Check all rate limit windows.
+
+        Returns:
+            Tuple of (allowed, info dict).
+        """
+        # Clean old entries
+        self._cleanup_window(key, now)
+
+        # Check minute limit first (strictest)
+        minute_count = len(self._minute_counts[key])
+        if minute_count >= limits["minute"]:
+            return False, {
+                "window": "minute",
+                "limit": limits["minute"],
+                "remaining": 0,
+                "reset_at": int(now + 60 - (now % 60)),
+            }
+
+        # Check hour limit
+        hour_count = len(self._hour_counts[key])
+        if hour_count >= limits["hour"]:
+            return False, {
+                "window": "hour",
+                "limit": limits["hour"],
+                "remaining": 0,
+                "reset_at": int(now + 3600 - (now % 3600)),
+            }
+
+        # Check day limit
+        day_count = len(self._day_counts[key])
+        if day_count >= limits["day"]:
+            return False, {
+                "window": "day",
+                "limit": limits["day"],
+                "remaining": 0,
+                "reset_at": int(now + 86400 - (now % 86400)),
+            }
+
+        # All windows have capacity - return most restrictive remaining
+        minute_remaining = limits["minute"] - minute_count
+        hour_remaining = limits["hour"] - hour_count
+        day_remaining = limits["day"] - day_count
+
+        # Find the most restrictive window
+        if minute_remaining <= hour_remaining and minute_remaining <= day_remaining:
+            return True, {
+                "window": "minute",
+                "limit": limits["minute"],
+                "remaining": minute_remaining - 1,
+                "reset_at": int(now + 60 - (now % 60)),
+            }
+        elif hour_remaining <= day_remaining:
+            return True, {
+                "window": "hour",
+                "limit": limits["hour"],
+                "remaining": hour_remaining - 1,
+                "reset_at": int(now + 3600 - (now % 3600)),
+            }
+        else:
+            return True, {
+                "window": "day",
+                "limit": limits["day"],
+                "remaining": day_remaining - 1,
+                "reset_at": int(now + 86400 - (now % 86400)),
+            }
+
+    def _record_request(self, key: str, now: float) -> None:
+        """Record a request in all windows."""
+        self._minute_counts[key].append(now)
+        self._hour_counts[key].append(now)
+        self._day_counts[key].append(now)
+
+    def _cleanup_window(self, key: str, now: float) -> None:
+        """Remove expired entries from all windows."""
+        minute_start = now - 60
+        hour_start = now - 3600
+        day_start = now - 86400
+
+        self._minute_counts[key] = [
+            t for t in self._minute_counts[key] if t > minute_start
+        ]
+        self._hour_counts[key] = [
+            t for t in self._hour_counts[key] if t > hour_start
+        ]
+        self._day_counts[key] = [
+            t for t in self._day_counts[key] if t > day_start
+        ]
+
+    def _build_headers(
+        self,
+        info: dict[str, Any],
+        retry_after: int | None = None,
+    ) -> dict[str, str]:
+        """Build rate limit response headers."""
+        headers = {
+            "X-RateLimit-Limit": str(info["limit"]),
+            "X-RateLimit-Remaining": str(max(0, info["remaining"])),
+            "X-RateLimit-Reset": str(info["reset_at"]),
+            "X-RateLimit-Window": info["window"],
+        }
+
+        if retry_after is not None:
+            headers["Retry-After"] = str(max(0, retry_after))
+
+        return headers
+
+    def get_metrics(self) -> dict[str, Any]:
+        """Get throttling metrics.
+
+        Returns:
+            Dictionary with throttling statistics.
+        """
+        return {
+            "total_requests": self._total_requests,
+            "throttled_requests": self._throttled_requests,
+            "throttle_rate": (
+                self._throttled_requests / self._total_requests * 100
+                if self._total_requests > 0 else 0
+            ),
+            "active_keys": len(self._minute_counts),
+        }
+
+
+# =============================================================================
 # Middleware Setup Helper
 # =============================================================================
 
@@ -606,12 +954,33 @@ def setup_middleware(app: Any) -> None:
     # Request logging (always enabled)
     app.add_middleware(RequestLoggingMiddleware)
 
-    # Rate limiting
+    # Rate limiting (general)
     rate_limit_config = RateLimitConfig(
         requests_per_minute=120,
         exclude_paths=["/health", "/docs", "/redoc", "/openapi.json", "/api/openapi.json"],
     )
     app.add_middleware(RateLimitMiddleware, config=rate_limit_config)
+
+    # Notification-specific throttling (more granular)
+    notif_throttle_config = NotificationThrottleConfig(
+        per_minute=60,
+        per_hour=500,
+        per_day=5000,
+        burst_allowance=1.5,
+        endpoint_overrides={
+            # Higher limits for read operations
+            "/api/v1/notifications/routing/rules": {
+                "per_minute": 120,
+                "per_hour": 1000,
+            },
+            # Lower limits for write operations
+            "/api/v1/notifications/escalation/incidents": {
+                "per_minute": 30,
+                "per_hour": 200,
+            },
+        },
+    )
+    app.add_middleware(NotificationThrottleMiddleware, config=notif_throttle_config)
 
     # Security headers
     app.add_middleware(SecurityHeadersMiddleware)
@@ -622,5 +991,8 @@ def setup_middleware(app: Any) -> None:
             BasicAuthMiddleware,
             password=settings.auth_password,
         )
+
+    # Locale detection (runs first, so it's available to all other middleware)
+    app.add_middleware(LocaleDetectionMiddleware)
 
     logger.info("Middleware configured successfully")

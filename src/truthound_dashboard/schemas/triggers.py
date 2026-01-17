@@ -27,6 +27,7 @@ class TriggerType(str, Enum):
     COMPOSITE = "composite"
     EVENT = "event"
     MANUAL = "manual"
+    WEBHOOK = "webhook"  # External webhook triggers
 
 
 class TriggerOperator(str, Enum):
@@ -145,6 +146,21 @@ class DataChangeTriggerConfig(BaseTriggerConfig):
     check_interval_minutes: int = Field(
         default=60, ge=1, description="How often to check for changes (minutes)"
     )
+    priority: int = Field(
+        default=5,
+        ge=1,
+        le=10,
+        description="Evaluation priority (1=highest, 10=lowest)",
+    )
+    auto_profile: bool = Field(
+        default=True,
+        description="Automatically run profile before comparison",
+    )
+    cooldown_minutes: int = Field(
+        default=15,
+        ge=0,
+        description="Minimum time between triggers (prevents rapid re-triggering)",
+    )
 
     @field_validator("metrics")
     @classmethod
@@ -260,6 +276,36 @@ class ManualTriggerConfig(BaseTriggerConfig):
     type: Literal[TriggerType.MANUAL] = TriggerType.MANUAL
 
 
+class WebhookTriggerConfig(BaseTriggerConfig):
+    """Webhook trigger configuration.
+
+    Triggers when an external system sends a webhook request.
+    Supports secret-based authentication and payload validation.
+
+    Example:
+        webhook_secret="my_secret_key"
+        allowed_sources=["airflow", "dagster", "prefect"]
+    """
+
+    type: Literal[TriggerType.WEBHOOK] = TriggerType.WEBHOOK
+    webhook_secret: str | None = Field(
+        default=None,
+        description="Secret key for webhook authentication (HMAC-SHA256)",
+    )
+    allowed_sources: list[str] | None = Field(
+        default=None,
+        description="Optional list of allowed source identifiers",
+    )
+    payload_filters: dict[str, Any] | None = Field(
+        default=None,
+        description="JSON path filters to match against payload",
+    )
+    require_signature: bool = Field(
+        default=False,
+        description="Require X-Webhook-Signature header validation",
+    )
+
+
 # Union type for all trigger configurations
 TriggerConfig = (
     CronTriggerConfig
@@ -268,6 +314,7 @@ TriggerConfig = (
     | EventTriggerConfig
     | CompositeTriggerConfig
     | ManualTriggerConfig
+    | WebhookTriggerConfig
 )
 
 
@@ -328,6 +375,8 @@ class TriggerConfigCreate(BaseModel):
                 return CompositeTriggerConfig(**config_with_type)
             case TriggerType.MANUAL:
                 return ManualTriggerConfig(**config_with_type)
+            case TriggerType.WEBHOOK:
+                return WebhookTriggerConfig(**config_with_type)
             case _:
                 raise ValueError(f"Unknown trigger type: {self.type}")
 
@@ -376,5 +425,87 @@ def parse_trigger_config(data: dict[str, Any]) -> TriggerConfig:
             return CompositeTriggerConfig(**data)
         case TriggerType.MANUAL:
             return ManualTriggerConfig(**data)
+        case TriggerType.WEBHOOK:
+            return WebhookTriggerConfig(**data)
         case _:
             raise ValueError(f"Unknown trigger type: {trigger_type}")
+
+
+# =============================================================================
+# Trigger Monitoring Schemas
+# =============================================================================
+
+
+class TriggerCheckStatus(BaseModel):
+    """Status of a single trigger check."""
+
+    schedule_id: str
+    schedule_name: str
+    trigger_type: TriggerType
+    last_check_at: datetime | None = None
+    next_check_at: datetime | None = None
+    last_triggered_at: datetime | None = None
+    check_count: int = 0
+    trigger_count: int = 0
+    last_evaluation: TriggerEvaluationResult | None = None
+    is_due_for_check: bool = False
+    priority: int = 5
+    cooldown_remaining_seconds: int = 0
+
+
+class TriggerMonitoringStats(BaseModel):
+    """Aggregated statistics for trigger monitoring."""
+
+    total_schedules: int = 0
+    active_data_change_triggers: int = 0
+    active_webhook_triggers: int = 0
+    active_composite_triggers: int = 0
+    total_checks_last_hour: int = 0
+    total_triggers_last_hour: int = 0
+    average_check_interval_seconds: float = 0.0
+    next_scheduled_check_at: datetime | None = None
+
+
+class TriggerMonitoringResponse(BaseModel):
+    """Response for trigger monitoring status endpoint."""
+
+    stats: TriggerMonitoringStats
+    schedules: list[TriggerCheckStatus] = Field(default_factory=list)
+    checker_running: bool = False
+    checker_interval_seconds: int = 300
+    last_checker_run_at: datetime | None = None
+
+
+class WebhookTriggerRequest(BaseModel):
+    """Request schema for incoming webhook triggers."""
+
+    source: str = Field(..., description="Source identifier (e.g., 'airflow', 'dagster')")
+    event_type: str = Field(
+        default="data_updated",
+        description="Type of event (data_updated, job_completed, etc.)",
+    )
+    payload: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional event payload data",
+    )
+    schedule_id: str | None = Field(
+        default=None,
+        description="Specific schedule to trigger (optional)",
+    )
+    source_id: str | None = Field(
+        default=None,
+        description="Data source ID to trigger (optional)",
+    )
+    timestamp: datetime | None = Field(
+        default=None,
+        description="Event timestamp (defaults to now)",
+    )
+
+
+class WebhookTriggerResponse(BaseModel):
+    """Response schema for webhook trigger endpoint."""
+
+    accepted: bool
+    triggered_schedules: list[str] = Field(default_factory=list)
+    message: str
+    request_id: str

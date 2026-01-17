@@ -22,9 +22,11 @@ from . import (
     schedules,
     schemas,
     sources,
+    triggers,
     validations,
     validators,
     versioning,
+    websocket,
     # Phase 5
     catalog,
     collaboration,
@@ -32,6 +34,8 @@ from . import (
     # Schema Evolution & Rule Suggestions
     rule_suggestions,
     schema_evolution,
+    # Phase 9: Plugin System
+    plugins,
     # Phase 10: ML & Lineage
     anomaly,
     lineage,
@@ -187,6 +191,12 @@ api_router.include_router(
     tags=["rule-suggestions"],
 )
 
+# Rule suggestion presets endpoint
+api_router.include_router(
+    rule_suggestions.presets_router,
+    tags=["rule-suggestions"],
+)
+
 # =============================================================================
 # Phase 14: Advanced Notifications
 # =============================================================================
@@ -238,4 +248,34 @@ api_router.include_router(
 api_router.include_router(
     cross_alerts.router,
     tags=["cross-alerts"],
+)
+
+# =============================================================================
+# Trigger Monitoring & Webhooks
+# =============================================================================
+
+# Trigger monitoring and webhook endpoints
+api_router.include_router(
+    triggers.router,
+    tags=["triggers"],
+)
+
+# =============================================================================
+# WebSocket Real-time Updates
+# =============================================================================
+
+# WebSocket endpoints for real-time updates
+api_router.include_router(
+    websocket.router,
+    tags=["websocket"],
+)
+
+# =============================================================================
+# Phase 9: Plugin System
+# =============================================================================
+
+# Plugin marketplace and custom validators/reporters
+api_router.include_router(
+    plugins.router,
+    tags=["plugins"],
 )

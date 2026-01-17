@@ -18,12 +18,17 @@ Usage:
 from __future__ import annotations
 
 from .base import (
+    CustomValidatorExecuteRequest,
+    CustomValidatorExecuteResponse,
     ParameterDefinition,
     ParameterType,
+    UnifiedValidatorDefinition,
+    UnifiedValidatorListResponse,
     ValidatorCategory,
     ValidatorConfig,
     ValidatorConfigList,
     ValidatorDefinition,
+    ValidatorSource,
     configs_to_truthound_format,
     has_custom_params,
     merge_severity_overrides,
@@ -45,6 +50,12 @@ __all__ = [
     "ValidatorConfig",
     "ValidatorConfigList",
     "ValidatorDefinition",
+    # Unified validator types (built-in + custom)
+    "ValidatorSource",
+    "UnifiedValidatorDefinition",
+    "UnifiedValidatorListResponse",
+    "CustomValidatorExecuteRequest",
+    "CustomValidatorExecuteResponse",
     # Utility functions
     "configs_to_truthound_format",
     "has_custom_params",

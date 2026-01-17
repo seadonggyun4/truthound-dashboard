@@ -71,10 +71,23 @@ async def run_validation(
             # Simple mode: use validator names list (backward compatible)
             validators = request.validators
 
+        # Convert custom validators to internal format
+        custom_validators = None
+        if request.custom_validators:
+            custom_validators = [
+                {
+                    "validator_id": cv.validator_id,
+                    "column": cv.column,
+                    "params": cv.params or {},
+                }
+                for cv in request.custom_validators
+            ]
+
         validation = await service.run_validation(
             source_id,
             validators=validators,
             validator_params=validator_params,
+            custom_validators=custom_validators,
             schema_path=request.schema_path,
             auto_schema=request.auto_schema,
             columns=request.columns,

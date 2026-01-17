@@ -58,19 +58,20 @@ class BaseFacet(BaseSchema):
     All facets include metadata about what produced them.
     """
 
-    _producer: str = Field(
+    model_config = {"populate_by_name": True}
+
+    producer: str = Field(
         default="truthound-dashboard",
-        alias="_producer",
+        serialization_alias="_producer",
+        validation_alias="_producer",
         description="URI identifying the producer of this metadata",
     )
-    _schemaURL: str = Field(
+    schemaURL: str = Field(
         default="https://openlineage.io/spec/facets/1-0-0/",
-        alias="_schemaURL",
+        serialization_alias="_schemaURL",
+        validation_alias="_schemaURL",
         description="URL to the JSON schema for this facet",
     )
-
-    class Config:
-        populate_by_name = True
 
 
 class SchemaField(BaseSchema):

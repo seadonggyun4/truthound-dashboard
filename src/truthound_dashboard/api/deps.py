@@ -38,6 +38,7 @@ from truthound_dashboard.core.lineage import LineageService
 from truthound_dashboard.core.anomaly import AnomalyDetectionService
 from truthound_dashboard.core.anomaly_explainer import AnomalyExplainerService
 from truthound_dashboard.core.openlineage import OpenLineageEmitterService, OpenLineageWebhookService
+from truthound_dashboard.core.report_history import ReportHistoryService
 from truthound_dashboard.db import get_db_session
 
 
@@ -303,4 +304,21 @@ OpenLineageEmitterServiceDep = Annotated[
 ]
 OpenLineageWebhookServiceDep = Annotated[
     OpenLineageWebhookService, Depends(get_openlineage_webhook_service)
+]
+
+
+async def get_report_history_service(session: SessionDep) -> ReportHistoryService:
+    """Get report history service dependency.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        ReportHistoryService instance.
+    """
+    return ReportHistoryService(session)
+
+
+ReportHistoryServiceDep = Annotated[
+    ReportHistoryService, Depends(get_report_history_service)
 ]
