@@ -6,10 +6,11 @@
  * - Search and filter
  * - Per-validator parameter configuration
  * - Preset templates (All, Quick Check, Schema Only, etc.)
+ * - Support for both built-in and custom validators
  */
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { Search, Filter, ChevronDown, ChevronRight, Zap, Shield, Database } from 'lucide-react'
+import { Search, Filter, ChevronDown, ChevronRight, Zap, Shield, Database, Code, Sparkles } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ValidatorConfigCard } from './ValidatorConfigCard'
-import type { ValidatorDefinition, ValidatorConfig, ValidatorCategory } from '@/api/client'
+import type { ValidatorDefinition, ValidatorConfig, ValidatorCategory, UnifiedValidatorDefinition, ValidatorSource } from '@/api/client'
 import {
   createEmptyConfig,
   validateConfig,
@@ -43,6 +44,21 @@ interface ValidatorSelectorProps {
   columns?: string[]
   /** Validation errors by validator name */
   errors?: Record<string, Record<string, string>>
+  /** Custom validators (optional) */
+  customValidators?: UnifiedValidatorDefinition[]
+  /** Callback when custom validator configs change (optional) */
+  onCustomValidatorChange?: (configs: CustomValidatorSelectionConfig[]) => void
+  /** Current custom validator selections */
+  customValidatorConfigs?: CustomValidatorSelectionConfig[]
+}
+
+/** Configuration for a custom validator to be run */
+export interface CustomValidatorSelectionConfig {
+  validator_id: string
+  validator_name: string
+  column: string
+  params: Record<string, unknown>
+  enabled: boolean
 }
 
 interface CategoryGroup {
@@ -93,7 +109,7 @@ const PRESETS = [
 // Category Labels
 // =============================================================================
 
-const CATEGORY_LABELS: Record<ValidatorCategory, string> = {
+const CATEGORY_LABELS: Record<ValidatorCategory | 'custom', string> = {
   schema: 'Schema',
   completeness: 'Completeness',
   uniqueness: 'Uniqueness',
@@ -108,6 +124,7 @@ const CATEGORY_LABELS: Record<ValidatorCategory, string> = {
   geospatial: 'Geospatial',
   drift: 'Drift',
   anomaly: 'Anomaly',
+  custom: 'Custom Validators',
 }
 
 // =============================================================================
@@ -120,10 +137,14 @@ export function ValidatorSelector({
   onChange,
   columns = [],
   errors = {},
+  customValidators = [],
+  onCustomValidatorChange,
+  customValidatorConfigs = [],
 }: ValidatorSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<ValidatorCategory | 'all'>('all')
+  const [selectedCategory, setSelectedCategory] = useState<ValidatorCategory | 'all' | 'custom'>('all')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['schema', 'completeness']))
+  const [sourceFilter, setSourceFilter] = useState<ValidatorSource | 'all'>('all')
 
   // Initialize configs if empty
   useEffect(() => {
@@ -248,10 +269,53 @@ export function ValidatorSelector({
 
   // Summary stats
   const stats = useMemo(() => {
-    const enabled = configs.filter((c) => c.enabled).length
-    const total = validators.length
-    return { enabled, total }
-  }, [configs, validators])
+    const builtinEnabled = configs.filter((c) => c.enabled).length
+    const customEnabled = customValidatorConfigs.filter((c) => c.enabled).length
+    const enabled = builtinEnabled + customEnabled
+    const total = validators.length + customValidators.length
+    return { enabled, total, builtinEnabled, customEnabled, builtinTotal: validators.length, customTotal: customValidators.length }
+  }, [configs, validators, customValidatorConfigs, customValidators])
+
+  // Custom validator helpers
+  const getCustomConfig = useCallback(
+    (validatorId: string): CustomValidatorSelectionConfig | undefined => {
+      return customValidatorConfigs.find((c) => c.validator_id === validatorId)
+    },
+    [customValidatorConfigs]
+  )
+
+  const updateCustomConfig = useCallback(
+    (config: CustomValidatorSelectionConfig) => {
+      if (!onCustomValidatorChange) return
+      const newConfigs = customValidatorConfigs.map((c) =>
+        c.validator_id === config.validator_id ? config : c
+      )
+      if (!customValidatorConfigs.find((c) => c.validator_id === config.validator_id)) {
+        newConfigs.push(config)
+      }
+      onCustomValidatorChange(newConfigs)
+    },
+    [customValidatorConfigs, onCustomValidatorChange]
+  )
+
+  const toggleCustomValidator = useCallback(
+    (validator: UnifiedValidatorDefinition, enabled: boolean, column?: string) => {
+      if (!onCustomValidatorChange || !validator.id) return
+      const existing = getCustomConfig(validator.id)
+      if (existing) {
+        updateCustomConfig({ ...existing, enabled })
+      } else {
+        updateCustomConfig({
+          validator_id: validator.id,
+          validator_name: validator.display_name,
+          column: column || columns[0] || '',
+          params: {},
+          enabled,
+        })
+      }
+    },
+    [onCustomValidatorChange, getCustomConfig, updateCustomConfig, columns]
+  )
 
   return (
     <div className="space-y-4">
@@ -271,7 +335,7 @@ export function ValidatorSelector({
         {/* Category filter */}
         <Select
           value={selectedCategory}
-          onValueChange={(v) => setSelectedCategory(v as ValidatorCategory | 'all')}
+          onValueChange={(v) => setSelectedCategory(v as ValidatorCategory | 'all' | 'custom')}
         >
           <SelectTrigger className="w-[180px]">
             <Filter className="h-4 w-4 mr-2" />
@@ -287,9 +351,41 @@ export function ValidatorSelector({
           </SelectContent>
         </Select>
 
+        {/* Source filter (if custom validators available) */}
+        {customValidators.length > 0 && (
+          <Select
+            value={sourceFilter}
+            onValueChange={(v) => setSourceFilter(v as ValidatorSource | 'all')}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sources</SelectItem>
+              <SelectItem value="builtin">
+                <span className="flex items-center gap-2">
+                  <Database className="h-3 w-3" />
+                  Built-in
+                </span>
+              </SelectItem>
+              <SelectItem value="custom">
+                <span className="flex items-center gap-2">
+                  <Code className="h-3 w-3" />
+                  Custom
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+
         {/* Stats */}
         <Badge variant="outline" className="h-10 px-3 flex items-center gap-2">
           {stats.enabled} / {stats.total} enabled
+          {customValidators.length > 0 && (
+            <span className="text-muted-foreground text-xs">
+              ({stats.builtinEnabled} built-in, {stats.customEnabled} custom)
+            </span>
+          )}
         </Badge>
       </div>
 
@@ -366,9 +462,138 @@ export function ValidatorSelector({
               </div>
             ))}
 
-            {categoryGroups.length === 0 && (
+            {categoryGroups.length === 0 && customValidators.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 No validators match your search criteria.
+              </div>
+            )}
+
+            {/* Custom Validators Section */}
+            {customValidators.length > 0 && (sourceFilter === 'all' || sourceFilter === 'custom') && (selectedCategory === 'all' || selectedCategory === 'custom') && (
+              <div className="border rounded-lg overflow-hidden border-primary/30 bg-primary/5">
+                <button
+                  onClick={() => toggleCategoryExpansion('custom')}
+                  className="w-full flex items-center justify-between p-3 bg-primary/10 hover:bg-primary/20 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    {expandedCategories.has('custom') ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <span className="font-medium">Custom Validators</span>
+                    <Badge variant="secondary" className="bg-primary/20">
+                      {stats.customEnabled} / {stats.customTotal}
+                    </Badge>
+                  </div>
+                </button>
+
+                {expandedCategories.has('custom') && (
+                  <div className="p-3 space-y-2">
+                    {customValidators
+                      .filter((cv) => {
+                        if (!searchQuery) return true
+                        const query = searchQuery.toLowerCase()
+                        return (
+                          cv.name.toLowerCase().includes(query) ||
+                          cv.display_name.toLowerCase().includes(query) ||
+                          cv.description.toLowerCase().includes(query)
+                        )
+                      })
+                      .map((cv) => {
+                        const config = cv.id ? getCustomConfig(cv.id) : undefined
+                        const isEnabled = config?.enabled || false
+
+                        return (
+                          <div
+                            key={cv.id}
+                            className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                              isEnabled
+                                ? 'border-primary/50 bg-primary/5'
+                                : 'border-border bg-card hover:bg-muted/50'
+                            }`}
+                          >
+                            {/* Enable/disable checkbox */}
+                            <input
+                              type="checkbox"
+                              checked={isEnabled}
+                              onChange={(e) => toggleCustomValidator(cv, e.target.checked)}
+                              className="mt-1 h-4 w-4 rounded border-gray-300"
+                            />
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium">{cv.display_name}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  <Code className="h-3 w-3 mr-1" />
+                                  Custom
+                                </Badge>
+                                {cv.is_verified && (
+                                  <Badge variant="secondary" className="text-xs bg-green-500/20 text-green-700">
+                                    Verified
+                                  </Badge>
+                                )}
+                                <Badge variant="secondary" className="text-xs">
+                                  {cv.category}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {cv.description}
+                              </p>
+
+                              {/* Column selector for enabled custom validators */}
+                              {isEnabled && columns.length > 0 && (
+                                <div className="mt-2 flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">Target column:</span>
+                                  <Select
+                                    value={config?.column || ''}
+                                    onValueChange={(col) => {
+                                      if (config && cv.id) {
+                                        updateCustomConfig({ ...config, column: col })
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-7 w-[180px] text-xs">
+                                      <SelectValue placeholder="Select column" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {columns.map((col) => (
+                                        <SelectItem key={col} value={col}>
+                                          {col}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+
+                              {/* Usage count */}
+                              {cv.usage_count > 0 && (
+                                <span className="text-xs text-muted-foreground mt-1 block">
+                                  Used {cv.usage_count} times
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+
+                    {customValidators.filter((cv) => {
+                      if (!searchQuery) return true
+                      const query = searchQuery.toLowerCase()
+                      return (
+                        cv.name.toLowerCase().includes(query) ||
+                        cv.display_name.toLowerCase().includes(query) ||
+                        cv.description.toLowerCase().includes(query)
+                      )
+                    }).length === 0 && (
+                      <div className="text-center py-4 text-muted-foreground text-sm">
+                        No custom validators match your search.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

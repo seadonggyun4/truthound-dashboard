@@ -4,6 +4,12 @@
  * Exports all components for automatic drift monitoring.
  */
 
+// Core configuration components
+export { DriftMethodSelector } from './DriftMethodSelector'
+export type { DriftMethodSelectorProps, DriftMethodSelectorVariant } from './DriftMethodSelector'
+export { DriftConfigPanel } from './DriftConfigPanel'
+export type { DriftConfig, DriftConfigPanelProps } from './DriftConfigPanel'
+
 export { DriftMonitorList } from './DriftMonitorList'
 export { DriftMonitorForm } from './DriftMonitorForm'
 export { DriftAlertList } from './DriftAlertList'
