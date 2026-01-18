@@ -1,6 +1,3 @@
-
-<img width="2551" height="911" alt="스크린샷 2026-01-08 오전 11 54 18" src="https://github.com/user-attachments/assets/5e6b6d39-ee69-48f3-b0df-577f73bcb03d" />
-
 # truthound-dashboard
 
 [![PyPI version](https://img.shields.io/pypi/v/truthound-dashboard.svg)](https://pypi.org/project/truthound-dashboard/)
