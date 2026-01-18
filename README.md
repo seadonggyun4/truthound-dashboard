@@ -11,7 +11,11 @@
 
 A web-based data quality monitoring dashboard for [truthound](https://github.com/seadonggyun4/truthound).
 
-[Documentation](https://truthound.netlify.app) | [PyPI](https://pypi.org/project/truthound-dashboard/)
+[Documentation](https://truthound.netlify.app) | [PyPI](https://pypi.org/project/truthound-dashboard/) | [Live Demo](https://truthound-dashborad.vercel.app/)
+
+> **Try the Live Demo**: Experience the full dashboard interface with mock data at [truthound-dashborad.vercel.app](https://truthound-dashborad.vercel.app/). No installation required!
+>
+> **Note**: The demo page displays in English only. Language selection is not available in the demo due to Intlayer's runtime requirements. When you install and run truthound-dashboard locally, full multi-language support (English, Korean, and AI-translated languages) works as expected.
 
 ## Overview
 <img width="300" height="300" alt="Truthound_icon" src="https://github.com/user-attachments/assets/90d9e806-8895-45ec-97dc-f8300da4d997" />
