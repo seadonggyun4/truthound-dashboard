@@ -25,7 +25,6 @@ import {
 import { Input } from '@/components/ui/input'
 import {
   LOCALE_INFO,
-  getLocalesByGroup,
   type LocaleInfo,
   type SupportedLocale,
 } from '@/providers/intlayer/config'

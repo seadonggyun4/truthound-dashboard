@@ -62,36 +62,13 @@ export const LOCALE_INFO: readonly LocaleInfo[] = [
     nativeName: '한국어',
     flag: '🇰🇷',
   },
-]
-    group: 'extended',
-  },
-  {
-    code: Locales.VIETNAMESE,
-    name: 'Vietnamese',
-    nativeName: 'Ti\u1EBFng Vi\u1EC7t',
-    flag: '\u{1F1FB}\u{1F1F3}',
-    group: 'extended',
-  },
-  {
-    code: Locales.INDONESIAN,
-    name: 'Indonesian',
-    nativeName: 'Bahasa Indonesia',
-    flag: '\u{1F1EE}\u{1F1E9}',
-    group: 'extended',
-  },
-  {
-    code: Locales.TURKISH,
-    name: 'Turkish',
-    nativeName: 'T\u00FCrk\u00E7e',
-    flag: '\u{1F1F9}\u{1F1F7}',
-    group: 'extended',
-  },
 ] as const
 
 /**
  * RTL (Right-to-Left) locales
+ * Currently no RTL languages are built-in (Arabic requires AI translation)
  */
-export const RTL_LOCALES: readonly SupportedLocale[] = [Locales.ARABIC]
+export const RTL_LOCALES: readonly SupportedLocale[] = []
 
 /**
  * Check if a locale uses RTL direction
@@ -129,23 +106,10 @@ export function getBrowserLocale(): SupportedLocale {
     // Extract language code (e.g., 'en-US' -> 'en')
     const langCode = browserLocale.split('-')[0].toLowerCase()
 
-    // Map language codes to supported locales
+    // Map language codes to supported locales (only built-in languages)
     const localeMap: Record<string, SupportedLocale> = {
       en: Locales.ENGLISH,
       ko: Locales.KOREAN,
-      ja: Locales.JAPANESE,
-      zh: Locales.CHINESE,
-      de: Locales.GERMAN,
-      fr: Locales.FRENCH,
-      es: Locales.SPANISH,
-      pt: Locales.PORTUGUESE,
-      it: Locales.ITALIAN,
-      ru: Locales.RUSSIAN,
-      ar: Locales.ARABIC,
-      th: Locales.THAI,
-      vi: Locales.VIETNAMESE,
-      id: Locales.INDONESIAN,
-      tr: Locales.TURKISH,
     }
 
     if (langCode in localeMap) {
@@ -154,11 +118,4 @@ export function getBrowserLocale(): SupportedLocale {
   }
 
   return DEFAULT_LOCALE
-}
-
-/**
- * Get locales by group
- */
-export function getLocalesByGroup(group: 'core' | 'extended'): LocaleInfo[] {
-  return LOCALE_INFO.filter((info) => info.group === group)
 }
