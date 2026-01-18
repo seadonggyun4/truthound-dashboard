@@ -142,8 +142,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Intlayer cache only (dictionary must be committed for CI builds)
-frontend/.intlayer/cache/
+# Intlayer - config has absolute paths, cache is temp files
+# Dictionary and types need fresh generation on each build
+frontend/.intlayer/
 
 # Frontend build output (handled by build process)
 # src/truthound_dashboard/static/
@@ -170,3 +171,4 @@ src/truthound_dashboard/static/assets/*.js
 src/truthound_dashboard/static/assets/*.css
 
 .github/copilot-instructions.md
+.vercel
