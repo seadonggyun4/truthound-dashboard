@@ -334,7 +334,7 @@ function evaluatePreview(expression: string, context: typeof SAMPLE_CONTEXT): Pr
     // It's just for preview purposes
 
     // Replace Python-specific syntax with JavaScript equivalents
-    let jsExpression = expression
+    const jsExpression = expression
       // String membership: 'x' in list -> list.includes('x')
       .replace(/'([^']+)'\s+in\s+(\w+)/g, '$2.includes("$1")')
       .replace(/"([^"]+)"\s+in\s+(\w+)/g, '$2.includes("$1")')

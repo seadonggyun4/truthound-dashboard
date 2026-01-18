@@ -27,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Dialog,
   DialogContent,
@@ -36,7 +37,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Tooltip,
   TooltipContent,
@@ -632,20 +633,24 @@ export function TemplateLibrary({ category, onSelect, className }: TemplateLibra
 }
 
 // Quick template selector for inline use
+interface TemplateQuickSelectProps {
+  category: TemplateCategory
+  onSelect: (template: { id: string; config: Record<string, unknown> }) => void
+  className?: string
+  triggerClassName?: string  // Optional class for button elements
+}
+
 export function TemplateQuickSelect({
   category,
   onSelect,
   className,
-}: {
-  category: TemplateCategory
-  onSelect: (config: Record<string, unknown>) => void
-  className?: string
-}) {
+  triggerClassName,
+}: TemplateQuickSelectProps) {
   const templates = useMemo(() => TemplateRegistry.getByCategory(category), [category])
   const popularTemplates = templates.filter((t) => t.isPopular || t.isNew).slice(0, 4)
 
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div className={`space-y-2 ${className ?? ''}`}>
       <Label className="text-xs">Quick Templates</Label>
       <div className="flex flex-wrap gap-1">
         {popularTemplates.map((template) => (
@@ -653,8 +658,8 @@ export function TemplateQuickSelect({
             key={template.id}
             variant="outline"
             size="sm"
-            className="h-7 text-xs"
-            onClick={() => onSelect(template.config)}
+            className={triggerClassName ?? "h-7 text-xs"}
+            onClick={() => onSelect({ id: template.id, config: template.config })}
           >
             {template.isPopular && <Star className="h-3 w-3 mr-1 text-yellow-500" />}
             {template.name}

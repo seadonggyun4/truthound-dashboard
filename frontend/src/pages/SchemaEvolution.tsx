@@ -119,14 +119,15 @@ function StatsCard({
 }
 
 // Change Row Component
-function ChangeRow({ change, t }: { change: SchemaChangeResponse; t: ReturnType<typeof useIntlayer> }) {
+function ChangeRow({ change }: { change: SchemaChangeResponse }) {
+  const t = useIntlayer('schemaEvolution')
   const config = CHANGE_TYPE_CONFIG[change.change_type] || CHANGE_TYPE_CONFIG.type_changed
   const severityConfig = SEVERITY_CONFIG[change.severity] || SEVERITY_CONFIG.non_breaking
   const Icon = config.icon
 
   // Get localized change type label
   const getChangeTypeLabel = (type: SchemaChangeType) => {
-    const labels: Record<SchemaChangeType, ReturnType<typeof str>> = {
+    const labels: Record<SchemaChangeType, string> = {
       column_added: str(t.columnAdded),
       column_removed: str(t.columnRemoved),
       type_changed: str(t.typeChanged),
@@ -175,13 +176,12 @@ function VersionCard({
   version,
   isLatest,
   changes,
-  t,
 }: {
   version: SchemaVersionSummary
   isLatest: boolean
   changes: SchemaChangeResponse[]
-  t: ReturnType<typeof useIntlayer>
 }) {
+  const t = useIntlayer('schemaEvolution')
   const versionChanges = changes.filter((c) => c.to_version_id === version.id)
   const breakingCount = versionChanges.filter((c) => c.severity === 'breaking').length
 
@@ -243,7 +243,7 @@ function VersionCard({
               </TableHeader>
               <TableBody>
                 {versionChanges.map((change) => (
-                  <ChangeRow key={change.id} change={change} t={t} />
+                  <ChangeRow key={change.id} change={change} />
                 ))}
               </TableBody>
             </Table>
@@ -271,10 +271,10 @@ export default function SchemaEvolution() {
   // Fetch sources on mount
   useEffect(() => {
     listSources()
-      .then((data) => {
-        setSources(data.sources || [])
-        if (data.sources?.length > 0) {
-          setSelectedSourceId(data.sources[0].id)
+      .then((response) => {
+        setSources(response.data || [])
+        if (response.data?.length > 0) {
+          setSelectedSourceId(response.data[0].id)
         }
       })
       .catch(() => {
@@ -426,7 +426,6 @@ export default function SchemaEvolution() {
                       version={version}
                       isLatest={index === 0}
                       changes={changes}
-                      t={t}
                     />
                   ))}
                 </Accordion>

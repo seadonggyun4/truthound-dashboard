@@ -17,7 +17,6 @@ import {
   Database,
   ArrowUpDown,
   Activity,
-  AlertCircle,
 } from 'lucide-react'
 import {
   LineChart,
@@ -51,7 +50,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
 import { str } from '@/lib/intlayer-utils'
 import {
@@ -138,7 +136,8 @@ function StatsCard({
 }
 
 // Column Comparison Row
-function ComparisonRow({ comparison, t }: { comparison: ColumnComparison; t: ReturnType<typeof useIntlayer> }) {
+function ComparisonRow({ comparison }: { comparison: ColumnComparison }) {
+  const t = useIntlayer('profileComparison')
   const changeColor =
     comparison.change === null
       ? 'text-muted-foreground'
@@ -183,7 +182,6 @@ function ComparisonRow({ comparison, t }: { comparison: ColumnComparison; t: Ret
 
 export default function ProfileComparison() {
   const t = useIntlayer('profileComparison')
-  const common = useIntlayer('common')
   const { toast } = useToast()
 
   // State
@@ -201,10 +199,10 @@ export default function ProfileComparison() {
   // Fetch sources
   useEffect(() => {
     listSources()
-      .then((data) => {
-        setSources(data.sources || [])
-        if (data.sources?.length > 0) {
-          setSelectedSourceId(data.sources[0].id)
+      .then((response) => {
+        setSources(response.data || [])
+        if (response.data?.length > 0) {
+          setSelectedSourceId(response.data[0].id)
         }
       })
       .finally(() => setLoading(false))
@@ -447,7 +445,7 @@ export default function ProfileComparison() {
                         </TableHeader>
                         <TableBody>
                           {comparison.column_comparisons.map((comp, idx) => (
-                            <ComparisonRow key={`${comp.column}-${comp.metric}-${idx}`} comparison={comp} t={t} />
+                            <ComparisonRow key={`${comp.column}-${comp.metric}-${idx}`} comparison={comp} />
                           ))}
                         </TableBody>
                       </Table>

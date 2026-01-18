@@ -357,12 +357,19 @@ export default function Schedules() {
         if (config.minutes) parts.push(`${config.minutes}m`)
         return `Every ${parts.join(' ') || '-'}`
       }
-      case 'data_change':
-        return `≥${((config.change_threshold || 0.05) * 100).toFixed(0)}% change`
-      case 'composite':
-        return `${(config.operator || 'and').toUpperCase()} (${config.triggers?.length || 0} triggers)`
-      case 'event':
-        return (config.event_types || []).slice(0, 2).join(', ')
+      case 'data_change': {
+        const threshold = typeof config.change_threshold === 'number' ? config.change_threshold : 0.05
+        return `≥${(threshold * 100).toFixed(0)}% change`
+      }
+      case 'composite': {
+        const operator = typeof config.operator === 'string' ? config.operator : 'and'
+        const triggers = Array.isArray(config.triggers) ? config.triggers : []
+        return `${operator.toUpperCase()} (${triggers.length} triggers)`
+      }
+      case 'event': {
+        const eventTypes = Array.isArray(config.event_types) ? config.event_types : []
+        return eventTypes.slice(0, 2).join(', ')
+      }
       case 'manual':
         return 'API/UI only'
       default:

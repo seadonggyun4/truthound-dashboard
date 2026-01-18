@@ -159,11 +159,15 @@ const DEDUP_STRATEGIES: Record<string, StrategyInfo> = {
 
 interface DeduplicationStrategyGuideProps {
   value?: string
+  selectedStrategy?: string
+  onSelect?: (strategy: string) => void
   className?: string
 }
 
-export function DeduplicationStrategyGuide({ value, className }: DeduplicationStrategyGuideProps) {
-  const strategy = value ? DEDUP_STRATEGIES[value] : null
+export function DeduplicationStrategyGuide({ value, selectedStrategy, onSelect, className }: DeduplicationStrategyGuideProps) {
+  // Support both `value` and `selectedStrategy` props for flexibility
+  const effectiveValue = value ?? selectedStrategy
+  const strategy = effectiveValue ? DEDUP_STRATEGIES[effectiveValue] : null
 
   return (
     <Popover>
@@ -250,8 +254,16 @@ const DEDUP_POLICIES: Record<string, { name: string; fields: string[]; descripti
   custom: { name: 'Custom', fields: ['user-defined'], description: 'Define your own fingerprint fields' },
 }
 
-export function DeduplicationPolicyGuide({ value, className }: { value?: string; className?: string }) {
-  const policy = value ? DEDUP_POLICIES[value] : null
+interface DeduplicationPolicyGuideProps {
+  value?: string
+  selectedPolicy?: string
+  onSelect?: (policy: string) => void
+  className?: string
+}
+
+export function DeduplicationPolicyGuide({ value, selectedPolicy, onSelect, className }: DeduplicationPolicyGuideProps) {
+  const effectiveValue = value ?? selectedPolicy
+  const policy = effectiveValue ? DEDUP_POLICIES[effectiveValue] : null
 
   return (
     <TooltipProvider>
@@ -424,15 +436,21 @@ export function ThrottlingAlgorithmGuide({ className }: { className?: string }) 
 // Burst Allowance Visualization
 // =============================================================================
 
-export function BurstAllowanceVisual({
-  limit,
-  burstAllowance,
-  className,
-}: {
-  limit: number
+interface BurstAllowanceVisualProps {
+  limit?: number
+  baseLimit?: number  // Alias for limit
   burstAllowance: number
   className?: string
-}) {
+}
+
+export function BurstAllowanceVisual({
+  limit: limitProp,
+  baseLimit,
+  burstAllowance,
+  className,
+}: BurstAllowanceVisualProps) {
+  // Support both `limit` and `baseLimit` props
+  const limit = limitProp ?? baseLimit ?? 100
   const maxBurst = Math.floor(limit * burstAllowance)
 
   return (

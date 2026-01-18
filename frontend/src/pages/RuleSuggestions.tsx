@@ -229,10 +229,10 @@ export default function RuleSuggestions() {
   // Fetch sources on mount
   useEffect(() => {
     listSources()
-      .then((data) => {
-        setSources(data.sources || [])
-        if (data.sources?.length > 0) {
-          setSelectedSourceId(data.sources[0].id)
+      .then((response) => {
+        setSources(response.data || [])
+        if (response.data?.length > 0) {
+          setSelectedSourceId(response.data[0].id)
         }
       })
       .catch(() => {

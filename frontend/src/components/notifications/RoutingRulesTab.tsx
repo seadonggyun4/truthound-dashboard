@@ -112,7 +112,7 @@ export function RoutingRulesTab({ className }: RoutingRulesTabProps) {
   const [showRuleTest, setShowRuleTest] = useState(false)
 
   // Bulk selection
-  const ruleSelection = useBulkSelection<RoutingRule>(rules, (r) => r.id)
+  const ruleSelection = useBulkSelection<RoutingRule>(rules)
 
   const loadData = async () => {
     setLoading(true)
@@ -416,8 +416,8 @@ export function RoutingRulesTab({ className }: RoutingRulesTabProps) {
             <TableRow>
               <TableHead className="w-[40px]">
                 <SelectionCheckbox
-                  checked={ruleSelection.allSelected}
-                  indeterminate={ruleSelection.someSelected && !ruleSelection.allSelected}
+                  checked={ruleSelection.isAllSelected}
+                  indeterminate={ruleSelection.isSomeSelected && !ruleSelection.isAllSelected}
                   onCheckedChange={ruleSelection.toggleAll}
                 />
               </TableHead>
@@ -444,7 +444,7 @@ export function RoutingRulesTab({ className }: RoutingRulesTabProps) {
                   <TableCell>
                     <SelectionCheckbox
                       checked={ruleSelection.isSelected(rule.id)}
-                      onCheckedChange={() => ruleSelection.toggleItem(rule)}
+                      onCheckedChange={() => ruleSelection.toggleItem(rule.id)}
                     />
                   </TableCell>
                   <TableCell className="font-medium">{rule.name}</TableCell>

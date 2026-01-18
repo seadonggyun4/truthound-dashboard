@@ -88,7 +88,7 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
   const [showPolicyGuide, setShowPolicyGuide] = useState(false)
 
   // Bulk selection
-  const configSelection = useBulkSelection<DeduplicationConfig>(configs, (c) => c.id)
+  const configSelection = useBulkSelection<DeduplicationConfig>(configs)
 
   const loadData = async () => {
     setLoading(true)
@@ -365,8 +365,8 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
             <TableRow>
               <TableHead className="w-[40px]">
                 <SelectionCheckbox
-                  checked={configSelection.allSelected}
-                  indeterminate={configSelection.someSelected && !configSelection.allSelected}
+                  checked={configSelection.isAllSelected}
+                  indeterminate={configSelection.isSomeSelected && !configSelection.isAllSelected}
                   onCheckedChange={configSelection.toggleAll}
                 />
               </TableHead>
@@ -384,7 +384,7 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
                 <TableCell>
                   <SelectionCheckbox
                     checked={configSelection.isSelected(config.id)}
-                    onCheckedChange={() => configSelection.toggleItem(config)}
+                    onCheckedChange={() => configSelection.toggleItem(config.id)}
                   />
                 </TableCell>
                 <TableCell className="font-medium">{config.name}</TableCell>

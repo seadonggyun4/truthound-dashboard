@@ -9,6 +9,7 @@ import type {
   ValidatorParamDefinition,
   ReporterFieldDefinition,
   ReporterOutputFormat,
+  ValidatorTestResponse,
 } from '@/api/client'
 
 // Re-export API types
@@ -19,6 +20,9 @@ export type {
   ReporterFieldDefinition,
   ReporterOutputFormat,
 }
+
+// Alias for ValidatorTestResponse
+export type ValidatorTestResult = ValidatorTestResponse
 
 /**
  * Validator parameter types supported by the editor
@@ -59,6 +63,7 @@ export interface ValidatorTestCase {
   name: string
   input: Record<string, unknown>
   expected_passed: boolean
+  [key: string]: unknown  // Allow additional properties for API compatibility
 }
 
 /**
@@ -121,26 +126,7 @@ export const DEFAULT_REPORTER_FORM: ReporterFormState = {
   is_enabled: true,
 }
 
-/**
- * Test result from validator execution
- */
-export interface ValidatorTestResult {
-  success: boolean
-  passed?: boolean
-  execution_time_ms: number
-  result?: {
-    passed: boolean
-    issues: Array<{
-      message: string
-      severity: string
-      row?: number
-    }>
-    message: string
-    details?: Record<string, unknown>
-  }
-  error?: string
-  warnings: string[]
-}
+// ValidatorTestResult is now aliased from API type at top of file
 
 /**
  * Reporter preview result

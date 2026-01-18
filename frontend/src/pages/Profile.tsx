@@ -96,18 +96,7 @@ import {
   type PatternDetectionConfig,
 } from '@/components/profile'
 
-// Component-level type for SuggestedRule (UI format)
-interface UISuggestedRule {
-  id: string
-  validator_name: string
-  column_name: string | null
-  confidence: number
-  reason: string
-  parameters: Record<string, unknown>
-  priority: number
-  category: string
-  severity_suggestion?: string
-}
+// UISuggestedRule removed - using SuggestedRule from API directly
 
 // Column sorting types
 type SortKey = 'name' | 'dtype' | 'null_pct' | 'unique_pct'
@@ -190,7 +179,7 @@ export default function Profile() {
   // Rule Suggestion State
   // ============================================================================
   const [ruleSuggestionDialogOpen, setRuleSuggestionDialogOpen] = useState(false)
-  const [suggestions, setSuggestions] = useState<UISuggestedRule[]>([])
+  const [suggestions, setSuggestions] = useState<SuggestedRule[]>([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
 
   // ============================================================================
@@ -313,19 +302,8 @@ export default function Profile() {
       setLoadingSuggestions(true)
       setRuleSuggestionDialogOpen(true)
       const response = await suggestRules(sourceId, { min_confidence: 0.5 })
-      // Transform API response to UI format
-      const transformed: UISuggestedRule[] = response.suggestions.map((s, idx) => ({
-        id: s.id || `suggestion-${idx}`,
-        validator_name: s.validator_name,
-        column_name: s.column,
-        confidence: s.confidence * 100, // Convert to percentage
-        reason: s.reason,
-        parameters: s.params,
-        priority: Math.floor(s.confidence * 100),
-        category: s.category,
-        severity_suggestion: s.severity_suggestion,
-      }))
-      setSuggestions(transformed)
+      // Use API response directly (SuggestedRule[])
+      setSuggestions(response.suggestions)
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -343,21 +321,11 @@ export default function Profile() {
       if (!sourceId || selectedIds.length === 0) return
 
       try {
+        // Filter suggestions by selected IDs - already in API format
         const selectedSuggestions = suggestions.filter((s) => selectedIds.includes(s.id))
-        // Transform back to API format
-        const apiSuggestions: SuggestedRule[] = selectedSuggestions.map((s) => ({
-          id: s.id,
-          column: s.column_name || '',
-          validator_name: s.validator_name,
-          params: s.parameters,
-          confidence: s.confidence / 100, // API expects 0-1
-          reason: s.reason,
-          severity_suggestion: s.severity_suggestion || 'medium',
-          category: s.category,
-        }))
 
         const result = await applyRuleSuggestions(sourceId, {
-          suggestions: apiSuggestions,
+          suggestions: selectedSuggestions,
           create_new_rule: true,
           rule_name: `Auto-generated rules for ${source?.name || sourceId}`,
         })
@@ -1117,9 +1085,11 @@ export default function Profile() {
         open={ruleSuggestionDialogOpen}
         onOpenChange={setRuleSuggestionDialogOpen}
         sourceName={source.name}
+        sourceId={sourceId!}
         suggestions={suggestions}
         isLoading={loadingSuggestions}
         onApply={handleApplyRules}
+        onGenerate={async () => { await handleGenerateSuggestions() }}
       />
     </div>
   )

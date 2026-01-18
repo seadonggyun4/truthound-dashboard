@@ -69,6 +69,7 @@ const pluginsContent = {
       save: t({ en: "Save", ko: "저장" }),
       cancel: t({ en: "Cancel", ko: "취소" }),
       generate: t({ en: "Generate Report", ko: "리포트 생성" }),
+      viewDetails: t({ en: "View Details", ko: "상세 보기" }),
     },
 
     // Search and filters
@@ -316,6 +317,10 @@ const pluginsContent = {
       unverifiedPlugin: t({
         en: "This plugin is not verified. Install at your own risk.",
         ko: "이 플러그인은 검증되지 않았습니다. 설치 시 주의하세요.",
+      }),
+      unverifiedDescription: t({
+        en: "Unverified plugins have not been reviewed by the security team. They may contain bugs or vulnerabilities.",
+        ko: "미검증 플러그인은 보안 팀의 검토를 거치지 않았습니다. 버그나 취약점이 포함되어 있을 수 있습니다.",
       }),
       sandboxedExecution: t({
         en: "This plugin will run in a sandboxed environment.",

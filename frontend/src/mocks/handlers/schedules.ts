@@ -153,7 +153,7 @@ export const schedulesHandlers = [
     let body: Partial<{
       name: string
       cron_expression: string
-      trigger_type: string
+      trigger_type: 'cron' | 'interval' | 'data_change' | 'composite' | 'event'
       trigger_config: Record<string, unknown>
       notify_on_failure: boolean
       config: Record<string, unknown>

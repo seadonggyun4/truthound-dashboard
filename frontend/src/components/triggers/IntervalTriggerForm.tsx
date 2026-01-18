@@ -58,7 +58,12 @@ export function IntervalTriggerForm({
   }, [days, hours, minutes, seconds])
 
   const handleChange = (field: string, value: number) => {
-    const newInterval = { seconds, minutes, hours, days }
+    const newInterval: { seconds?: number; minutes?: number; hours?: number; days?: number } = {
+      seconds,
+      minutes,
+      hours,
+      days,
+    }
     newInterval[field as keyof typeof newInterval] = value || undefined
     onChange(newInterval)
   }

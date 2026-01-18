@@ -1013,7 +1013,7 @@ export const notificationsAdvancedHandlers = [
     const offset = parseInt(url.searchParams.get('offset') ?? '0')
     const limit = parseInt(url.searchParams.get('limit') ?? '50')
 
-    let incidents = getAll(getStore().escalationIncidents)
+    const incidents = getAll(getStore().escalationIncidents)
       .filter((i) => i.state !== 'resolved')
 
     // Sort by created_at descending

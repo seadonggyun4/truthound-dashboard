@@ -64,8 +64,8 @@ function filterReports(params: URLSearchParams): { items: GeneratedReport[]; tot
   const sortBy = params.get('sort_by') || 'created_at'
   const sortOrder = params.get('sort_order') || 'desc'
   filtered.sort((a, b) => {
-    const aVal = (a as Record<string, unknown>)[sortBy]
-    const bVal = (b as Record<string, unknown>)[sortBy]
+    const aVal = (a as unknown as Record<string, unknown>)[sortBy]
+    const bVal = (b as unknown as Record<string, unknown>)[sortBy]
     if (aVal === bVal) return 0
     if (sortOrder === 'desc') {
       return aVal && bVal && aVal > bVal ? -1 : 1

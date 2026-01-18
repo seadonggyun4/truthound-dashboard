@@ -374,13 +374,19 @@ export function RuleTestPanel({
 }
 
 // Inline test panel for dialog usage
+interface RuleTestInlineProps {
+  ruleConfig: Record<string, unknown>
+  className?: string
+  expanded?: boolean
+  onToggle?: () => void
+}
+
 export function RuleTestInline({
   ruleConfig,
   className,
-}: {
-  ruleConfig: Record<string, unknown>
-  className?: string
-}) {
+  expanded,
+  onToggle,
+}: RuleTestInlineProps) {
   const { toast } = useToast()
   const [selectedPreset, setSelectedPreset] = useState<string>('')
   const [testing, setTesting] = useState(false)

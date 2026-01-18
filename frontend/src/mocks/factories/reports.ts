@@ -164,7 +164,7 @@ export function generateReportStatistics(reports?: GeneratedReport[]): ReportSta
   const reports_by_status: Record<string, number> = {}
   let total_size = 0
   let total_downloads = 0
-  let generation_times: number[] = []
+  const generation_times: number[] = []
   let expired_count = 0
   const reporters = new Set<string>()
 

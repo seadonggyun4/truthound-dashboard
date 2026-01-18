@@ -83,7 +83,7 @@ export function ThrottlingTab({ className }: ThrottlingTabProps) {
   const [showAlgorithmGuide, setShowAlgorithmGuide] = useState(false)
 
   // Bulk selection
-  const configSelection = useBulkSelection<ThrottlingConfig>(configs, (c) => c.id)
+  const configSelection = useBulkSelection<ThrottlingConfig>(configs)
 
   const loadData = async () => {
     setLoading(true)
@@ -359,8 +359,8 @@ export function ThrottlingTab({ className }: ThrottlingTabProps) {
             <TableRow>
               <TableHead className="w-[40px]">
                 <SelectionCheckbox
-                  checked={configSelection.allSelected}
-                  indeterminate={configSelection.someSelected && !configSelection.allSelected}
+                  checked={configSelection.isAllSelected}
+                  indeterminate={configSelection.isSomeSelected && !configSelection.isAllSelected}
                   onCheckedChange={configSelection.toggleAll}
                 />
               </TableHead>
@@ -380,7 +380,7 @@ export function ThrottlingTab({ className }: ThrottlingTabProps) {
                 <TableCell>
                   <SelectionCheckbox
                     checked={configSelection.isSelected(config.id)}
-                    onCheckedChange={() => configSelection.toggleItem(config)}
+                    onCheckedChange={() => configSelection.toggleItem(config.id)}
                   />
                 </TableCell>
                 <TableCell className="font-medium">{config.name}</TableCell>

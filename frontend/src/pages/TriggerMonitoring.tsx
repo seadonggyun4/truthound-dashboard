@@ -96,15 +96,8 @@ function StatsCard({
 }
 
 // Trigger Status Row Component
-function TriggerStatusRow({
-  schedule,
-  t,
-  common,
-}: {
-  schedule: TriggerCheckStatus
-  t: ReturnType<typeof useIntlayer>
-  common: ReturnType<typeof useIntlayer>
-}) {
+function TriggerStatusRow({ schedule }: { schedule: TriggerCheckStatus }) {
+  const t = useIntlayer('triggers')
   const isInCooldown = schedule.cooldown_remaining_seconds > 0
   const statusBadge = schedule.is_due_for_check ? (
     <Badge variant="outline" className="bg-amber-500/10 text-amber-500">
@@ -141,12 +134,12 @@ function TriggerStatusRow({
               const diffSec = Math.floor(diffMs / 1000)
               const diffMin = Math.floor(diffSec / 60)
               const diffHr = Math.floor(diffMin / 60)
-              if (diffSec < 60) return `${diffSec}s ${str(common.ago)}`
-              if (diffMin < 60) return `${diffMin}m ${str(common.ago)}`
-              if (diffHr < 24) return `${diffHr}h ${str(common.ago)}`
+              if (diffSec < 60) return `${diffSec}s ${str(t.ago)}`
+              if (diffMin < 60) return `${diffMin}m ${str(t.ago)}`
+              if (diffHr < 24) return `${diffHr}h ${str(t.ago)}`
               return date.toLocaleString()
             })()
-          : str(common.never)}
+          : str(t.never)}
       </TableCell>
       <TableCell className="text-muted-foreground text-sm">
         {schedule.last_triggered_at
@@ -157,12 +150,12 @@ function TriggerStatusRow({
               const diffSec = Math.floor(diffMs / 1000)
               const diffMin = Math.floor(diffSec / 60)
               const diffHr = Math.floor(diffMin / 60)
-              if (diffSec < 60) return `${diffSec}s ${str(common.ago)}`
-              if (diffMin < 60) return `${diffMin}m ${str(common.ago)}`
-              if (diffHr < 24) return `${diffHr}h ${str(common.ago)}`
+              if (diffSec < 60) return `${diffSec}s ${str(t.ago)}`
+              if (diffMin < 60) return `${diffMin}m ${str(t.ago)}`
+              if (diffHr < 24) return `${diffHr}h ${str(t.ago)}`
               return date.toLocaleString()
             })()
-          : str(common.never)}
+          : str(t.never)}
       </TableCell>
       <TableCell className="text-center">{schedule.check_count}</TableCell>
       <TableCell className="text-center">{schedule.trigger_count}</TableCell>
@@ -198,7 +191,7 @@ export default function TriggerMonitoring() {
 
   // Format relative time
   const formatRelativeTime = useCallback((dateString: string | null): string => {
-    if (!dateString) return str(common.never)
+    if (!dateString) return str(t.never)
 
     const date = new Date(dateString)
     const now = new Date()
@@ -207,9 +200,9 @@ export default function TriggerMonitoring() {
     const diffMin = Math.floor(diffSec / 60)
     const diffHr = Math.floor(diffMin / 60)
 
-    if (diffSec < 60) return `${diffSec}s ${str(common.ago)}`
-    if (diffMin < 60) return `${diffMin}m ${str(common.ago)}`
-    if (diffHr < 24) return `${diffHr}h ${str(common.ago)}`
+    if (diffSec < 60) return `${diffSec}s ${str(t.ago)}`
+    if (diffMin < 60) return `${diffMin}m ${str(t.ago)}`
+    if (diffHr < 24) return `${diffHr}h ${str(t.ago)}`
     return date.toLocaleString()
   }, [common])
 
@@ -400,7 +393,7 @@ export default function TriggerMonitoring() {
                   </TableHeader>
                   <TableBody>
                     {schedules.map((schedule) => (
-                      <TriggerStatusRow key={schedule.schedule_id} schedule={schedule} t={t} common={common} />
+                      <TriggerStatusRow key={schedule.schedule_id} schedule={schedule} />
                     ))}
                   </TableBody>
                 </Table>

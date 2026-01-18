@@ -35,15 +35,15 @@ import type { Plugin, CustomValidator, CustomReporter } from '@/api/client'
 const API_BASE = '/api/v1'
 
 // In-memory store
-let plugins: Plugin[] = generatePlugins(15)
-let validators: CustomValidator[] = generateCustomValidators(8)
-let reporters: CustomReporter[] = generateCustomReporters(5)
+const plugins: Plugin[] = generatePlugins(15)
+const validators: CustomValidator[] = generateCustomValidators(8)
+const reporters: CustomReporter[] = generateCustomReporters(5)
 
 // Advanced plugin features stores
 const lifecycleStore = new Map<string, PluginLifecycleInfo>()
 const hotReloadConfigStore = new Map<string, HotReloadConfig>()
 const hotReloadStatusStore = new Map<string, HotReloadStatus>()
-let trustedSigners: TrustedSigner[] = generateTrustedSigners(5)
+const trustedSigners: TrustedSigner[] = generateTrustedSigners(5)
 let securityPolicy: SecurityPolicy = createSecurityPolicy()
 const hookStore = new Map<string, HookRegistration[]>()
 

@@ -306,6 +306,12 @@ export interface ValidationRunOptions {
   validators?: string[]
   /** Advanced mode: Per-validator configuration with parameters. Takes precedence over validators. */
   validator_configs?: ValidatorConfig[]
+  /** Custom validators to include in the validation run. */
+  custom_validators?: Array<{
+    validator_id: string
+    column?: string
+    params?: Record<string, unknown>
+  }>
   /** Path to schema YAML file for schema validation. */
   schema_path?: string
   /** Auto-learn and cache schema for validation. */
@@ -2465,6 +2471,8 @@ export type RuleCategory =
   | 'completeness'
   | 'uniqueness'
   | 'distribution'
+  | 'relationship'
+  | 'multi_column'
 
 /**
  * A single suggested validation rule.
@@ -2561,7 +2569,8 @@ export interface RuleSuggestionResponse {
  * Request to apply selected rule suggestions.
  */
 export interface ApplyRulesRequest {
-  suggestions: SuggestedRule[]
+  suggestions?: SuggestedRule[]
+  rule_ids?: string[]  // Alternative: apply by IDs
   create_new_rule?: boolean
   rule_name?: string
   rule_description?: string
@@ -5467,6 +5476,13 @@ export interface ValidatorParamDefinition {
   pattern?: string
 }
 
+export interface ValidatorTestCase {
+  name: string
+  input: Record<string, unknown>
+  expected_passed: boolean
+  [key: string]: unknown  // Allow additional properties
+}
+
 export interface CustomValidator {
   id: string
   plugin_id?: string
@@ -5478,7 +5494,7 @@ export interface CustomValidator {
   tags: string[]
   parameters: ValidatorParamDefinition[]
   code: string
-  test_cases: Array<Record<string, unknown>>
+  test_cases: ValidatorTestCase[]
   is_enabled: boolean
   is_verified: boolean
   usage_count: number
@@ -5501,11 +5517,22 @@ export interface ValidatorTestRequest {
   param_values?: Record<string, unknown>
 }
 
+export interface ValidatorTestResultDetail {
+  passed: boolean
+  issues: Array<{
+    message: string
+    severity: string
+    row?: number
+  }>
+  message: string
+  details?: Record<string, unknown>
+}
+
 export interface ValidatorTestResponse {
   success: boolean
   passed?: boolean
   execution_time_ms: number
-  result?: Record<string, unknown>
+  result?: ValidatorTestResultDetail
   error?: string
   warnings: string[]
 }

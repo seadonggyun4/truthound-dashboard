@@ -124,14 +124,15 @@ export function useBulkSelection<T extends BulkActionItem>(items: T[]) {
 
 interface SelectionCheckboxProps {
   checked: boolean
+  indeterminate?: boolean
   onCheckedChange: (checked: boolean) => void
   className?: string
 }
 
-export function SelectionCheckbox({ checked, onCheckedChange, className }: SelectionCheckboxProps) {
+export function SelectionCheckbox({ checked, indeterminate, onCheckedChange, className }: SelectionCheckboxProps) {
   return (
     <Checkbox
-      checked={checked}
+      checked={indeterminate ? 'indeterminate' : checked}
       onCheckedChange={(checked) => onCheckedChange(checked === true)}
       className={className}
     />
@@ -144,29 +145,51 @@ export function SelectionCheckbox({ checked, onCheckedChange, className }: Selec
 
 interface BulkActionBarProps<T extends BulkActionItem> {
   selectedItems: T[]
-  selectedCount: number
-  totalCount: number
-  isAllSelected: boolean
-  isSomeSelected: boolean
-  onToggleAll: () => void
+  selectedCount?: number
+  totalCount?: number
+  totalItems?: number // Alias for totalCount
+  isAllSelected?: boolean
+  isSomeSelected?: boolean
+  onToggleAll?: () => void
   onClearSelection: () => void
-  callbacks: BulkActionCallbacks<T>
+  callbacks?: BulkActionCallbacks<T>
+  // Direct callback props (alternative to callbacks object)
+  onEnable?: (items: T[]) => Promise<void>
+  onDisable?: (items: T[]) => Promise<void>
+  onDelete?: (items: T[]) => Promise<void>
   className?: string
   showSelectAll?: boolean
+  itemLabel?: string
 }
 
 export function BulkActionBar<T extends BulkActionItem>({
   selectedItems,
-  selectedCount,
-  totalCount,
-  isAllSelected,
-  isSomeSelected,
+  selectedCount: selectedCountProp,
+  totalCount: totalCountProp,
+  totalItems,
+  isAllSelected: isAllSelectedProp,
+  isSomeSelected: isSomeSelectedProp,
   onToggleAll,
   onClearSelection,
   callbacks,
+  onEnable,
+  onDisable,
+  onDelete,
   className,
   showSelectAll = true,
 }: BulkActionBarProps<T>) {
+  // Support both totalCount and totalItems props
+  const totalCount = totalCountProp ?? totalItems ?? 0
+  const selectedCount = selectedCountProp ?? selectedItems.length
+  const isAllSelected = isAllSelectedProp ?? (totalCount > 0 && selectedCount === totalCount)
+  const isSomeSelected = isSomeSelectedProp ?? (selectedCount > 0 && selectedCount < totalCount)
+
+  // Merge callbacks from both sources
+  const mergedCallbacks: BulkActionCallbacks<T> = {
+    onEnable: callbacks?.onEnable ?? onEnable,
+    onDisable: callbacks?.onDisable ?? onDisable,
+    onDelete: callbacks?.onDelete ?? onDelete,
+  }
   const { toast } = useToast()
   const [actionType, setActionType] = useState<BulkActionType | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -193,10 +216,10 @@ export function BulkActionBar<T extends BulkActionItem>({
     try {
       const callback =
         actionType === 'enable'
-          ? callbacks.onEnable
+          ? mergedCallbacks.onEnable
           : actionType === 'disable'
-            ? callbacks.onDisable
-            : callbacks.onDelete
+            ? mergedCallbacks.onDisable
+            : mergedCallbacks.onDelete
 
       if (callback) {
         await callback(selectedItems)
@@ -293,7 +316,7 @@ export function BulkActionBar<T extends BulkActionItem>({
         {/* Actions */}
         {hasSelection && (
           <div className="flex items-center gap-1">
-            {callbacks.onEnable && inactiveCount > 0 && (
+            {mergedCallbacks.onEnable && inactiveCount > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -306,7 +329,7 @@ export function BulkActionBar<T extends BulkActionItem>({
               </Button>
             )}
 
-            {callbacks.onDisable && activeCount > 0 && (
+            {mergedCallbacks.onDisable && activeCount > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -319,7 +342,7 @@ export function BulkActionBar<T extends BulkActionItem>({
               </Button>
             )}
 
-            {callbacks.onDelete && (
+            {mergedCallbacks.onDelete && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -417,7 +440,6 @@ interface SelectableRowProps {
 }
 
 export function SelectableRow({
-  id,
   isSelected,
   onToggle,
   children,
@@ -448,19 +470,32 @@ export function SelectableRow({
 
 interface FloatingBulkBarProps<T extends BulkActionItem> {
   selectedItems: T[]
-  selectedCount: number
+  selectedCount?: number
   onClearSelection: () => void
-  callbacks: BulkActionCallbacks<T>
+  callbacks?: BulkActionCallbacks<T>
+  onEnable?: (items: T[]) => Promise<void>
+  onDisable?: (items: T[]) => Promise<void>
+  onDelete?: (items: T[]) => Promise<void>
 }
 
 export function FloatingBulkBar<T extends BulkActionItem>({
   selectedItems,
-  selectedCount,
+  selectedCount: selectedCountProp,
   onClearSelection,
   callbacks,
+  onEnable,
+  onDisable,
+  onDelete,
 }: FloatingBulkBarProps<T>) {
   const { toast } = useToast()
   const [processing, setProcessing] = useState(false)
+
+  const selectedCount = selectedCountProp ?? selectedItems.length
+  const mergedCallbacks: BulkActionCallbacks<T> = {
+    onEnable: callbacks?.onEnable ?? onEnable,
+    onDisable: callbacks?.onDisable ?? onDisable,
+    onDelete: callbacks?.onDelete ?? onDelete,
+  }
 
   if (selectedCount === 0) return null
 
@@ -472,10 +507,10 @@ export function FloatingBulkBar<T extends BulkActionItem>({
     try {
       const callback =
         action === 'enable'
-          ? callbacks.onEnable
+          ? mergedCallbacks.onEnable
           : action === 'disable'
-            ? callbacks.onDisable
-            : callbacks.onDelete
+            ? mergedCallbacks.onDisable
+            : mergedCallbacks.onDelete
 
       if (callback) {
         await callback(selectedItems)
@@ -501,7 +536,7 @@ export function FloatingBulkBar<T extends BulkActionItem>({
       <div className="flex items-center gap-2 px-4 py-2 bg-background border shadow-lg rounded-full">
         <Badge variant="secondary">{selectedCount} selected</Badge>
 
-        {callbacks.onEnable && inactiveCount > 0 && (
+        {mergedCallbacks.onEnable && inactiveCount > 0 && (
           <Button
             variant="ghost"
             size="sm"
@@ -513,7 +548,7 @@ export function FloatingBulkBar<T extends BulkActionItem>({
           </Button>
         )}
 
-        {callbacks.onDisable && activeCount > 0 && (
+        {mergedCallbacks.onDisable && activeCount > 0 && (
           <Button
             variant="ghost"
             size="sm"
@@ -525,7 +560,7 @@ export function FloatingBulkBar<T extends BulkActionItem>({
           </Button>
         )}
 
-        {callbacks.onDelete && (
+        {mergedCallbacks.onDelete && (
           <Button
             variant="ghost"
             size="sm"

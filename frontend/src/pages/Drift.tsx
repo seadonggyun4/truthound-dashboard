@@ -99,7 +99,8 @@ export default function Drift() {
       try {
         const schema = await getSourceSchema(baselineId)
         if (schema?.columns) {
-          setAvailableColumns(schema.columns.map((c) => c.name))
+          // columns is already an array of strings
+          setAvailableColumns(schema.columns)
         } else {
           setAvailableColumns([])
         }
@@ -382,7 +383,7 @@ export default function Drift() {
                         <TooltipTrigger asChild>
                           <div className="flex items-center gap-1 cursor-help">
                             <span className="text-lg font-semibold font-mono">
-                              {(c.config as Record<string, unknown>)?.method || 'auto'}
+                              {String((c.config as Record<string, unknown>)?.method || 'auto')}
                             </span>
                             <Info className="h-3 w-3 text-muted-foreground" />
                           </div>
@@ -392,10 +393,10 @@ export default function Drift() {
                             <div>
                               <span className="text-muted-foreground">Threshold: </span>
                               <span className="font-mono">
-                                {(c.config as Record<string, unknown>)?.threshold ?? 'default'}
+                                {String((c.config as Record<string, unknown>)?.threshold ?? 'default')}
                               </span>
                             </div>
-                            {(c.config as Record<string, unknown>)?.correction && (
+                            {Boolean((c.config as Record<string, unknown>)?.correction) && (
                               <div>
                                 <span className="text-muted-foreground">Correction: </span>
                                 <span className="font-mono">

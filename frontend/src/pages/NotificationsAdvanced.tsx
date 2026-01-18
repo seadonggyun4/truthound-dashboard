@@ -119,7 +119,7 @@ export default function NotificationsAdvanced() {
         </div>
         <div className="flex items-center gap-2">
           <ConfigImportExport onImportComplete={loadStats} />
-          <TemplateLibrary />
+          <TemplateLibrary onSelect={() => loadStats()} />
           <Button variant="outline" onClick={loadStats} disabled={isLoadingStats}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoadingStats ? 'animate-spin' : ''}`} />
             {common.refresh}

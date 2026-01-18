@@ -265,7 +265,7 @@ export function CytoscapeLineageGraph({
   // Expose export function via ref or callback
   useEffect(() => {
     // Store export function for external access if needed
-    ;(window as unknown as { __cytoscapeExportPng?: () => Blob | null }).__cytoscapeExportPng = exportToPng
+    (window as unknown as { __cytoscapeExportPng?: () => Blob | null }).__cytoscapeExportPng = exportToPng
     return () => {
       delete (window as unknown as { __cytoscapeExportPng?: () => Blob | null }).__cytoscapeExportPng
     }
