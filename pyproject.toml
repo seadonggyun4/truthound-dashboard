@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "truthound-dashboard"
-version = "1.4.2"
+version = "1.4.3"
 description = "Open-source data quality dashboard - GX Cloud alternative"
 readme = "README.md"
 license = "Apache-2.0"
@@ -70,6 +70,15 @@ serve = "truthound_dashboard.cli:register_commands"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/truthound_dashboard"]
+artifacts = ["src/truthound_dashboard/static/**/*"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/pyproject.toml",
+]
 
 [tool.ruff]
 line-length = 88
