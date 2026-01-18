@@ -17,9 +17,11 @@ Example:
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -30,6 +32,8 @@ from sqlalchemy.ext.asyncio import (
 from truthound_dashboard.config import get_settings
 
 from .base import Base
+
+logger = logging.getLogger(__name__)
 
 # Global engine and session factory
 _engine: AsyncEngine | None = None
@@ -148,10 +152,54 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+async def _run_migrations(engine: AsyncEngine) -> None:
+    """Run database migrations for schema updates.
+
+    This handles backward compatibility when new columns are added.
+    SQLite doesn't support ALTER TABLE ADD COLUMN IF NOT EXISTS,
+    so we check column existence first.
+
+    Args:
+        engine: Database engine to use.
+    """
+    migrations = [
+        # (table_name, column_name, column_definition, default_value)
+        ("schedules", "trigger_type", "VARCHAR(50)", "cron"),
+        ("schedules", "trigger_config", "JSON", None),
+        ("schedules", "trigger_count", "INTEGER", 0),
+        ("schedules", "last_trigger_result", "JSON", None),
+    ]
+
+    async with engine.begin() as conn:
+        for table, column, col_type, default in migrations:
+            # Check if column exists
+            result = await conn.execute(
+                text(f"PRAGMA table_info({table})")
+            )
+            columns = [row[1] for row in result.fetchall()]
+
+            if column not in columns:
+                # Add the column
+                if default is not None:
+                    if isinstance(default, str):
+                        sql = f"ALTER TABLE {table} ADD COLUMN {column} {col_type} DEFAULT '{default}'"
+                    else:
+                        sql = f"ALTER TABLE {table} ADD COLUMN {column} {col_type} DEFAULT {default}"
+                else:
+                    sql = f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
+
+                try:
+                    await conn.execute(text(sql))
+                    logger.info(f"Migration: Added column {table}.{column}")
+                except Exception as e:
+                    logger.warning(f"Migration skipped for {table}.{column}: {e}")
+
+
 async def init_db(engine: AsyncEngine | None = None) -> None:
     """Initialize database tables.
 
-    Creates all tables defined in models if they don't exist.
+    Creates all tables defined in models if they don't exist,
+    then runs migrations for schema updates.
 
     Args:
         engine: Optional engine to use. If None, uses default engine.
@@ -159,6 +207,9 @@ async def init_db(engine: AsyncEngine | None = None) -> None:
     target_engine = engine or get_engine()
     async with target_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Run migrations for existing databases
+    await _run_migrations(target_engine)
 
 
 async def drop_db(engine: AsyncEngine | None = None) -> None:
