@@ -3,10 +3,6 @@
 
 # truthound-dashboard
 
-> **⚠️ Under Active Development**
->
-> The [truthound](https://github.com/seadonggyun4/truthound) core library has recently undergone significant API improvements and feature enhancements. This dashboard project is currently being updated to fully support these changes. Some features may not yet reflect the latest truthound capabilities. We appreciate your patience as we work to bring full compatibility.
-
 [![PyPI version](https://img.shields.io/pypi/v/truthound-dashboard.svg)](https://pypi.org/project/truthound-dashboard/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -35,14 +31,18 @@ truthound-dashboard provides a graphical interface for managing data sources, ex
 | Slack Notifications | Available | Available |
 | Email Notifications | Available | Available |
 | Webhook Notifications | Available | Available |
-| Drift Detection | Available | Available (8 methods) |
+| Drift Detection | Available | Available (5 methods) |
 | Data Profiling | Available | Available |
 | PII Scan | Available | Available (GDPR/CCPA/LGPD) |
 | Data Masking | Available | Available (redact/hash/fake) |
-| Business Glossary | Available | Available |
-| Data Catalog | Available | Available |
+| Anomaly Detection | Limited | Available (6 algorithms) |
+| Data Lineage | Available | Available (3 viz options) |
+| Model Monitoring | Available | Available |
+| Reports & Export | Available | Available (6 formats) |
+| Plugins Marketplace | Not Available | Available |
+| Maintenance Tools | Limited | Available |
 | Dark Mode | Available | Available |
-| Multi-language (en/ko) | Not Available | Available |
+| Multi-language | Limited | Available (15+ languages) |
 | License | Commercial | Apache 2.0 |
 
 ## Requirements
@@ -138,17 +138,33 @@ The dashboard interface is accessible at `http://localhost:8765`.
 - Category-based filtering (completeness, uniqueness, distribution, string, datetime)
 
 ### Reports & Export
-- 5 formats: HTML, PDF, CSV, JSON, Markdown
-- 5 themes: Light, Dark, Professional, Minimal, High Contrast
-- 4 chart libraries: Plotly, Chart.js, ECharts, SVG
-- Customizable report generation
+- 6 formats: HTML, PDF, CSV, JSON, Excel, Markdown
+- Customizable themes for HTML/PDF reports
+- Statistics dashboard (total reports, size, downloads, avg generation time)
+- Search and filtering (by name, format, status)
+- Report lifecycle management with automatic expiration
+- Download tracking and batch cleanup
+- Integration with validation schedules and notifications
 
-### Maintenance & Retention
-- 6 retention policies: Time-based, Count-based, Size-based, Status-based, Tag-based, Composite
-- Automatic cleanup scheduling
-- Cache management (LRU/LFU/TTL)
-- Database VACUUM support
-- Maintenance status dashboard
+### Plugins & Extensions
+- Plugin marketplace for community extensions
+- 4 plugin types: Validators, Reporters, Connectors, Transformers
+- 4 security levels: Trusted, Verified, Unverified, Sandboxed
+- Custom validator creation with UI (severity, category, parameters)
+- Custom reporter creation with template support
+- Plugin lifecycle management (install, enable, disable, uninstall)
+- Filter by type and status
+
+### Maintenance & System Health
+- Auto maintenance scheduling with enable/disable toggle
+- Retention policies with configurable ranges:
+  - Validation history: 1-365 days
+  - Profile snapshots: 1-100 per source
+  - Notification logs: 1-365 days
+- Manual operations: cleanup, vacuum, cache clear
+- Cache statistics monitoring (total, valid, expired entries, hit rate)
+- Database optimization (VACUUM/ANALYZE)
+- Real-time configuration updates
 
 ### Validation History
 - Historical record of validation results
@@ -243,9 +259,11 @@ The dashboard interface is accessible at `http://localhost:8765`.
 - Activity feed for tracking changes
 
 ### User Interface
-- Light and dark theme support
-- Internationalization: English, Korean
-- AI-powered translation for additional languages
+- Light and dark theme support with system preference detection
+- Internationalization: 15+ languages (English, Korean, Japanese, Chinese, German, French, Spanish, etc.)
+- AI-powered translation CLI with 4 provider options (OpenAI, Anthropic, Mistral, Ollama)
+- Type-safe translations using Intlayer framework
+- Comprehensive E2E test coverage (197+ tests) for all features
 
 ## Internationalization
 
