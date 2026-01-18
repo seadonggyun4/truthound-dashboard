@@ -14,7 +14,6 @@
 import { useState, useMemo } from 'react'
 import { Globe, Check, Search } from 'lucide-react'
 import { useLocale, useIntlayer } from 'react-intlayer'
-import { str } from '@/lib/intlayer-utils'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -25,13 +24,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   LOCALE_INFO,
   getLocalesByGroup,
   type LocaleInfo,
   type SupportedLocale,
 } from '@/providers/intlayer/config'
+import { str } from '@/lib/intlayer-utils'
 
 interface LanguageSelectorProps {
   /** Show only the globe icon (no current language text) */
@@ -130,8 +129,8 @@ export function LanguageSelector({
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align={align} className="w-64 p-0">
-        {/* Search input */}
+      <DropdownMenuContent align={align} className="w-[300px] overflow-x-hidden">
+        {/* Search input - fixed, not scrollable */}
         <div className="p-2 border-b">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -144,38 +143,36 @@ export function LanguageSelector({
           </div>
         </div>
 
-        {/* Scrollable language list - fixed 300px height */}
-        <ScrollArea className="h-[300px]">
-          <div className="p-2">
-            {/* Core languages */}
-            {coreLocales.length > 0 && (
-              <>
-                <DropdownMenuLabel className="text-xs text-muted-foreground px-2 py-1.5">
-                  Core Languages
-                </DropdownMenuLabel>
-                {coreLocales.map(renderLocaleItem)}
-              </>
-            )}
+        {/* Scrollable content area */}
+        <div className="max-h-[300px] overflow-y-auto overflow-x-hidden">
+          {/* Core languages */}
+          {coreLocales.length > 0 && (
+            <>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                Core Languages
+              </DropdownMenuLabel>
+              {coreLocales.map(renderLocaleItem)}
+            </>
+          )}
 
-            {/* Extended languages */}
-            {extendedLocales.length > 0 && (
-              <>
-                {coreLocales.length > 0 && <DropdownMenuSeparator className="my-2" />}
-                <DropdownMenuLabel className="text-xs text-muted-foreground px-2 py-1.5">
-                  Extended Languages
-                </DropdownMenuLabel>
-                {extendedLocales.map(renderLocaleItem)}
-              </>
-            )}
+          {/* Extended languages */}
+          {extendedLocales.length > 0 && (
+            <>
+              {coreLocales.length > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                Extended Languages
+              </DropdownMenuLabel>
+              {extendedLocales.map(renderLocaleItem)}
+            </>
+          )}
 
-            {/* No results */}
-            {filteredLocales.length === 0 && (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                {str(common.noResults)}
-              </div>
-            )}
-          </div>
-        </ScrollArea>
+          {/* No results */}
+          {filteredLocales.length === 0 && (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              {str(common.noResults)}
+            </div>
+          )}
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   )

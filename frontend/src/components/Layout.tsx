@@ -28,12 +28,16 @@ import {
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { useTheme } from '@/components/theme-provider'
 import { LanguageSelector } from '@/components/common'
 import { useState, useEffect } from 'react'
 import logoImg from '@/assets/logo.png'
 import { apiClient } from '@/api/client'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 
 type NavKey = 'dashboard' | 'sources' | 'catalog' | 'glossary' | 'drift' | 'lineage' | 'schedules' | 'activity' | 'notifications' | 'maintenance' | 'anomaly' | 'privacy' | 'driftMonitoring' | 'modelMonitoring' | 'notificationsAdvanced' | 'alerts' | 'reports' | 'plugins'
 
@@ -70,39 +74,31 @@ const navigation: NavItem[] = [
   { key: 'maintenance', href: '/maintenance', icon: Settings, section: 'system' },
 ]
 
-const sectionLabels = {
-  data: 'Data Management',
-  quality: 'Data Quality',
-  ml: 'ML & Monitoring',
-  system: 'System',
-}
-
 export default function Layout() {
   const location = useLocation()
   const nav = useIntlayer('nav')
   const { theme, setTheme } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [alertCount, setAlertCount] = useState(0)
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
+  const [localIP, setLocalIP] = useState<string>('')
+  
+  // Collapsible section states
+  const [dataOpen, setDataOpen] = useState(true)
+  const [qualityOpen, setQualityOpen] = useState(true)
+  const [mlOpen, setMlOpen] = useState(true)
+  const [systemOpen, setSystemOpen] = useState(true)
 
-  const toggleSection = (section: string) => {
-    setCollapsedSections((prev) => {
-      const next = new Set(prev)
-      if (next.has(section)) {
-        next.delete(section)
-      } else {
-        next.add(section)
-      }
-      return next
-    })
+  const isRouteActive = (path: string) => {
+    if (path === '/') return location.pathname === '/'
+    return location.pathname === path || location.pathname.startsWith(`${path}/`)
   }
 
-  const groupedNav = navigation.reduce((acc, item) => {
-    const section = item.section || 'other'
-    if (!acc[section]) acc[section] = []
-    acc[section].push(item)
-    return acc
-  }, {} as Record<string, NavItem[]>)
+  // Get hostname and port from browser
+  useEffect(() => {
+    const host = window.location.hostname
+    const port = window.location.port
+    setLocalIP(port ? `${host}:${port}` : host)
+  }, [])
 
   // Fetch alert count for badge
   useEffect(() => {
@@ -143,66 +139,137 @@ export default function Layout() {
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
             <img src={logoImg} alt="Truthound" className="h-6 w-6" />
           </div>
-          <span className="font-semibold text-lg">Truthound</span>
+          <div className="flex flex-col">
+            <span className="font-semibold text-lg">Truthound</span>
+          </div>
         </div>
 
-        {/* Navigation with ScrollArea */}
-        <ScrollArea className="flex-1 px-3 py-4">
-          <nav className="space-y-2">
-            {Object.entries(groupedNav).map(([section, items]) => {
-              const isCollapsed = collapsedSections.has(section)
-              return (
-                <div key={section} className="space-y-1">
-                  <button
-                    onClick={() => toggleSection(section)}
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent transition-colors"
-                  >
-                    {isCollapsed ? (
-                      <ChevronRight className="h-3 w-3" />
-                    ) : (
-                      <ChevronDown className="h-3 w-3" />
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+          {/* Data Management Section */}
+          <Collapsible open={dataOpen} onOpenChange={setDataOpen}>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              {dataOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <span>Data Management</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-1 mt-1">
+              {navigation.filter(item => item.section === 'data').map((item) => {
+                const isActive = isRouteActive(item.href)
+                return (
+                  <Link
+                    key={item.key}
+                    to={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ml-6',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                     )}
-                    <span>{sectionLabels[section as keyof typeof sectionLabels]}</span>
-                  </button>
-                  {!isCollapsed && (
-                    <div className="space-y-0.5 pl-1">
-                      {items.map((item) => {
-                        const isActive =
-                          item.href === '/'
-                            ? location.pathname === '/'
-                            : location.pathname.startsWith(item.href)
-                        return (
-                          <Link
-                            key={item.key}
-                            to={item.href}
-                            onClick={() => setSidebarOpen(false)}
-                            className={cn(
-                              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                              isActive
-                                ? 'bg-primary/10 text-primary'
-                                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                            )}
-                          >
-                            <item.icon className="h-4 w-4" />
-                            <span className="flex-1 text-xs">{nav[item.key]}</span>
-                            {item.showBadge && alertCount > 0 && (
-                              <Badge
-                                variant="destructive"
-                                className="h-5 min-w-[20px] px-1.5 text-xs"
-                              >
-                                {alertCount > 99 ? '99+' : alertCount}
-                              </Badge>
-                            )}
-                          </Link>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </nav>
-        </ScrollArea>
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span className="flex-1">{nav[item.key]}</span>
+                  </Link>
+                )
+              })}
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Data Quality Section */}
+          <Collapsible open={qualityOpen} onOpenChange={setQualityOpen}>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              {qualityOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <span>Data Quality</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-1 mt-1">
+              {navigation.filter(item => item.section === 'quality').map((item) => {
+                const isActive = isRouteActive(item.href)
+                return (
+                  <Link
+                    key={item.key}
+                    to={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ml-6',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span className="flex-1">{nav[item.key]}</span>
+                  </Link>
+                )
+              })}
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* ML & Monitoring Section */}
+          <Collapsible open={mlOpen} onOpenChange={setMlOpen}>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              {mlOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <span>ML & Monitoring</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-1 mt-1">
+              {navigation.filter(item => item.section === 'ml').map((item) => {
+                const isActive = isRouteActive(item.href)
+                return (
+                  <Link
+                    key={item.key}
+                    to={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ml-6',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span className="flex-1">{nav[item.key]}</span>
+                  </Link>
+                )
+              })}
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* System Section */}
+          <Collapsible open={systemOpen} onOpenChange={setSystemOpen}>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              {systemOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <span>System</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-1 mt-1">
+              {navigation.filter(item => item.section === 'system').map((item) => {
+                const isActive = isRouteActive(item.href)
+                return (
+                  <Link
+                    key={item.key}
+                    to={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ml-6',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span className="flex-1">{nav[item.key]}</span>
+                    {item.showBadge && alertCount > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="h-5 min-w-[20px] px-1.5 text-xs"
+                      >
+                        {alertCount > 99 ? '99+' : alertCount}
+                      </Badge>
+                    )}
+                  </Link>
+                )
+              })}
+            </CollapsibleContent>
+          </Collapsible>
+        </nav>
 
       </aside>
 
@@ -220,6 +287,13 @@ export default function Layout() {
           >
             <Menu className="h-5 w-5" />
           </Button>
+          {localIP && (
+            <div className="hidden lg:flex items-center gap-2 text-xs text-muted-foreground font-mono">
+              <span className="px-2 py-1 rounded-md bg-muted/50">
+                {localIP}
+              </span>
+            </div>
+          )}
           <div className="flex-1" />
           <div className="flex items-center gap-1">
             <LanguageSelector iconOnly />

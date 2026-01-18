@@ -177,23 +177,57 @@ AI-powered automatic rule generation from data profiles.
 
 ## Reports & Export
 
-Generate reports in multiple formats with customizable themes.
+Generate comprehensive validation reports with flexible formats and management.
 
-### Supported Formats
+### Report Formats
 
-- **HTML**: Interactive web report with charts
-- **PDF**: Printable document (requires WeasyPrint)
-- **CSV**: Tabular data export
-- **JSON**: Machine-readable format
+- **HTML**: Interactive web reports with charts
+- **PDF**: Printable documents with custom themes
+- **CSV**: Tabular data for analysis
+- **JSON**: Machine-readable structured data
+- **Excel**: Multi-sheet workbooks
 - **Markdown**: Documentation-friendly format
 
-### Themes
+### Report Types
 
-- **Light**: Clean white background
-- **Dark**: Dark mode optimized
-- **Professional**: Corporate style
-- **Minimal**: Simple and clean
-- **High Contrast**: Accessibility optimized
+- **Validation Reports**: th.check() execution results
+- **Drift Detection Reports**: Data drift analysis
+- **PII Scan Reports**: Privacy compliance checks
+- **Profile Reports**: Data profiling summaries
+- **Anomaly Reports**: Detected anomalies
+- **Model Monitoring Reports**: ML model performance
+
+### Management Features
+
+**Statistics Dashboard**:
+- Total reports count and size
+- Download metrics
+- Average generation time
+- Expired reports tracking
+- Active reporters count
+
+**Search & Filtering**:
+- Full-text search by name
+- Format-based filtering (HTML/PDF/CSV/JSON/Excel/Markdown)
+- Status filtering (Pending/Generating/Completed/Failed)
+- Include/exclude expired reports toggle
+
+**Report Lifecycle**:
+- Automatic expiration based on retention policies
+- Batch cleanup of expired reports
+- Download tracking
+- Version history
+
+**Custom Themes**:
+- Apply color schemes to HTML/PDF reports
+- Logo and branding customization
+- Custom CSS support
+
+### Integration
+
+- **Scheduled Reports**: Auto-generate via validation schedules
+- **Notification Attachments**: Include reports in alerts
+- **API Export**: Programmatic report generation
 
 ### Chart Libraries
 
@@ -206,9 +240,100 @@ Generate reports in multiple formats with customizable themes.
 
 ## Maintenance & Retention
 
-Automated data lifecycle management with flexible retention policies.
+Comprehensive system maintenance and data lifecycle management.
+
+### Auto Maintenance Scheduling
+
+- **Toggle Enable/Disable**: Control automatic maintenance execution
+- **Status Monitoring**:
+  - Last run timestamp
+  - Next scheduled execution
+  - Current maintenance status
 
 ### Retention Policies
+
+**Validation History Retention** (1-365 days):
+- Configurable retention period for validation runs
+- Automatic cleanup of old results
+- Preserves recent validation history
+- Default: 90 days
+
+**Profile Snapshots** (1-100 per source):
+- Limit profile history per data source
+- Prevents unbounded profile accumulation
+- Maintains trend analysis capability
+- Default: 10 profiles per source
+
+**Notification Logs** (1-365 days):
+- Retention period for notification delivery records
+- Tracks alert history
+- Supports audit requirements
+- Default: 30 days
+
+**Vacuum on Cleanup**:
+- Optional SQLite VACUUM after cleanup
+- Reclaims disk space
+- Optimizes database performance
+- Toggle on/off based on system load
+
+### Manual Operations
+
+**Run Cleanup**:
+- On-demand execution of retention policies
+- Remove expired validation runs
+- Purge old notification logs
+- Delete excess profile snapshots
+- Real-time progress indicator
+
+**Run Vacuum**:
+- Manual database optimization
+- Rebuild SQLite internal structures
+- Reclaim fragmented space
+- May temporarily lock database
+
+**Clear Cache**:
+- Invalidate all cached entries
+- Force data refresh
+- Useful after bulk updates
+- Immediate effect
+
+### Cache Statistics
+
+Monitor caching effectiveness:
+
+- **Total Entries**: All items in cache
+- **Valid Entries**: Non-expired items
+- **Expired Entries**: Stale items awaiting cleanup
+- **Hit Rate**: Cache effectiveness (hits / total requests)
+
+### Configuration Management
+
+- **Save Settings**: Persist retention policy changes
+- **Input Validation**: Range checks prevent invalid values
+- **Real-time Application**: Settings active immediately after save
+- **Audit Trail**: Log configuration changes
+
+### Database Optimization
+
+**Automatic**:
+- Periodic VACUUM (if enabled)
+- ANALYZE statistics updates
+- Index maintenance
+
+**Manual**:
+- On-demand VACUUM execution
+- Cache invalidation
+- Cleanup operations
+
+### Best Practices
+
+1. **Validation Retention**: 90-365 days for compliance
+2. **Profile Snapshots**: 10-30 for trend analysis
+3. **Notification Logs**: 30-90 days for debugging
+4. **Vacuum Frequency**: Weekly for active systems
+5. **Cache Clearing**: After bulk data imports
+
+### Legacy Policy Types
 
 | Policy Type | Description | Example |
 |-------------|-------------|---------|

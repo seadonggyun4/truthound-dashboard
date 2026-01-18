@@ -639,6 +639,208 @@ Automatic cleanup tasks are scheduled:
 
 ---
 
+## Reports & Export
+
+Generate and manage validation reports in multiple formats.
+
+### Features
+
+- **Multi-Format Export**: HTML, PDF, CSV, JSON, Excel, Markdown
+- **Report Types**: Validation, Drift Detection, PII Scan, Profile, Anomaly, Model Monitoring
+- **Statistics Dashboard**:
+  - Total Reports count
+  - Total Size (MB/GB)
+  - Total Downloads
+  - Average Generation Time
+  - Expired Reports count
+  - Reporters Used count
+
+### Report Management
+
+**Search & Filter**:
+- Search by report name
+- Filter by format (HTML/PDF/CSV/JSON/Excel/Markdown)
+- Filter by status (Pending/Generating/Completed/Failed)
+- Include/exclude expired reports toggle
+
+**Report Actions**:
+- Download reports
+- Delete individual reports
+- Cleanup expired reports (batch operation)
+
+**Report History**:
+- View generation timestamp
+- Track expiration dates
+- Monitor download counts
+- Review file sizes
+
+**Pagination**: Navigate large report lists
+
+### Customization
+
+- **Themes**: Apply color themes to HTML/PDF reports
+- **Custom Reporters**: Create custom report formats via plugin system
+
+---
+
+## Plugins
+
+Extend Truthound with custom validators, reporters, connectors, and transformers.
+
+### Plugin Marketplace
+
+Browse and install community plugins:
+
+- **Plugin Types**:
+  - **Validators**: Custom validation logic
+  - **Reporters**: Custom report formats
+  - **Connectors**: Data source integrations
+  - **Transformers**: Data transformation logic
+
+- **Plugin Information**:
+  - Name, version, author
+  - Description and documentation
+  - Security level (Trusted/Verified/Unverified/Sandboxed)
+  - Install count and rating
+  - Last update date
+
+### Plugin Management
+
+**5 Management Tabs**:
+1. **Marketplace**: Discover and install plugins
+2. **Installed**: Manage installed plugins
+3. **Validators**: Custom validator registry
+4. **Reporters**: Custom reporter registry
+5. **Settings**: Plugin system configuration
+
+**Plugin Operations**:
+- Install/Uninstall plugins
+- Enable/Disable plugins
+- View plugin details
+- Security warnings for unverified plugins
+
+**Filter & Search**:
+- Filter by type (validator/reporter/connector/transformer)
+- Filter by status (available/installed/enabled/disabled)
+- Search by name/description
+
+### Custom Validators
+
+Create custom validation logic:
+
+**Configuration Fields**:
+- Validator name and code
+- Severity level (Critical/Warning/Info)
+- Category assignment
+- Tags for organization
+- Parameters (name, type, default, required)
+
+**Validation Types**:
+- Column-level validators
+- Row-level validators
+- Table-level validators
+
+### Custom Reporters
+
+Create custom report formats:
+
+**Configuration Fields**:
+- Reporter name and code
+- Output format
+- Template support
+- File extension
+
+**Supported Outputs**:
+- HTML, PDF, CSV, JSON
+- Excel, Markdown
+- Custom formats
+
+### Plugin Statistics
+
+Monitor plugin ecosystem:
+
+- Total Plugins count
+- Total Validators count
+- Total Reporters count
+- Installed Plugins count
+- Enabled Plugins count
+
+---
+
+## Maintenance & System Health
+
+Manage data retention, perform database maintenance, and monitor cache performance.
+
+### Auto Maintenance
+
+Schedule automatic maintenance tasks:
+
+- **Enable/Disable**: Toggle auto maintenance on/off
+- **Last Run**: View last execution timestamp
+- **Next Scheduled Run**: Preview upcoming maintenance window
+
+### Retention Policies
+
+Configure data retention settings:
+
+**Validation Retention Days** (1-365 days):
+- Keep validation run results
+- Default: 90 days
+- Older records auto-deleted
+
+**Profile Keep Per Source** (1-100 count):
+- Number of profile snapshots to retain per data source
+- Default: 10 profiles
+- Prevents profile history bloat
+
+**Notification Log Retention Days** (1-365 days):
+- Keep notification delivery logs
+- Default: 30 days
+- Older logs auto-purged
+
+**Run Vacuum on Cleanup** (toggle):
+- Execute SQLite VACUUM after cleanup
+- Reclaims disk space
+- May increase cleanup duration
+
+### Manual Operations
+
+Execute maintenance tasks on-demand:
+
+**Run Cleanup**:
+- Remove expired validation runs
+- Remove old notification logs
+- Remove excess profile snapshots
+- Progress indicator during execution
+
+**Run Vacuum**:
+- Optimize SQLite database file
+- Reclaim unused space
+- Rebuild internal structures
+- May lock database briefly
+
+**Clear Cache**:
+- Invalidate all cached entries
+- Force fresh data retrieval
+- Useful after bulk data changes
+
+### Cache Statistics
+
+Monitor cache performance:
+
+- **Total Entries**: All cached items
+- **Valid Entries**: Non-expired cache items
+- **Expired Entries**: Outdated cache items
+- **Hit Rate**: Cache effectiveness percentage
+
+### Configuration Persistence
+
+- **Save Button**: Persist retention policy changes
+- **Validation**: Range checks on input values
+- **Real-time Updates**: Settings apply immediately after save
+
+---
+
 ## Advanced Features
 
 For detailed documentation on advanced features, see [Advanced Features](./advanced-features.md).
@@ -653,8 +855,6 @@ For detailed documentation on advanced features, see [Advanced Features](./advan
 | **Result Versioning** | Validation result versioning | `/versioning` |
 | **Profile Comparison** | Profile trend analysis | `/profile-comparison` |
 | **Rule Suggestions** | AI-powered rule generation | `/rule-suggestions` |
-| **Reports** | Multi-format report export | `/reports` |
 | **Model Monitoring** | ML model performance tracking | `/model-monitoring` |
 | **Advanced Notifications** | Routing, deduplication, escalation | `/notifications-advanced` |
 | **Triggers** | Advanced trigger system | `/triggers` |
-| **Plugins** | Custom validators/reporters | `/plugins` |
