@@ -133,10 +133,36 @@ function TriggerStatusRow({
       </TableCell>
       <TableCell>{statusBadge}</TableCell>
       <TableCell className="text-muted-foreground text-sm">
-        {formatRelativeTime(schedule.last_check_at, common)}
+        {schedule.last_check_at
+          ? (() => {
+              const date = new Date(schedule.last_check_at)
+              const now = new Date()
+              const diffMs = now.getTime() - date.getTime()
+              const diffSec = Math.floor(diffMs / 1000)
+              const diffMin = Math.floor(diffSec / 60)
+              const diffHr = Math.floor(diffMin / 60)
+              if (diffSec < 60) return `${diffSec}s ${str(common.ago)}`
+              if (diffMin < 60) return `${diffMin}m ${str(common.ago)}`
+              if (diffHr < 24) return `${diffHr}h ${str(common.ago)}`
+              return date.toLocaleString()
+            })()
+          : str(common.never)}
       </TableCell>
       <TableCell className="text-muted-foreground text-sm">
-        {formatRelativeTime(schedule.last_triggered_at, common)}
+        {schedule.last_triggered_at
+          ? (() => {
+              const date = new Date(schedule.last_triggered_at)
+              const now = new Date()
+              const diffMs = now.getTime() - date.getTime()
+              const diffSec = Math.floor(diffMs / 1000)
+              const diffMin = Math.floor(diffSec / 60)
+              const diffHr = Math.floor(diffMin / 60)
+              if (diffSec < 60) return `${diffSec}s ${str(common.ago)}`
+              if (diffMin < 60) return `${diffMin}m ${str(common.ago)}`
+              if (diffHr < 24) return `${diffHr}h ${str(common.ago)}`
+              return date.toLocaleString()
+            })()
+          : str(common.never)}
       </TableCell>
       <TableCell className="text-center">{schedule.check_count}</TableCell>
       <TableCell className="text-center">{schedule.trigger_count}</TableCell>
@@ -145,9 +171,7 @@ function TriggerStatusRow({
       </TableCell>
       <TableCell className="text-muted-foreground">
         {isInCooldown ? (
-          <span className="text-amber-500">
-            {formatCooldown(schedule.cooldown_remaining_seconds, t)}
-          </span>
+          <span className="text-amber-500">{formatCooldown(schedule.cooldown_remaining_seconds)}</span>
         ) : (
           '-'
         )}
@@ -310,9 +334,7 @@ export default function TriggerMonitoring() {
             <div>
               <p className="text-sm text-muted-foreground">{str(t.lastCheckerRun)}</p>
               <p className="font-medium">
-                {data?.last_checker_run_at
-                  ? formatRelativeTime(data.last_checker_run_at, common)
-                  : str(t.never)}
+                {data?.last_checker_run_at ? formatRelativeTime(data.last_checker_run_at) : str(t.never)}
               </p>
             </div>
             <div>
@@ -378,11 +400,7 @@ export default function TriggerMonitoring() {
                   </TableHeader>
                   <TableBody>
                     {schedules.map((schedule) => (
-                      <TriggerStatusRow
-                        key={schedule.schedule_id}
-                        schedule={schedule}
-                        t={t}
-                      />
+                      <TriggerStatusRow key={schedule.schedule_id} schedule={schedule} t={t} common={common} />
                     ))}
                   </TableBody>
                 </Table>
@@ -443,14 +461,12 @@ export default function TriggerMonitoring() {
                             </Badge>
                           )}
                         </TableCell>
-                        <TableCell>{formatRelativeTime(schedule.last_check_at, common)}</TableCell>
-                        <TableCell>{formatRelativeTime(schedule.last_triggered_at, common)}</TableCell>
+                        <TableCell>{formatRelativeTime(schedule.last_check_at)}</TableCell>
+                        <TableCell>{formatRelativeTime(schedule.last_triggered_at)}</TableCell>
                         <TableCell className="text-center">{schedule.trigger_count}</TableCell>
                         <TableCell>
                           {schedule.cooldown_remaining_seconds > 0 ? (
-                            <span className="text-amber-500">
-                              {formatCooldown(schedule.cooldown_remaining_seconds, t)}
-                            </span>
+                            <span className="text-amber-500">{formatCooldown(schedule.cooldown_remaining_seconds)}</span>
                           ) : (
                             '-'
                           )}
@@ -522,7 +538,7 @@ export default function TriggerMonitoring() {
                             {schedule.schedule_name}
                           </TableCell>
                           <TableCell>
-                            {formatRelativeTime(schedule.last_triggered_at, common)}
+                            {formatRelativeTime(schedule.last_triggered_at)}
                           </TableCell>
                           <TableCell className="text-center">
                             {schedule.trigger_count}
@@ -596,11 +612,9 @@ export default function TriggerMonitoring() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {formatRelativeTime(schedule.last_triggered_at, common)}
+                          {formatRelativeTime(schedule.last_triggered_at)}
                         </TableCell>
-                        <TableCell className="text-center">
-                          {schedule.trigger_count}
-                        </TableCell>
+                        <TableCell className="text-center">{schedule.trigger_count}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

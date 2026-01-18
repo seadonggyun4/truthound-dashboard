@@ -750,6 +750,30 @@ const commonContent = {
       id: 'Menyimpan...',
       tr: 'Kaydediliyor...',
     }),
+    unknownError: t({
+      en: 'An unknown error occurred',
+      ko: '\uc54c \uc218 \uc5c6\ub294 \uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4',
+    }),
+    ago: t({
+      en: 'ago',
+      ko: '\uc804',
+    }),
+    seconds: t({
+      en: 'seconds',
+      ko: '\ucd08',
+    }),
+    minutes: t({
+      en: 'minutes',
+      ko: '\ubd84',
+    }),
+    hours: t({
+      en: 'hours',
+      ko: '\uc2dc\uac04',
+    }),
+    days: t({
+      en: 'days',
+      ko: '\uc77c',
+    }),
   },
 } satisfies Dictionary
 

@@ -160,7 +160,20 @@ export default {
           "confirmUninstall": "Are you sure you want to uninstall this plugin?",
           "noPlugins": "No plugins found",
           "noValidators": "No custom validators found",
-          "noReporters": "No custom reporters found"
+          "noReporters": "No custom reporters found",
+          "validatorCreated": "Validator created successfully",
+          "validatorUpdated": "Validator updated successfully",
+          "validatorDeleted": "Validator deleted successfully",
+          "validatorCreateFailed": "Failed to create validator",
+          "validatorUpdateFailed": "Failed to update validator",
+          "validatorDeleteFailed": "Failed to delete validator",
+          "reporterCreated": "Reporter created successfully",
+          "reporterUpdated": "Reporter updated successfully",
+          "reporterDeleted": "Reporter deleted successfully",
+          "reporterCreateFailed": "Failed to create reporter",
+          "reporterUpdateFailed": "Failed to update reporter",
+          "reporterDeleteFailed": "Failed to delete reporter",
+          "viewDetails": "View Details"
         },
         "stats": {
           "totalPlugins": "Total Plugins",
@@ -292,20 +305,6 @@ export default {
           "documentation": "Documentation",
           "noReadme": "No README available",
           "noChangelog": "No changelog available"
-        },
-        "additionalMessages": {
-          "validatorCreated": "Validator created successfully",
-          "validatorUpdated": "Validator updated successfully",
-          "validatorDeleted": "Validator deleted successfully",
-          "validatorCreateFailed": "Failed to create validator",
-          "validatorUpdateFailed": "Failed to update validator",
-          "validatorDeleteFailed": "Failed to delete validator",
-          "reporterCreated": "Reporter created successfully",
-          "reporterUpdated": "Reporter updated successfully",
-          "reporterDeleted": "Reporter deleted successfully",
-          "reporterCreateFailed": "Failed to create reporter",
-          "reporterUpdateFailed": "Failed to update reporter",
-          "reporterDeleteFailed": "Failed to delete reporter"
         }
       },
       "ko": {
@@ -464,7 +463,20 @@ export default {
           "confirmUninstall": "정말 이 플러그인을 제거하시겠습니까?",
           "noPlugins": "플러그인을 찾을 수 없습니다",
           "noValidators": "커스텀 검증기를 찾을 수 없습니다",
-          "noReporters": "커스텀 리포터를 찾을 수 없습니다"
+          "noReporters": "커스텀 리포터를 찾을 수 없습니다",
+          "validatorCreated": "검증기가 성공적으로 생성되었습니다",
+          "validatorUpdated": "검증기가 성공적으로 업데이트되었습니다",
+          "validatorDeleted": "검증기가 성공적으로 삭제되었습니다",
+          "validatorCreateFailed": "검증기 생성에 실패했습니다",
+          "validatorUpdateFailed": "검증기 업데이트에 실패했습니다",
+          "validatorDeleteFailed": "검증기 삭제에 실패했습니다",
+          "reporterCreated": "리포터가 성공적으로 생성되었습니다",
+          "reporterUpdated": "리포터가 성공적으로 업데이트되었습니다",
+          "reporterDeleted": "리포터가 성공적으로 삭제되었습니다",
+          "reporterCreateFailed": "리포터 생성에 실패했습니다",
+          "reporterUpdateFailed": "리포터 업데이트에 실패했습니다",
+          "reporterDeleteFailed": "리포터 삭제에 실패했습니다",
+          "viewDetails": "상세보기"
         },
         "stats": {
           "totalPlugins": "전체 플러그인",
@@ -596,20 +608,6 @@ export default {
           "documentation": "문서",
           "noReadme": "README가 없습니다",
           "noChangelog": "변경 로그가 없습니다"
-        },
-        "additionalMessages": {
-          "validatorCreated": "검증기가 성공적으로 생성되었습니다",
-          "validatorUpdated": "검증기가 성공적으로 업데이트되었습니다",
-          "validatorDeleted": "검증기가 성공적으로 삭제되었습니다",
-          "validatorCreateFailed": "검증기 생성에 실패했습니다",
-          "validatorUpdateFailed": "검증기 업데이트에 실패했습니다",
-          "validatorDeleteFailed": "검증기 삭제에 실패했습니다",
-          "reporterCreated": "리포터가 성공적으로 생성되었습니다",
-          "reporterUpdated": "리포터가 성공적으로 업데이트되었습니다",
-          "reporterDeleted": "리포터가 성공적으로 삭제되었습니다",
-          "reporterCreateFailed": "리포터 생성에 실패했습니다",
-          "reporterUpdateFailed": "리포터 업데이트에 실패했습니다",
-          "reporterDeleteFailed": "리포터 삭제에 실패했습니다"
         }
       }
     }

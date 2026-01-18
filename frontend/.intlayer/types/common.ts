@@ -48,7 +48,13 @@ export default {
         "source": "Source",
         "schedule": "Schedule",
         "never": "Never",
-        "saving": "Saving..."
+        "saving": "Saving...",
+        "unknownError": "An unknown error occurred",
+        "ago": "ago",
+        "seconds": "seconds",
+        "minutes": "minutes",
+        "hours": "hours",
+        "days": "days"
       },
       "ko": {
         "save": "저장",
@@ -94,7 +100,13 @@ export default {
         "source": "소스",
         "schedule": "스케줄",
         "never": "없음",
-        "saving": "저장 중..."
+        "saving": "저장 중...",
+        "unknownError": "알 수 없는 오류가 발생했습니다",
+        "ago": "전",
+        "seconds": "초",
+        "minutes": "분",
+        "hours": "시간",
+        "days": "일"
       }
     }
   },

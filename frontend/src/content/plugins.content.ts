@@ -248,6 +248,58 @@ const pluginsContent = {
         en: "No custom reporters found",
         ko: "커스텀 리포터를 찾을 수 없습니다",
       }),
+      validatorCreated: t({
+        en: "Validator created successfully",
+        ko: "검증기가 성공적으로 생성되었습니다",
+      }),
+      validatorUpdated: t({
+        en: "Validator updated successfully",
+        ko: "검증기가 성공적으로 업데이트되었습니다",
+      }),
+      validatorDeleted: t({
+        en: "Validator deleted successfully",
+        ko: "검증기가 성공적으로 삭제되었습니다",
+      }),
+      validatorCreateFailed: t({
+        en: "Failed to create validator",
+        ko: "검증기 생성에 실패했습니다",
+      }),
+      validatorUpdateFailed: t({
+        en: "Failed to update validator",
+        ko: "검증기 업데이트에 실패했습니다",
+      }),
+      validatorDeleteFailed: t({
+        en: "Failed to delete validator",
+        ko: "검증기 삭제에 실패했습니다",
+      }),
+      reporterCreated: t({
+        en: "Reporter created successfully",
+        ko: "리포터가 성공적으로 생성되었습니다",
+      }),
+      reporterUpdated: t({
+        en: "Reporter updated successfully",
+        ko: "리포터가 성공적으로 업데이트되었습니다",
+      }),
+      reporterDeleted: t({
+        en: "Reporter deleted successfully",
+        ko: "리포터가 성공적으로 삭제되었습니다",
+      }),
+      reporterCreateFailed: t({
+        en: "Failed to create reporter",
+        ko: "리포터 생성에 실패했습니다",
+      }),
+      reporterUpdateFailed: t({
+        en: "Failed to update reporter",
+        ko: "리포터 업데이트에 실패했습니다",
+      }),
+      reporterDeleteFailed: t({
+        en: "Failed to delete reporter",
+        ko: "리포터 삭제에 실패했습니다",
+      }),
+      viewDetails: t({
+        en: "View Details",
+        ko: "상세보기",
+      }),
     },
 
     // Statistics
@@ -422,22 +474,6 @@ const pluginsContent = {
       documentation: t({ en: "Documentation", ko: "문서" }),
       noReadme: t({ en: "No README available", ko: "README가 없습니다" }),
       noChangelog: t({ en: "No changelog available", ko: "변경 로그가 없습니다" }),
-    },
-
-    // Additional messages
-    additionalMessages: {
-      validatorCreated: t({ en: "Validator created successfully", ko: "검증기가 성공적으로 생성되었습니다" }),
-      validatorUpdated: t({ en: "Validator updated successfully", ko: "검증기가 성공적으로 업데이트되었습니다" }),
-      validatorDeleted: t({ en: "Validator deleted successfully", ko: "검증기가 성공적으로 삭제되었습니다" }),
-      validatorCreateFailed: t({ en: "Failed to create validator", ko: "검증기 생성에 실패했습니다" }),
-      validatorUpdateFailed: t({ en: "Failed to update validator", ko: "검증기 업데이트에 실패했습니다" }),
-      validatorDeleteFailed: t({ en: "Failed to delete validator", ko: "검증기 삭제에 실패했습니다" }),
-      reporterCreated: t({ en: "Reporter created successfully", ko: "리포터가 성공적으로 생성되었습니다" }),
-      reporterUpdated: t({ en: "Reporter updated successfully", ko: "리포터가 성공적으로 업데이트되었습니다" }),
-      reporterDeleted: t({ en: "Reporter deleted successfully", ko: "리포터가 성공적으로 삭제되었습니다" }),
-      reporterCreateFailed: t({ en: "Failed to create reporter", ko: "리포터 생성에 실패했습니다" }),
-      reporterUpdateFailed: t({ en: "Failed to update reporter", ko: "리포터 업데이트에 실패했습니다" }),
-      reporterDeleteFailed: t({ en: "Failed to delete reporter", ko: "리포터 삭제에 실패했습니다" }),
     },
   },
 } satisfies Dictionary;
