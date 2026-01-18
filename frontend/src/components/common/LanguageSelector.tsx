@@ -2,13 +2,12 @@
  * LanguageSelector Component
  *
  * A dropdown menu for selecting the application language.
- * Supports 15 languages with grouping (Core/Extended) and search functionality.
+ * Currently supports 2 built-in languages: English (en) and Korean (ko).
+ * Additional languages can be added via AI translation CLI.
  *
  * Features:
- * - 15 language support with native names and flags
- * - Grouped display (Core/Extended languages)
+ * - 2 built-in language support with native names and flags
  * - Search/filter functionality
- * - RTL indicator for Arabic
  * - Immediate locale switching
  */
 import { useState, useMemo } from 'react'
@@ -75,16 +74,6 @@ export function LanguageSelector({
     )
   }, [searchQuery])
 
-  // Group filtered locales
-  const coreLocales = useMemo(
-    () => filteredLocales.filter((l) => l.group === 'core'),
-    [filteredLocales]
-  )
-  const extendedLocales = useMemo(
-    () => filteredLocales.filter((l) => l.group === 'extended'),
-    [filteredLocales]
-  )
-
   const handleSelect = (localeCode: SupportedLocale) => {
     setLocale(localeCode)
     setIsOpen(false)
@@ -145,24 +134,10 @@ export function LanguageSelector({
 
         {/* Scrollable content area */}
         <div className="max-h-[300px] overflow-y-auto overflow-x-hidden">
-          {/* Core languages */}
-          {coreLocales.length > 0 && (
+          {/* Available languages */}
+          {filteredLocales.length > 0 && (
             <>
-              <DropdownMenuLabel className="text-xs text-muted-foreground">
-                Core Languages
-              </DropdownMenuLabel>
-              {coreLocales.map(renderLocaleItem)}
-            </>
-          )}
-
-          {/* Extended languages */}
-          {extendedLocales.length > 0 && (
-            <>
-              {coreLocales.length > 0 && <DropdownMenuSeparator />}
-              <DropdownMenuLabel className="text-xs text-muted-foreground">
-                Extended Languages
-              </DropdownMenuLabel>
-              {extendedLocales.map(renderLocaleItem)}
+              {filteredLocales.map(renderLocaleItem)}
             </>
           )}
 

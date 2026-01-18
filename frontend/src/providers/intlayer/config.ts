@@ -4,30 +4,18 @@
  * Centralized configuration for supported locales and related settings.
  * This file serves as the single source of truth for locale-related constants.
  *
- * Supports 15 languages matching the backend report i18n system.
+ * Built-in languages: English (en), Korean (ko)
+ * Additional languages can be added via AI translation CLI (see docs/internationalization.md)
  */
 import { Locales } from 'intlayer'
 
 /**
- * Supported locales in the application (15 languages)
- * Matches backend SupportedLocale enum in reporters/i18n/base.py
+ * Built-in supported locales (2 languages with complete translations)
+ * Additional languages require AI translation via `truthound translate` CLI
  */
 export const SUPPORTED_LOCALES = [
   Locales.ENGLISH,
   Locales.KOREAN,
-  Locales.JAPANESE,
-  Locales.CHINESE,
-  Locales.GERMAN,
-  Locales.FRENCH,
-  Locales.SPANISH,
-  Locales.PORTUGUESE,
-  Locales.ITALIAN,
-  Locales.RUSSIAN,
-  Locales.ARABIC,
-  Locales.THAI,
-  Locales.VIETNAMESE,
-  Locales.INDONESIAN,
-  Locales.TURKISH,
 ] as const
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
@@ -51,103 +39,30 @@ export interface LocaleInfo {
   nativeName: string
   flag: string
   rtl?: boolean
-  group?: 'core' | 'extended'
 }
 
 /**
- * Available locales with display information (15 languages)
+ * Available locales with display information (2 built-in languages)
  * Used for language selector UI components
  *
- * Groups:
- * - core: Most common languages (7)
- * - extended: Additional languages (8)
+ * Note: Additional languages can be added by:
+ * 1. Running `truthound translate -l <locale> -p <provider>`
+ * 2. Updating this array with the new locale info
  */
 export const LOCALE_INFO: readonly LocaleInfo[] = [
-  // Core languages (7)
   {
     code: Locales.ENGLISH,
     name: 'English',
     nativeName: 'English',
-    flag: '\u{1F1FA}\u{1F1F8}',
-    group: 'core',
+    flag: '🇺🇸',
   },
   {
     code: Locales.KOREAN,
     name: 'Korean',
-    nativeName: '\uD55C\uAD6D\uC5B4',
-    flag: '\u{1F1F0}\u{1F1F7}',
-    group: 'core',
+    nativeName: '한국어',
+    flag: '🇰🇷',
   },
-  {
-    code: Locales.JAPANESE,
-    name: 'Japanese',
-    nativeName: '\u65E5\u672C\u8A9E',
-    flag: '\u{1F1EF}\u{1F1F5}',
-    group: 'core',
-  },
-  {
-    code: Locales.CHINESE,
-    name: 'Chinese',
-    nativeName: '\u4E2D\u6587',
-    flag: '\u{1F1E8}\u{1F1F3}',
-    group: 'core',
-  },
-  {
-    code: Locales.GERMAN,
-    name: 'German',
-    nativeName: 'Deutsch',
-    flag: '\u{1F1E9}\u{1F1EA}',
-    group: 'core',
-  },
-  {
-    code: Locales.FRENCH,
-    name: 'French',
-    nativeName: 'Fran\u00E7ais',
-    flag: '\u{1F1EB}\u{1F1F7}',
-    group: 'core',
-  },
-  {
-    code: Locales.SPANISH,
-    name: 'Spanish',
-    nativeName: 'Espa\u00F1ol',
-    flag: '\u{1F1EA}\u{1F1F8}',
-    group: 'core',
-  },
-  // Extended languages (8)
-  {
-    code: Locales.PORTUGUESE,
-    name: 'Portuguese',
-    nativeName: 'Portugu\u00EAs',
-    flag: '\u{1F1E7}\u{1F1F7}',
-    group: 'extended',
-  },
-  {
-    code: Locales.ITALIAN,
-    name: 'Italian',
-    nativeName: 'Italiano',
-    flag: '\u{1F1EE}\u{1F1F9}',
-    group: 'extended',
-  },
-  {
-    code: Locales.RUSSIAN,
-    name: 'Russian',
-    nativeName: '\u0420\u0443\u0441\u0441\u043A\u0438\u0439',
-    flag: '\u{1F1F7}\u{1F1FA}',
-    group: 'extended',
-  },
-  {
-    code: Locales.ARABIC,
-    name: 'Arabic',
-    nativeName: '\u0627\u0644\u0639\u0631\u0628\u064A\u0629',
-    flag: '\u{1F1F8}\u{1F1E6}',
-    rtl: true,
-    group: 'extended',
-  },
-  {
-    code: Locales.THAI,
-    name: 'Thai',
-    nativeName: '\u0E44\u0E17\u0E22',
-    flag: '\u{1F1F9}\u{1F1ED}',
+]
     group: 'extended',
   },
   {
