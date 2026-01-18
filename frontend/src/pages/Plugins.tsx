@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { useApi, useMutation } from '@/hooks/use-api'
 import {
   listPlugins,
@@ -91,7 +91,7 @@ import {
 } from '@/components/plugins'
 
 export function Plugins() {
-  const t = useIntlayer('plugins')
+  const t = useSafeIntlayer('plugins')
   const [activeTab, setActiveTab] = useState('marketplace')
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<PluginType | 'all'>('all')

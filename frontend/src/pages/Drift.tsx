@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -42,9 +42,9 @@ import { useToast } from '@/hooks/use-toast'
 import { GitCompare, Plus, AlertTriangle, CheckCircle, ArrowRight, Settings2, Info } from 'lucide-react'
 
 export default function Drift() {
-  const drift_t = useIntlayer('drift')
-  const common = useIntlayer('common')
-  const errors = useIntlayer('errors')
+  const drift_t = useSafeIntlayer('drift')
+  const common = useSafeIntlayer('common')
+  const errors = useSafeIntlayer('errors')
   const { toast } = useToast()
   const [sources, setSources] = useState<Source[]>([])
   const [comparisons, setComparisons] = useState<DriftComparison[]>([])

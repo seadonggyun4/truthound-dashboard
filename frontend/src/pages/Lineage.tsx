@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { Loader2, BarChart3, Zap, AlertTriangle, Columns, Table2, Grid3X3 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { str } from '@/lib/intlayer-utils'
@@ -61,7 +61,7 @@ import {
 const RENDERER_PREFERENCE_KEY = 'lineage-renderer-preference'
 
 export default function Lineage() {
-  const t = useIntlayer('lineage')
+  const t = useSafeIntlayer('lineage')
   const { toast } = useToast()
 
   // State

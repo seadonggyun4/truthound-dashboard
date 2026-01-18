@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -68,11 +68,11 @@ import {
 } from 'lucide-react'
 
 export default function Schedules() {
-  const nav = useIntlayer('nav')
-  const schedules_t = useIntlayer('schedules')
-  const common = useIntlayer('common')
-  const errors = useIntlayer('errors')
-  const validation = useIntlayer('validation')
+  const nav = useSafeIntlayer('nav')
+  const schedules_t = useSafeIntlayer('schedules')
+  const common = useSafeIntlayer('common')
+  const errors = useSafeIntlayer('errors')
+  const validation = useSafeIntlayer('validation')
   const { toast } = useToast()
 
   const CRON_PRESETS = useMemo(() => [

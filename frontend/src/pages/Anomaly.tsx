@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { str } from '@/lib/intlayer-utils'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
@@ -54,8 +54,8 @@ interface SourceWithLatestAnomaly extends Source {
 }
 
 export default function Anomaly() {
-  const t = useIntlayer('anomaly')
-  const common = useIntlayer('common')
+  const t = useSafeIntlayer('anomaly')
+  const common = useSafeIntlayer('common')
   const { toast } = useToast()
 
   // State

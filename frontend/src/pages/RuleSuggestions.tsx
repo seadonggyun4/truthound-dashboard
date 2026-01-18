@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Sparkles,
   Database,
@@ -161,7 +161,7 @@ function CategoryBreakdown({
   t,
 }: {
   byCategory: Record<string, number>
-  t: ReturnType<typeof useIntlayer>
+  t: ReturnType<typeof useSafeIntlayer<'ruleSuggestions'>>
 }) {
   const total = Object.values(byCategory).reduce((a, b) => a + b, 0)
   if (total === 0) return null
@@ -189,8 +189,8 @@ function CategoryBreakdown({
 }
 
 export default function RuleSuggestions() {
-  const t = useIntlayer('ruleSuggestions')
-  const common = useIntlayer('common')
+  const t = useSafeIntlayer('ruleSuggestions')
+  const common = useSafeIntlayer('common')
   const { toast } = useToast()
 
   // Data state

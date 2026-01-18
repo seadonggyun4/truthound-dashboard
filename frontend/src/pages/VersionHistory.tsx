@@ -34,7 +34,7 @@ import {
   type Source,
   type VersionInfo,
 } from '@/api/client'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { str } from '@/lib/intlayer-utils'
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
@@ -42,8 +42,8 @@ import { VersionCompare, VersionTimeline } from '@/components/versioning'
 
 export default function VersionHistory() {
   const { id: sourceId } = useParams<{ id: string }>()
-  const versioning = useIntlayer('versioning')
-  const common = useIntlayer('common')
+  const versioning = useSafeIntlayer('versioning')
+  const common = useSafeIntlayer('common')
   const { toast } = useToast()
 
   const [source, setSource] = useState<Source | null>(null)

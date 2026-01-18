@@ -9,7 +9,7 @@
  */
 
 import { useState } from 'react'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Bell,
   Plus,
@@ -178,8 +178,8 @@ interface ChannelDialogProps {
 }
 
 function ChannelDialog({ open, onOpenChange, channel, onSave }: ChannelDialogProps) {
-  const notifications_t = useIntlayer('notifications')
-  const common = useIntlayer('common')
+  const notifications_t = useSafeIntlayer('notifications')
+  const common = useSafeIntlayer('common')
   const { toast } = useToast()
 
   const [step, setStep] = useState<'type' | 'config'>(channel ? 'config' : 'type')
@@ -346,8 +346,8 @@ interface RuleDialogProps {
 }
 
 function RuleDialog({ open, onOpenChange, rule, channels, onSave }: RuleDialogProps) {
-  const notifications_t = useIntlayer('notifications')
-  const common = useIntlayer('common')
+  const notifications_t = useSafeIntlayer('notifications')
+  const common = useSafeIntlayer('common')
   const { toast } = useToast()
 
   const [ruleName, setRuleName] = useState(rule?.name || '')
@@ -498,8 +498,8 @@ function RuleDialog({ open, onOpenChange, rule, channels, onSave }: RuleDialogPr
 // ============================================================================
 
 export default function Notifications() {
-  const notifications_t = useIntlayer('notifications')
-  const common = useIntlayer('common')
+  const notifications_t = useSafeIntlayer('notifications')
+  const common = useSafeIntlayer('common')
   const { toast } = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
   const [activeTab, setActiveTab] = useState('channels')

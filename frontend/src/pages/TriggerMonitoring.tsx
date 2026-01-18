@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Activity,
   Clock,
@@ -97,7 +97,7 @@ function StatsCard({
 
 // Trigger Status Row Component
 function TriggerStatusRow({ schedule }: { schedule: TriggerCheckStatus }) {
-  const t = useIntlayer('triggers')
+  const t = useSafeIntlayer('triggers')
   const isInCooldown = schedule.cooldown_remaining_seconds > 0
   const statusBadge = schedule.is_due_for_check ? (
     <Badge variant="outline" className="bg-amber-500/10 text-amber-500">
@@ -181,8 +181,8 @@ function TriggerStatusRow({ schedule }: { schedule: TriggerCheckStatus }) {
 }
 
 export default function TriggerMonitoring() {
-  const t = useIntlayer('triggers')
-  const common = useIntlayer('common')
+  const t = useSafeIntlayer('triggers')
+  const common = useSafeIntlayer('common')
   const { toast } = useToast()
 
   const [loading, setLoading] = useState(true)

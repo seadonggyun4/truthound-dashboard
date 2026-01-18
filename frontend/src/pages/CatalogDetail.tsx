@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   ArrowLeft,
   Edit,
@@ -25,8 +25,8 @@ import { ColumnMappingDialog } from '@/components/catalog/ColumnMappingDialog'
 
 export default function CatalogDetail() {
   const { id } = useParams<{ id: string }>()
-  const catalog = useIntlayer('catalog')
-  const common = useIntlayer('common')
+  const catalog = useSafeIntlayer('catalog')
+  const common = useSafeIntlayer('common')
   const {
     selectedAsset,
     loading,

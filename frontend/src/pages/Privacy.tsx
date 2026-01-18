@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { str } from '@/lib/intlayer-utils'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -50,8 +50,8 @@ interface SourceWithPrivacyInfo extends Source {
 }
 
 export default function Privacy() {
-  const t = useIntlayer('privacy')
-  const common = useIntlayer('common')
+  const t = useSafeIntlayer('privacy')
+  const common = useSafeIntlayer('common')
   const { toast } = useToast()
 
   // State

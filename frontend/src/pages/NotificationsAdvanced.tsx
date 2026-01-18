@@ -9,7 +9,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { str } from '@/lib/intlayer-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -47,8 +47,8 @@ interface Stats {
 }
 
 export default function NotificationsAdvanced() {
-  const t = useIntlayer('notificationsAdvanced')
-  const common = useIntlayer('common')
+  const t = useSafeIntlayer('notificationsAdvanced')
+  const common = useSafeIntlayer('common')
   const { toast } = useToast()
 
   const [activeTab, setActiveTab] = useState('routing')

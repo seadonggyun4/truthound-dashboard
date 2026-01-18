@@ -4,11 +4,11 @@
  * Provides UI for configuring retention policies and database maintenance.
  */
 
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { MaintenanceSettings } from '@/components/maintenance'
 
 export default function Maintenance() {
-  const content = useIntlayer('maintenance')
+  const content = useSafeIntlayer('maintenance')
 
   return (
     <div className="space-y-6">

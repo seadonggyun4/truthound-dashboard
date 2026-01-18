@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { str } from '@/lib/intlayer-utils'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -152,8 +152,8 @@ async function getDriftRootCauseAnalysis(
 }
 
 export default function DriftMonitoring() {
-  const t = useIntlayer('driftMonitor')
-  const common = useIntlayer('common')
+  const t = useSafeIntlayer('driftMonitor')
+  const common = useSafeIntlayer('common')
   const { toast } = useToast()
 
   // State

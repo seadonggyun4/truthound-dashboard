@@ -4,7 +4,7 @@
  * Displays report history with statistics, filtering, and management actions.
  */
 import { useEffect, useState, useCallback } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   FileText,
@@ -86,7 +86,7 @@ function formatDate(dateStr: string | undefined): string {
 }
 
 // Status badge component
-function StatusBadge({ status, t }: { status: ReportStatus; t: ReturnType<typeof useIntlayer<'reports'>> }) {
+function StatusBadge({ status, t }: { status: ReportStatus; t: ReturnType<typeof useSafeIntlayer<'reports'>> }) {
   const statusConfig: Record<ReportStatus, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode; label: string }> = {
     pending: {
       variant: 'outline',
@@ -125,7 +125,7 @@ function StatusBadge({ status, t }: { status: ReportStatus; t: ReturnType<typeof
 }
 
 // Statistics cards component
-function StatisticsCards({ stats, t }: { stats: ReportStatistics | null; t: ReturnType<typeof useIntlayer<'reports'>> }) {
+function StatisticsCards({ stats, t }: { stats: ReportStatistics | null; t: ReturnType<typeof useSafeIntlayer<'reports'>> }) {
   if (!stats) return null
 
   return (
@@ -189,8 +189,8 @@ function StatisticsCards({ stats, t }: { stats: ReportStatistics | null; t: Retu
 }
 
 export default function Reports() {
-  const t = useIntlayer('reports')
-  const common = useIntlayer('common')
+  const t = useSafeIntlayer('reports')
+  const common = useSafeIntlayer('common')
   const { toast } = useToast()
   const navigate = useNavigate()
 

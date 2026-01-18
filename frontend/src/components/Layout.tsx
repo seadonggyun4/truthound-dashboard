@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   LayoutDashboard,
   Database,
@@ -76,7 +76,7 @@ const navigation: NavItem[] = [
 
 export default function Layout() {
   const location = useLocation()
-  const nav = useIntlayer('nav')
+  const nav = useSafeIntlayer('nav')
   const { theme, setTheme } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [alertCount, setAlertCount] = useState(0)

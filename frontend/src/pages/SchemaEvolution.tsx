@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   GitBranch,
   History,
@@ -120,7 +120,7 @@ function StatsCard({
 
 // Change Row Component
 function ChangeRow({ change }: { change: SchemaChangeResponse }) {
-  const t = useIntlayer('schemaEvolution')
+  const t = useSafeIntlayer('schemaEvolution')
   const config = CHANGE_TYPE_CONFIG[change.change_type] || CHANGE_TYPE_CONFIG.type_changed
   const severityConfig = SEVERITY_CONFIG[change.severity] || SEVERITY_CONFIG.non_breaking
   const Icon = config.icon
@@ -181,7 +181,7 @@ function VersionCard({
   isLatest: boolean
   changes: SchemaChangeResponse[]
 }) {
-  const t = useIntlayer('schemaEvolution')
+  const t = useSafeIntlayer('schemaEvolution')
   const versionChanges = changes.filter((c) => c.to_version_id === version.id)
   const breakingCount = versionChanges.filter((c) => c.severity === 'breaking').length
 
@@ -255,8 +255,8 @@ function VersionCard({
 }
 
 export default function SchemaEvolution() {
-  const t = useIntlayer('schemaEvolution')
-  const common = useIntlayer('common')
+  const t = useSafeIntlayer('schemaEvolution')
+  const common = useSafeIntlayer('common')
   const { toast } = useToast()
 
   // State

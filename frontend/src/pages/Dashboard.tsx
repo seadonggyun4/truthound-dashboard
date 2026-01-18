@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Database,
   CheckCircle2,
@@ -17,10 +17,10 @@ import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { GlassCard } from '@/components/GlassCard'
 
 export default function Dashboard() {
-  const nav = useIntlayer('nav')
-  const dashboard = useIntlayer('dashboard')
-  const common = useIntlayer('common')
-  const validation = useIntlayer('validation')
+  const nav = useSafeIntlayer('nav')
+  const dashboard = useSafeIntlayer('dashboard')
+  const common = useSafeIntlayer('common')
+  const validation = useSafeIntlayer('validation')
   const [sources, setSources] = useState<Source[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)

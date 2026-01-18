@@ -61,7 +61,7 @@ import { ValidatorSelector } from '@/components/validators'
 import { EditSourceDialog } from '@/components/sources'
 import { AnomalyDetectionPanel } from '@/components/anomaly'
 import { LineageGraph } from '@/components/lineage'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { str } from '@/lib/intlayer-utils'
 
 // Fields that should be masked by default
@@ -94,8 +94,8 @@ export default function SourceDetail() {
   const [customValidatorConfigs, setCustomValidatorConfigs] = useState<CustomValidatorSelectionConfig[]>([])
   const [loadingValidators, setLoadingValidators] = useState(false)
   const { toast } = useToast()
-  const sources_t = useIntlayer('sources')
-  const common = useIntlayer('common')
+  const sources_t = useSafeIntlayer('sources')
+  const common = useSafeIntlayer('common')
 
   // Edit dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false)

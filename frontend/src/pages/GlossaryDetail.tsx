@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   BookOpen,
   ArrowLeft,
@@ -22,8 +22,8 @@ import { useState } from 'react'
 
 export default function GlossaryDetail() {
   const { id } = useParams<{ id: string }>()
-  const glossary = useIntlayer('glossary')
-  const common = useIntlayer('common')
+  const glossary = useSafeIntlayer('glossary')
+  const common = useSafeIntlayer('common')
   const {
     selectedTerm,
     loading,

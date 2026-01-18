@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { Activity as ActivityIcon, Filter } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,9 +16,9 @@ import { str } from '@/lib/intlayer-utils'
 import { ActivityFeed } from '@/components/collaboration/ActivityFeed'
 
 export default function Activity() {
-  const nav = useIntlayer('nav')
-  const collab = useIntlayer('collaboration')
-  const common = useIntlayer('common')
+  const nav = useSafeIntlayer('nav')
+  const collab = useSafeIntlayer('collaboration')
+  const common = useSafeIntlayer('common')
   const { toast } = useToast()
 
   const [activities, setActivities] = useState<ActivityType[]>([])

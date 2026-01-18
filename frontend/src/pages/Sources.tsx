@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Database,
   Plus,
@@ -24,10 +24,10 @@ import { useConfirm } from '@/components/ConfirmDialog'
 import { AddSourceDialog } from '@/components/sources'
 
 export default function Sources() {
-  const nav = useIntlayer('nav')
-  const sources_t = useIntlayer('sources')
-  const common = useIntlayer('common')
-  const validation = useIntlayer('validation')
+  const nav = useSafeIntlayer('nav')
+  const sources_t = useSafeIntlayer('sources')
+  const common = useSafeIntlayer('common')
+  const validation = useSafeIntlayer('validation')
   const [sources, setSources] = useState<Source[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddDialog, setShowAddDialog] = useState(false)

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   BookOpen,
   Plus,
@@ -27,9 +27,9 @@ import { useConfirm } from '@/components/ConfirmDialog'
 import { TermFormDialog } from '@/components/glossary/TermFormDialog'
 
 export default function Glossary() {
-  const nav = useIntlayer('nav')
-  const glossary = useIntlayer('glossary')
-  const common = useIntlayer('common')
+  const nav = useSafeIntlayer('nav')
+  const glossary = useSafeIntlayer('glossary')
+  const common = useSafeIntlayer('common')
   const {
     terms,
     categories,

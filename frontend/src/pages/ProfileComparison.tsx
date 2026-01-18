@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   BarChart3,
   TrendingUp,
@@ -137,7 +137,7 @@ function StatsCard({
 
 // Column Comparison Row
 function ComparisonRow({ comparison }: { comparison: ColumnComparison }) {
-  const t = useIntlayer('profileComparison')
+  const t = useSafeIntlayer('profileComparison')
   const changeColor =
     comparison.change === null
       ? 'text-muted-foreground'
@@ -181,7 +181,7 @@ function ComparisonRow({ comparison }: { comparison: ColumnComparison }) {
 }
 
 export default function ProfileComparison() {
-  const t = useIntlayer('profileComparison')
+  const t = useSafeIntlayer('profileComparison')
   const { toast } = useToast()
 
   // State

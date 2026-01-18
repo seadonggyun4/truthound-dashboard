@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
 import { RefreshCw, BellRing } from 'lucide-react'
@@ -102,8 +102,8 @@ interface AlertCorrelationData {
 }
 
 export default function Alerts() {
-  const content = useIntlayer('alerts')
-  const common = useIntlayer('common')
+  const content = useSafeIntlayer('alerts')
+  const common = useSafeIntlayer('common')
   const { toast } = useToast()
 
   // State

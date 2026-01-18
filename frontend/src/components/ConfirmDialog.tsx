@@ -25,7 +25,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,7 +54,7 @@ interface ConfirmState extends ConfirmOptions {
 }
 
 export function useConfirm() {
-  const common = useIntlayer('common')
+  const common = useSafeIntlayer('common')
   const [state, setState] = useState<ConfirmState>({
     isOpen: false,
     title: '',

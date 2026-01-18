@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { useIntlayer } from '@/providers'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Database,
   Plus,
@@ -30,9 +30,9 @@ import { useConfirm } from '@/components/ConfirmDialog'
 import { AssetFormDialog } from '@/components/catalog/AssetFormDialog'
 
 export default function Catalog() {
-  const nav = useIntlayer('nav')
-  const catalog = useIntlayer('catalog')
-  const common = useIntlayer('common')
+  const nav = useSafeIntlayer('nav')
+  const catalog = useSafeIntlayer('catalog')
+  const common = useSafeIntlayer('common')
   const {
     assets,
     loading,
