@@ -23,20 +23,7 @@ export default {
         "light": "라이트",
         "dark": "다크",
         "system": "시스템"
-      },
-      "ja": {},
-      "zh": {},
-      "de": {},
-      "fr": {},
-      "es": {},
-      "pt": {},
-      "it": {},
-      "ru": {},
-      "ar": {},
-      "th": {},
-      "vi": {},
-      "id": {},
-      "tr": {}
+      }
     }
   },
   "localIds": [

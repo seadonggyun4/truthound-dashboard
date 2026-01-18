@@ -69,37 +69,11 @@ declare module 'intlayer' {
   interface __DeclaredLocalesRegistry {
     "en": 1;
     "ko": 1;
-    "ja": 1;
-    "zh": 1;
-    "de": 1;
-    "fr": 1;
-    "es": 1;
-    "pt": 1;
-    "it": 1;
-    "ru": 1;
-    "ar": 1;
-    "th": 1;
-    "vi": 1;
-    "id": 1;
-    "tr": 1;
   }
 
   interface __RequiredLocalesRegistry {
     "en": 1;
     "ko": 1;
-    "ja": 1;
-    "zh": 1;
-    "de": 1;
-    "fr": 1;
-    "es": 1;
-    "pt": 1;
-    "it": 1;
-    "ru": 1;
-    "ar": 1;
-    "th": 1;
-    "vi": 1;
-    "id": 1;
-    "tr": 1;
   }
 
   interface __StrictModeRegistry { mode: 'inclusive' }

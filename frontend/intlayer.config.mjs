@@ -6,23 +6,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 /** @type {import('intlayer').IntlayerConfig} */
 const config = {
   internationalization: {
-    // 15 supported languages (matching backend report i18n)
+    // Currently translated languages
     locales: [
       "en",  // English
       "ko",  // Korean
-      "ja",  // Japanese
-      "zh",  // Chinese
-      "de",  // German
-      "fr",  // French
-      "es",  // Spanish
-      "pt",  // Portuguese
-      "it",  // Italian
-      "ru",  // Russian
-      "ar",  // Arabic (RTL)
-      "th",  // Thai
-      "vi",  // Vietnamese
-      "id",  // Indonesian
-      "tr",  // Turkish
     ],
     defaultLocale: "en",
   },

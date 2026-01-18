@@ -42,7 +42,7 @@ truthound-dashboard provides a graphical interface for managing data sources, ex
 | Plugins Marketplace | Not Available | Available |
 | Maintenance Tools | Limited | Available |
 | Dark Mode | Available | Available |
-| Multi-language | Limited | Available (15+ languages) |
+| Multi-language | Limited | 2 languages (en, ko) + AI translation CLI |
 | License | Commercial | Apache 2.0 |
 
 ## Requirements
@@ -260,22 +260,28 @@ The dashboard interface is accessible at `http://localhost:8765`.
 
 ### User Interface
 - Light and dark theme support with system preference detection
-- Internationalization: 15+ languages (English, Korean, Japanese, Chinese, German, French, Spanish, etc.)
-- AI-powered translation CLI with 4 provider options (OpenAI, Anthropic, Mistral, Ollama)
+- Internationalization: 2 built-in languages (English, Korean)
+- AI-powered translation CLI to expand to 15+ languages (OpenAI, Anthropic, Mistral, Ollama)
 - Type-safe translations using Intlayer framework
 - Comprehensive E2E test coverage (197+ tests) for all features
 
 ## Internationalization
 
-truthound-dashboard implements internationalization using [Intlayer](https://intlayer.org), a modern i18n framework that provides type-safe translations with component-level content declaration. This architecture enables seamless multi-language support while maintaining code maintainability.
+truthound-dashboard implements internationalization using [Intlayer](https://intlayer.org), a modern i18n framework that provides type-safe translations with component-level content declaration.
 
-### Default Languages
+### Built-in Languages
 
-The application ships with English and Korean translations. These languages are immediately available without additional configuration.
+The dashboard ships with **2 fully translated languages**:
+- **English (en)** - Complete UI translation
+- **Korean (ko)** - Complete UI translation
+
+These languages are immediately available without additional configuration or setup.
 
 ### Extending Language Support
 
-For projects requiring additional language support, the `translate` command enables AI-powered translation of the user interface.
+The dashboard can be extended to support 15+ additional languages using the AI-powered `translate` command. This CLI tool translates all UI content files from the built-in English and Korean to your target language.
+
+**Note:** Additional languages are not included in the default installation and must be generated using the translation CLI before deployment.
 
 #### Supported AI Providers
 

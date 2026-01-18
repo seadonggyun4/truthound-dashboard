@@ -57,45 +57,6 @@ export default {
           "medium": "중간",
           "low": "낮음"
         }
-      },
-      "ja": {
-        "severity": {}
-      },
-      "zh": {
-        "severity": {}
-      },
-      "de": {
-        "severity": {}
-      },
-      "fr": {
-        "severity": {}
-      },
-      "es": {
-        "severity": {}
-      },
-      "pt": {
-        "severity": {}
-      },
-      "it": {
-        "severity": {}
-      },
-      "ru": {
-        "severity": {}
-      },
-      "ar": {
-        "severity": {}
-      },
-      "th": {
-        "severity": {}
-      },
-      "vi": {
-        "severity": {}
-      },
-      "id": {
-        "severity": {}
-      },
-      "tr": {
-        "severity": {}
       }
     }
   },

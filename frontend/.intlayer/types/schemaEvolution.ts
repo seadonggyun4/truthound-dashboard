@@ -103,20 +103,7 @@ export default {
         "noSources": "데이터 소스가 없습니다",
         "fetchError": "스키마 변경 데이터 가져오기 실패",
         "timeSinceCreation": "생성 이후 시간"
-      },
-      "ja": {},
-      "zh": {},
-      "de": {},
-      "fr": {},
-      "es": {},
-      "pt": {},
-      "it": {},
-      "ru": {},
-      "ar": {},
-      "th": {},
-      "vi": {},
-      "id": {},
-      "tr": {}
+      }
     }
   },
   "localIds": [

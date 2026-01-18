@@ -7,7 +7,8 @@ Truthound Dashboard provides type-safe internationalization powered by [Intlayer
 | Feature | Description |
 |---------|-------------|
 | **Library** | Intlayer + react-intlayer |
-| **Default Languages** | English (en), Korean (ko) |
+| **Built-in Languages** | English (en), Korean (ko) |
+| **Expandable Languages** | 15+ via AI translation CLI |
 | **Type Safety** | Full TypeScript support with auto-generated types |
 | **AI Translation** | Translate to any language using OpenAI, Anthropic, Ollama, or Mistral |
 | **Content Location** | Co-located with components (`*.content.ts`) |
@@ -16,18 +17,20 @@ Truthound Dashboard provides type-safe internationalization powered by [Intlayer
 
 ## Built-in Languages
 
-The dashboard includes translations for:
+The dashboard includes **complete translations** for:
 
-- **English** (`en`) - Default
-- **Korean** (`ko`)
+- **English** (`en`) - Default language, 31 content files fully translated
+- **Korean** (`ko`) - 31 content files fully translated
 
-The language is automatically detected from your browser settings, or you can manually switch using the language selector in the header.
+These languages are included in the default installation and require no additional setup. The language is automatically detected from your browser settings, or you can manually switch using the language selector in the header.
 
 ---
 
 ## Adding New Languages with AI Translation
 
-You can add support for additional languages using the `truthound translate` CLI command. This leverages AI providers to translate all UI content.
+**Important:** Additional languages beyond English and Korean are **not included** in the default installation. You must generate translations using the AI-powered CLI tool before they become available in the UI.
+
+You can add support for 15+ additional languages using the `truthound translate` CLI command. This leverages AI providers to translate all 31 UI content files from English/Korean to your target language.
 
 ### Prerequisites
 

@@ -169,20 +169,7 @@ export default {
         "minutes": "분",
         "never": "없음",
         "ago": "전"
-      },
-      "ja": {},
-      "zh": {},
-      "de": {},
-      "fr": {},
-      "es": {},
-      "pt": {},
-      "it": {},
-      "ru": {},
-      "ar": {},
-      "th": {},
-      "vi": {},
-      "id": {},
-      "tr": {}
+      }
     }
   },
   "localIds": [

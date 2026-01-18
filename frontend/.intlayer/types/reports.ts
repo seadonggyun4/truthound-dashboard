@@ -223,20 +223,7 @@ export default {
         "deleteConfirmTitle": "리포트 삭제",
         "deleteConfirmMessage": "이 리포트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
         "deleteSuccess": "리포트가 삭제되었습니다"
-      },
-      "ja": {},
-      "zh": {},
-      "de": {},
-      "fr": {},
-      "es": {},
-      "pt": {},
-      "it": {},
-      "ru": {},
-      "ar": {},
-      "th": {},
-      "vi": {},
-      "id": {},
-      "tr": {}
+      }
     }
   },
   "localIds": [

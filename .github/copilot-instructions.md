@@ -33,7 +33,7 @@ schema = await adapter.learn(source_path)
 - No Redis/Celery - single process architecture for zero-config deployment
 
 ### 3. Internationalization (Intlayer)
-Frontend supports **15 languages** using [Intlayer](https://intlayer.org) type-safe i18n system:
+Frontend has **2 built-in languages (en, ko)** and supports expansion to 15+ languages using [Intlayer](https://intlayer.org) type-safe i18n system:
 
 **Content files:** `frontend/src/content/*.content.ts` define translations
 ```typescript

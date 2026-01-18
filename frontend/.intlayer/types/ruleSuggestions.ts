@@ -277,20 +277,7 @@ export default {
         "enableCrossColumnDesc": "컬럼 간 관계를 분석하여 크로스 컬럼 검증 규칙 제안",
         "crossColumnTypes": "크로스 컬럼 유형",
         "byCrossColumnType": "유형별"
-      },
-      "ja": {},
-      "zh": {},
-      "de": {},
-      "fr": {},
-      "es": {},
-      "pt": {},
-      "it": {},
-      "ru": {},
-      "ar": {},
-      "th": {},
-      "vi": {},
-      "id": {},
-      "tr": {}
+      }
     }
   },
   "localIds": [

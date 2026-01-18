@@ -113,20 +113,7 @@ export default {
         "notEnoughProfiles": "비교할 프로파일이 부족합니다. 최소 2개의 프로파일이 필요합니다.",
         "periodFrom": "시작",
         "periodTo": "종료"
-      },
-      "ja": {},
-      "zh": {},
-      "de": {},
-      "fr": {},
-      "es": {},
-      "pt": {},
-      "it": {},
-      "ru": {},
-      "ar": {},
-      "th": {},
-      "vi": {},
-      "id": {},
-      "tr": {}
+      }
     }
   },
   "localIds": [
