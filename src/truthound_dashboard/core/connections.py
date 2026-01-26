@@ -30,17 +30,38 @@ from urllib.parse import quote_plus
 class SourceType(str, Enum):
     """Supported data source types."""
 
+    # File-based
     FILE = "file"
+    CSV = "csv"
+    PARQUET = "parquet"
+    JSON = "json"
+    NDJSON = "ndjson"
+    JSONL = "jsonl"
+
+    # Core SQL
     POSTGRESQL = "postgresql"
     MYSQL = "mysql"
     SQLITE = "sqlite"
+
+    # Cloud Data Warehouses
     SNOWFLAKE = "snowflake"
     BIGQUERY = "bigquery"
     REDSHIFT = "redshift"
     DATABRICKS = "databricks"
+
+    # Enterprise
     ORACLE = "oracle"
     SQLSERVER = "sqlserver"
+
+    # Big Data
     SPARK = "spark"
+
+    # NoSQL
+    MONGODB = "mongodb"
+    ELASTICSEARCH = "elasticsearch"
+
+    # Streaming
+    KAFKA = "kafka"
 
 
 class FieldType(str, Enum):
@@ -104,7 +125,7 @@ class SourceTypeDefinition:
     name: str
     description: str
     icon: str
-    category: Literal["file", "database", "warehouse", "bigdata"]
+    category: Literal["file", "database", "warehouse", "bigdata", "nosql", "streaming"]
     fields: list[FieldDefinition]
     docs_url: str = ""
 
@@ -1195,19 +1216,390 @@ class SparkConnectionBuilder(ConnectionBuilder):
         )
 
 
+class MongoDBConnectionBuilder(ConnectionBuilder):
+    """Connection builder for MongoDB."""
+
+    source_type = SourceType.MONGODB
+
+    def build(self, config: dict[str, Any]) -> str:
+        """Build MongoDB connection string."""
+        # Support direct connection string
+        if config.get("connection_string"):
+            return config["connection_string"]
+
+        host = config.get("host", "localhost")
+        port = config.get("port", 27017)
+        database = config.get("database", "")
+        username = config.get("username", "")
+        password = quote_plus(config.get("password", ""))
+
+        # Build connection string
+        if username and password:
+            conn = f"mongodb://{username}:{password}@{host}:{port}/{database}"
+        else:
+            conn = f"mongodb://{host}:{port}/{database}"
+
+        # Add options
+        options = []
+        if config.get("auth_source"):
+            options.append(f"authSource={config['auth_source']}")
+        if config.get("replica_set"):
+            options.append(f"replicaSet={config['replica_set']}")
+        if config.get("ssl"):
+            options.append("ssl=true")
+
+        if options:
+            conn += "?" + "&".join(options)
+
+        return conn
+
+    def validate_config(self, config: dict[str, Any]) -> list[str]:
+        """Validate MongoDB configuration."""
+        errors = []
+
+        # Either connection_string or host is required
+        if not config.get("connection_string") and not config.get("host"):
+            errors.append("Either connection_string or host is required")
+
+        if not config.get("database"):
+            errors.append("database is required")
+
+        if not config.get("collection"):
+            errors.append("collection is required")
+
+        return errors
+
+    @classmethod
+    def get_definition(cls) -> SourceTypeDefinition:
+        """Get the source type definition for UI rendering."""
+        return SourceTypeDefinition(
+            type=SourceType.MONGODB.value,
+            name="MongoDB",
+            description="MongoDB document database",
+            icon="database",
+            category="nosql",
+            docs_url="https://www.mongodb.com/docs/",
+            fields=[
+                FieldDefinition(
+                    name="connection_string",
+                    label="Connection String",
+                    placeholder="mongodb://localhost:27017/mydb",
+                    description="Full MongoDB connection URI (alternative to individual fields)",
+                ),
+                FieldDefinition(
+                    name="host",
+                    label="Host",
+                    placeholder="localhost",
+                    description="MongoDB server hostname or IP",
+                ),
+                FieldDefinition(
+                    name="port",
+                    label="Port",
+                    type=FieldType.NUMBER,
+                    default=27017,
+                    min_value=1,
+                    max_value=65535,
+                    description="MongoDB server port",
+                ),
+                FieldDefinition(
+                    name="database",
+                    label="Database",
+                    required=True,
+                    placeholder="mydb",
+                    description="Database name",
+                ),
+                FieldDefinition(
+                    name="collection",
+                    label="Collection",
+                    required=True,
+                    placeholder="users",
+                    description="Collection name to validate",
+                ),
+                FieldDefinition(
+                    name="username",
+                    label="Username",
+                    description="Database username",
+                ),
+                FieldDefinition(
+                    name="password",
+                    label="Password",
+                    type=FieldType.PASSWORD,
+                    description="Database password",
+                ),
+                FieldDefinition(
+                    name="auth_source",
+                    label="Auth Source",
+                    placeholder="admin",
+                    default="admin",
+                    description="Authentication database",
+                ),
+                FieldDefinition(
+                    name="replica_set",
+                    label="Replica Set",
+                    placeholder="rs0",
+                    description="Replica set name (for replica set connections)",
+                ),
+                FieldDefinition(
+                    name="ssl",
+                    label="Use SSL/TLS",
+                    type=FieldType.BOOLEAN,
+                    default=False,
+                    description="Enable SSL/TLS connection",
+                ),
+            ],
+        )
+
+
+class ElasticsearchConnectionBuilder(ConnectionBuilder):
+    """Connection builder for Elasticsearch."""
+
+    source_type = SourceType.ELASTICSEARCH
+
+    def build(self, config: dict[str, Any]) -> str:
+        """Build Elasticsearch connection URL."""
+        hosts = config.get("hosts", config.get("host", "localhost"))
+        port = config.get("port", 9200)
+        scheme = "https" if config.get("use_ssl") else "http"
+
+        # Handle multiple hosts
+        if isinstance(hosts, list):
+            return ",".join([f"{scheme}://{h}:{port}" for h in hosts])
+
+        return f"{scheme}://{hosts}:{port}"
+
+    def validate_config(self, config: dict[str, Any]) -> list[str]:
+        """Validate Elasticsearch configuration."""
+        errors = []
+
+        if not config.get("hosts") and not config.get("host"):
+            errors.append("Either hosts or host is required")
+
+        if not config.get("index"):
+            errors.append("index is required")
+
+        return errors
+
+    @classmethod
+    def get_definition(cls) -> SourceTypeDefinition:
+        """Get the source type definition for UI rendering."""
+        return SourceTypeDefinition(
+            type=SourceType.ELASTICSEARCH.value,
+            name="Elasticsearch",
+            description="Elasticsearch search engine",
+            icon="search",
+            category="nosql",
+            docs_url="https://www.elastic.co/guide/en/elasticsearch/reference/current/",
+            fields=[
+                FieldDefinition(
+                    name="host",
+                    label="Host",
+                    required=True,
+                    placeholder="localhost",
+                    description="Elasticsearch server hostname or IP",
+                ),
+                FieldDefinition(
+                    name="port",
+                    label="Port",
+                    type=FieldType.NUMBER,
+                    default=9200,
+                    min_value=1,
+                    max_value=65535,
+                    description="Elasticsearch server port",
+                ),
+                FieldDefinition(
+                    name="index",
+                    label="Index",
+                    required=True,
+                    placeholder="my_index",
+                    description="Index name to validate",
+                ),
+                FieldDefinition(
+                    name="username",
+                    label="Username",
+                    description="Elasticsearch username",
+                ),
+                FieldDefinition(
+                    name="password",
+                    label="Password",
+                    type=FieldType.PASSWORD,
+                    description="Elasticsearch password",
+                ),
+                FieldDefinition(
+                    name="api_key",
+                    label="API Key",
+                    type=FieldType.PASSWORD,
+                    description="API key for authentication (alternative to username/password)",
+                ),
+                FieldDefinition(
+                    name="use_ssl",
+                    label="Use SSL/TLS",
+                    type=FieldType.BOOLEAN,
+                    default=True,
+                    description="Enable SSL/TLS connection",
+                ),
+                FieldDefinition(
+                    name="verify_certs",
+                    label="Verify Certificates",
+                    type=FieldType.BOOLEAN,
+                    default=True,
+                    description="Verify SSL certificates",
+                ),
+                FieldDefinition(
+                    name="cloud_id",
+                    label="Cloud ID",
+                    placeholder="deployment:dXMtd2VzdC0...",
+                    description="Elastic Cloud deployment ID (for Elastic Cloud)",
+                ),
+            ],
+        )
+
+
+class KafkaConnectionBuilder(ConnectionBuilder):
+    """Connection builder for Apache Kafka."""
+
+    source_type = SourceType.KAFKA
+
+    def build(self, config: dict[str, Any]) -> str:
+        """Build Kafka bootstrap servers string."""
+        bootstrap_servers = config.get("bootstrap_servers", "localhost:9092")
+        if isinstance(bootstrap_servers, list):
+            return ",".join(bootstrap_servers)
+        return bootstrap_servers
+
+    def validate_config(self, config: dict[str, Any]) -> list[str]:
+        """Validate Kafka configuration."""
+        errors = []
+
+        if not config.get("bootstrap_servers"):
+            errors.append("bootstrap_servers is required")
+
+        if not config.get("topic"):
+            errors.append("topic is required")
+
+        return errors
+
+    @classmethod
+    def get_definition(cls) -> SourceTypeDefinition:
+        """Get the source type definition for UI rendering."""
+        return SourceTypeDefinition(
+            type=SourceType.KAFKA.value,
+            name="Apache Kafka",
+            description="Apache Kafka streaming platform",
+            icon="radio",
+            category="streaming",
+            docs_url="https://kafka.apache.org/documentation/",
+            fields=[
+                FieldDefinition(
+                    name="bootstrap_servers",
+                    label="Bootstrap Servers",
+                    required=True,
+                    placeholder="localhost:9092",
+                    description="Comma-separated list of Kafka broker addresses",
+                ),
+                FieldDefinition(
+                    name="topic",
+                    label="Topic",
+                    required=True,
+                    placeholder="my_topic",
+                    description="Kafka topic to consume from",
+                ),
+                FieldDefinition(
+                    name="group_id",
+                    label="Consumer Group ID",
+                    placeholder="truthound-validator",
+                    default="truthound-validator",
+                    description="Consumer group identifier",
+                ),
+                FieldDefinition(
+                    name="auto_offset_reset",
+                    label="Auto Offset Reset",
+                    type=FieldType.SELECT,
+                    options=[
+                        {"value": "earliest", "label": "Earliest (from beginning)"},
+                        {"value": "latest", "label": "Latest (only new messages)"},
+                    ],
+                    default="earliest",
+                    description="Where to start consuming if no offset is stored",
+                ),
+                FieldDefinition(
+                    name="max_messages",
+                    label="Max Messages",
+                    type=FieldType.NUMBER,
+                    default=10000,
+                    min_value=1,
+                    max_value=1000000,
+                    description="Maximum number of messages to consume per batch",
+                ),
+                FieldDefinition(
+                    name="security_protocol",
+                    label="Security Protocol",
+                    type=FieldType.SELECT,
+                    options=[
+                        {"value": "PLAINTEXT", "label": "Plaintext"},
+                        {"value": "SSL", "label": "SSL"},
+                        {"value": "SASL_PLAINTEXT", "label": "SASL Plaintext"},
+                        {"value": "SASL_SSL", "label": "SASL SSL"},
+                    ],
+                    default="PLAINTEXT",
+                    description="Security protocol for broker communication",
+                ),
+                FieldDefinition(
+                    name="sasl_mechanism",
+                    label="SASL Mechanism",
+                    type=FieldType.SELECT,
+                    options=[
+                        {"value": "PLAIN", "label": "PLAIN"},
+                        {"value": "SCRAM-SHA-256", "label": "SCRAM-SHA-256"},
+                        {"value": "SCRAM-SHA-512", "label": "SCRAM-SHA-512"},
+                        {"value": "OAUTHBEARER", "label": "OAuth Bearer"},
+                    ],
+                    default="PLAIN",
+                    description="SASL authentication mechanism",
+                    depends_on="security_protocol",
+                    depends_value="SASL_SSL",
+                ),
+                FieldDefinition(
+                    name="sasl_username",
+                    label="SASL Username",
+                    description="SASL authentication username",
+                    depends_on="security_protocol",
+                    depends_value="SASL_SSL",
+                ),
+                FieldDefinition(
+                    name="sasl_password",
+                    label="SASL Password",
+                    type=FieldType.PASSWORD,
+                    description="SASL authentication password",
+                    depends_on="security_protocol",
+                    depends_value="SASL_SSL",
+                ),
+            ],
+        )
+
+
 # Registry of connection builders
 CONNECTION_BUILDERS: dict[str, type[ConnectionBuilder]] = {
+    # File-based
     SourceType.FILE.value: FileConnectionBuilder,
+    # Core SQL
     SourceType.POSTGRESQL.value: PostgreSQLConnectionBuilder,
     SourceType.MYSQL.value: MySQLConnectionBuilder,
     SourceType.SQLITE.value: SQLiteConnectionBuilder,
+    # Cloud Data Warehouses
     SourceType.SNOWFLAKE.value: SnowflakeConnectionBuilder,
     SourceType.BIGQUERY.value: BigQueryConnectionBuilder,
     SourceType.REDSHIFT.value: RedshiftConnectionBuilder,
     SourceType.DATABRICKS.value: DatabricksConnectionBuilder,
+    # Enterprise
     SourceType.ORACLE.value: OracleConnectionBuilder,
     SourceType.SQLSERVER.value: SQLServerConnectionBuilder,
+    # Big Data
     SourceType.SPARK.value: SparkConnectionBuilder,
+    # NoSQL
+    SourceType.MONGODB.value: MongoDBConnectionBuilder,
+    SourceType.ELASTICSEARCH.value: ElasticsearchConnectionBuilder,
+    # Streaming
+    SourceType.KAFKA.value: KafkaConnectionBuilder,
 }
 
 
@@ -1256,6 +1648,10 @@ def build_connection_string(source_type: str, config: dict[str, Any]) -> str:
 async def test_connection(source_type: str, config: dict[str, Any]) -> dict[str, Any]:
     """Test database connection.
 
+    Updated for truthound 2.x API:
+    - Uses DataSourceFactory with new datasource API
+    - Delegates to datasource_factory.test_connection for better reuse
+
     Args:
         source_type: Type of data source.
         config: Source-specific configuration.
@@ -1274,8 +1670,6 @@ async def test_connection(source_type: str, config: dict[str, Any]) -> dict[str,
                 "error": f"Configuration errors: {'; '.join(errors)}",
             }
 
-        connection_string = builder.build(config)
-
         if source_type == "file":
             # For files, just check if path exists
             path = Path(config["path"])
@@ -1286,15 +1680,39 @@ async def test_connection(source_type: str, config: dict[str, Any]) -> dict[str,
                 "message": f"File exists: {path.name} ({path.stat().st_size:,} bytes)",
             }
 
-        # For databases, use truthound to test connection
-        import truthound as th
+        # Use new DataSourceFactory test_connection for database sources
+        from .datasource_factory import test_connection as factory_test_connection
 
-        # Quick profile to test connection
-        result = th.profile(connection_string)
-        return {
-            "success": True,
-            "message": f"Connected! Found {result.column_count} columns, {result.row_count:,} rows",
+        # Build SourceConfig-compatible dict
+        full_config = {"type": source_type, **config}
+
+        # Map field names from connections to datasource_factory
+        field_mapping = {
+            "username": "user",  # connections uses username, factory uses user
         }
+        for old_key, new_key in field_mapping.items():
+            if old_key in full_config and new_key not in full_config:
+                full_config[new_key] = full_config[old_key]
+
+        result = await factory_test_connection(full_config)
+
+        # Convert result format
+        if result["success"]:
+            metadata = result.get("metadata", {})
+            row_count = metadata.get("row_count", "unknown")
+            columns = metadata.get("columns", [])
+            col_count = len(columns) if columns else "unknown"
+
+            return {
+                "success": True,
+                "message": f"Connected! Found {col_count} columns, {row_count} rows",
+                "metadata": metadata,
+            }
+        else:
+            return {
+                "success": False,
+                "error": result.get("message", "Connection failed"),
+            }
 
     except ImportError:
         return {"success": False, "error": "truthound package not available"}
@@ -1331,6 +1749,8 @@ def get_source_type_categories() -> list[dict[str, str]]:
         {"value": "database", "label": "Databases", "description": "Relational databases"},
         {"value": "warehouse", "label": "Data Warehouses", "description": "Cloud data warehouses"},
         {"value": "bigdata", "label": "Big Data", "description": "Big data platforms"},
+        {"value": "nosql", "label": "NoSQL", "description": "Document and search databases"},
+        {"value": "streaming", "label": "Streaming", "description": "Streaming data platforms"},
     ]
 
 
@@ -1345,6 +1765,8 @@ def get_source_types_by_category() -> dict[str, list[dict[str, Any]]]:
         "database": [],
         "warehouse": [],
         "bigdata": [],
+        "nosql": [],
+        "streaming": [],
     }
 
     for source_type in SourceType:

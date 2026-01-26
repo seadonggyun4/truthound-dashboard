@@ -62,33 +62,41 @@ async def profile_source(
         raise HTTPException(status_code=404, detail="Source not found")
 
     # Build profiling kwargs from request
+    # Map request options to new ProfilerConfig-based API
     profile_kwargs: dict = {}
 
     if request:
         # Handle sampling configuration
         if request.sampling:
             # Advanced sampling config takes precedence
-            profile_kwargs["sampling_strategy"] = request.sampling.strategy
             profile_kwargs["sample_size"] = request.sampling.sample_size
-            profile_kwargs["confidence_level"] = request.sampling.confidence_level
-            profile_kwargs["margin_of_error"] = request.sampling.margin_of_error
-            profile_kwargs["strata_column"] = request.sampling.strata_column
-            profile_kwargs["seed"] = request.sampling.seed
         elif request.sample_size:
             # Backward compatible simple sample_size
             profile_kwargs["sample_size"] = request.sample_size
 
         # Handle pattern detection configuration
+        # Maps to new include_patterns option
         if request.pattern_detection:
-            profile_kwargs["enable_pattern_detection"] = request.pattern_detection.enabled
-            profile_kwargs["pattern_sample_size"] = request.pattern_detection.sample_size
-            profile_kwargs["min_pattern_confidence"] = request.pattern_detection.min_confidence
-            profile_kwargs["patterns_to_detect"] = request.pattern_detection.patterns_to_detect
+            profile_kwargs["include_patterns"] = request.pattern_detection.enabled
+            # Note: pattern_sample_size and min_confidence are now part of ProfilerConfig
+            # These can be passed via profile_advanced() if needed
+        else:
+            profile_kwargs["include_patterns"] = True  # Default: enabled
 
-        # Additional profiling options
-        profile_kwargs["include_histograms"] = request.include_histograms
-        profile_kwargs["include_correlations"] = request.include_correlations
-        profile_kwargs["include_cardinality"] = request.include_cardinality
+        # Map correlations option to new API
+        profile_kwargs["include_correlations"] = getattr(
+            request, "include_correlations", False
+        )
+
+        # include_distributions is now always True for new API
+        # include_histograms maps to include_distributions
+        profile_kwargs["include_distributions"] = getattr(
+            request, "include_histograms", True
+        )
+
+        # top_n_values: use default of 10 if include_cardinality is True
+        if getattr(request, "include_cardinality", True):
+            profile_kwargs["top_n_values"] = 10
 
     try:
         result = await service.profile_source(source_id, **profile_kwargs)
@@ -255,3 +263,93 @@ async def get_latest_profile_comparison(
         raise HTTPException(status_code=404, detail="Source not found")
 
     return await comparison_service.get_latest_comparison(source)
+
+
+# =============================================================================
+# Rule Generation from Profile
+# =============================================================================
+
+
+@router.post(
+    "/sources/{source_id}/profiles/generate-rules",
+    summary="Generate validation rules from profile",
+    description="Automatically generate validation rules based on profiled data characteristics.",
+)
+async def generate_rules_from_profile(
+    source_id: Annotated[str, Path(description="Source ID")],
+    service: ProfileServiceDep,
+    source_service: SourceServiceDep,
+    strictness: str = Query(
+        default="medium",
+        description="Rule strictness: loose, medium, strict",
+    ),
+    preset: str = Query(
+        default="default",
+        description="Rule preset: default, strict, loose, minimal, comprehensive, ci_cd, schema_only, format_only",
+    ),
+    include_categories: list[str] | None = Query(
+        default=None,
+        description="Rule categories to include (schema, stats, pattern, completeness, uniqueness, distribution)",
+    ),
+    exclude_categories: list[str] | None = Query(
+        default=None,
+        description="Rule categories to exclude",
+    ),
+    profile_if_needed: bool = Query(
+        default=True,
+        description="Profile source if no recent profile exists",
+    ),
+    sample_size: int | None = Query(
+        default=None,
+        description="Sample size for profiling if needed",
+    ),
+) -> dict:
+    """Generate validation rules from source profile.
+
+    Uses truthound's generate_suite() to automatically create validation
+    rules based on the profiled data characteristics.
+
+    The generated rules can be used directly with th.check() or saved
+    as a schema file for repeated validation.
+
+    Args:
+        source_id: Source ID to generate rules for.
+        service: Profile service.
+        source_service: Source service.
+        strictness: Rule strictness level.
+        preset: Rule generation preset.
+        include_categories: Rule categories to include.
+        exclude_categories: Rule categories to exclude.
+        profile_if_needed: Profile source if no recent profile exists.
+        sample_size: Sample size for profiling if needed.
+
+    Returns:
+        Generated rules with YAML content and metadata.
+
+    Raises:
+        HTTPException: 404 if source not found, 400 if no profile available.
+    """
+    # Verify source exists
+    source = await source_service.get_by_id(source_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    try:
+        result = await service.generate_rules_from_profile(
+            source_id,
+            strictness=strictness,
+            preset=preset,
+            include_categories=include_categories,
+            exclude_categories=exclude_categories,
+            profile_if_needed=profile_if_needed,
+            sample_size=sample_size,
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except ImportError as e:
+        raise HTTPException(
+            status_code=501,
+            detail=f"Rule generation not available: {e}. "
+            "Please upgrade truthound to the latest version.",
+        )

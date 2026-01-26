@@ -1,13 +1,18 @@
 """Core business logic module.
 
 This module contains the core business logic for the dashboard,
-including services, adapters, and domain models.
+including services, adapters, backends, and domain models.
 
 Exports:
-    - Adapter: TruthoundAdapter, get_adapter
+    - Backends: BackendFactory, BaseDataQualityBackend, TruthoundBackend, MockBackend
+    - Interfaces: IDataQualityBackend, DataInput, ICheckResult, etc.
+    - Converters: TruthoundResultConverter
+    - Adapter (legacy): TruthoundAdapter, get_adapter
+    - DataSource Factory: DataSourceFactory, SourceConfig, SourceType, create_datasource
     - Services: SourceService, ValidationService, SchemaService, RuleService, ProfileService,
                 HistoryService, DriftService, ScheduleService
-    - Result types: CheckResult, LearnResult, ProfileResult, CompareResult
+    - Result types: CheckResult, LearnResult, ProfileResult, ColumnProfileResult,
+                    CompareResult, ScanResult, MaskResult, GenerateSuiteResult
     - Scheduler: ValidationScheduler, get_scheduler, start_scheduler, stop_scheduler
     - Notifications: NotificationDispatcher, create_dispatcher, get_dispatcher
     - Cache: CacheBackend, MemoryCache, FileCache, get_cache, get_cache_manager
@@ -16,9 +21,50 @@ Exports:
     - Exceptions: TruthoundDashboardError, SourceNotFoundError, ValidationError, etc.
     - Encryption: encrypt_value, decrypt_value, encrypt_config, decrypt_config
     - Logging: setup_logging, get_logger, get_audit_logger
+
+Note:
+    The profiler module now supports the new truthound profiler API with:
+    - ProfilerConfig for fine-grained control over profiling behavior
+    - TableProfile and ColumnProfile for comprehensive data profiling
+    - generate_suite() for automatic validation rule generation from profiles
+
+Architecture:
+    The backend abstraction layer provides loose coupling with truthound:
+
+    API Endpoints → Services → BackendFactory → IDataQualityBackend
+                                                    ↓
+                                    ┌───────────────┴───────────────┐
+                                    │  TruthoundBackend  │  MockBackend  │
+                                    └───────────────────────────────┘
 """
 
+# Backend abstraction (loose coupling with truthound)
+from .backends import (
+    BackendError,
+    BackendFactory,
+    BackendOperationError,
+    BackendUnavailableError,
+    BackendVersionError,
+    BaseDataQualityBackend,
+    MockBackend,
+    TruthoundBackend,
+    get_backend,
+    reset_backend,
+)
 from .base import BaseService, CRUDService
+from .converters import TruthoundResultConverter
+from .datasource_factory import (
+    DataSourceFactory,
+    SourceConfig,
+    SourceType,
+    create_datasource,
+    create_datasource_async,
+    get_datasource_auto,
+    get_datasource_factory,
+    get_source_capabilities,
+    get_source_path_or_datasource,
+    test_connection,
+)
 from .cache import (
     CacheBackend,
     CacheManager,
@@ -148,10 +194,14 @@ from .services import (
     SchemaService,
     SourceService,
     ValidationService,
+    get_data_input_from_source,
+    get_async_data_input_from_source,
 )
 from .truthound_adapter import (
     CheckResult,
+    ColumnProfileResult,
     CompareResult,
+    GenerateSuiteResult,
     LearnResult,
     MaskResult,
     ProfileResult,
@@ -169,9 +219,33 @@ from .phase5 import (
 )
 
 __all__ = [
+    # Backend abstraction (loose coupling with truthound)
+    "BackendFactory",
+    "BaseDataQualityBackend",
+    "TruthoundBackend",
+    "MockBackend",
+    "get_backend",
+    "reset_backend",
+    "BackendError",
+    "BackendUnavailableError",
+    "BackendVersionError",
+    "BackendOperationError",
+    # Converters
+    "TruthoundResultConverter",
     # Base classes
     "BaseService",
     "CRUDService",
+    # DataSource Factory
+    "DataSourceFactory",
+    "SourceConfig",
+    "SourceType",
+    "create_datasource",
+    "create_datasource_async",
+    "get_datasource_auto",
+    "get_datasource_factory",
+    "get_source_capabilities",
+    "get_source_path_or_datasource",
+    "test_connection",
     # Services
     "SourceService",
     "ValidationService",
@@ -183,6 +257,8 @@ __all__ = [
     "ScheduleService",
     "PIIScanService",
     "MaskService",
+    "get_data_input_from_source",
+    "get_async_data_input_from_source",
     # Adapter
     "TruthoundAdapter",
     "get_adapter",
@@ -191,9 +267,11 @@ __all__ = [
     "CheckResult",
     "LearnResult",
     "ProfileResult",
+    "ColumnProfileResult",
     "CompareResult",
     "ScanResult",
     "MaskResult",
+    "GenerateSuiteResult",
     # Scheduler
     "ValidationScheduler",
     "get_scheduler",

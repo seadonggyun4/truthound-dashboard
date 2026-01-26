@@ -4,16 +4,25 @@ This module contains service classes that implement business logic
 for the dashboard, separating concerns from API handlers.
 
 Services handle:
-- Data source management
+- Data source management with multi-backend support
 - Schema learning and storage
 - Validation execution and tracking
 - Data profiling with history
 - Drift detection
 - Schedule management
+
+Supports various data backends through truthound's DataSource abstraction:
+- File: CSV, Parquet, JSON, NDJSON, JSONL
+- SQL: SQLite, PostgreSQL, MySQL
+- Cloud DW: BigQuery, Snowflake, Redshift, Databricks
+- Enterprise: Oracle, SQL Server
+- NoSQL: MongoDB, Elasticsearch (async)
+- Streaming: Kafka (async)
 """
 
 from __future__ import annotations
 
+import logging
 from collections import Counter, defaultdict
 from collections.abc import Sequence
 from datetime import datetime, timedelta
@@ -35,12 +44,23 @@ from truthound_dashboard.db import (
     Validation,
 )
 
+from .datasource_factory import (
+    SourceConfig,
+    SourceType,
+    create_datasource,
+    get_source_path_or_datasource,
+)
 from .truthound_adapter import (
     CheckResult,
+    DataInput,
+    GenerateSuiteResult,
     MaskResult,
+    ProfileResult,
     ScanResult,
     get_adapter,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class SourceRepository(BaseRepository[Source]):
@@ -80,6 +100,74 @@ class SourceRepository(BaseRepository[Source]):
         """
         result = await self.session.execute(select(Source).where(Source.name == name))
         return result.scalar_one_or_none()
+
+
+def get_data_input_from_source(source: Source) -> DataInput:
+    """Get DataInput (path or DataSource object) from Source model.
+
+    This helper function creates the appropriate data input for truthound
+    operations based on the source type and configuration.
+
+    For file-based sources, returns the file path string.
+    For database sources, creates and returns a DataSource object.
+
+    Args:
+        source: Source database model.
+
+    Returns:
+        File path string for file sources, DataSource object for others.
+
+    Raises:
+        ValueError: If source configuration is invalid.
+    """
+    source_type = source.type.lower()
+    config = source.config or {}
+
+    # For file sources, return path directly
+    if SourceType.is_file_type(source_type):
+        path = config.get("path") or source.source_path
+        if not path:
+            raise ValueError(f"No path configured for file source: {source.name}")
+        return path
+
+    # For database sources, create DataSource object
+    try:
+        full_config = {"type": source_type, **config}
+        return create_datasource(full_config)
+    except Exception as e:
+        logger.error(f"Failed to create DataSource for {source.name}: {e}")
+        raise ValueError(f"Failed to create DataSource: {e}") from e
+
+
+async def get_async_data_input_from_source(source: Source) -> DataInput:
+    """Get DataInput for async sources (MongoDB, Elasticsearch, Kafka).
+
+    This helper function creates DataSource objects for sources that
+    require async initialization.
+
+    Args:
+        source: Source database model.
+
+    Returns:
+        DataSource object.
+
+    Raises:
+        ValueError: If source type doesn't require async or config is invalid.
+    """
+    from .datasource_factory import create_datasource_async
+
+    source_type = source.type.lower()
+    config = source.config or {}
+
+    if not SourceType.is_async_type(source_type):
+        raise ValueError(f"Source type '{source_type}' doesn't require async creation")
+
+    try:
+        full_config = {"type": source_type, **config}
+        return await create_datasource_async(full_config)
+    except Exception as e:
+        logger.error(f"Failed to create async DataSource for {source.name}: {e}")
+        raise ValueError(f"Failed to create async DataSource: {e}") from e
 
 
 class SchemaRepository(BaseRepository[Schema]):
@@ -380,6 +468,14 @@ class ValidationService:
 
     Handles validation execution, result storage, and history.
     Supports both built-in truthound validators and custom validators.
+
+    Supports various data backends through truthound's DataSource abstraction:
+    - File: CSV, Parquet, JSON, NDJSON, JSONL
+    - SQL: SQLite, PostgreSQL, MySQL
+    - Cloud DW: BigQuery, Snowflake, Redshift, Databricks
+    - Enterprise: Oracle, SQL Server
+    - NoSQL: MongoDB, Elasticsearch (async)
+    - Streaming: Kafka (async)
     """
 
     def __init__(self, session: AsyncSession) -> None:
@@ -399,7 +495,7 @@ class ValidationService:
         source_id: str,
         *,
         validators: list[str] | None = None,
-        validator_params: dict[str, dict[str, Any]] | None = None,
+        validator_config: dict[str, dict[str, Any]] | None = None,
         custom_validators: list[dict[str, Any]] | None = None,
         schema_path: str | None = None,
         auto_schema: bool = False,
@@ -416,13 +512,17 @@ class ValidationService:
         allowing fine-grained control over validation behavior. It also supports
         running custom validators alongside built-in validators.
 
+        Supports all data source types including files, SQL databases,
+        cloud data warehouses, and async sources (MongoDB, Elasticsearch, Kafka).
+
         Args:
             source_id: Source ID to validate.
             validators: Optional validator list. If None, all validators run.
-            validator_params: Optional per-validator parameters.
+            validator_config: Optional per-validator configuration (truthound 2.x).
                 Format: {"ValidatorName": {"param1": value1, "param2": value2}}
-                Example: {"Null": {"columns": ["email"], "mostly": 0.95},
+                Example: {"Null": {"columns": ("email",), "mostly": 0.95},
                           "CompletenessRatio": {"column": "phone", "min_ratio": 0.98}}
+                Note: columns should be tuples, not lists, for truthound 2.x.
             custom_validators: Optional list of custom validator configs.
                 Format: [{"validator_id": "...", "column": "...", "params": {...}}]
             schema_path: Optional schema file path.
@@ -438,7 +538,7 @@ class ValidationService:
             Validation record with results.
 
         Raises:
-            ValueError: If source not found.
+            ValueError: If source not found or data source creation fails.
         """
         # Get source
         source = await self.source_repo.get_by_id(source_id)
@@ -453,11 +553,18 @@ class ValidationService:
         )
 
         try:
+            # Get data input based on source type
+            # For async sources (MongoDB, Elasticsearch, Kafka), use async creation
+            if SourceType.is_async_type(source.type):
+                data_input = await get_async_data_input_from_source(source)
+            else:
+                data_input = get_data_input_from_source(source)
+
             # Run built-in validation with all supported parameters
             result = await self.adapter.check(
-                source.source_path or "",
+                data_input,
                 validators=validators,
-                validator_params=validator_params,
+                validator_config=validator_config,
                 schema=schema_path,
                 auto_schema=auto_schema,
                 columns=columns,
@@ -682,6 +789,7 @@ class SchemaService:
     """Service for schema learning and management.
 
     Handles schema learning, storage, and retrieval.
+    Supports all data source types through DataSource abstraction.
     """
 
     def __init__(self, session: AsyncSession) -> None:
@@ -706,7 +814,7 @@ class SchemaService:
         """Learn and store schema for a source.
 
         Wraps truthound's th.learn() with full parameter support for schema
-        inference customization.
+        inference customization. Supports all data source types.
 
         Args:
             source_id: Source ID.
@@ -722,16 +830,22 @@ class SchemaService:
             Created schema record.
 
         Raises:
-            ValueError: If source not found.
+            ValueError: If source not found or data source creation fails.
         """
         # Get source
         source = await self.source_repo.get_by_id(source_id)
         if source is None:
             raise ValueError(f"Source '{source_id}' not found")
 
+        # Get data input based on source type
+        if SourceType.is_async_type(source.type):
+            data_input = await get_async_data_input_from_source(source)
+        else:
+            data_input = get_data_input_from_source(source)
+
         # Learn schema with all parameters
         result = await self.adapter.learn(
-            source.source_path or "",
+            data_input,
             infer_constraints=infer_constraints,
             categorical_threshold=categorical_threshold,
             sample_size=sample_size,
@@ -1167,6 +1281,10 @@ class ProfileService:
     """Service for data profiling with history tracking.
 
     Handles data profiling operations and stores results.
+    Uses the new truthound profiler API with ProfilerConfig for
+    fine-grained control over profiling behavior.
+
+    Supports all data source types through DataSource abstraction.
     """
 
     def __init__(self, session: AsyncSession) -> None:
@@ -1185,29 +1303,57 @@ class ProfileService:
         source_id: str,
         *,
         sample_size: int | None = None,
+        include_patterns: bool = True,
+        include_correlations: bool = False,
+        include_distributions: bool = True,
+        top_n_values: int = 10,
         save: bool = True,
     ) -> Profile:
         """Profile a data source and optionally save result.
+
+        Uses the new truthound profiler API with comprehensive options
+        for pattern detection, correlations, and distribution analysis.
+
+        Supports all data source types including files, SQL databases,
+        cloud data warehouses, and async sources.
 
         Args:
             source_id: Source ID to profile.
             sample_size: Maximum number of rows to sample for profiling.
                 If None, profiles all data. Useful for large datasets.
+            include_patterns: Enable pattern detection for string columns.
+                Detects emails, phones, UUIDs, etc. Default True.
+            include_correlations: Calculate column correlations.
+                Can be expensive for many columns. Default False.
+            include_distributions: Include distribution statistics.
+                Default True.
+            top_n_values: Number of top/bottom values per column.
+                Default 10.
             save: Whether to save profile to database.
 
         Returns:
             Profile model with results.
 
         Raises:
-            ValueError: If source not found.
+            ValueError: If source not found or data source creation fails.
         """
         source = await self.source_repo.get_by_id(source_id)
         if source is None:
             raise ValueError(f"Source '{source_id}' not found")
 
+        # Get data input based on source type
+        if SourceType.is_async_type(source.type):
+            data_input = await get_async_data_input_from_source(source)
+        else:
+            data_input = get_data_input_from_source(source)
+
         result = await self.adapter.profile(
-            source.source_path or "",
+            data_input,
             sample_size=sample_size,
+            include_patterns=include_patterns,
+            include_correlations=include_correlations,
+            include_distributions=include_distributions,
+            top_n_values=top_n_values,
         )
 
         if save:
@@ -1216,7 +1362,7 @@ class ProfileService:
                 profile_json=result.to_dict(),
                 row_count=result.row_count,
                 column_count=result.column_count,
-                size_bytes=result.size_bytes,
+                size_bytes=result.size_bytes or result.estimated_memory_bytes,
             )
             return profile
 
@@ -1226,9 +1372,160 @@ class ProfileService:
             profile_json=result.to_dict(),
             row_count=result.row_count,
             column_count=result.column_count,
-            size_bytes=result.size_bytes,
+            size_bytes=result.size_bytes or result.estimated_memory_bytes,
         )
         return profile
+
+    async def profile_source_advanced(
+        self,
+        source_id: str,
+        *,
+        config: dict[str, Any] | None = None,
+        save: bool = True,
+    ) -> Profile:
+        """Profile a data source with full ProfilerConfig support.
+
+        Provides direct access to all ProfilerConfig options through
+        a configuration dictionary for maximum flexibility.
+
+        Args:
+            source_id: Source ID to profile.
+            config: ProfilerConfig options as dictionary:
+                - sample_size: int | None (max rows to sample)
+                - random_seed: int (default 42)
+                - include_patterns: bool (default True)
+                - include_correlations: bool (default False)
+                - include_distributions: bool (default True)
+                - top_n_values: int (default 10)
+                - pattern_sample_size: int (default 1000)
+                - correlation_threshold: float (default 0.7)
+                - min_pattern_match_ratio: float (default 0.8)
+                - n_jobs: int (default 1)
+            save: Whether to save profile to database.
+
+        Returns:
+            Profile model with results.
+
+        Raises:
+            ValueError: If source not found or data source creation fails.
+        """
+        source = await self.source_repo.get_by_id(source_id)
+        if source is None:
+            raise ValueError(f"Source '{source_id}' not found")
+
+        # Get data input based on source type
+        if SourceType.is_async_type(source.type):
+            data_input = await get_async_data_input_from_source(source)
+        else:
+            data_input = get_data_input_from_source(source)
+
+        result = await self.adapter.profile_advanced(
+            data_input,
+            config=config,
+        )
+
+        if save:
+            profile = await self.profile_repo.create(
+                source_id=source_id,
+                profile_json=result.to_dict(),
+                row_count=result.row_count,
+                column_count=result.column_count,
+                size_bytes=result.size_bytes or result.estimated_memory_bytes,
+            )
+            return profile
+
+        # Return unsaved profile object
+        profile = Profile(
+            source_id=source_id,
+            profile_json=result.to_dict(),
+            row_count=result.row_count,
+            column_count=result.column_count,
+            size_bytes=result.size_bytes or result.estimated_memory_bytes,
+        )
+        return profile
+
+    async def generate_rules_from_profile(
+        self,
+        source_id: str,
+        *,
+        strictness: str = "medium",
+        preset: str = "default",
+        include_categories: list[str] | None = None,
+        exclude_categories: list[str] | None = None,
+        profile_if_needed: bool = True,
+        sample_size: int | None = None,
+    ) -> dict[str, Any]:
+        """Generate validation rules from source profile.
+
+        Uses truthound's generate_suite() to automatically create
+        validation rules based on the profiled data characteristics.
+
+        Args:
+            source_id: Source ID to generate rules for.
+            strictness: Rule strictness level:
+                - "loose": Permissive thresholds, fewer rules
+                - "medium": Balanced defaults (default)
+                - "strict": Tight thresholds, comprehensive rules
+            preset: Rule generation preset:
+                - "default": General purpose
+                - "strict": Production data
+                - "loose": Development/testing
+                - "minimal": Essential rules only
+                - "comprehensive": All available rules
+                - "ci_cd": CI/CD optimized
+                - "schema_only": Structure validation only
+                - "format_only": Format/pattern rules only
+            include_categories: Rule categories to include (None = all).
+            exclude_categories: Rule categories to exclude.
+            profile_if_needed: If True, profile source if no recent profile exists.
+            sample_size: Sample size for profiling if needed.
+
+        Returns:
+            Dictionary with generated rules, YAML content, and metadata.
+
+        Raises:
+            ValueError: If source not found or no profile available.
+        """
+        source = await self.source_repo.get_by_id(source_id)
+        if source is None:
+            raise ValueError(f"Source '{source_id}' not found")
+
+        # Get or create profile
+        profile = await self.profile_repo.get_latest_for_source(source_id)
+
+        if profile is None:
+            if not profile_if_needed:
+                raise ValueError(
+                    f"No profile found for source '{source_id}'. "
+                    "Run profile_source() first or set profile_if_needed=True."
+                )
+            # Create profile
+            profile = await self.profile_source(
+                source_id,
+                sample_size=sample_size,
+                include_patterns=True,
+                save=True,
+            )
+
+        # Generate rules from profile
+        result = await self.adapter.generate_suite(
+            profile.profile_json,
+            strictness=strictness,
+            preset=preset,
+            include=include_categories,
+            exclude=exclude_categories,
+        )
+
+        return {
+            "source_id": source_id,
+            "profile_id": str(profile.id) if profile.id else None,
+            "rules": result.rules,
+            "rule_count": result.rule_count,
+            "categories": result.categories,
+            "strictness": result.strictness,
+            "yaml_content": result.yaml_content,
+            "json_content": result.json_content,
+        }
 
     async def get_latest_profile(self, source_id: str) -> Profile | None:
         """Get the latest profile for a source.
@@ -1257,6 +1554,157 @@ class ProfileService:
             Sequence of profiles.
         """
         return await self.profile_repo.get_for_source(source_id, limit=limit)
+
+    async def compare_profiles(
+        self,
+        source_id: str,
+        profile_id_1: str | None = None,
+        profile_id_2: str | None = None,
+    ) -> dict[str, Any]:
+        """Compare two profiles for the same source.
+
+        Useful for detecting schema evolution and data drift over time.
+
+        Args:
+            source_id: Source ID.
+            profile_id_1: First profile ID (None = second-latest).
+            profile_id_2: Second profile ID (None = latest).
+
+        Returns:
+            Comparison result with changes and drift indicators.
+
+        Raises:
+            ValueError: If not enough profiles exist.
+        """
+        profiles = await self.profile_repo.get_for_source(source_id, limit=10)
+
+        if len(profiles) < 2:
+            raise ValueError(
+                f"Need at least 2 profiles to compare. Source '{source_id}' has {len(profiles)}."
+            )
+
+        # Get profiles to compare
+        if profile_id_2 is None:
+            profile_2 = profiles[0]  # Latest
+        else:
+            profile_2 = await self.profile_repo.get_by_id(profile_id_2)
+            if profile_2 is None:
+                raise ValueError(f"Profile '{profile_id_2}' not found")
+
+        if profile_id_1 is None:
+            profile_1 = profiles[1]  # Second-latest
+        else:
+            profile_1 = await self.profile_repo.get_by_id(profile_id_1)
+            if profile_1 is None:
+                raise ValueError(f"Profile '{profile_id_1}' not found")
+
+        # Compare profiles
+        return self._compare_profile_data(
+            profile_1.profile_json,
+            profile_2.profile_json,
+            profile_1_id=str(profile_1.id),
+            profile_2_id=str(profile_2.id),
+        )
+
+    def _compare_profile_data(
+        self,
+        profile_1: dict[str, Any],
+        profile_2: dict[str, Any],
+        profile_1_id: str,
+        profile_2_id: str,
+    ) -> dict[str, Any]:
+        """Compare two profile data dictionaries.
+
+        Args:
+            profile_1: Older profile data.
+            profile_2: Newer profile data.
+            profile_1_id: Older profile ID.
+            profile_2_id: Newer profile ID.
+
+        Returns:
+            Comparison result.
+        """
+        changes = []
+        column_diffs = []
+
+        # Extract column data
+        cols_1 = {c["name"]: c for c in profile_1.get("columns", [])}
+        cols_2 = {c["name"]: c for c in profile_2.get("columns", [])}
+
+        # Detect added/removed columns
+        added_cols = set(cols_2.keys()) - set(cols_1.keys())
+        removed_cols = set(cols_1.keys()) - set(cols_2.keys())
+        common_cols = set(cols_1.keys()) & set(cols_2.keys())
+
+        for col in added_cols:
+            changes.append({
+                "type": "column_added",
+                "column": col,
+                "details": cols_2[col],
+            })
+
+        for col in removed_cols:
+            changes.append({
+                "type": "column_removed",
+                "column": col,
+                "details": cols_1[col],
+            })
+
+        # Compare common columns
+        for col in common_cols:
+            col_1 = cols_1[col]
+            col_2 = cols_2[col]
+            col_changes = []
+
+            # Type change
+            if col_1.get("inferred_type") != col_2.get("inferred_type"):
+                col_changes.append({
+                    "field": "inferred_type",
+                    "old": col_1.get("inferred_type"),
+                    "new": col_2.get("inferred_type"),
+                })
+
+            # Null ratio change
+            old_null = col_1.get("null_ratio", 0)
+            new_null = col_2.get("null_ratio", 0)
+            if abs(old_null - new_null) > 0.05:  # 5% threshold
+                col_changes.append({
+                    "field": "null_ratio",
+                    "old": old_null,
+                    "new": new_null,
+                    "change": new_null - old_null,
+                })
+
+            # Unique ratio change
+            old_unique = col_1.get("unique_ratio", 0)
+            new_unique = col_2.get("unique_ratio", 0)
+            if abs(old_unique - new_unique) > 0.1:  # 10% threshold
+                col_changes.append({
+                    "field": "unique_ratio",
+                    "old": old_unique,
+                    "new": new_unique,
+                    "change": new_unique - old_unique,
+                })
+
+            if col_changes:
+                column_diffs.append({
+                    "column": col,
+                    "changes": col_changes,
+                })
+
+        return {
+            "profile_1_id": profile_1_id,
+            "profile_2_id": profile_2_id,
+            "row_count_change": profile_2.get("row_count", 0) - profile_1.get("row_count", 0),
+            "column_count_change": profile_2.get("column_count", 0) - profile_1.get("column_count", 0),
+            "added_columns": list(added_cols),
+            "removed_columns": list(removed_cols),
+            "schema_changes": changes,
+            "column_diffs": column_diffs,
+            "has_breaking_changes": len(removed_cols) > 0 or any(
+                c.get("field") == "inferred_type" for cd in column_diffs for c in cd.get("changes", [])
+            ),
+        }
 
 
 class HistoryService:
@@ -1399,6 +1847,7 @@ class DriftService:
     """Service for drift detection.
 
     Handles drift comparison between datasets.
+    Supports all data source types through DataSource abstraction.
     """
 
     def __init__(self, session: AsyncSession) -> None:
@@ -1426,6 +1875,9 @@ class DriftService:
     ) -> DriftComparison:
         """Compare two datasets for drift detection.
 
+        Supports comparing data from various source types including files,
+        SQL databases, cloud data warehouses, and async sources.
+
         Args:
             baseline_source_id: Baseline source ID.
             current_source_id: Current source ID.
@@ -1441,7 +1893,7 @@ class DriftService:
             DriftComparison model with results.
 
         Raises:
-            ValueError: If source not found.
+            ValueError: If source not found or data source creation fails.
         """
         baseline = await self.source_repo.get_by_id(baseline_source_id)
         if baseline is None:
@@ -1451,9 +1903,20 @@ class DriftService:
         if current is None:
             raise ValueError(f"Current source '{current_source_id}' not found")
 
+        # Get data inputs based on source types
+        if SourceType.is_async_type(baseline.type):
+            baseline_input = await get_async_data_input_from_source(baseline)
+        else:
+            baseline_input = get_data_input_from_source(baseline)
+
+        if SourceType.is_async_type(current.type):
+            current_input = await get_async_data_input_from_source(current)
+        else:
+            current_input = get_data_input_from_source(current)
+
         result = await self.adapter.compare(
-            baseline.source_path or "",
-            current.source_path or "",
+            baseline_input,
+            current_input,
             columns=columns,
             method=method,
             threshold=threshold,
@@ -1782,6 +2245,7 @@ class PIIScanService:
     """Service for PII scanning operations.
 
     Handles PII detection and regulation compliance checking using th.scan().
+    Supports all data source types through DataSource abstraction.
     """
 
     def __init__(self, session: AsyncSession) -> None:
@@ -1809,6 +2273,9 @@ class PIIScanService:
         allowing detection of personally identifiable information and
         checking compliance with privacy regulations.
 
+        Supports all data source types including files, SQL databases,
+        cloud data warehouses, and async sources.
+
         Args:
             source_id: Source ID to scan.
             columns: Optional columns to scan. If None, scans all columns.
@@ -1819,7 +2286,7 @@ class PIIScanService:
             PIIScan record with results.
 
         Raises:
-            ValueError: If source not found.
+            ValueError: If source not found or data source creation fails.
         """
         # Get source
         source = await self.source_repo.get_by_id(source_id)
@@ -1836,9 +2303,15 @@ class PIIScanService:
         )
 
         try:
+            # Get data input based on source type
+            if SourceType.is_async_type(source.type):
+                data_input = await get_async_data_input_from_source(source)
+            else:
+                data_input = get_data_input_from_source(source)
+
             # Run scan
             result = await self.adapter.scan(
-                source.source_path or "",
+                data_input,
                 columns=columns,
                 regulations=regulations,
                 min_confidence=min_confidence,
@@ -1972,6 +2445,8 @@ class MaskService:
     - redact: Replace values with asterisks
     - hash: Replace values with SHA256 hash (deterministic)
     - fake: Replace values with realistic fake data
+
+    Supports all data source types through DataSource abstraction.
     """
 
     def __init__(self, session: AsyncSession) -> None:
@@ -1998,6 +2473,9 @@ class MaskService:
         This method provides access to truthound's th.mask() with
         three masking strategies for PII protection.
 
+        Supports all data source types including files, SQL databases,
+        cloud data warehouses, and async sources.
+
         Args:
             source_id: Source ID to mask.
             columns: Optional columns to mask. If None, auto-detects PII.
@@ -2010,6 +2488,9 @@ class MaskService:
         Raises:
             ValueError: If source not found or invalid strategy.
         """
+        from pathlib import Path
+        import tempfile
+
         # Validate strategy
         if strategy not in ("redact", "hash", "fake"):
             raise ValueError(
@@ -2022,14 +2503,18 @@ class MaskService:
             raise ValueError(f"Source '{source_id}' not found")
 
         # Determine output path
-        source_path = source.source_path or ""
-        import os
-        from pathlib import Path
+        # For file sources, use the same directory structure
+        # For other sources, use a temp directory or configured output directory
+        if SourceType.is_file_type(source.type):
+            source_path = source.source_path or source.config.get("path", "")
+            base_path = Path(source_path)
+            output_dir = base_path.parent / "masked"
+        else:
+            # For non-file sources, use a temp directory
+            output_dir = Path(tempfile.gettempdir()) / "truthound_masked"
 
-        base_path = Path(source_path)
-        output_dir = base_path.parent / "masked"
         output_dir.mkdir(exist_ok=True)
-        output_filename = f"{base_path.stem}_masked_{strategy}.{output_format}"
+        output_filename = f"{source.name}_masked_{strategy}.{output_format}"
         output_path = str(output_dir / output_filename)
 
         # Create mask record
@@ -2042,9 +2527,15 @@ class MaskService:
         )
 
         try:
+            # Get data input based on source type
+            if SourceType.is_async_type(source.type):
+                data_input = await get_async_data_input_from_source(source)
+            else:
+                data_input = get_data_input_from_source(source)
+
             # Run masking
             result = await self.adapter.mask(
-                source_path,
+                data_input,
                 output_path,
                 columns=columns,
                 strategy=strategy,

@@ -58,13 +58,14 @@ async def run_validation(
         HTTPException: 404 if source not found.
     """
     try:
-        # Determine validators and params based on request mode
+        # Determine validators and config based on request mode
         validators: list[str] | None = None
-        validator_params: dict | None = None
+        validator_config: dict | None = None
 
         if request.validator_configs:
             # Advanced mode: use validator_configs (takes precedence)
-            validators, validator_params = configs_to_truthound_format(
+            # configs_to_truthound_format returns (names, config) for truthound 2.x
+            validators, validator_config = configs_to_truthound_format(
                 request.validator_configs
             )
         elif request.validators:
@@ -86,7 +87,7 @@ async def run_validation(
         validation = await service.run_validation(
             source_id,
             validators=validators,
-            validator_params=validator_params,
+            validator_config=validator_config,
             custom_validators=custom_validators,
             schema_path=request.schema_path,
             auto_schema=request.auto_schema,
