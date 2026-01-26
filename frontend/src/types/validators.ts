@@ -10,7 +10,17 @@
 // =============================================================================
 
 /**
- * Validator categories matching truthound's classification.
+ * Validator categories matching truthound's classification (21 total).
+ *
+ * Categories are organized by validation purpose:
+ * - Core validators: schema, completeness, uniqueness, distribution
+ * - Format validators: string, datetime
+ * - Statistical validators: aggregate, drift, anomaly
+ * - Relational validators: cross_table, multi_column, query
+ * - Domain validators: table, geospatial, privacy
+ * - Business validators: business_rule, profiling, localization
+ * - ML validators: ml_feature
+ * - Advanced validators: timeseries, referential
  */
 export type ValidatorCategory =
   // Core validators (no extra dependencies)
@@ -33,11 +43,15 @@ export type ValidatorCategory =
   | 'table'
   | 'geospatial'
   | 'privacy'
-  | 'business'
+  // Business validators
+  | 'business_rule'
+  | 'profiling'
+  | 'localization'
+  // ML validators
+  | 'ml_feature'
   // Advanced validators
-  | 'time_series'
+  | 'timeseries'
   | 'referential'
-  | 'streaming'
 
 /**
  * Category display information for UI.
@@ -161,9 +175,54 @@ export const VALIDATOR_CATEGORIES: CategoryInfo[] = [
   {
     value: 'privacy',
     label: 'Privacy',
-    description: 'PII detection and compliance (GDPR, CCPA)',
+    description: 'PII detection and compliance (GDPR, CCPA, LGPD)',
     icon: 'shield',
     color: '#dc2626',
+  },
+  // Business validators
+  {
+    value: 'business_rule',
+    label: 'Business Rule',
+    description: 'Domain-specific rules: checksums, IBAN, VAT, credit cards',
+    icon: 'briefcase',
+    color: '#7c3aed',
+  },
+  {
+    value: 'profiling',
+    label: 'Profiling',
+    description: 'Cardinality, entropy, and value frequency analysis',
+    icon: 'activity',
+    color: '#0891b2',
+  },
+  {
+    value: 'localization',
+    label: 'Localization',
+    description: 'Regional identifier formats (Korean, Japanese, Chinese)',
+    icon: 'globe',
+    color: '#059669',
+  },
+  // ML validators
+  {
+    value: 'ml_feature',
+    label: 'ML Feature',
+    description: 'Feature quality: null impact, scale, correlation, leakage',
+    icon: 'cpu',
+    color: '#7c2d12',
+  },
+  // Advanced validators
+  {
+    value: 'timeseries',
+    label: 'Time Series',
+    description: 'Gap detection, monotonicity, seasonality, trend analysis',
+    icon: 'clock',
+    color: '#4338ca',
+  },
+  {
+    value: 'referential',
+    label: 'Referential',
+    description: 'Foreign keys, orphan detection, hierarchy integrity',
+    icon: 'git-merge',
+    color: '#be185d',
   },
 ]
 
