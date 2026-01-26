@@ -685,7 +685,7 @@ export function Jinja2RuleEditor({
               .replace(/\bFalse\b/gi, 'false')
 
             // Note: This is unsafe for production - use backend validation
-            // eslint-disable-next-line no-new-func
+             
             const result = new Function(...Object.keys(context), `return ${expr}`)(...Object.values(context))
             output = String(result)
           } catch {

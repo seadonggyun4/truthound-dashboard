@@ -110,20 +110,36 @@ const PRESETS = [
 // =============================================================================
 
 const CATEGORY_LABELS: Record<ValidatorCategory | 'custom', string> = {
+  // Core validators
   schema: 'Schema',
   completeness: 'Completeness',
   uniqueness: 'Uniqueness',
   distribution: 'Distribution',
+  // Format validators
   string: 'String',
   datetime: 'Datetime',
+  // Statistical validators
   aggregate: 'Aggregate',
-  cross_table: 'Cross-Table',
-  query: 'Query',
-  multi_column: 'Multi-Column',
-  table: 'Table',
-  geospatial: 'Geospatial',
   drift: 'Drift',
   anomaly: 'Anomaly',
+  // Relational validators
+  cross_table: 'Cross-Table',
+  multi_column: 'Multi-Column',
+  query: 'Query',
+  // Domain validators
+  table: 'Table',
+  geospatial: 'Geospatial',
+  privacy: 'Privacy',
+  // Business validators
+  business_rule: 'Business Rule',
+  profiling: 'Profiling',
+  localization: 'Localization',
+  // ML validators
+  ml_feature: 'ML Feature',
+  // Advanced validators
+  timeseries: 'Time Series',
+  referential: 'Referential',
+  // Custom validators
   custom: 'Custom Validators',
 }
 

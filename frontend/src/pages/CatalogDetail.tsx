@@ -41,23 +41,28 @@ export default function CatalogDetail() {
   const [mappingDialogOpen, setMappingDialogOpen] = useState(false)
   const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null)
 
-  const loadData = useCallback(async () => {
-    if (!id) return
-    try {
-      await Promise.all([fetchAsset(id), fetchTerms()])
-    } catch {
-      toast({
-        title: 'Error',
-        description: 'Failed to load asset details',
-        variant: 'destructive',
-      })
-    }
-  }, [id, fetchAsset, fetchTerms, toast])
-
   useEffect(() => {
+    if (!id) return
+
+    const loadData = async () => {
+      try {
+        await Promise.all([fetchAsset(id), fetchTerms()])
+      } catch {
+        toast({
+          title: 'Error',
+          description: 'Failed to load asset details',
+          variant: 'destructive',
+        })
+      }
+    }
+
     loadData()
-    return () => clearSelectedAsset()
-  }, [loadData, clearSelectedAsset])
+
+    return () => {
+      clearSelectedAsset()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
 
   const getAssetIcon = (type: string) => {
     switch (type) {

@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
@@ -18,7 +18,6 @@ import { getTermHistory, getTermRelationships, type TermHistory, type TermRelati
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { Comments } from '@/components/collaboration/Comments'
-import { useState } from 'react'
 
 export default function GlossaryDetail() {
   const { id } = useParams<{ id: string }>()
@@ -37,33 +36,38 @@ export default function GlossaryDetail() {
   const [relationships, setRelationships] = useState<TermRelationship[]>([])
   const [, setLoadingExtra] = useState(false)
 
-  const loadData = useCallback(async () => {
-    if (!id) return
-    try {
-      await Promise.all([fetchTerm(id), fetchCategories()])
-
-      setLoadingExtra(true)
-      const [historyData, relationshipsData] = await Promise.all([
-        getTermHistory(id),
-        getTermRelationships(id),
-      ])
-      setHistory(historyData)
-      setRelationships(relationshipsData)
-    } catch {
-      toast({
-        title: 'Error',
-        description: 'Failed to load term details',
-        variant: 'destructive',
-      })
-    } finally {
-      setLoadingExtra(false)
-    }
-  }, [id, fetchTerm, fetchCategories, toast])
-
   useEffect(() => {
+    if (!id) return
+
+    const loadData = async () => {
+      try {
+        await Promise.all([fetchTerm(id), fetchCategories()])
+
+        setLoadingExtra(true)
+        const [historyData, relationshipsData] = await Promise.all([
+          getTermHistory(id),
+          getTermRelationships(id),
+        ])
+        setHistory(historyData)
+        setRelationships(relationshipsData)
+      } catch {
+        toast({
+          title: 'Error',
+          description: 'Failed to load term details',
+          variant: 'destructive',
+        })
+      } finally {
+        setLoadingExtra(false)
+      }
+    }
+
     loadData()
-    return () => clearSelectedTerm()
-  }, [loadData, clearSelectedTerm])
+
+    return () => {
+      clearSelectedTerm()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {

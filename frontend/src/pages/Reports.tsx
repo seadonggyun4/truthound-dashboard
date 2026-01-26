@@ -2,10 +2,11 @@
  * Reports page component.
  *
  * Displays report history with statistics, filtering, and management actions.
+ * Uses the new reporter component system for improved maintainability.
  */
 import { useEffect, useState, useCallback } from 'react'
 import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import {
   FileText,
   Download,
@@ -14,13 +15,12 @@ import {
   Search,
   Filter,
   Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
   HardDrive,
   BarChart3,
   Settings,
   ExternalLink,
+  AlertCircle,
+  Eye,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -52,80 +52,32 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { str } from '@/lib/intlayer-utils'
+
+// New reporter components
 import {
-  listReportHistory,
-  getReportStatistics,
-  downloadSavedReport,
-  deleteReportRecord,
-  cleanupExpiredReports,
-  type GeneratedReport,
-  type ReportStatistics,
-  type ReportStatus,
-} from '@/api/client'
+  ReportStatusBadge,
+  ReportDownloadButton,
+  FormatIcon,
+  ReportPreview,
+} from '@/components/reporters'
+import { useReportHistory } from '@/hooks/useReporter'
+import type { GeneratedReport, ReportStatistics } from '@/types/reporters'
+import { formatFileSize, formatGenerationTime } from '@/types/reporters'
 
-// Format file size for display
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
-}
-
-// Format generation time
-function formatDuration(ms: number | undefined): string {
-  if (!ms) return '-'
-  if (ms < 1000) return `${ms.toFixed(0)}ms`
-  return `${(ms / 1000).toFixed(2)}s`
-}
-
-// Format date
+// Format date for display
 function formatDate(dateStr: string | undefined): string {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleString()
 }
 
-// Status badge component
-function StatusBadge({ status, t }: { status: ReportStatus; t: ReturnType<typeof useSafeIntlayer<'reports'>> }) {
-  const statusConfig: Record<ReportStatus, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode; label: string }> = {
-    pending: {
-      variant: 'outline',
-      icon: <Clock className="h-3 w-3" />,
-      label: str(t.statusPending),
-    },
-    generating: {
-      variant: 'secondary',
-      icon: <RefreshCw className="h-3 w-3 animate-spin" />,
-      label: str(t.statusGenerating),
-    },
-    completed: {
-      variant: 'default',
-      icon: <CheckCircle className="h-3 w-3" />,
-      label: str(t.statusCompleted),
-    },
-    failed: {
-      variant: 'destructive',
-      icon: <XCircle className="h-3 w-3" />,
-      label: str(t.statusFailed),
-    },
-    expired: {
-      variant: 'outline',
-      icon: <AlertCircle className="h-3 w-3" />,
-      label: str(t.statusExpired),
-    },
-  }
-
-  const config = statusConfig[status]
-  return (
-    <Badge variant={config.variant} className="flex items-center gap-1">
-      {config.icon}
-      {config.label}
-    </Badge>
-  )
-}
-
 // Statistics cards component
-function StatisticsCards({ stats, t }: { stats: ReportStatistics | null; t: ReturnType<typeof useSafeIntlayer<'reports'>> }) {
+function StatisticsCards({
+  stats,
+  t,
+}: {
+  stats: ReportStatistics | null
+  t: ReturnType<typeof useSafeIntlayer<'reports'>>
+}) {
   if (!stats) return null
 
   return (
@@ -136,7 +88,7 @@ function StatisticsCards({ stats, t }: { stats: ReportStatistics | null; t: Retu
             <FileText className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{str(t.totalReports)}</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total_reports}</p>
+          <p className="text-2xl font-bold mt-1">{stats.totalReports}</p>
         </CardContent>
       </Card>
       <Card>
@@ -145,7 +97,7 @@ function StatisticsCards({ stats, t }: { stats: ReportStatistics | null; t: Retu
             <HardDrive className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{str(t.totalSize)}</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{formatFileSize(stats.total_size_bytes)}</p>
+          <p className="text-2xl font-bold mt-1">{formatFileSize(stats.totalSizeBytes)}</p>
         </CardContent>
       </Card>
       <Card>
@@ -154,7 +106,7 @@ function StatisticsCards({ stats, t }: { stats: ReportStatistics | null; t: Retu
             <Download className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{str(t.totalDownloads)}</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total_downloads}</p>
+          <p className="text-2xl font-bold mt-1">{stats.totalDownloads}</p>
         </CardContent>
       </Card>
       <Card>
@@ -163,7 +115,9 @@ function StatisticsCards({ stats, t }: { stats: ReportStatistics | null; t: Retu
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{str(t.avgGenerationTime)}</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{formatDuration(stats.avg_generation_time_ms ?? undefined)}</p>
+          <p className="text-2xl font-bold mt-1">
+            {formatGenerationTime(stats.avgGenerationTimeMs)}
+          </p>
         </CardContent>
       </Card>
       <Card>
@@ -172,7 +126,7 @@ function StatisticsCards({ stats, t }: { stats: ReportStatistics | null; t: Retu
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{str(t.expiredReports)}</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.expired_count}</p>
+          <p className="text-2xl font-bold mt-1">{stats.expiredCount}</p>
         </CardContent>
       </Card>
       <Card>
@@ -181,7 +135,7 @@ function StatisticsCards({ stats, t }: { stats: ReportStatistics | null; t: Retu
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{str(t.reportersUsed)}</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.reporters_used}</p>
+          <p className="text-2xl font-bold mt-1">{stats.reportersUsed}</p>
         </CardContent>
       </Card>
     </div>
@@ -192,147 +146,75 @@ export default function Reports() {
   const t = useSafeIntlayer('reports')
   const common = useSafeIntlayer('common')
   const { toast } = useToast()
-  const navigate = useNavigate()
 
-  // State
-  const [reports, setReports] = useState<GeneratedReport[]>([])
-  const [statistics, setStatistics] = useState<ReportStatistics | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const pageSize = 20
+  // Use the new report history hook
+  const {
+    reports,
+    total,
+    page,
+    pageSize,
+    statistics,
+    isLoading,
+    error,
+    refetch,
+    setPage,
+    updateQuery,
+    deleteReport,
+    cleanupExpired,
+  } = useReportHistory({ autoFetch: true })
 
-  // Filters
+  // Local filter state
   const [search, setSearch] = useState('')
   const [formatFilter, setFormatFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [includeExpired, setIncludeExpired] = useState(false)
 
   // Dialogs
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; report: GeneratedReport | null }>({
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean
+    report: GeneratedReport | null
+  }>({
     open: false,
     report: null,
   })
   const [cleanupDialog, setCleanupDialog] = useState(false)
+  const [previewDialog, setPreviewDialog] = useState<{
+    open: boolean
+    report: GeneratedReport | null
+  }>({
+    open: false,
+    report: null,
+  })
 
-  // Fetch reports
-  const fetchReports = useCallback(async () => {
-    try {
-      setLoading(true)
-      const response = await listReportHistory({
-        search: search || undefined,
-        format: formatFilter !== 'all' ? formatFilter : undefined,
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-        include_expired: includeExpired,
-        page,
-        page_size: pageSize,
-      })
-      setReports(response.items)
-      setTotal(response.total)
-    } catch (error) {
-      toast({
-        title: str(common.error),
-        description: error instanceof Error ? error.message : str(common.unknownError),
-        variant: 'destructive',
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [search, formatFilter, statusFilter, includeExpired, page, toast, common])
-
-  // Fetch statistics
-  const fetchStatistics = useCallback(async () => {
-    try {
-      const stats = await getReportStatistics()
-      setStatistics(stats)
-    } catch (error) {
-      // Silent fail for stats
-      console.error('Failed to fetch statistics:', error)
-    }
-  }, [])
-
+  // Update query when filters change
   useEffect(() => {
-    fetchReports()
-    fetchStatistics()
-  }, [fetchReports, fetchStatistics])
-
-  // Handle download
-  const handleDownload = async (report: GeneratedReport) => {
-    if (report.status !== 'completed') {
-      toast({
-        title: str(common.error),
-        description: 'Report is not ready for download',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    try {
-      const blob = await downloadSavedReport(report.id)
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${report.name}.${report.format}`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
-
-      toast({
-        title: str(t.downloadSuccess),
-        description: str(t.reportDownloaded),
-      })
-
-      // Refresh to update download count
-      fetchReports()
-    } catch (error) {
-      toast({
-        title: str(t.downloadFailed),
-        description: error instanceof Error ? error.message : str(common.unknownError),
-        variant: 'destructive',
-      })
-    }
-  }
+    updateQuery({
+      search: search || undefined,
+      format: formatFilter !== 'all' ? formatFilter : undefined,
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      includeExpired,
+    })
+  }, [search, formatFilter, statusFilter, includeExpired, updateQuery])
 
   // Handle delete
   const handleDelete = async () => {
     if (!deleteDialog.report) return
 
     try {
-      await deleteReportRecord(deleteDialog.report.id)
-      toast({
-        title: str(common.success),
-        description: str(t.deleteSuccess),
-      })
+      await deleteReport(deleteDialog.report.id)
       setDeleteDialog({ open: false, report: null })
-      fetchReports()
-      fetchStatistics()
-    } catch (error) {
-      toast({
-        title: str(common.error),
-        description: error instanceof Error ? error.message : str(common.unknownError),
-        variant: 'destructive',
-      })
+    } catch {
+      // Error handled by hook
     }
   }
 
   // Handle cleanup
   const handleCleanup = async () => {
     try {
-      const result = await cleanupExpiredReports()
-      toast({
-        title: str(common.success),
-        description: `${result.deleted} ${str(t.cleanupSuccess)}`,
-      })
+      await cleanupExpired()
       setCleanupDialog(false)
-      fetchReports()
-      fetchStatistics()
-    } catch (error) {
-      toast({
-        title: str(common.error),
-        description: error instanceof Error ? error.message : str(common.unknownError),
-        variant: 'destructive',
-      })
+    } catch {
+      // Error handled by hook
     }
   }
 
@@ -353,7 +235,7 @@ export default function Reports() {
               {str(t.manageReporters)}
             </Link>
           </Button>
-          {statistics && statistics.expired_count > 0 && (
+          {statistics && statistics.expiredCount > 0 && (
             <Button variant="outline" onClick={() => setCleanupDialog(true)}>
               <Trash2 className="h-4 w-4 mr-2" />
               {str(t.cleanupExpired)}
@@ -427,7 +309,7 @@ export default function Reports() {
           </div>
 
           {/* Reports Table */}
-          {loading ? (
+          {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
@@ -457,37 +339,52 @@ export default function Reports() {
                     <TableRow key={report.id}>
                       <TableCell className="font-medium">{report.name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{report.format.toUpperCase()}</Badge>
+                        <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                          <FormatIcon format={report.format} className="h-3 w-3" />
+                          {report.format.toUpperCase()}
+                        </Badge>
                       </TableCell>
                       <TableCell>
-                        <StatusBadge status={report.status} t={t} />
+                        <ReportStatusBadge status={report.status} />
                       </TableCell>
                       <TableCell>
-                        {report.source_name ? (
+                        {report.sourceName ? (
                           <Link
-                            to={`/sources/${report.source_id}`}
+                            to={`/sources/${report.sourceId}`}
                             className="text-primary hover:underline flex items-center gap-1"
                           >
-                            {report.source_name}
+                            {report.sourceName}
                             <ExternalLink className="h-3 w-3" />
                           </Link>
                         ) : (
                           <span className="text-muted-foreground">{str(t.noSource)}</span>
                         )}
                       </TableCell>
-                      <TableCell>{report.file_size ? formatFileSize(report.file_size) : '-'}</TableCell>
-                      <TableCell>{report.downloaded_count}</TableCell>
-                      <TableCell>{formatDate(report.created_at)}</TableCell>
+                      <TableCell>
+                        {report.fileSize ? formatFileSize(report.fileSize) : '-'}
+                      </TableCell>
+                      <TableCell>{report.downloadCount}</TableCell>
+                      <TableCell>{formatDate(report.createdAt)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button
+                          {/* Preview button for HTML reports */}
+                          {report.status === 'completed' &&
+                            report.validationId &&
+                            (report.format === 'html' || report.format === 'json') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setPreviewDialog({ open: true, report })}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            )}
+                          <ReportDownloadButton
+                            report={report}
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDownload(report)}
-                            disabled={report.status !== 'completed'}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
+                            onSuccess={refetch}
+                          />
                           <Button
                             variant="ghost"
                             size="sm"
@@ -513,7 +410,7 @@ export default function Reports() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      onClick={() => setPage(Math.max(1, page - 1))}
                       disabled={page === 1}
                     >
                       {str(common.previous)}
@@ -521,7 +418,7 @@ export default function Reports() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      onClick={() => setPage(Math.min(totalPages, page + 1))}
                       disabled={page === totalPages}
                     >
                       {str(common.next)}
@@ -535,14 +432,20 @@ export default function Reports() {
       </Card>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, report: null })}>
+      <Dialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ open, report: null })}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{str(t.deleteConfirmTitle)}</DialogTitle>
             <DialogDescription>{str(t.deleteConfirmMessage)}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialog({ open: false, report: null })}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialog({ open: false, report: null })}
+            >
               {str(common.cancel)}
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
@@ -572,6 +475,37 @@ export default function Reports() {
               {str(t.cleanupExpired)}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Dialog */}
+      <Dialog
+        open={previewDialog.open}
+        onOpenChange={(open) => setPreviewDialog({ open, report: null })}
+      >
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {previewDialog.report && (
+                <>
+                  <FormatIcon format={previewDialog.report.format} />
+                  {previewDialog.report.name}
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {previewDialog.report && previewDialog.report.validationId && (
+            <ReportPreview
+              validationId={previewDialog.report.validationId}
+              format={previewDialog.report.format}
+              theme={previewDialog.report.theme}
+              locale={previewDialog.report.locale}
+              title=""
+              maxHeight="60vh"
+              showControls={true}
+              autoLoad={true}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

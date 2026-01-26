@@ -152,7 +152,7 @@ export function EscalationLevelBuilder({
     // Type-safe access using any to bypass union complexity
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const esc = (content as any)?.escalation
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const lb = esc?.levelBuilder
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tt = (content as any)?.targetTypes

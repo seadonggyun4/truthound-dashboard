@@ -413,7 +413,41 @@ export default function Profile() {
 
     try {
       setProfiling(true)
-      const result = await profileSource(sourceId)
+
+      // Build profiling options from current configuration
+      const options: Parameters<typeof profileSource>[1] = {}
+
+      // Apply sampling configuration (maps to new ProfilerConfig API)
+      if (samplingConfig.strategy !== 'none') {
+        options.sampling = {
+          strategy: samplingConfig.strategy,
+          sample_size: samplingConfig.sampleSize,
+          confidence_level: samplingConfig.confidenceLevel,
+          margin_of_error: samplingConfig.marginOfError,
+          strata_column: samplingConfig.strataColumn,
+          seed: samplingConfig.seed,
+        }
+      } else if (samplingConfig.sampleSize) {
+        // Backward compatible simple sample_size
+        options.sample_size = samplingConfig.sampleSize
+      }
+
+      // Apply pattern detection configuration (maps to include_patterns option)
+      options.pattern_detection = {
+        enabled: patternConfig.enabled,
+        sample_size: patternConfig.sampleSize,
+        min_confidence: patternConfig.minConfidence,
+        patterns_to_detect: patternConfig.patternsToDetect?.length
+          ? patternConfig.patternsToDetect
+          : null,
+      }
+
+      // Additional profiling options (mapped to new ProfilerConfig)
+      options.include_histograms = true  // include_distributions
+      options.include_correlations = false
+      options.include_cardinality = true  // top_n_values
+
+      const result = await profileSource(sourceId, options)
       setProfile(result)
       toast({
         title: 'Profile Complete',
@@ -428,7 +462,7 @@ export default function Profile() {
     } finally {
       setProfiling(false)
     }
-  }, [sourceId, toast])
+  }, [sourceId, samplingConfig, patternConfig, toast])
 
   // Learn schema
   const handleLearnSchema = useCallback(async () => {
