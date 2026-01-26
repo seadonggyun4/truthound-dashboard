@@ -14,13 +14,18 @@ from pydantic import BaseModel, Field
 class ValidatorCategory(str, Enum):
     """Validator categories matching truthound's classification.
 
-    Categories are organized by validation purpose:
+    Categories are organized by validation purpose (21 total + infrastructure):
     - Core validators: schema, completeness, uniqueness, distribution
     - Format validators: string, datetime
     - Statistical validators: aggregate, anomaly, drift
     - Relational validators: cross_table, multi_column, query
-    - Domain validators: table, geospatial, privacy, business
-    - Advanced validators: time_series, referential, streaming
+    - Domain validators: table, geospatial, privacy
+    - Business validators: business_rule, profiling, localization
+    - ML validators: ml_feature
+    - Advanced validators: timeseries, referential
+
+    Infrastructure modules (not validator categories):
+    - sdk, security, i18n, timeout, streaming, memory, optimization
     """
 
     # Core validators (no extra dependencies)
@@ -47,12 +52,18 @@ class ValidatorCategory(str, Enum):
     TABLE = "table"
     GEOSPATIAL = "geospatial"
     PRIVACY = "privacy"
-    BUSINESS = "business"
+
+    # Business validators
+    BUSINESS_RULE = "business_rule"
+    PROFILING = "profiling"
+    LOCALIZATION = "localization"
+
+    # ML validators
+    ML_FEATURE = "ml_feature"
 
     # Advanced validators
-    TIME_SERIES = "time_series"
+    TIMESERIES = "timeseries"
     REFERENTIAL = "referential"
-    STREAMING = "streaming"
 
 
 class ParameterType(str, Enum):
@@ -171,20 +182,23 @@ def configs_to_truthound_format(
 ) -> tuple[list[str] | None, dict[str, dict[str, Any]]]:
     """Convert ValidatorConfig list to truthound-compatible format.
 
-    truthound supports two ways of specifying validators:
+    truthound 2.x supports two ways of specifying validators:
     1. Simple list of validator names: validators=["Null", "Duplicate"]
-    2. Dict-based configuration: validator_params={"Null": {"columns": ["a", "b"]}}
+    2. Dict-based configuration: validator_config={"Null": {"columns": ("a", "b")}}
 
     This function converts our ValidatorConfig format to both formats,
     allowing the caller to choose based on whether custom params exist.
+
+    Note: In truthound 2.x, columns parameters should be tuples, not lists.
+    This function automatically converts lists to tuples for compatibility.
 
     Args:
         configs: List of ValidatorConfig objects from API request.
 
     Returns:
-        Tuple of (validator_names, validator_params):
+        Tuple of (validator_names, validator_config):
         - validator_names: List of enabled validator names, or None if empty
-        - validator_params: Dict of {validator_name: {param: value}} for
+        - validator_config: Dict of {validator_name: {param: value}} for
           validators with non-default parameters
 
     Example:
@@ -193,14 +207,14 @@ def configs_to_truthound_format(
         ...     ValidatorConfig(name="Duplicate", enabled=True, params={}),
         ...     ValidatorConfig(name="Range", enabled=False, params={}),
         ... ]
-        >>> names, params = configs_to_truthound_format(configs)
+        >>> names, config = configs_to_truthound_format(configs)
         >>> names
         ['Null', 'Duplicate']
-        >>> params
-        {'Null': {'columns': ['a']}}
+        >>> config
+        {'Null': {'columns': ('a',)}}
     """
     enabled_names: list[str] = []
-    validator_params: dict[str, dict[str, Any]] = {}
+    validator_config: dict[str, dict[str, Any]] = {}
 
     for config in configs:
         if not config.enabled:
@@ -211,15 +225,21 @@ def configs_to_truthound_format(
         # Only include params that are non-empty
         if config.params:
             # Filter out None, empty strings, and empty lists
-            filtered_params = {
-                k: v
-                for k, v in config.params.items()
-                if v is not None and v != "" and v != []
-            }
-            if filtered_params:
-                validator_params[config.name] = filtered_params
+            filtered_params: dict[str, Any] = {}
+            for k, v in config.params.items():
+                if v is None or v == "" or v == []:
+                    continue
+                # Convert lists to tuples for truthound 2.x compatibility
+                # (columns parameter should be tuple, not list)
+                if isinstance(v, list):
+                    filtered_params[k] = tuple(v)
+                else:
+                    filtered_params[k] = v
 
-    return enabled_names if enabled_names else None, validator_params
+            if filtered_params:
+                validator_config[config.name] = filtered_params
+
+    return enabled_names if enabled_names else None, validator_config
 
 
 def has_custom_params(configs: list[ValidatorConfig]) -> bool:

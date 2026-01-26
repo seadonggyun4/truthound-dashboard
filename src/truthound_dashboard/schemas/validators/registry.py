@@ -1,6 +1,11 @@
 """Validator registry.
 
 Central registry combining all validator categories with metadata and lookup functions.
+
+This module aggregates all 21 validator categories from truthound, providing:
+- Complete validator definitions with parameters
+- Category metadata for UI display
+- Search and filter utilities
 """
 
 from __future__ import annotations
@@ -10,22 +15,43 @@ from typing import Literal
 
 from .base import ValidatorCategory, ValidatorDefinition
 
-# Import all validator category modules
+# Import all validator category modules (21 categories)
+# Core validators
 from .schema_validators import SCHEMA_VALIDATORS
 from .completeness_validators import COMPLETENESS_VALIDATORS
 from .uniqueness_validators import UNIQUENESS_VALIDATORS
 from .distribution_validators import DISTRIBUTION_VALIDATORS
+
+# Format validators
 from .string_validators import STRING_VALIDATORS
 from .datetime_validators import DATETIME_VALIDATORS
+
+# Statistical validators
 from .aggregate_validators import AGGREGATE_VALIDATORS
+from .drift_validators import DRIFT_VALIDATORS
+from .anomaly_validators import ANOMALY_VALIDATORS
+
+# Relational validators
 from .cross_table_validators import CROSS_TABLE_VALIDATORS
 from .multi_column_validators import MULTI_COLUMN_VALIDATORS
 from .query_validators import QUERY_VALIDATORS
+
+# Domain validators
 from .table_validators import TABLE_VALIDATORS
 from .geospatial_validators import GEOSPATIAL_VALIDATORS
-from .drift_validators import DRIFT_VALIDATORS
-from .anomaly_validators import ANOMALY_VALIDATORS
 from .privacy_validators import PRIVACY_VALIDATORS
+
+# Business validators (new)
+from .business_rule_validators import BUSINESS_RULE_VALIDATORS
+from .profiling_validators import PROFILING_VALIDATORS
+from .localization_validators import LOCALIZATION_VALIDATORS
+
+# ML validators (new)
+from .ml_feature_validators import ML_FEATURE_VALIDATORS
+
+# Advanced validators (new)
+from .timeseries_validators import TIMESERIES_VALIDATORS
+from .referential_validators import REFERENTIAL_VALIDATORS
 
 
 @dataclass
@@ -41,7 +67,7 @@ class CategoryInfo:
     validator_count: int = 0
 
 
-# Category metadata with UI information
+# Category metadata with UI information (21 categories)
 CATEGORY_INFO: list[CategoryInfo] = [
     # Core validators (no extra dependencies)
     CategoryInfo(
@@ -151,31 +177,90 @@ CATEGORY_INFO: list[CategoryInfo] = [
     CategoryInfo(
         value="privacy",
         label="Privacy",
-        description="PII detection and compliance (GDPR, CCPA)",
+        description="PII detection and compliance (GDPR, CCPA, LGPD)",
         icon="shield",
         color="#dc2626",  # red-600
+    ),
+    # Business validators (new in truthound 2.x)
+    CategoryInfo(
+        value="business_rule",
+        label="Business Rule",
+        description="Domain-specific rules: checksums, IBAN, VAT, credit cards",
+        icon="briefcase",
+        color="#7c3aed",  # violet-600
+    ),
+    CategoryInfo(
+        value="profiling",
+        label="Profiling",
+        description="Cardinality, entropy, and value frequency analysis",
+        icon="activity",
+        color="#0891b2",  # cyan-600
+    ),
+    CategoryInfo(
+        value="localization",
+        label="Localization",
+        description="Regional identifier formats (Korean, Japanese, Chinese)",
+        icon="globe",
+        color="#059669",  # emerald-600
+    ),
+    # ML validators (new in truthound 2.x)
+    CategoryInfo(
+        value="ml_feature",
+        label="ML Feature",
+        description="Feature quality: null impact, scale, correlation, leakage",
+        icon="cpu",
+        color="#7c2d12",  # orange-900
+    ),
+    # Advanced validators (new in truthound 2.x)
+    CategoryInfo(
+        value="timeseries",
+        label="Time Series",
+        description="Gap detection, monotonicity, seasonality, trend analysis",
+        icon="clock",
+        color="#4338ca",  # indigo-700
+    ),
+    CategoryInfo(
+        value="referential",
+        label="Referential",
+        description="Foreign keys, orphan detection, hierarchy integrity",
+        icon="git-merge",
+        color="#be185d",  # pink-700
     ),
 ]
 
 
 def _build_registry() -> list[ValidatorDefinition]:
-    """Build the complete validator registry from all categories."""
+    """Build the complete validator registry from all 21 categories."""
     return [
+        # Core validators
         *SCHEMA_VALIDATORS,
         *COMPLETENESS_VALIDATORS,
         *UNIQUENESS_VALIDATORS,
         *DISTRIBUTION_VALIDATORS,
+        # Format validators
         *STRING_VALIDATORS,
         *DATETIME_VALIDATORS,
+        # Statistical validators
         *AGGREGATE_VALIDATORS,
+        *DRIFT_VALIDATORS,
+        *ANOMALY_VALIDATORS,
+        # Relational validators
         *CROSS_TABLE_VALIDATORS,
         *MULTI_COLUMN_VALIDATORS,
         *QUERY_VALIDATORS,
+        # Domain validators
         *TABLE_VALIDATORS,
         *GEOSPATIAL_VALIDATORS,
-        *DRIFT_VALIDATORS,
-        *ANOMALY_VALIDATORS,
         *PRIVACY_VALIDATORS,
+        # Business validators (new)
+        *BUSINESS_RULE_VALIDATORS,
+        *PROFILING_VALIDATORS,
+        *LOCALIZATION_VALIDATORS,
+        # ML validators (new)
+        *ML_FEATURE_VALIDATORS,
+        # Advanced validators (new)
+        *TIMESERIES_VALIDATORS,
+        *REFERENTIAL_VALIDATORS,
     ]
 
 
