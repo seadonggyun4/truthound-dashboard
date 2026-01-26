@@ -60,11 +60,36 @@ Translate the UI to any language using OpenAI, Anthropic, Ollama, or Mistral wit
 
 ## Documentation
 
+### Getting Started
 - [Getting Started](./getting-started.md) - Installation and quick start guide
-- [Features](./features.md) - Detailed feature documentation
-- [Internationalization](./internationalization.md) - i18n and AI translation guide
-- [API Reference](./api.md) - REST API documentation
-- [Configuration](./configuration.md) - Configuration options
+- [Architecture](./architecture.md) - System design and component overview
+- [Internationalization Guide](./intlayer-i18n-Guide.md) - i18n and AI translation guide
+
+### Data Management
+- [Dashboard](./data-management/dashboard.md) - Overview and statistics
+- [Data Sources](./data-management/sources.md) - Source connection and validation
+- [Data Catalog](./data-management/catalog.md) - Asset metadata management
+- [Business Glossary](./data-management/glossary.md) - Business terminology management
+
+### Data Quality
+- [Drift Detection](./data-quality/drift.md) - Distribution comparison
+- [Drift Monitoring](./data-quality/drift-monitoring.md) - Continuous drift monitoring
+- [Privacy & PII](./data-quality/privacy.md) - PII detection and masking
+- [Data Lineage](./data-quality/lineage.md) - Data flow visualization
+
+### ML & Monitoring
+- [Anomaly Detection](./ml-monitoring/anomaly.md) - ML-based outlier detection
+- [Model Monitoring](./ml-monitoring/model-monitoring.md) - ML model performance tracking
+
+### System
+- [Unified Alerts](./system/alerts.md) - Centralized alert management
+- [Schedules](./system/schedules.md) - Automated validation scheduling
+- [Activity Feed](./system/activity.md) - System event timeline
+- [Notifications](./system/notifications.md) - Multi-channel alerting
+- [Advanced Notifications](./system/notifications-advanced.md) - Routing, deduplication, escalation
+- [Reports](./system/reports.md) - Multi-format report generation
+- [Plugins](./system/plugins.md) - Extensibility and custom extensions
+- [Maintenance](./system/maintenance.md) - System maintenance and cleanup
 
 ## Live Demo
 
