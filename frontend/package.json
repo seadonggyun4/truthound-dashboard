@@ -5,17 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:mock": "vite --mode mock",
     "build": "npx intlayer build && tsc && vite build --mode pip",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
-    "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:ui": "vitest --ui",
-    "test:watch": "vitest --watch",
-    "test:coverage": "vitest run --coverage"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
@@ -56,10 +50,6 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
-    "@faker-js/faker": "^9.9.0",
-    "@testing-library/jest-dom": "^6.4.0",
-    "@testing-library/react": "^14.2.0",
-    "@testing-library/user-event": "^14.5.2",
     "@types/cytoscape": "^3.21.9",
     "@types/node": "^20.11.5",
     "@types/react": "^18.2.48",
@@ -67,25 +57,15 @@
     "@typescript-eslint/eslint-plugin": "^6.19.1",
     "@typescript-eslint/parser": "^6.19.1",
     "@vitejs/plugin-react": "^4.2.1",
-    "@vitest/coverage-v8": "^1.2.0",
-    "@vitest/ui": "^1.2.0",
     "autoprefixer": "^10.4.17",
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
-    "jsdom": "^24.0.0",
-    "msw": "^2.12.7",
     "postcss": "^8.4.33",
     "prettier": "^3.2.4",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.12",
-    "vite-intlayer": "^7.5.10",
-    "vitest": "^1.2.0"
-  },
-  "msw": {
-    "workerDirectory": [
-      "public"
-    ]
+    "vite-intlayer": "^7.5.10"
   }
 }

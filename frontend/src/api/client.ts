@@ -85,24 +85,163 @@ export async function getHealth() {
 
 /**
  * All supported source types.
+ *
+ * These types map to the backend datasource_factory.py SourceType enum.
+ * Categories:
+ * - File-based: file, csv, parquet, json, ndjson, jsonl
+ * - DataFrame: polars, pandas
+ * - Core SQL: sqlite, postgresql, mysql
+ * - Cloud DW: bigquery, snowflake, redshift, databricks
+ * - Enterprise: oracle, sqlserver
+ * - NoSQL (async): mongodb, elasticsearch
+ * - Streaming (async): kafka
  */
 export type SourceType =
+  // File-based
   | 'file'
+  | 'csv'
+  | 'parquet'
+  | 'json'
+  | 'ndjson'
+  | 'jsonl'
+  // DataFrame
+  | 'polars'
+  | 'pandas'
+  // Core SQL
+  | 'sqlite'
   | 'postgresql'
   | 'mysql'
-  | 'sqlite'
-  | 'snowflake'
+  // Cloud Data Warehouses
   | 'bigquery'
+  | 'snowflake'
   | 'redshift'
   | 'databricks'
+  // Enterprise
   | 'oracle'
   | 'sqlserver'
+  // NoSQL (async)
+  | 'mongodb'
+  | 'elasticsearch'
+  // Streaming (async)
+  | 'kafka'
+  // Big Data
   | 'spark'
 
 /**
  * Source type categories for UI grouping.
  */
-export type SourceCategory = 'file' | 'database' | 'warehouse' | 'bigdata'
+export type SourceCategory = 'file' | 'database' | 'warehouse' | 'bigdata' | 'nosql' | 'streaming'
+
+/**
+ * Data source capabilities from truthound.
+ * These indicate what features a data source supports.
+ */
+export type DataSourceCapability =
+  | 'lazy_evaluation'    // Supports lazy/deferred execution
+  | 'sql_pushdown'       // Can push operations to database
+  | 'sampling'           // Supports efficient sampling
+  | 'streaming'          // Supports streaming/chunked reads
+  | 'schema_inference'   // Can infer schema without full scan
+  | 'row_count'          // Can get row count efficiently
+
+/**
+ * Get capabilities for a source type.
+ */
+export function getSourceTypeCapabilities(type: string): DataSourceCapability[] {
+  const lowerType = type.toLowerCase()
+
+  // File sources
+  if (['csv', 'ndjson', 'jsonl', 'parquet'].includes(lowerType)) {
+    return ['lazy_evaluation', 'sampling', 'schema_inference']
+  }
+  if (lowerType === 'parquet') {
+    return ['lazy_evaluation', 'sampling', 'schema_inference', 'row_count']
+  }
+  if (lowerType === 'json') {
+    return ['schema_inference'] // JSON is eagerly loaded
+  }
+  if (lowerType === 'file') {
+    return ['lazy_evaluation', 'sampling', 'schema_inference']
+  }
+
+  // SQL databases
+  if (isSqlSourceType(lowerType)) {
+    return ['sql_pushdown', 'sampling', 'schema_inference', 'row_count']
+  }
+
+  // NoSQL (async)
+  if (['mongodb', 'elasticsearch'].includes(lowerType)) {
+    return ['sampling', 'schema_inference', 'streaming']
+  }
+
+  // Streaming
+  if (['kafka'].includes(lowerType)) {
+    return ['streaming', 'sampling']
+  }
+
+  return ['schema_inference']
+}
+
+/**
+ * Human-readable labels for capabilities.
+ */
+export const CAPABILITY_LABELS: Record<DataSourceCapability, { label: string; description: string }> = {
+  lazy_evaluation: {
+    label: 'Lazy Evaluation',
+    description: 'Supports deferred execution for efficient processing',
+  },
+  sql_pushdown: {
+    label: 'SQL Pushdown',
+    description: 'Can push validation operations to the database server',
+  },
+  sampling: {
+    label: 'Efficient Sampling',
+    description: 'Supports efficient random sampling for large datasets',
+  },
+  streaming: {
+    label: 'Streaming',
+    description: 'Supports streaming/chunked reads for real-time data',
+  },
+  schema_inference: {
+    label: 'Schema Inference',
+    description: 'Can automatically detect column types',
+  },
+  row_count: {
+    label: 'Fast Row Count',
+    description: 'Can get row count without full scan',
+  },
+}
+
+/**
+ * Check if a source type is file-based.
+ */
+export function isFileSourceType(type: string): boolean {
+  return ['file', 'csv', 'parquet', 'json', 'ndjson', 'jsonl'].includes(type.toLowerCase())
+}
+
+/**
+ * Check if a source type is SQL-based.
+ */
+export function isSqlSourceType(type: string): boolean {
+  return [
+    'sqlite',
+    'postgresql',
+    'mysql',
+    'bigquery',
+    'snowflake',
+    'redshift',
+    'databricks',
+    'oracle',
+    'sqlserver',
+  ].includes(type.toLowerCase())
+}
+
+/**
+ * Check if a source type requires async operations.
+ */
+export function isAsyncSourceType(type: string): boolean {
+  return ['mongodb', 'elasticsearch', 'kafka'].includes(type.toLowerCase())
+}
 
 /**
  * Field types for dynamic form rendering.
@@ -148,6 +287,12 @@ export interface SourceTypeDefinition {
   required_fields: string[]
   optional_fields: string[]
   docs_url?: string
+  /** Capabilities supported by this source type */
+  capabilities?: DataSourceCapability[]
+  /** Required Python package for this source type */
+  required_package?: string
+  /** Whether this source type supports async operations */
+  is_async?: boolean
 }
 
 /**
@@ -1718,23 +1863,48 @@ export async function getActivities(params?: {
 // ============================================================================
 
 /**
- * Validator categories.
+ * Validator categories matching truthound's classification (21 total).
+ *
+ * Categories are organized by validation purpose:
+ * - Core validators: schema, completeness, uniqueness, distribution
+ * - Format validators: string, datetime
+ * - Statistical validators: aggregate, drift, anomaly
+ * - Relational validators: cross_table, multi_column, query
+ * - Domain validators: table, geospatial, privacy
+ * - Business validators: business_rule, profiling, localization
+ * - ML validators: ml_feature
+ * - Advanced validators: timeseries, referential
  */
 export type ValidatorCategory =
+  // Core validators (no extra dependencies)
   | 'schema'
   | 'completeness'
   | 'uniqueness'
   | 'distribution'
+  // Format validators
   | 'string'
   | 'datetime'
+  // Statistical validators
   | 'aggregate'
-  | 'cross_table'
-  | 'query'
-  | 'multi_column'
-  | 'table'
-  | 'geospatial'
   | 'drift'
   | 'anomaly'
+  // Relational validators
+  | 'cross_table'
+  | 'multi_column'
+  | 'query'
+  // Domain validators
+  | 'table'
+  | 'geospatial'
+  | 'privacy'
+  // Business validators
+  | 'business_rule'
+  | 'profiling'
+  | 'localization'
+  // ML validators
+  | 'ml_feature'
+  // Advanced validators
+  | 'timeseries'
+  | 'referential'
 
 /**
  * Parameter types for validator configuration.
