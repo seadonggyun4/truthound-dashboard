@@ -87,21 +87,56 @@ const sourcesContent = {
 
     // Source types
     types: {
+      // File-based
       file: t({ en: 'File', ko: '파일' }),
       csv: t({ en: 'CSV File', ko: 'CSV 파일' }),
       parquet: t({ en: 'Parquet File', ko: 'Parquet 파일' }),
       json: t({ en: 'JSON File', ko: 'JSON 파일' }),
+      ndjson: t({ en: 'NDJSON File', ko: 'NDJSON 파일' }),
+      jsonl: t({ en: 'JSON Lines File', ko: 'JSON Lines 파일' }),
+      // Core SQL
       database: t({ en: 'Database', ko: '데이터베이스' }),
       postgresql: t({ en: 'PostgreSQL', ko: 'PostgreSQL' }),
       mysql: t({ en: 'MySQL', ko: 'MySQL' }),
       sqlite: t({ en: 'SQLite', ko: 'SQLite' }),
+      // Enterprise
       oracle: t({ en: 'Oracle', ko: 'Oracle' }),
       sqlserver: t({ en: 'SQL Server', ko: 'SQL Server' }),
+      // Cloud Data Warehouses
       snowflake: t({ en: 'Snowflake', ko: 'Snowflake' }),
       bigquery: t({ en: 'BigQuery', ko: 'BigQuery' }),
       redshift: t({ en: 'Amazon Redshift', ko: 'Amazon Redshift' }),
       databricks: t({ en: 'Databricks', ko: 'Databricks' }),
+      // Big Data
       spark: t({ en: 'Apache Spark', ko: 'Apache Spark' }),
+      // NoSQL
+      mongodb: t({ en: 'MongoDB', ko: 'MongoDB' }),
+      elasticsearch: t({ en: 'Elasticsearch', ko: 'Elasticsearch' }),
+      // Streaming
+      kafka: t({ en: 'Apache Kafka', ko: 'Apache Kafka' }),
+    },
+
+    // Source type descriptions
+    typeDescriptions: {
+      file: t({ en: 'Local file (CSV, Parquet, JSON, Excel)', ko: '로컬 파일 (CSV, Parquet, JSON, Excel)' }),
+      csv: t({ en: 'Comma-separated values file', ko: '쉼표로 구분된 값 파일' }),
+      parquet: t({ en: 'Apache Parquet columnar storage', ko: 'Apache Parquet 열 기반 저장소' }),
+      json: t({ en: 'JSON document file', ko: 'JSON 문서 파일' }),
+      ndjson: t({ en: 'Newline-delimited JSON', ko: '줄바꿈 구분 JSON' }),
+      jsonl: t({ en: 'JSON Lines format', ko: 'JSON Lines 형식' }),
+      postgresql: t({ en: 'PostgreSQL relational database', ko: 'PostgreSQL 관계형 데이터베이스' }),
+      mysql: t({ en: 'MySQL relational database', ko: 'MySQL 관계형 데이터베이스' }),
+      sqlite: t({ en: 'SQLite embedded database', ko: 'SQLite 임베디드 데이터베이스' }),
+      oracle: t({ en: 'Oracle Database', ko: 'Oracle 데이터베이스' }),
+      sqlserver: t({ en: 'Microsoft SQL Server', ko: 'Microsoft SQL Server' }),
+      snowflake: t({ en: 'Snowflake cloud data warehouse', ko: 'Snowflake 클라우드 데이터 웨어하우스' }),
+      bigquery: t({ en: 'Google BigQuery analytics', ko: 'Google BigQuery 분석' }),
+      redshift: t({ en: 'Amazon Redshift data warehouse', ko: 'Amazon Redshift 데이터 웨어하우스' }),
+      databricks: t({ en: 'Databricks lakehouse platform', ko: 'Databricks 레이크하우스 플랫폼' }),
+      spark: t({ en: 'Apache Spark via Hive/JDBC', ko: 'Apache Spark (Hive/JDBC)' }),
+      mongodb: t({ en: 'MongoDB document database', ko: 'MongoDB 문서 데이터베이스' }),
+      elasticsearch: t({ en: 'Elasticsearch search engine', ko: 'Elasticsearch 검색 엔진' }),
+      kafka: t({ en: 'Apache Kafka streaming platform', ko: 'Apache Kafka 스트리밍 플랫폼' }),
     },
 
     // Source categories
@@ -111,6 +146,18 @@ const sourcesContent = {
       database: t({ en: 'Databases', ko: '데이터베이스' }),
       warehouse: t({ en: 'Data Warehouses', ko: '데이터 웨어하우스' }),
       bigdata: t({ en: 'Big Data', ko: '빅데이터' }),
+      nosql: t({ en: 'NoSQL', ko: 'NoSQL' }),
+      streaming: t({ en: 'Streaming', ko: '스트리밍' }),
+    },
+
+    // Category descriptions
+    categoryDescriptions: {
+      file: t({ en: 'Local file sources', ko: '로컬 파일 소스' }),
+      database: t({ en: 'Relational databases', ko: '관계형 데이터베이스' }),
+      warehouse: t({ en: 'Cloud data warehouses', ko: '클라우드 데이터 웨어하우스' }),
+      bigdata: t({ en: 'Big data platforms', ko: '빅데이터 플랫폼' }),
+      nosql: t({ en: 'Document and search databases', ko: '문서 및 검색 데이터베이스' }),
+      streaming: t({ en: 'Streaming data platforms', ko: '스트리밍 데이터 플랫폼' }),
     },
 
     // Add source dialog
@@ -232,6 +279,182 @@ const sourcesContent = {
       hideValue: t({ en: 'Hide', ko: '숨기기' }),
       masked: t({ en: '(masked)', ko: '(마스킹됨)' }),
       notSet: t({ en: 'Not set', ko: '설정되지 않음' }),
+    },
+
+    // Common connection fields
+    fields: {
+      // Common
+      host: t({ en: 'Host', ko: '호스트' }),
+      port: t({ en: 'Port', ko: '포트' }),
+      database: t({ en: 'Database', ko: '데이터베이스' }),
+      username: t({ en: 'Username', ko: '사용자 이름' }),
+      password: t({ en: 'Password', ko: '비밀번호' }),
+      schema: t({ en: 'Schema', ko: '스키마' }),
+      table: t({ en: 'Table', ko: '테이블' }),
+      query: t({ en: 'Custom Query', ko: '사용자 정의 쿼리' }),
+      connectionString: t({ en: 'Connection String', ko: '연결 문자열' }),
+      sslMode: t({ en: 'SSL Mode', ko: 'SSL 모드' }),
+
+      // File-specific
+      path: t({ en: 'File Path', ko: '파일 경로' }),
+      format: t({ en: 'Format', ko: '형식' }),
+      delimiter: t({ en: 'Delimiter', ko: '구분자' }),
+      encoding: t({ en: 'Encoding', ko: '인코딩' }),
+      hasHeader: t({ en: 'Has Header Row', ko: '헤더 행 포함' }),
+      sheet: t({ en: 'Sheet Name', ko: '시트 이름' }),
+
+      // Cloud warehouse specific
+      project: t({ en: 'Project', ko: '프로젝트' }),
+      dataset: t({ en: 'Dataset', ko: '데이터셋' }),
+      account: t({ en: 'Account', ko: '계정' }),
+      warehouse: t({ en: 'Warehouse', ko: '웨어하우스' }),
+      credentialsPath: t({ en: 'Credentials Path', ko: '인증 파일 경로' }),
+      accessToken: t({ en: 'Access Token', ko: '액세스 토큰' }),
+      httpPath: t({ en: 'HTTP Path', ko: 'HTTP 경로' }),
+      catalog: t({ en: 'Catalog', ko: '카탈로그' }),
+
+      // Enterprise specific
+      serviceName: t({ en: 'Service Name', ko: '서비스 이름' }),
+      sid: t({ en: 'SID', ko: 'SID' }),
+      driver: t({ en: 'ODBC Driver', ko: 'ODBC 드라이버' }),
+      trustServerCertificate: t({ en: 'Trust Server Certificate', ko: '서버 인증서 신뢰' }),
+
+      // NoSQL specific (MongoDB)
+      collection: t({ en: 'Collection', ko: '컬렉션' }),
+      authSource: t({ en: 'Auth Source', ko: '인증 소스' }),
+      replicaSet: t({ en: 'Replica Set', ko: '레플리카 세트' }),
+      ssl: t({ en: 'Use SSL/TLS', ko: 'SSL/TLS 사용' }),
+
+      // NoSQL specific (Elasticsearch)
+      index: t({ en: 'Index', ko: '인덱스' }),
+      apiKey: t({ en: 'API Key', ko: 'API 키' }),
+      useSsl: t({ en: 'Use SSL/TLS', ko: 'SSL/TLS 사용' }),
+      verifyCerts: t({ en: 'Verify Certificates', ko: '인증서 확인' }),
+      cloudId: t({ en: 'Cloud ID', ko: '클라우드 ID' }),
+
+      // Streaming specific (Kafka)
+      bootstrapServers: t({ en: 'Bootstrap Servers', ko: '부트스트랩 서버' }),
+      topic: t({ en: 'Topic', ko: '토픽' }),
+      groupId: t({ en: 'Consumer Group ID', ko: '컨슈머 그룹 ID' }),
+      autoOffsetReset: t({ en: 'Auto Offset Reset', ko: '오프셋 자동 리셋' }),
+      maxMessages: t({ en: 'Max Messages', ko: '최대 메시지 수' }),
+      securityProtocol: t({ en: 'Security Protocol', ko: '보안 프로토콜' }),
+      saslMechanism: t({ en: 'SASL Mechanism', ko: 'SASL 메커니즘' }),
+      saslUsername: t({ en: 'SASL Username', ko: 'SASL 사용자 이름' }),
+      saslPassword: t({ en: 'SASL Password', ko: 'SASL 비밀번호' }),
+
+      // Big Data specific (Spark)
+      connectionType: t({ en: 'Connection Type', ko: '연결 유형' }),
+    },
+
+    // Field descriptions
+    fieldDescriptions: {
+      host: t({ en: 'Server hostname or IP address', ko: '서버 호스트명 또는 IP 주소' }),
+      port: t({ en: 'Server port number', ko: '서버 포트 번호' }),
+      database: t({ en: 'Database name to connect to', ko: '연결할 데이터베이스 이름' }),
+      username: t({ en: 'Authentication username', ko: '인증 사용자 이름' }),
+      password: t({ en: 'Authentication password', ko: '인증 비밀번호' }),
+      schema: t({ en: 'Database schema to use', ko: '사용할 데이터베이스 스키마' }),
+      table: t({ en: 'Table name to validate', ko: '검증할 테이블 이름' }),
+      collection: t({ en: 'Collection name to validate', ko: '검증할 컬렉션 이름' }),
+      index: t({ en: 'Index name to validate', ko: '검증할 인덱스 이름' }),
+      topic: t({ en: 'Kafka topic to consume from', ko: '소비할 Kafka 토픽' }),
+      bootstrapServers: t({ en: 'Comma-separated list of Kafka broker addresses', ko: 'Kafka 브로커 주소 목록 (쉼표로 구분)' }),
+      connectionString: t({ en: 'Full connection URI (alternative to individual fields)', ko: '전체 연결 URI (개별 필드 대안)' }),
+    },
+
+    // Data source capabilities
+    capabilities: {
+      title: t({ en: 'Capabilities', ko: '기능' }),
+      lazy_evaluation: t({ en: 'Lazy Evaluation', ko: '지연 평가' }),
+      sql_pushdown: t({ en: 'SQL Pushdown', ko: 'SQL 푸시다운' }),
+      sampling: t({ en: 'Efficient Sampling', ko: '효율적 샘플링' }),
+      streaming: t({ en: 'Streaming', ko: '스트리밍' }),
+      schema_inference: t({ en: 'Schema Inference', ko: '스키마 추론' }),
+      row_count: t({ en: 'Fast Row Count', ko: '빠른 행 수 조회' }),
+    },
+
+    // Capability descriptions
+    capabilityDescriptions: {
+      lazy_evaluation: t({
+        en: 'Supports deferred execution for efficient processing',
+        ko: '효율적인 처리를 위한 지연 실행 지원',
+      }),
+      sql_pushdown: t({
+        en: 'Can push validation operations to the database server',
+        ko: '검증 작업을 데이터베이스 서버로 푸시 가능',
+      }),
+      sampling: t({
+        en: 'Supports efficient random sampling for large datasets',
+        ko: '대규모 데이터셋에 대한 효율적인 랜덤 샘플링 지원',
+      }),
+      streaming: t({
+        en: 'Supports streaming/chunked reads for real-time data',
+        ko: '실시간 데이터를 위한 스트리밍/청크 읽기 지원',
+      }),
+      schema_inference: t({
+        en: 'Can automatically detect column types',
+        ko: '컬럼 타입 자동 감지 가능',
+      }),
+      row_count: t({
+        en: 'Can get row count without full scan',
+        ko: '전체 스캔 없이 행 수 조회 가능',
+      }),
+    },
+
+    // Troubleshooting hints
+    troubleshooting: {
+      title: t({ en: 'Troubleshooting tips', ko: '문제 해결 팁' }),
+      connectionRefused: t({
+        en: 'Check that the server is running and accessible',
+        ko: '서버가 실행 중이고 접근 가능한지 확인하세요',
+      }),
+      verifyHostPort: t({
+        en: 'Verify the host and port are correct',
+        ko: '호스트와 포트가 올바른지 확인하세요',
+      }),
+      checkFirewall: t({ en: 'Check firewall settings', ko: '방화벽 설정을 확인하세요' }),
+      verifyCredentials: t({
+        en: 'Verify your username and password',
+        ko: '사용자 이름과 비밀번호를 확인하세요',
+      }),
+      checkPermissions: t({
+        en: 'Check that the user has necessary permissions',
+        ko: '사용자에게 필요한 권한이 있는지 확인하세요',
+      }),
+      checkSsl: t({ en: 'Check SSL/TLS settings', ko: 'SSL/TLS 설정을 확인하세요' }),
+      verifyCertificate: t({
+        en: 'Verify certificate configuration',
+        ko: '인증서 구성을 확인하세요',
+      }),
+      verifyDatabaseName: t({
+        en: 'Verify the database name is correct',
+        ko: '데이터베이스 이름이 올바른지 확인하세요',
+      }),
+      checkDatabaseExists: t({
+        en: 'Check that the database exists',
+        ko: '데이터베이스가 존재하는지 확인하세요',
+      }),
+      checkFilePath: t({
+        en: 'Check that the file path is correct',
+        ko: '파일 경로가 올바른지 확인하세요',
+      }),
+      verifyFileExists: t({
+        en: 'Verify the file exists and is accessible',
+        ko: '파일이 존재하고 접근 가능한지 확인하세요',
+      }),
+      checkNetworkConnectivity: t({
+        en: 'Check network connectivity',
+        ko: '네트워크 연결을 확인하세요',
+      }),
+      serverUnderLoad: t({
+        en: 'The server might be under heavy load',
+        ko: '서버에 부하가 있을 수 있습니다',
+      }),
+      increaseTimeout: t({
+        en: 'Consider increasing timeout settings',
+        ko: '타임아웃 설정 증가를 고려하세요',
+      }),
     },
   },
 } satisfies Dictionary

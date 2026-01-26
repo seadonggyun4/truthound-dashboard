@@ -13,31 +13,42 @@ const validatorsContent = {
     selectValidators: t({ en: 'Select Validators', ko: '검증기 선택' }),
     configureValidators: t({ en: 'Configure Validators', ko: '검증기 설정' }),
 
-    // Categories
+    // Categories (21 total matching truthound)
     categories: {
+      // Core validators
       schema: t({ en: 'Schema', ko: '스키마' }),
       completeness: t({ en: 'Completeness', ko: '완전성' }),
       uniqueness: t({ en: 'Uniqueness', ko: '유일성' }),
       distribution: t({ en: 'Distribution', ko: '분포' }),
+      // Format validators
       string: t({ en: 'String', ko: '문자열' }),
       datetime: t({ en: 'Datetime', ko: '날짜/시간' }),
+      // Statistical validators
       aggregate: t({ en: 'Aggregate', ko: '집계' }),
-      crossTable: t({ en: 'Cross-Table', ko: '테이블 간' }),
-      query: t({ en: 'Query', ko: '쿼리' }),
-      multiColumn: t({ en: 'Multi-Column', ko: '다중 열' }),
-      table: t({ en: 'Table', ko: '테이블' }),
-      geospatial: t({ en: 'Geospatial', ko: '지리공간' }),
       drift: t({ en: 'Drift', ko: '드리프트' }),
       anomaly: t({ en: 'Anomaly', ko: '이상 탐지' }),
+      // Relational validators
+      crossTable: t({ en: 'Cross-Table', ko: '테이블 간' }),
+      multiColumn: t({ en: 'Multi-Column', ko: '다중 열' }),
+      query: t({ en: 'Query', ko: '쿼리' }),
+      // Domain validators
+      table: t({ en: 'Table', ko: '테이블' }),
+      geospatial: t({ en: 'Geospatial', ko: '지리공간' }),
       privacy: t({ en: 'Privacy', ko: '프라이버시' }),
-      timeSeries: t({ en: 'Time Series', ko: '시계열' }),
+      // Business validators
+      businessRule: t({ en: 'Business Rule', ko: '비즈니스 규칙' }),
+      profiling: t({ en: 'Profiling', ko: '프로파일링' }),
+      localization: t({ en: 'Localization', ko: '지역화' }),
+      // ML validators
+      mlFeature: t({ en: 'ML Feature', ko: 'ML 피처' }),
+      // Advanced validators
+      timeseries: t({ en: 'Time Series', ko: '시계열' }),
       referential: t({ en: 'Referential', ko: '참조' }),
-      streaming: t({ en: 'Streaming', ko: '스트리밍' }),
-      business: t({ en: 'Business', ko: '비즈니스' }),
     },
 
-    // Category descriptions
+    // Category descriptions (21 total matching truthound)
     categoryDescriptions: {
+      // Core validators
       schema: t({
         en: 'Validate structure, columns, and data types',
         ko: '구조, 열, 데이터 타입 검증',
@@ -54,6 +65,7 @@ const validatorsContent = {
         en: 'Validate value ranges and distributions',
         ko: '값 범위 및 분포 검증',
       }),
+      // Format validators
       string: t({
         en: 'Pattern matching and format validation',
         ko: '패턴 매칭 및 형식 검증',
@@ -62,10 +74,20 @@ const validatorsContent = {
         en: 'Date/time format and range validation',
         ko: '날짜/시간 형식 및 범위 검증',
       }),
+      // Statistical validators
       aggregate: t({
         en: 'Statistical aggregate checks (mean, sum, etc.)',
         ko: '통계적 집계 검사 (평균, 합계 등)',
       }),
+      drift: t({
+        en: 'Distribution change detection between datasets',
+        ko: '데이터셋 간 분포 변화 감지',
+      }),
+      anomaly: t({
+        en: 'ML-based outlier and anomaly detection',
+        ko: 'ML 기반 이상치 및 이상 탐지',
+      }),
+      // Relational validators
       crossTable: t({
         en: 'Multi-table relationships and foreign keys',
         ko: '다중 테이블 관계 및 외래 키',
@@ -78,6 +100,7 @@ const validatorsContent = {
         en: 'Expression-based custom validation',
         ko: '표현식 기반 사용자 정의 검증',
       }),
+      // Domain validators
       table: t({
         en: 'Table metadata and structure validation',
         ko: '테이블 메타데이터 및 구조 검증',
@@ -86,33 +109,36 @@ const validatorsContent = {
         en: 'Geographic coordinate validation',
         ko: '지리적 좌표 검증',
       }),
-      drift: t({
-        en: 'Distribution change detection between datasets',
-        ko: '데이터셋 간 분포 변화 감지',
-      }),
-      anomaly: t({
-        en: 'ML-based outlier and anomaly detection',
-        ko: 'ML 기반 이상치 및 이상 탐지',
-      }),
       privacy: t({
-        en: 'PII detection and compliance (GDPR, CCPA)',
-        ko: 'PII 탐지 및 규정 준수 (GDPR, CCPA)',
+        en: 'PII detection and compliance (GDPR, CCPA, LGPD)',
+        ko: 'PII 탐지 및 규정 준수 (GDPR, CCPA, LGPD)',
       }),
-      timeSeries: t({
-        en: 'Time series data validation',
-        ko: '시계열 데이터 검증',
+      // Business validators
+      businessRule: t({
+        en: 'Domain-specific rules: checksums, IBAN, VAT, credit cards',
+        ko: '도메인 특화 규칙: 체크섬, IBAN, VAT, 신용카드',
+      }),
+      profiling: t({
+        en: 'Cardinality, entropy, and value frequency analysis',
+        ko: '카디널리티, 엔트로피, 값 빈도 분석',
+      }),
+      localization: t({
+        en: 'Regional identifier formats (Korean, Japanese, Chinese)',
+        ko: '지역별 식별자 형식 (한국, 일본, 중국)',
+      }),
+      // ML validators
+      mlFeature: t({
+        en: 'Feature quality: null impact, scale, correlation, leakage',
+        ko: '피처 품질: null 영향, 스케일, 상관관계, 누수',
+      }),
+      // Advanced validators
+      timeseries: t({
+        en: 'Gap detection, monotonicity, seasonality, trend analysis',
+        ko: '갭 탐지, 단조성, 계절성, 트렌드 분석',
       }),
       referential: t({
-        en: 'Referential integrity validation',
-        ko: '참조 무결성 검증',
-      }),
-      streaming: t({
-        en: 'Streaming data validation',
-        ko: '스트리밍 데이터 검증',
-      }),
-      business: t({
-        en: 'Business rule validation',
-        ko: '비즈니스 규칙 검증',
+        en: 'Foreign keys, orphan detection, hierarchy integrity',
+        ko: '외래 키, 고아 레코드 탐지, 계층 무결성',
       }),
     },
 
