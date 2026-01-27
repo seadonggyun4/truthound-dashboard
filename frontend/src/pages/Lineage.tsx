@@ -44,18 +44,16 @@ import {
 // Tabs imported but not currently used in main view - keeping for potential future use
 // import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PERFORMANCE_THRESHOLDS } from '@/lib/lineage-performance'
-import type {
-  LineageNode,
-  LineageGraph as LineageGraphType,
-  ImpactAnalysisResponse,
-} from '@/api/client'
 import {
   getLineageGraph,
   createLineageNode,
   deleteLineageNode,
   autoDiscoverLineage,
   analyzeLineageImpact,
-} from '@/api/client'
+  type LineageNode,
+  type LineageGraph as LineageGraphType,
+  type ImpactAnalysisResponse,
+} from '@/api/modules/lineage'
 
 // Local storage key for renderer preference
 const RENDERER_PREFERENCE_KEY = 'lineage-renderer-preference'
@@ -210,7 +208,8 @@ export default function Lineage() {
   const handleAutoDiscover = useCallback(async () => {
     setIsDiscovering(true)
     try {
-      const result = await autoDiscoverLineage()
+      // Auto-discover requires a source_id, use empty string to discover all
+      const result = await autoDiscoverLineage({ source_id: '' })
       toast({
         title: str(t.discoveryComplete),
         description: `${result.nodes_created} ${str(t.nodesDiscovered)}, ${result.edges_created} ${str(t.edgesDiscovered)}`,

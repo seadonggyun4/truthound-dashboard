@@ -86,7 +86,7 @@ import {
   deleteNotificationRule,
   type NotificationChannel,
   type NotificationRule,
-} from '@/api/client'
+} from '@/api/modules/notifications'
 import { formatDate } from '@/lib/utils'
 import { str } from '@/lib/intlayer-utils'
 import {
@@ -542,7 +542,7 @@ export default function Notifications() {
   const channels = channelsData?.data || []
   const rules = rulesData?.data || []
   const logs = logsData?.data || []
-  const stats = statsData?.data
+  const stats = statsData
 
   const handleTestChannel = async (channelId: string) => {
     try {

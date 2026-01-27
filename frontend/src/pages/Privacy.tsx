@@ -35,14 +35,15 @@ import {
   ScanHistoryList,
   PrivacyStats,
 } from '@/components/privacy'
-import type { Source, PIIScan, DataMaskListItem } from '@/api/client'
+import { listSources, type Source } from '@/api/modules/sources'
+import { getSourceSchema } from '@/api/modules/schemas'
 import {
-  listSources,
   listSourcePIIScans,
   listSourceDataMasks,
   getLatestPIIScan,
-  getSourceSchema,
-} from '@/api/client'
+  type PIIScan,
+  type DataMaskListItem,
+} from '@/api/modules/privacy'
 
 interface SourceWithPrivacyInfo extends Source {
   latestScan?: PIIScan | null

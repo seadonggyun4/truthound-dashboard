@@ -37,7 +37,7 @@ import {
   getThrottlingStats,
   getEscalationStats,
   listRoutingRules,
-} from '@/api/client'
+} from '@/api/modules/notifications'
 
 interface Stats {
   routing: { total: number; active: number }

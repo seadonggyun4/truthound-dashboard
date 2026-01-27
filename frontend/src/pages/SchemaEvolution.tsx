@@ -50,19 +50,18 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
 import { str } from '@/lib/intlayer-utils'
+import { listSources, type Source } from '@/api/modules/sources'
 import {
-  listSources,
   listSchemaVersions,
   listSchemaChanges,
   getSchemaEvolutionSummary,
   detectSchemaChanges,
-  type Source,
   type SchemaVersionSummary,
   type SchemaChangeResponse,
   type SchemaEvolutionSummary,
   type SchemaChangeType,
   type SchemaChangeSeverity,
-} from '@/api/client'
+} from '@/api/modules/schema-evolution'
 
 // Change type icons and colors
 const CHANGE_TYPE_CONFIG: Record<

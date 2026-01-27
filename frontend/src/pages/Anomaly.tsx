@@ -40,14 +40,15 @@ import { BatchResults } from '@/components/anomaly/BatchResults'
 import { AlgorithmComparison } from '@/components/anomaly/AlgorithmComparison'
 import { StreamingDashboard } from '@/components/anomaly/StreamingDashboard'
 import { RelatedAlerts, AutoTriggerConfigPanel } from '@/components/cross-alerts'
-import type { Source, AnomalyDetection, BatchDetectionJob } from '@/api/client'
+import { listSources, type Source } from '@/api/modules/sources'
+import { getSourceSchema } from '@/api/modules/schemas'
 import {
-  listSources,
   getLatestAnomalyDetection,
-  getSourceSchema,
   listBatchDetections,
   getBatchDetection,
-} from '@/api/client'
+  type AnomalyDetection,
+  type BatchDetectionJob,
+} from '@/api/modules/anomaly'
 
 interface SourceWithLatestAnomaly extends Source {
   latestDetection?: AnomalyDetection | null

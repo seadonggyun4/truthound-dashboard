@@ -15,7 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ReportDownloadButton } from '@/components/reports'
-import { getValidation, createVersion, type Validation } from '@/api/client'
+import { getValidation, type Validation } from '@/api/modules/validations'
+import { createVersion } from '@/api/modules/versioning'
 import { formatDate, formatDuration, formatNumber } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 
@@ -57,7 +58,7 @@ export default function Validations() {
       })
       toast({
         title: 'Version Created',
-        description: `Created version ${result.data.version_number}`,
+        description: `Created version ${result.version.version_number}`,
       })
     } catch {
       toast({

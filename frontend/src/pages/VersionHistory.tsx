@@ -28,12 +28,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  getSource,
-  listVersions,
-  type Source,
-  type VersionInfo,
-} from '@/api/client'
+import { getSource, type Source } from '@/api/modules/sources'
+import { listVersions, type VersionInfo } from '@/api/modules/versioning'
 import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { str } from '@/lib/intlayer-utils'
 import { formatDate } from '@/lib/utils'

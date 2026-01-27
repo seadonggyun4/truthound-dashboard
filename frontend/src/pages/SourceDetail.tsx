@@ -37,22 +37,24 @@ import {
 } from '@/components/ui/dialog'
 import {
   getSource,
-  getSourceSchema,
-  listSourceValidations,
-  runValidation,
-  learnSchema,
-  listValidators,
-  listUnifiedValidators,
   testSourceConnection,
   getSupportedSourceTypes,
   type Source,
-  type Schema,
-  type Validation,
-  type ValidatorDefinition,
-  type ValidatorConfig,
   type SourceTypeDefinition,
+} from '@/api/modules/sources'
+import { getSourceSchema, learnSchema, type Schema } from '@/api/modules/schemas'
+import {
+  listSourceValidations,
+  runValidation,
+  type Validation,
+  type ValidatorConfig,
+} from '@/api/modules/validations'
+import {
+  listValidators,
+  listUnifiedValidators,
+  type ValidatorDefinition,
   type UnifiedValidatorDefinition,
-} from '@/api/client'
+} from '@/api/modules/validators'
 import type { CustomValidatorSelectionConfig } from '@/components/validators/ValidatorSelector'
 import { formatDate, formatDuration, formatNumber } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
@@ -129,8 +131,8 @@ export default function SourceDetail() {
       setValidations(validationsData?.data ?? [])
 
       // Find the source type definition
-      if (typesResponse.success && sourceData) {
-        const typeDef = typesResponse.data.types.find((t) => t.type === sourceData.type)
+      if (typesResponse && sourceData) {
+        const typeDef = typesResponse.types.find((t: SourceTypeDefinition) => t.type === sourceData.type)
         setSourceTypeDefinition(typeDef || null)
       }
     } catch {
@@ -269,11 +271,11 @@ export default function SourceDetail() {
       setTestingConnection(true)
       setConnectionTestResult(null)
       const response = await testSourceConnection(id)
-      setConnectionTestResult(response.data)
+      setConnectionTestResult({ success: response.connected, message: response.message, error: response.error })
       toast({
-        title: response.data.success ? str(sources_t.testConnection.success) : str(sources_t.testConnection.failed),
-        description: response.data.success ? response.data.message : response.data.error,
-        variant: response.data.success ? 'default' : 'destructive',
+        title: response.connected ? str(sources_t.testConnection.success) : str(sources_t.testConnection.failed),
+        description: response.connected ? response.message : response.error,
+        variant: response.connected ? 'default' : 'destructive',
       })
     } catch (err) {
       setConnectionTestResult({

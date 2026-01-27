@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useCatalogStore } from '@/stores/catalogStore'
-import { listSources, type Source } from '@/api/client'
+import { listSources, type Source } from '@/api/modules/sources'
 import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
 import { useConfirm } from '@/components/ConfirmDialog'

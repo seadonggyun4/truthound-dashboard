@@ -11,7 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { listSources, type Source } from '@/api/client'
+import { listSources, type Source } from '@/api/modules/sources'
 import { formatDate } from '@/lib/utils'
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { GlassCard } from '@/components/GlassCard'

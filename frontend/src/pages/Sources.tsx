@@ -36,10 +36,10 @@ import {
 import {
   listSources,
   deleteSource,
-  runValidation,
+  deleteSources,
   type Source,
-} from '@/api/client'
-import { deleteSources } from '@/api/datasources'
+} from '@/api/modules/sources'
+import { runValidation } from '@/api/modules/validations'
 import { formatDate } from '@/lib/utils'
 import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'

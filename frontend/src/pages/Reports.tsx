@@ -61,7 +61,8 @@ import {
   ReportPreview,
 } from '@/components/reporters'
 import { useReportHistory } from '@/hooks/useReporter'
-import type { GeneratedReport, ReportStatistics } from '@/types/reporters'
+import type { GeneratedReport } from '@/types/reporters'
+import type { ReportFormat, ReportStatus, ReportStatistics } from '@/api/modules/reports'
 import { formatFileSize, formatGenerationTime } from '@/types/reporters'
 
 // Format date for display
@@ -81,14 +82,14 @@ function StatisticsCards({
   if (!stats) return null
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
       <Card>
         <CardContent className="pt-4">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{str(t.totalReports)}</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.totalReports}</p>
+          <p className="text-2xl font-bold mt-1">{stats.total_reports}</p>
         </CardContent>
       </Card>
       <Card>
@@ -97,7 +98,7 @@ function StatisticsCards({
             <HardDrive className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{str(t.totalSize)}</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{formatFileSize(stats.totalSizeBytes)}</p>
+          <p className="text-2xl font-bold mt-1">{formatFileSize(stats.total_size_bytes)}</p>
         </CardContent>
       </Card>
       <Card>
@@ -106,18 +107,7 @@ function StatisticsCards({
             <Download className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{str(t.totalDownloads)}</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.totalDownloads}</p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">{str(t.avgGenerationTime)}</span>
-          </div>
-          <p className="text-2xl font-bold mt-1">
-            {formatGenerationTime(stats.avgGenerationTimeMs)}
-          </p>
+          <p className="text-2xl font-bold mt-1">{stats.total_downloads}</p>
         </CardContent>
       </Card>
       <Card>
@@ -126,16 +116,7 @@ function StatisticsCards({
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{str(t.expiredReports)}</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.expiredCount}</p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">{str(t.reportersUsed)}</span>
-          </div>
-          <p className="text-2xl font-bold mt-1">{stats.reportersUsed}</p>
+          <p className="text-2xl font-bold mt-1">{stats.by_status?.expired ?? 0}</p>
         </CardContent>
       </Card>
     </div>
@@ -190,9 +171,9 @@ export default function Reports() {
   useEffect(() => {
     updateQuery({
       search: search || undefined,
-      format: formatFilter !== 'all' ? formatFilter : undefined,
-      status: statusFilter !== 'all' ? statusFilter : undefined,
-      includeExpired,
+      format: formatFilter !== 'all' ? formatFilter as ReportFormat : undefined,
+      status: statusFilter !== 'all' ? statusFilter as ReportStatus : undefined,
+      include_expired: includeExpired,
     })
   }, [search, formatFilter, statusFilter, includeExpired, updateQuery])
 
@@ -235,7 +216,7 @@ export default function Reports() {
               {str(t.manageReporters)}
             </Link>
           </Button>
-          {statistics && statistics.expiredCount > 0 && (
+          {statistics && (statistics.by_status?.expired ?? 0) > 0 && (
             <Button variant="outline" onClick={() => setCleanupDialog(true)}>
               <Trash2 className="h-4 w-4 mr-2" />
               {str(t.cleanupExpired)}

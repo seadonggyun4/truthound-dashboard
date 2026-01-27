@@ -61,12 +61,11 @@ import { useToast } from '@/hooks/use-toast'
 import { str } from '@/lib/intlayer-utils'
 import { RuleSuggestionCard } from '@/components/rules/RuleSuggestionCard'
 import { CrossColumnRuleCard } from '@/components/rules/CrossColumnRuleCard'
+import { listSources, type Source } from '@/api/modules/sources'
 import {
-  listSources,
   suggestRules,
   applyRuleSuggestions,
   exportRules,
-  type Source,
   type SuggestedRule,
   type CrossColumnRuleSuggestion,
   type StrictnessLevel,
@@ -74,7 +73,7 @@ import {
   type RuleExportFormat,
   type RuleCategory,
   type RuleSuggestionRequest,
-} from '@/api/client'
+} from '@/api/modules/rule-suggestions'
 
 // Category colors for badges
 const CATEGORY_COLORS: Record<string, string> = {

@@ -26,15 +26,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { listSources, type Source } from '@/api/modules/sources'
+import { getSourceSchema } from '@/api/modules/schemas'
 import {
-  listSources,
   listDriftComparisons,
   compareDrift,
-  getSourceSchema,
-  type Source,
   type DriftComparison,
   DEFAULT_THRESHOLDS,
-} from '@/api/client'
+} from '@/api/modules/drift'
 import { DriftConfigPanel, type DriftConfig } from '@/components/drift'
 import { formatDate } from '@/lib/utils'
 import { str } from '@/lib/intlayer-utils'
@@ -160,13 +159,13 @@ export default function Drift() {
         ...(driftConfig.columns !== null && { columns: driftConfig.columns }),
       })
 
-      setComparisons((prev) => [result.data, ...prev])
+      setComparisons((prev) => [result, ...prev])
       setDialogOpen(false)
 
       toast({
         title: str(drift_t.comparisonComplete),
-        description: result.data.has_drift
-          ? `${result.data.drifted_columns} columns drifted`
+        description: result.has_drift
+          ? `${result.drifted_columns} columns drifted`
           : str(drift_t.noDriftDetected),
       })
     } catch (err) {

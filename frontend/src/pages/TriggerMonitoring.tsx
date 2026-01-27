@@ -39,7 +39,7 @@ import {
   getTriggerMonitoring,
   type TriggerMonitoringResponse,
   type TriggerCheckStatus,
-} from '@/api/client'
+} from '@/api/modules/triggers'
 
 // Trigger type badge colors
 const TRIGGER_TYPE_COLORS: Record<string, string> = {
@@ -98,7 +98,7 @@ function StatsCard({
 // Trigger Status Row Component
 function TriggerStatusRow({ schedule }: { schedule: TriggerCheckStatus }) {
   const t = useSafeIntlayer('triggers')
-  const isInCooldown = schedule.cooldown_remaining_seconds > 0
+  const isInCooldown = (schedule.cooldown_remaining_seconds ?? 0) > 0
   const statusBadge = schedule.is_due_for_check ? (
     <Badge variant="outline" className="bg-amber-500/10 text-amber-500">
       {str(t.dueForCheck)}
@@ -142,9 +142,9 @@ function TriggerStatusRow({ schedule }: { schedule: TriggerCheckStatus }) {
           : str(t.never)}
       </TableCell>
       <TableCell className="text-muted-foreground text-sm">
-        {schedule.last_triggered_at
+        {schedule.last_trigger_at
           ? (() => {
-              const date = new Date(schedule.last_triggered_at)
+              const date = new Date(schedule.last_trigger_at)
               const now = new Date()
               const diffMs = now.getTime() - date.getTime()
               const diffSec = Math.floor(diffMs / 1000)
@@ -164,13 +164,13 @@ function TriggerStatusRow({ schedule }: { schedule: TriggerCheckStatus }) {
       </TableCell>
       <TableCell className="text-muted-foreground">
         {isInCooldown ? (
-          <span className="text-amber-500">{formatCooldown(schedule.cooldown_remaining_seconds)}</span>
+          <span className="text-amber-500">{formatCooldown(schedule.cooldown_remaining_seconds ?? 0)}</span>
         ) : (
           '-'
         )}
       </TableCell>
       <TableCell>
-        {schedule.last_evaluation?.should_trigger ? (
+        {(schedule.last_evaluation as { should_trigger?: boolean })?.should_trigger ? (
           <CheckCircle2 className="h-4 w-4 text-green-500" />
         ) : (
           <AlertCircle className="h-4 w-4 text-muted-foreground" />
@@ -392,7 +392,7 @@ export default function TriggerMonitoring() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {schedules.map((schedule) => (
+                    {(data?.trigger_statuses || []).map((schedule) => (
                       <TriggerStatusRow key={schedule.schedule_id} schedule={schedule} />
                     ))}
                   </TableBody>
@@ -433,7 +433,7 @@ export default function TriggerMonitoring() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {dataChangeSchedules.map((schedule) => (
+                    {(data?.trigger_statuses || []).filter((s) => s.trigger_type === 'data_change').map((schedule: TriggerCheckStatus) => (
                       <TableRow key={schedule.schedule_id}>
                         <TableCell className="font-medium">{schedule.schedule_name}</TableCell>
                         <TableCell>
@@ -444,7 +444,7 @@ export default function TriggerMonitoring() {
                             >
                               {str(t.dueForCheck)}
                             </Badge>
-                          ) : schedule.cooldown_remaining_seconds > 0 ? (
+                          ) : (schedule.cooldown_remaining_seconds ?? 0) > 0 ? (
                             <Badge variant="outline" className="bg-blue-500/10 text-blue-500">
                               {str(t.inCooldown)}
                             </Badge>
@@ -455,11 +455,11 @@ export default function TriggerMonitoring() {
                           )}
                         </TableCell>
                         <TableCell>{formatRelativeTime(schedule.last_check_at)}</TableCell>
-                        <TableCell>{formatRelativeTime(schedule.last_triggered_at)}</TableCell>
+                        <TableCell>{formatRelativeTime(schedule.last_trigger_at)}</TableCell>
                         <TableCell className="text-center">{schedule.trigger_count}</TableCell>
                         <TableCell>
-                          {schedule.cooldown_remaining_seconds > 0 ? (
-                            <span className="text-amber-500">{formatCooldown(schedule.cooldown_remaining_seconds)}</span>
+                          {(schedule.cooldown_remaining_seconds ?? 0) > 0 ? (
+                            <span className="text-amber-500">{formatCooldown(schedule.cooldown_remaining_seconds ?? 0)}</span>
                           ) : (
                             '-'
                           )}
@@ -525,13 +525,13 @@ export default function TriggerMonitoring() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {webhookSchedules.map((schedule) => (
+                      {(data?.trigger_statuses || []).filter((s) => s.trigger_type === 'webhook').map((schedule: TriggerCheckStatus) => (
                         <TableRow key={schedule.schedule_id}>
                           <TableCell className="font-medium">
                             {schedule.schedule_name}
                           </TableCell>
                           <TableCell>
-                            {formatRelativeTime(schedule.last_triggered_at)}
+                            {formatRelativeTime(schedule.last_trigger_at)}
                           </TableCell>
                           <TableCell className="text-center">
                             {schedule.trigger_count}
@@ -579,7 +579,7 @@ export default function TriggerMonitoring() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {compositeSchedules.map((schedule) => (
+                    {(data?.trigger_statuses || []).filter((s) => s.trigger_type === 'composite').map((schedule: TriggerCheckStatus) => (
                       <TableRow key={schedule.schedule_id}>
                         <TableCell className="font-medium">
                           {schedule.schedule_name}
@@ -605,7 +605,7 @@ export default function TriggerMonitoring() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {formatRelativeTime(schedule.last_triggered_at)}
+                          {formatRelativeTime(schedule.last_trigger_at)}
                         </TableCell>
                         <TableCell className="text-center">{schedule.trigger_count}</TableCell>
                       </TableRow>

@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getActivities, type Activity as ActivityType } from '@/api/client'
+import { getActivities, type Activity as ActivityType } from '@/api/modules/collaboration'
 import { useToast } from '@/hooks/use-toast'
 import { str } from '@/lib/intlayer-utils'
 import { ActivityFeed } from '@/components/collaboration/ActivityFeed'

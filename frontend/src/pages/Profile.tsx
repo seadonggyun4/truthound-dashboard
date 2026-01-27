@@ -32,31 +32,32 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+import { getSource, type Source } from '@/api/modules/sources'
+import { learnSchema, type Schema } from '@/api/modules/schemas'
+import { profileSource, type ProfileResult } from '@/api/modules/profile'
 import {
-  getSource,
-  profileSource,
-  learnSchema,
   listSchemaVersions,
   listSchemaChanges,
   getSchemaEvolutionSummary,
   detectSchemaChanges,
+  type SchemaVersionSummary,
+  type SchemaChangeResponse,
+  type SchemaEvolutionSummary,
+} from '@/api/modules/schema-evolution'
+import {
   suggestRules,
   applyRuleSuggestions,
+  type SuggestedRule,
+} from '@/api/modules/rule-suggestions'
+import {
   listProfiles,
   compareProfiles,
   getProfileTrend,
   getLatestProfileComparison,
-  type Source,
-  type ProfileResult,
-  type Schema,
-  type SchemaVersionSummary,
-  type SchemaChangeResponse,
-  type SchemaEvolutionSummary,
-  type SuggestedRule,
   type ProfileSummary,
   type ProfileComparisonResponse,
   type ProfileTrendResponse,
-} from '@/api/client'
+} from '@/api/modules/profile-comparison'
 import { formatNumber } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import {

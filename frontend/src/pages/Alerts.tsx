@@ -36,7 +36,7 @@ import {
   AlertSummaryCards,
   AlertCorrelation,
 } from '@/components/alerts'
-import { apiClient } from '@/api/client'
+import { request } from '@/api/core'
 
 // Types
 type AlertSource = 'model' | 'drift' | 'anomaly' | 'validation'
@@ -149,8 +149,8 @@ export default function Alerts() {
       if (statusFilter) params.set('status', statusFilter)
       params.set('limit', '100')
 
-      const response = await apiClient.get(`/alerts?${params.toString()}`) as { data: { data: { items: UnifiedAlert[] } } }
-      setAlerts(response.data.data.items)
+      const response = await request<{ items: UnifiedAlert[] }>(`/alerts?${params.toString()}`)
+      setAlerts(response.items)
     } catch (error) {
       toast({
         title: str(common.error),
@@ -166,8 +166,8 @@ export default function Alerts() {
   const fetchSummary = useCallback(async () => {
     setSummaryLoading(true)
     try {
-      const response = await apiClient.get('/alerts/summary') as { data: { data: AlertSummary } }
-      setSummary(response.data.data)
+      const response = await request<AlertSummary>('/alerts/summary')
+      setSummary(response)
     } catch (error) {
       console.error('Failed to load summary:', error)
     } finally {
@@ -179,8 +179,8 @@ export default function Alerts() {
   const fetchCorrelations = useCallback(async (alertId: string) => {
     setCorrelationsLoading(true)
     try {
-      const response = await apiClient.get(`/alerts/${alertId}/correlations`) as { data: { data: { correlations: AlertCorrelationData[] } } }
-      setCorrelations(response.data.data.correlations)
+      const response = await request<{ correlations: AlertCorrelationData[] }>(`/alerts/${alertId}/correlations`)
+      setCorrelations(response.correlations)
     } catch (error) {
       console.error('Failed to load correlations:', error)
       setCorrelations([])
@@ -223,19 +223,25 @@ export default function Alerts() {
 
     try {
       if (acknowledgeDialog.bulk) {
-        await apiClient.post('/alerts/bulk/acknowledge', {
-          alert_ids: acknowledgeDialog.alertIds,
-          actor: actorName,
-          message: actionMessage,
+        await request('/alerts/bulk/acknowledge', {
+          method: 'POST',
+          body: JSON.stringify({
+            alert_ids: acknowledgeDialog.alertIds,
+            actor: actorName,
+            message: actionMessage,
+          }),
         })
         toast({
           title: str(common.success),
           description: str(content.messages.acknowledgeSuccess),
         })
       } else if (acknowledgeDialog.alertId) {
-        await apiClient.post(`/alerts/${acknowledgeDialog.alertId}/acknowledge`, {
-          actor: actorName,
-          message: actionMessage,
+        await request(`/alerts/${acknowledgeDialog.alertId}/acknowledge`, {
+          method: 'POST',
+          body: JSON.stringify({
+            actor: actorName,
+            message: actionMessage,
+          }),
         })
         toast({
           title: str(common.success),
@@ -271,19 +277,25 @@ export default function Alerts() {
 
     try {
       if (resolveDialog.bulk) {
-        await apiClient.post('/alerts/bulk/resolve', {
-          alert_ids: resolveDialog.alertIds,
-          actor: actorName,
-          message: actionMessage,
+        await request('/alerts/bulk/resolve', {
+          method: 'POST',
+          body: JSON.stringify({
+            alert_ids: resolveDialog.alertIds,
+            actor: actorName,
+            message: actionMessage,
+          }),
         })
         toast({
           title: str(common.success),
           description: str(content.messages.resolveSuccess),
         })
       } else if (resolveDialog.alertId) {
-        await apiClient.post(`/alerts/${resolveDialog.alertId}/resolve`, {
-          actor: actorName,
-          message: actionMessage,
+        await request(`/alerts/${resolveDialog.alertId}/resolve`, {
+          method: 'POST',
+          body: JSON.stringify({
+            actor: actorName,
+            message: actionMessage,
+          }),
         })
         toast({
           title: str(common.success),

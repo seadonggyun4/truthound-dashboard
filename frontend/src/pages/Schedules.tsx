@@ -29,22 +29,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { listSources, type Source } from '@/api/modules/sources'
+import { getSourceSchema, type Schema } from '@/api/modules/schemas'
 import {
-  listSources,
   listSchedules,
   createSchedule,
   deleteSchedule,
   pauseSchedule,
   resumeSchedule,
   runScheduleNow,
-  listValidators,
-  getSourceSchema,
-  type Source,
   type Schedule,
+} from '@/api/modules/schedules'
+import {
+  listValidators,
   type ValidatorDefinition,
-  type ValidatorConfig,
-  type Schema,
-} from '@/api/client'
+} from '@/api/modules/validators'
+import type { ValidatorConfig } from '@/api/modules/validations'
 import { formatDate } from '@/lib/utils'
 import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
@@ -214,13 +214,13 @@ export default function Schedules() {
 
       const result = await createSchedule(createData)
 
-      setSchedules((prev) => [result.data, ...prev])
+      setSchedules((prev) => [result, ...prev])
       setDialogOpen(false)
       resetForm()
 
       toast({
         title: str(schedules_t.scheduleCreated),
-        description: `${result.data.name} created successfully`,
+        description: `${result.name} created successfully`,
       })
     } catch (err) {
       toast({

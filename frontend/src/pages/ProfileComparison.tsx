@@ -52,19 +52,18 @@ import {
 } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { str } from '@/lib/intlayer-utils'
+import { listSources, type Source } from '@/api/modules/sources'
 import {
-  listSources,
   listProfiles,
   compareProfiles,
   getProfileTrend,
   getLatestProfileComparison,
-  type Source,
   type ProfileSummary,
   type ProfileComparisonResponse,
   type ProfileTrendResponse,
   type ColumnComparison,
   type TrendDirection,
-} from '@/api/client'
+} from '@/api/modules/profile-comparison'
 
 // Trend icon component
 function TrendIcon({ direction }: { direction: TrendDirection }) {
