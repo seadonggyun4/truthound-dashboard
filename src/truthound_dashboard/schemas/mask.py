@@ -12,7 +12,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from .base import BaseSchema, IDMixin, TimestampMixin
+from .base import BaseSchema, IDMixin
 
 
 class MaskingStrategy(str, Enum):
@@ -86,7 +86,7 @@ class MaskSummary(BaseSchema):
     duration_ms: int | None = None
 
 
-class MaskResponse(BaseSchema, IDMixin, TimestampMixin):
+class MaskResponse(BaseSchema, IDMixin):
     """Response for a masking operation.
 
     Attributes:
@@ -103,6 +103,8 @@ class MaskResponse(BaseSchema, IDMixin, TimestampMixin):
         error_message: Error message if operation failed.
         started_at: When the operation started.
         completed_at: When the operation completed.
+        created_at: When the operation was created.
+        updated_at: When the operation was last updated.
     """
 
     source_id: str
@@ -117,6 +119,8 @@ class MaskResponse(BaseSchema, IDMixin, TimestampMixin):
     error_message: str | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
+    created_at: datetime = Field(..., description="Creation timestamp")
+    updated_at: datetime | None = Field(default=None, description="Last update timestamp")
 
     @classmethod
     def from_db(cls, db_mask: object) -> MaskResponse:

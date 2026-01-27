@@ -384,67 +384,125 @@ class ProfileResponse(BaseSchema):
         return f"{size:.1f} PB"
 
     @classmethod
-    def _build_column_profile(cls, col: dict[str, Any]) -> ColumnProfile:
-        """Build a ColumnProfile from column data dict.
+    def _build_column_profile(cls, col: dict[str, Any] | Any) -> ColumnProfile:
+        """Build a ColumnProfile from column data dict or ColumnProfileResult object.
 
         Args:
-            col: Column data dictionary from adapter or database.
+            col: Column data dictionary from adapter or database, or ColumnProfileResult object.
 
         Returns:
             ColumnProfile instance with all available fields.
         """
+        # Helper function to get attribute from dict or object
+        def get_val(key: str, default: Any = None) -> Any:
+            if isinstance(col, dict):
+                return col.get(key, default)
+            return getattr(col, key, default)
+
         # Build patterns list if present
         patterns = None
-        if col.get("patterns"):
+        patterns_data = get_val("patterns") or get_val("detected_patterns")
+        if patterns_data:
             patterns = [
                 DetectedPattern(
-                    pattern_type=p.get("pattern_type", p.get("type", "unknown")),
-                    confidence=p.get("confidence", 0.0),
-                    match_count=p.get("match_count", 0),
-                    match_percentage=p.get("match_percentage", 0.0),
-                    sample_matches=p.get("sample_matches"),
+                    pattern_type=p.get("pattern_type", p.get("type", p.get("pattern", "unknown")))
+                    if isinstance(p, dict)
+                    else getattr(p, "pattern_type", getattr(p, "pattern", "unknown")),
+                    confidence=p.get("confidence", 0.0)
+                    if isinstance(p, dict)
+                    else getattr(p, "confidence", getattr(p, "match_ratio", 0.0)),
+                    match_count=p.get("match_count", 0) if isinstance(p, dict) else getattr(p, "match_count", 0),
+                    match_percentage=p.get("match_percentage", 0.0)
+                    if isinstance(p, dict)
+                    else getattr(p, "match_percentage", getattr(p, "match_ratio", 0.0) * 100),
+                    sample_matches=p.get("sample_matches") if isinstance(p, dict) else getattr(p, "sample_matches", None),
                 )
-                for p in col["patterns"]
+                for p in patterns_data
             ]
 
         # Build histogram if present
         histogram = None
-        if col.get("histogram"):
+        histogram_data = get_val("histogram")
+        if histogram_data:
             histogram = [
                 HistogramBucket(
-                    bucket=h.get("bucket", ""),
-                    count=h.get("count", 0),
-                    percentage=h.get("percentage", 0.0),
+                    bucket=h.get("bucket", "") if isinstance(h, dict) else getattr(h, "bucket", ""),
+                    count=h.get("count", 0) if isinstance(h, dict) else getattr(h, "count", 0),
+                    percentage=h.get("percentage", 0.0) if isinstance(h, dict) else getattr(h, "percentage", 0.0),
                 )
-                for h in col["histogram"]
+                for h in histogram_data
             ]
 
+        # Get dtype from dict or object (physical_type for ColumnProfileResult)
+        dtype = get_val("dtype") or get_val("physical_type") or "unknown"
+
+        # Get null_pct - format from ratio if needed
+        null_pct = get_val("null_pct", "0%")
+        if null_pct == "0%" and get_val("null_ratio") is not None:
+            null_ratio = get_val("null_ratio", 0.0)
+            null_pct = f"{null_ratio * 100:.1f}%"
+
+        # Get unique_pct - format from ratio if needed
+        unique_pct = get_val("unique_pct", "0%")
+        if unique_pct == "0%" and get_val("unique_ratio") is not None:
+            unique_ratio = get_val("unique_ratio", 0.0)
+            unique_pct = f"{unique_ratio * 100:.1f}%"
+
+        # Get distribution stats
+        distribution = get_val("distribution")
+        mean = get_val("mean")
+        std = get_val("std")
+        median = get_val("median")
+        q1 = get_val("q1")
+        q3 = get_val("q3")
+        skewness = get_val("skewness")
+        kurtosis = get_val("kurtosis")
+        min_val = get_val("min")
+        max_val = get_val("max")
+
+        # Extract from distribution dict if present
+        if distribution and isinstance(distribution, dict):
+            mean = mean or distribution.get("mean")
+            std = std or distribution.get("std")
+            median = median or distribution.get("median")
+            q1 = q1 or distribution.get("q1")
+            q3 = q3 or distribution.get("q3")
+            skewness = skewness or distribution.get("skewness")
+            kurtosis = kurtosis or distribution.get("kurtosis")
+            min_val = min_val or distribution.get("min")
+            max_val = max_val or distribution.get("max")
+
+        # Get most_common from top_values if needed
+        most_common = get_val("most_common")
+        if not most_common and get_val("top_values"):
+            most_common = get_val("top_values")
+
         return ColumnProfile(
-            name=col["name"],
-            dtype=col["dtype"],
-            inferred_type=col.get("inferred_type"),
-            null_pct=col.get("null_pct", "0%"),
-            null_count=col.get("null_count"),
-            unique_pct=col.get("unique_pct", "0%"),
-            distinct_count=col.get("distinct_count"),
-            is_unique=col.get("is_unique"),
-            min=col.get("min"),
-            max=col.get("max"),
-            mean=col.get("mean"),
-            std=col.get("std"),
-            median=col.get("median"),
-            q1=col.get("q1"),
-            q3=col.get("q3"),
-            skewness=col.get("skewness"),
-            kurtosis=col.get("kurtosis"),
-            min_length=col.get("min_length"),
-            max_length=col.get("max_length"),
-            avg_length=col.get("avg_length"),
+            name=get_val("name"),
+            dtype=dtype,
+            inferred_type=get_val("inferred_type"),
+            null_pct=null_pct,
+            null_count=get_val("null_count"),
+            unique_pct=unique_pct,
+            distinct_count=get_val("distinct_count"),
+            is_unique=get_val("is_unique"),
+            min=min_val,
+            max=max_val,
+            mean=mean,
+            std=std,
+            median=median,
+            q1=q1,
+            q3=q3,
+            skewness=skewness,
+            kurtosis=kurtosis,
+            min_length=get_val("min_length"),
+            max_length=get_val("max_length"),
+            avg_length=get_val("avg_length"),
             patterns=patterns,
-            primary_pattern=col.get("primary_pattern"),
-            most_common=col.get("most_common"),
+            primary_pattern=get_val("primary_pattern"),
+            most_common=most_common,
             histogram=histogram,
-            cardinality_estimate=col.get("cardinality_estimate"),
+            cardinality_estimate=get_val("cardinality_estimate"),
         )
 
     @classmethod

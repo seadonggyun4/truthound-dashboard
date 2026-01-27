@@ -2,15 +2,27 @@
 
 Schemas for drift comparison request/response.
 
-Drift Methods (from truthound):
-- ks: Kolmogorov-Smirnov test (continuous distributions)
-- psi: Population Stability Index (any distribution, industry standard)
-- chi2: Chi-Square test (categorical data)
-- js: Jensen-Shannon divergence (probability distributions)
-- kl: Kullback-Leibler divergence (distribution difference)
-- wasserstein: Wasserstein/Earth Mover's Distance (distribution transport)
-- cvm: Cramér-von Mises test (more sensitive to tails than KS)
-- anderson: Anderson-Darling test (weighted for tail sensitivity)
+Drift Methods (all 14 supported by th.compare() in truthound v1.2.9+):
+
+General purpose (any column type):
+- auto: Smart selection (numeric → PSI, categorical → chi2) [RECOMMENDED]
+- js: Jensen-Shannon divergence (symmetric, bounded 0-1)
+- hellinger: Hellinger distance (bounded metric, 0-1)
+- bhattacharyya: Bhattacharyya distance (classification error bounds)
+- tv: Total Variation distance (max probability difference)
+
+Numeric columns only:
+- ks: Kolmogorov-Smirnov test
+- psi: Population Stability Index (industry standard)
+- kl: Kullback-Leibler divergence (asymmetric)
+- wasserstein: Wasserstein/Earth Mover's Distance
+- cvm: Cramér-von Mises test (tail sensitive)
+- anderson: Anderson-Darling test (most tail sensitive)
+- energy: Energy distance (location/scale sensitive)
+- mmd: Maximum Mean Discrepancy (kernel-based, high-dimensional)
+
+Categorical columns:
+- chi2: Chi-Square test
 
 Multiple Testing Correction:
 - bonferroni: Conservative, independent tests
@@ -29,18 +41,29 @@ from .base import IDMixin, TimestampMixin
 
 
 class DriftMethod(str, Enum):
-    """Drift detection methods supported by truthound.
+    """Drift detection methods supported by truthound v1.2.9+.
 
-    Each method has different characteristics and use cases:
+    All 14 methods are fully supported by th.compare():
+
+    General purpose (any column type):
     - auto: Smart selection based on data type (numeric → PSI, categorical → chi2)
-    - ks: Kolmogorov-Smirnov test - best for continuous distributions
-    - psi: Population Stability Index - industry standard, any distribution
-    - chi2: Chi-Square test - best for categorical data
     - js: Jensen-Shannon divergence - symmetric, bounded (0-1)
-    - kl: Kullback-Leibler divergence - information loss measure
-    - wasserstein: Earth Mover's Distance - metric, meaningful for non-overlapping
-    - cvm: Cramér-von Mises - more sensitive to tail differences than KS
-    - anderson: Anderson-Darling - weighted for tail sensitivity
+    - hellinger: Hellinger distance - bounded metric (0-1), triangle inequality
+    - bhattacharyya: Bhattacharyya distance - classification error bounds
+    - tv: Total Variation distance - max probability difference
+
+    Numeric columns only:
+    - ks: Kolmogorov-Smirnov test - detects any distribution shape difference
+    - psi: Population Stability Index - industry standard for model monitoring
+    - kl: Kullback-Leibler divergence - measures information loss (asymmetric)
+    - wasserstein: Earth Mover's Distance - intuitive physical interpretation
+    - cvm: Cramér-von Mises - more sensitive to tails than KS
+    - anderson: Anderson-Darling - most sensitive to tail differences
+    - energy: Energy distance - location/scale sensitive
+    - mmd: Maximum Mean Discrepancy - kernel-based, high-dimensional
+
+    Categorical columns:
+    - chi2: Chi-Square test - best for categorical data
     """
 
     AUTO = "auto"
@@ -52,6 +75,12 @@ class DriftMethod(str, Enum):
     WASSERSTEIN = "wasserstein"
     CVM = "cvm"
     ANDERSON = "anderson"
+    # New in v1.2.9
+    HELLINGER = "hellinger"
+    BHATTACHARYYA = "bhattacharyya"
+    TV = "tv"
+    ENERGY = "energy"
+    MMD = "mmd"
 
 
 class CorrectionMethod(str, Enum):
@@ -82,6 +111,12 @@ DEFAULT_THRESHOLDS: dict[DriftMethod, float] = {
     DriftMethod.WASSERSTEIN: 0.1,  # Scale-dependent, adjust based on data
     DriftMethod.CVM: 0.05,
     DriftMethod.ANDERSON: 0.05,
+    # New in v1.2.9
+    DriftMethod.HELLINGER: 0.1,
+    DriftMethod.BHATTACHARYYA: 0.1,
+    DriftMethod.TV: 0.1,
+    DriftMethod.ENERGY: 0.1,
+    DriftMethod.MMD: 0.1,
 }
 
 
@@ -104,7 +139,8 @@ def get_default_threshold(method: DriftMethod | str) -> float:
 
 # Type alias for method values (for Literal type hints)
 DriftMethodLiteral = Literal[
-    "auto", "ks", "psi", "chi2", "js", "kl", "wasserstein", "cvm", "anderson"
+    "auto", "ks", "psi", "chi2", "js", "kl", "wasserstein", "cvm", "anderson",
+    "hellinger", "bhattacharyya", "tv", "energy", "mmd"
 ]
 CorrectionMethodLiteral = Literal["none", "bonferroni", "holm", "bh"]
 
@@ -120,10 +156,9 @@ class DriftCompareRequest(BaseModel):
     method: DriftMethodLiteral = Field(
         "auto",
         description=(
-            "Drift detection method: "
-            "auto (smart selection), ks (Kolmogorov-Smirnov), psi (Population Stability Index), "
-            "chi2 (Chi-Square), js (Jensen-Shannon), kl (Kullback-Leibler), "
-            "wasserstein (Earth Mover's), cvm (Cramér-von Mises), anderson (Anderson-Darling)"
+            "Drift detection method (14 available): "
+            "auto (smart selection), ks, psi, chi2, js, kl, wasserstein, cvm, anderson, "
+            "hellinger, bhattacharyya, tv, energy, mmd"
         ),
     )
     threshold: float | None = Field(
