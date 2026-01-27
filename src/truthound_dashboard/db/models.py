@@ -4371,12 +4371,10 @@ class ReportFormatType(str, Enum):
     """Report output format types."""
 
     HTML = "html"
-    PDF = "pdf"
     CSV = "csv"
     JSON = "json"
     MARKDOWN = "markdown"
     JUNIT = "junit"
-    EXCEL = "excel"
     CUSTOM = "custom"
 
 
@@ -4403,8 +4401,8 @@ class GeneratedReport(Base, UUIDMixin, TimestampMixin):
         reporter_id: Optional reference to custom reporter used.
         name: Human-readable report name.
         description: Optional description.
-        format: Report output format (html, pdf, csv, etc.).
-        theme: Theme used for HTML/PDF reports.
+        format: Report output format (html, csv, etc.).
+        theme: Theme used for HTML reports.
         locale: Language locale used.
         status: Generation status.
         file_path: Path to stored report file (if persisted).

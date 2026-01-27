@@ -207,7 +207,6 @@ async def generate_validation_report(
                 "text/csv": {},
                 "application/json": {},
                 "text/markdown": {},
-                "application/pdf": {},
             },
         },
         404: {"description": "Validation not found"},
@@ -250,8 +249,8 @@ async def download_validation_report(
         HTTPException: 404 if validation not found.
         HTTPException: 400 if format or locale is not supported.
     """
-    # Get validation
-    validation = await service.get_validation(validation_id)
+    # Get validation with source eagerly loaded (required for report generation)
+    validation = await service.get_validation(validation_id, with_source=True)
     if validation is None:
         raise HTTPException(status_code=404, detail="Validation not found")
 
@@ -331,8 +330,8 @@ async def preview_validation_report(
         HTTPException: 404 if validation not found.
         HTTPException: 400 if format or locale is not supported.
     """
-    # Get validation
-    validation = await service.get_validation(validation_id)
+    # Get validation with source eagerly loaded (required for report generation)
+    validation = await service.get_validation(validation_id, with_source=True)
     if validation is None:
         raise HTTPException(status_code=404, detail="Validation not found")
 
@@ -393,7 +392,7 @@ async def list_report_history(
         source_id: Filter by source ID.
         validation_id: Filter by validation ID.
         reporter_id: Filter by reporter ID.
-        format: Filter by format (html, pdf, csv, json, markdown, junit, excel).
+        format: Filter by format (html, csv, json, markdown, junit).
         status: Filter by status (pending, generating, completed, failed, expired).
         include_expired: Include expired reports (default: false).
         search: Search by report name.
@@ -603,7 +602,6 @@ async def delete_report_record(
                 "text/csv": {},
                 "application/json": {},
                 "text/markdown": {},
-                "application/pdf": {},
             },
         },
         404: {"description": "Report not found or file missing"},
@@ -645,12 +643,10 @@ async def download_saved_report(
     # Build filename
     ext_map = {
         "html": ".html",
-        "pdf": ".pdf",
         "csv": ".csv",
         "json": ".json",
         "markdown": ".md",
         "junit": ".xml",
-        "excel": ".xlsx",
     }
     fmt = report.format.value if hasattr(report.format, "value") else report.format
     ext = ext_map.get(fmt, ".html")

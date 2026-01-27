@@ -14,7 +14,7 @@ from pydantic import Field
 from .base import BaseSchema, IDMixin, ListResponseWrapper, TimestampMixin
 
 # Report format types
-ReportFormatType = Literal["html", "csv", "json", "markdown", "pdf", "junit", "excel", "custom"]
+ReportFormatType = Literal["html", "csv", "json", "markdown", "junit", "custom"]
 
 # Report theme types
 ReportThemeType = Literal["light", "dark", "professional", "minimal", "high_contrast"]

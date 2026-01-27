@@ -223,7 +223,7 @@ def on_report_generate(
 
     The handler receives:
         - context.data["report"]: Report data
-        - context.data["format"]: Output format (html, pdf, json, etc.)
+        - context.data["format"]: Output format (html, json, etc.)
         - context.data["config"]: Report configuration
 
     The handler can:

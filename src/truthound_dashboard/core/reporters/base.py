@@ -23,7 +23,6 @@ class ReportFormat(str, Enum):
     CSV = "csv"
     JSON = "json"
     MARKDOWN = "markdown"
-    PDF = "pdf"
     JUNIT = "junit"  # JUnit XML for CI/CD integration
 
     @classmethod

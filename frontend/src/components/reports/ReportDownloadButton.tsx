@@ -45,7 +45,6 @@ const FORMAT_ICONS: Record<ReportFormat, typeof FileText> = {
   csv: FileSpreadsheet,
   json: FileJson,
   markdown: FileCode,
-  pdf: File,
   junit: TestTube2,
 }
 
@@ -54,7 +53,6 @@ const FORMAT_LABELS: Record<ReportFormat, string> = {
   csv: 'CSV',
   json: 'JSON',
   markdown: 'Markdown',
-  pdf: 'PDF',
   junit: 'JUnit XML (CI/CD)',
 }
 
@@ -66,7 +64,7 @@ const THEME_LABELS: Record<ReportTheme, string> = {
   high_contrast: 'High Contrast',
 }
 
-const FORMATS: ReportFormat[] = ['html', 'pdf', 'csv', 'json', 'markdown', 'junit']
+const FORMATS: ReportFormat[] = ['html', 'csv', 'json', 'markdown', 'junit']
 const THEMES: ReportTheme[] = ['professional', 'light', 'dark', 'minimal', 'high_contrast']
 
 // Default locales in case API call fails
@@ -201,8 +199,8 @@ export function ReportDownloadButton({
 
         {FORMATS.map((format) => {
           const Icon = FORMAT_ICONS[format]
-          // For HTML and PDF, allow theme selection
-          if (format === 'html' || format === 'pdf') {
+          // For HTML, allow theme selection
+          if (format === 'html') {
             return (
               <DropdownMenuSub key={format}>
                 <DropdownMenuSubTrigger>

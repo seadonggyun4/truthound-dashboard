@@ -27,9 +27,7 @@ const reportsContent = {
     formatCsv: t({ en: 'CSV', ko: 'CSV' }),
     formatJson: t({ en: 'JSON', ko: 'JSON' }),
     formatMarkdown: t({ en: 'Markdown', ko: 'Markdown' }),
-    formatPdf: t({ en: 'PDF', ko: 'PDF' }),
     formatJunit: t({ en: 'JUnit XML (CI/CD)', ko: 'JUnit XML (CI/CD)' }),
-    formatExcel: t({ en: 'Excel', ko: 'Excel' }),
 
     // Themes
     themeLight: t({ en: 'Light', ko: '라이트' }),
@@ -228,17 +226,9 @@ const reportsContent = {
       en: 'Documentation-friendly format for GitHub/GitLab',
       ko: 'GitHub/GitLab용 문서화 친화적 형식',
     }),
-    formatPdfDescription: t({
-      en: 'Portable document for sharing and printing',
-      ko: '공유 및 인쇄를 위한 휴대용 문서',
-    }),
     formatJunitDescription: t({
       en: 'CI/CD integration format',
       ko: 'CI/CD 통합 형식',
-    }),
-    formatExcelDescription: t({
-      en: 'Microsoft Excel spreadsheet',
-      ko: 'Microsoft Excel 스프레드시트',
     }),
 
     // Theme descriptions

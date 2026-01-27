@@ -31,10 +31,8 @@ class ReportFormat(str, Enum):
     """Supported report formats."""
 
     HTML = "html"
-    PDF = "pdf"
     CSV = "csv"
     JSON = "json"
-    EXCEL = "excel"
     MARKDOWN = "markdown"
     SLACK = "slack"  # Slack-formatted blocks
     TEXT = "text"

@@ -171,11 +171,9 @@ const pluginsContent = {
 
     // Output formats
     outputFormats: {
-      pdf: t({ en: "PDF", ko: "PDF" }),
       html: t({ en: "HTML", ko: "HTML" }),
       json: t({ en: "JSON", ko: "JSON" }),
       csv: t({ en: "CSV", ko: "CSV" }),
-      excel: t({ en: "Excel", ko: "Excel" }),
       markdown: t({ en: "Markdown", ko: "Markdown" }),
     },
 

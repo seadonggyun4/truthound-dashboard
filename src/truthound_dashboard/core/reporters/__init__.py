@@ -1,7 +1,7 @@
 """Report generation system with multiple format support.
 
 This module provides an extensible reporter system for generating
-validation reports in various formats (HTML, CSV, Markdown, JSON, PDF, JUnit).
+validation reports in various formats (HTML, CSV, Markdown, JSON, JUnit).
 
 ## Architecture
 

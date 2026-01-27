@@ -78,11 +78,9 @@ class ValidatorParamType(str, Enum):
 class ReporterOutputFormat(str, Enum):
     """Output format for custom reporters."""
 
-    PDF = "pdf"
     HTML = "html"
     JSON = "json"
     CSV = "csv"
-    EXCEL = "excel"
     MARKDOWN = "markdown"
     CUSTOM = "custom"
 

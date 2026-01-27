@@ -60,11 +60,10 @@ Filter reports by output format:
 | Format | Description |
 |--------|-------------|
 | **HTML** | Interactive web-based reports |
-| **PDF** | Portable document format |
 | **CSV** | Comma-separated values |
 | **JSON** | JavaScript Object Notation |
 | **Markdown** | Markdown formatted text |
-| **Excel** | Microsoft Excel workbook |
+| **JUnit** | CI/CD integration XML format |
 
 ### Status Filter
 
@@ -92,17 +91,6 @@ Interactive web-based reports:
 | **Visualization** | Embedded charts and graphs |
 | **Navigation** | Table of contents, anchor links |
 | **Styling** | Professional formatting |
-
-### PDF Reports
-
-Portable document format:
-
-| Characteristic | Description |
-|---------------|-------------|
-| **Portability** | Universal viewing without software |
-| **Print-Ready** | Optimized for printing |
-| **Archival** | Suitable for long-term storage |
-| **Security** | Optional password protection |
 
 ### CSV Reports
 
@@ -137,16 +125,16 @@ Markdown formatted text:
 | **Convertible** | Easy conversion to other formats |
 | **Documentation** | Suitable for documentation systems |
 
-### Excel Reports
+### JUnit Reports
 
-Microsoft Excel workbook:
+CI/CD integration format:
 
 | Characteristic | Description |
 |---------------|-------------|
-| **Spreadsheet** | Multi-sheet workbook format |
-| **Formulas** | Support for calculations |
-| **Charts** | Embedded visualizations |
-| **Business-Friendly** | Familiar to business users |
+| **CI/CD Ready** | Native Jenkins, GitLab CI support |
+| **Test Framework** | Standard test result format |
+| **Automation** | Integrate with build pipelines |
+| **Structured** | XML-based test suite output |
 
 ## Report Actions
 
@@ -306,10 +294,11 @@ Automate report distribution:
 
 | Audience | Recommended Format |
 |----------|-------------------|
-| **Executives** | PDF, HTML |
+| **Executives** | HTML |
 | **Data Engineers** | JSON, CSV |
 | **Documentation** | Markdown |
-| **Business Analysts** | Excel, HTML |
+| **Business Analysts** | CSV, HTML |
+| **CI/CD Pipelines** | JUnit |
 | **Automated Systems** | JSON |
 
 ### Report Naming

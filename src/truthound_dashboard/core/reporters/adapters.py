@@ -104,7 +104,6 @@ class TruthoundReporterAdapter(BaseReporter[ReporterConfig]):
         "junit": ReportFormatType.JUNIT,
         "ndjson": ReportFormatType.NDJSON,
         "console": ReportFormatType.CONSOLE,
-        "pdf": ReportFormatType.PDF,
     }
 
     # Content type mapping
@@ -117,7 +116,6 @@ class TruthoundReporterAdapter(BaseReporter[ReporterConfig]):
         ReportFormatType.JUNIT: "application/xml; charset=utf-8",
         ReportFormatType.NDJSON: "application/x-ndjson; charset=utf-8",
         ReportFormatType.CONSOLE: "text/plain; charset=utf-8",
-        ReportFormatType.PDF: "application/pdf",
     }
 
     # File extension mapping
@@ -130,7 +128,6 @@ class TruthoundReporterAdapter(BaseReporter[ReporterConfig]):
         ReportFormatType.JUNIT: ".xml",
         ReportFormatType.NDJSON: ".ndjson",
         ReportFormatType.CONSOLE: ".txt",
-        ReportFormatType.PDF: ".pdf",
     }
 
     def __init__(

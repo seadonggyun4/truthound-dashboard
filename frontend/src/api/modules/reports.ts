@@ -7,7 +7,7 @@ import { request, ApiError } from '../core'
 // Types
 // ============================================================================
 
-export type ReportFormat = 'html' | 'csv' | 'json' | 'markdown' | 'pdf' | 'junit'
+export type ReportFormat = 'html' | 'csv' | 'json' | 'markdown' | 'junit'
 export type ReportTheme = 'light' | 'dark' | 'professional' | 'minimal' | 'high_contrast'
 export type ReportLocale =
   | 'en' | 'ko' | 'ja' | 'zh' | 'de' | 'fr' | 'es' | 'pt'

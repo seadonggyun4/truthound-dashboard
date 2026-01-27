@@ -79,7 +79,7 @@ export function ReportPreview({
     setError(null)
 
     try {
-      const result = await previewValidationReport(validationId, format as 'html' | 'csv' | 'json' | 'markdown' | 'pdf' | 'junit', theme as 'light' | 'dark' | 'professional' | 'minimal' | 'high_contrast', locale as 'en' | 'ko' | 'ja' | 'zh' | 'de' | 'fr' | 'es' | 'pt' | 'it' | 'ru' | 'ar' | 'th' | 'vi' | 'id' | 'tr')
+      const result = await previewValidationReport(validationId, format as 'html' | 'csv' | 'json' | 'markdown' | 'junit', theme as 'light' | 'dark' | 'professional' | 'minimal' | 'high_contrast', locale as 'en' | 'ko' | 'ja' | 'zh' | 'de' | 'fr' | 'es' | 'pt' | 'it' | 'ru' | 'ar' | 'th' | 'vi' | 'id' | 'tr')
       setContent(result)
       onLoad?.(result)
     } catch (err) {

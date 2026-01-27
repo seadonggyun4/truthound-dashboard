@@ -57,7 +57,7 @@ import type {
   ReporterPreviewResult,
 } from './types'
 
-const OUTPUT_FORMATS: ReporterOutputFormat[] = ['html', 'pdf', 'json', 'csv', 'excel', 'markdown']
+const OUTPUT_FORMATS: ReporterOutputFormat[] = ['html', 'json', 'csv', 'markdown']
 
 /**
  * Slugify a string for use as a reporter name

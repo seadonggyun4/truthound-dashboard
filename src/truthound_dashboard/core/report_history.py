@@ -336,7 +336,6 @@ class ReportHistoryService:
         # Determine extension
         ext_map = {
             ReportFormatType.HTML: ".html",
-            ReportFormatType.PDF: ".pdf",
             ReportFormatType.CSV: ".csv",
             ReportFormatType.JSON: ".json",
             ReportFormatType.MARKDOWN: ".md",
@@ -422,7 +421,6 @@ class ReportHistoryService:
 
         content_type_map = {
             ReportFormatType.HTML: "text/html",
-            ReportFormatType.PDF: "application/pdf",
             ReportFormatType.CSV: "text/csv",
             ReportFormatType.JSON: "application/json",
             ReportFormatType.MARKDOWN: "text/markdown",

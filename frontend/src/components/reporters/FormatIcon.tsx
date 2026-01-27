@@ -9,10 +9,8 @@ import {
   Braces,
   FileSpreadsheet,
   FileText,
-  File,
   TestTube,
   FileJson2,
-  Sheet,
   Terminal,
   Table,
 } from 'lucide-react'
@@ -28,11 +26,9 @@ const formatIcons: Record<ReportFormatType, React.ComponentType<{ className?: st
   json: Braces,
   csv: FileSpreadsheet,
   markdown: FileText,
-  pdf: File,
   junit: TestTube,
   yaml: FileJson2,
   ndjson: FileJson2,
-  excel: Sheet,
   console: Terminal,
   table: Table,
 }

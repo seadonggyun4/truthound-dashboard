@@ -105,12 +105,11 @@ def _register_default_reporters(registry: ReporterRegistry) -> None:
     Args:
         registry: Registry to populate.
 
-    Registers 6 reporters:
+    Registers 5 reporters:
     - HTML: Rich visual reports with themes
     - CSV: Spreadsheet-compatible format
     - JSON: Machine-readable structured data
     - Markdown: Documentation-friendly format
-    - PDF: Print-ready documents
     - JUnit: CI/CD integration (Jenkins, GitHub Actions, etc.)
     """
     from .csv_reporter import CSVReporter
@@ -118,13 +117,11 @@ def _register_default_reporters(registry: ReporterRegistry) -> None:
     from .json_reporter import JSONReporter
     from .junit_reporter import JUnitReporter
     from .markdown_reporter import MarkdownReporter
-    from .pdf_reporter import PDFReporter
 
     registry.register(ReportFormat.HTML, HTMLReporter)
     registry.register(ReportFormat.CSV, CSVReporter)
     registry.register(ReportFormat.JSON, JSONReporter)
     registry.register(ReportFormat.MARKDOWN, MarkdownReporter)
-    registry.register(ReportFormat.PDF, PDFReporter)
     registry.register(ReportFormat.JUNIT, JUnitReporter)
 
     logger.debug(f"Registered {len(registry.available_formats)} default reporters")

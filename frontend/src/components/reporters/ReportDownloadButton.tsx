@@ -63,7 +63,7 @@ export function ReportDownloadButton({
         downloadFilename += getFormatExtension(report.format)
       } else if (validationId) {
         // Generate and download
-        blob = await downloadValidationReport(validationId, { format: format as 'html' | 'csv' | 'json' | 'markdown' | 'pdf' | 'junit' })
+        blob = await downloadValidationReport(validationId, { format: format as 'html' | 'csv' | 'json' | 'markdown' | 'junit' })
         downloadFilename = filename || `report_${validationId.slice(0, 8)}`
         downloadFilename += getFormatExtension(format)
       } else {

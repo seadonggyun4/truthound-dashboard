@@ -30,12 +30,10 @@ export type ReportFormatType =
   | 'csv'
   | 'json'
   | 'markdown'
-  | 'pdf'
   | 'junit'
   | 'yaml'
   | 'ndjson'
   | 'console'
-  | 'excel'
   | 'table'
 
 /**
@@ -150,17 +148,6 @@ export const REPORT_FORMATS: ReportFormatInfo[] = [
     supportsI18n: true,
   },
   {
-    value: 'pdf',
-    label: 'PDF',
-    description: 'Portable document for sharing and printing',
-    icon: 'file',
-    extension: '.pdf',
-    contentType: 'application/pdf',
-    supportsTheme: true,
-    supportsI18n: true,
-    requiresDependency: 'weasyprint',
-  },
-  {
     value: 'junit',
     label: 'JUnit XML',
     description: 'CI/CD integration format',
@@ -189,17 +176,6 @@ export const REPORT_FORMATS: ReportFormatInfo[] = [
     contentType: 'application/x-ndjson',
     supportsTheme: false,
     supportsI18n: false,
-  },
-  {
-    value: 'excel',
-    label: 'Excel',
-    description: 'Microsoft Excel spreadsheet',
-    icon: 'sheet',
-    extension: '.xlsx',
-    contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    supportsTheme: false,
-    supportsI18n: false,
-    requiresDependency: 'openpyxl',
   },
 ]
 

@@ -257,11 +257,10 @@ export default function Reports() {
               <SelectContent>
                 <SelectItem value="all">{str(t.allFormats)}</SelectItem>
                 <SelectItem value="html">{str(t.formatHtml)}</SelectItem>
-                <SelectItem value="pdf">{str(t.formatPdf)}</SelectItem>
                 <SelectItem value="csv">{str(t.formatCsv)}</SelectItem>
                 <SelectItem value="json">{str(t.formatJson)}</SelectItem>
                 <SelectItem value="markdown">{str(t.formatMarkdown)}</SelectItem>
-                <SelectItem value="excel">{str(t.formatExcel)}</SelectItem>
+                <SelectItem value="junit">{str(t.formatJunit)}</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
