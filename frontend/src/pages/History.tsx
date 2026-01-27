@@ -62,6 +62,11 @@ export default function History() {
     fetchData()
   }, [sourceId, period, granularity])
 
+  // Reset page when period/granularity changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [period, granularity])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -92,11 +97,6 @@ export default function History() {
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   )
-
-  // Reset page when period/granularity changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [period, granularity])
 
   return (
     <div className="p-6 space-y-6">
