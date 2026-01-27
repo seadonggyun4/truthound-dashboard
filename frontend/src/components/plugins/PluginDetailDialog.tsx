@@ -54,7 +54,7 @@ import {
   enablePlugin,
   disablePlugin,
   type Plugin,
-} from '@/api/client'
+} from '@/api/modules/plugins'
 
 interface PluginDetailDialogProps {
   open: boolean

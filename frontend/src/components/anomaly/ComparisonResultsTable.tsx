@@ -25,7 +25,7 @@ import {
   CheckCircle2,
   XCircle,
 } from 'lucide-react'
-import type { AlgorithmComparisonResult } from '@/api/client'
+import type { AlgorithmComparisonResult } from '@/api/modules/anomaly'
 
 interface ComparisonResultsTableProps {
   result: AlgorithmComparisonResult

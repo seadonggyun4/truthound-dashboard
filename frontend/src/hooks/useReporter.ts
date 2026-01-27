@@ -15,28 +15,37 @@ import type {
   ReportLocale,
   ReporterConfig,
   GeneratedReport,
-  ReportStatistics,
   CustomReporter,
   LocaleInfo,
-  AvailableFormatsResponse,
 } from '@/types/reporters'
 import {
-  getAvailableFormats,
-  getAvailableLocales,
+  getReportFormats,
+  getReportLocales,
   generateReportMetadata,
-  downloadReport,
-  previewReport,
+  downloadValidationReport,
+  previewValidationReport,
   listReportHistory,
   getReportStatistics,
-  getReport,
-  createReport,
-  deleteReport,
-  downloadSavedReport,
-  generateReportContent,
+  deleteReportRecord,
   cleanupExpiredReports,
-  listCustomReporters,
-  type ReportHistoryQuery,
-} from '@/api/reporters'
+  type ReportFormat,
+  type ReportTheme,
+  type ReportLocale as ModuleReportLocale,
+  type ReportStatus,
+  type ReportStatistics,
+} from '@/api/modules/reports'
+import { listCustomReporters } from '@/api/modules/plugins'
+
+// Type alias for report history query params
+interface ReportHistoryQuery {
+  search?: string
+  format?: ReportFormat
+  status?: ReportStatus
+  source_id?: string
+  include_expired?: boolean
+  page?: number
+  pageSize?: number
+}
 import { createDefaultConfig } from '@/types/reporters'
 
 // =============================================================================
@@ -68,8 +77,8 @@ export function useReporterFormats(): UseReporterFormatsResult {
 
     try {
       const [formatsResponse, localesResponse] = await Promise.all([
-        getAvailableFormats(),
-        getAvailableLocales(),
+        getReportFormats(),
+        getReportLocales(),
       ])
 
       setFormats(formatsResponse.formats)
@@ -182,12 +191,12 @@ export function useReportGeneration(
     setError(null)
 
     try {
-      const blob = await downloadReport(validationId, {
-        format,
-        theme,
-        locale,
-        includeSamples: config?.includeSamples,
-        includeStatistics: config?.includeStatistics,
+      const blob = await downloadValidationReport(validationId, {
+        format: format as ReportFormat,
+        theme: theme as ReportTheme,
+        locale: locale as ModuleReportLocale,
+        include_samples: config?.includeSamples,
+        include_statistics: config?.includeStatistics,
       })
 
       // Create download link
@@ -222,7 +231,7 @@ export function useReportGeneration(
     setError(null)
 
     try {
-      const content = await previewReport(validationId, { format, theme, locale })
+      const content = await previewValidationReport(validationId, format as ReportFormat, theme as ReportTheme, locale as ModuleReportLocale)
       setPreviewContent(content)
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Preview failed')
@@ -306,8 +315,16 @@ export function useReportHistory(
     setError(null)
 
     try {
-      const response = await listReportHistory(query)
-      setReports(response.items)
+      const response = await listReportHistory({
+        search: query.search,
+        format: query.format,
+        status: query.status,
+        source_id: query.source_id,
+        include_expired: query.include_expired,
+        page: query.page,
+        page_size: query.pageSize,
+      })
+      setReports(response.data as unknown as GeneratedReport[])
       setTotal(response.total)
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch reports')
@@ -348,7 +365,7 @@ export function useReportHistory(
   const handleDeleteReport = useCallback(
     async (reportId: string) => {
       try {
-        await deleteReport(reportId)
+        await deleteReportRecord(reportId)
         toast({
           title: 'Report Deleted',
           description: 'The report has been deleted successfully',
@@ -440,8 +457,12 @@ export function useCustomReporters(params?: {
     setError(null)
 
     try {
-      const response = await listCustomReporters(paramsRef.current)
-      setReporters(response.items)
+      const response = await listCustomReporters({
+        plugin_id: paramsRef.current?.pluginId,
+        is_enabled: paramsRef.current?.enabled,
+        search: paramsRef.current?.search,
+      })
+      setReporters(response.data as unknown as CustomReporter[])
       setTotal(response.total)
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch reporters'))

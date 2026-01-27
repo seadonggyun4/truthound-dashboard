@@ -61,7 +61,7 @@ import {
   Info,
   RefreshCw,
 } from 'lucide-react'
-import type { Plugin } from '@/api/client'
+import type { Plugin } from '@/api/modules/plugins'
 
 // Types
 interface SecurityReport {

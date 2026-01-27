@@ -7,7 +7,7 @@
  * - Mermaid diagram syntax
  */
 
-import type { LineageNode, LineageEdge, LineageNodeType, LineageEdgeType } from '@/api/client'
+import type { LineageNode, LineageEdge, LineageNodeType, LineageEdgeType } from '@/api/modules/lineage'
 
 // ============================================================================
 // Types

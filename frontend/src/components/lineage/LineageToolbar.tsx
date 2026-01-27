@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { LineageNodeType } from '@/api/client'
+import type { LineageNodeType } from '@/api/modules/lineage'
 
 interface LineageToolbarProps {
   onAddNode: (name: string, nodeType: LineageNodeType) => void

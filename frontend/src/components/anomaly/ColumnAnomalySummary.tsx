@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
-import type { ColumnAnomalySummary as ColumnAnomalySummaryType } from '@/api/client'
+import type { ColumnAnomalySummary as ColumnAnomalySummaryType } from '@/api/modules/anomaly'
 
 interface ColumnAnomalySummaryProps {
   summaries: ColumnAnomalySummaryType[]

@@ -40,14 +40,14 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/use-toast'
-import type { EscalationSchedulerStatus } from '@/api/client'
+import type { EscalationSchedulerStatus } from '@/api/modules/notifications'
 import {
   getEscalationSchedulerStatus,
   startEscalationScheduler,
   stopEscalationScheduler,
   triggerEscalationCheck,
   updateEscalationSchedulerConfig,
-} from '@/api/client'
+} from '@/api/modules/notifications'
 
 interface SchedulerControlPanelProps {
   className?: string

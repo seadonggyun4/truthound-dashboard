@@ -5,31 +5,47 @@
  * with loading states, error handling, and caching.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
-  datasourcesApi,
-  type SourceListParams,
-  type SourceListResponse,
-  type ValidationRequest,
-  type ValidationResult,
-  type ProfileResponse,
-  type SchemaResponse,
-  type ScanRequest,
-  type ScanResult,
+  listSources,
+  getSource,
+  createSource,
+  updateSource,
+  deleteSource,
+  testSourceConnection,
+  testConnectionConfig,
+  getSupportedSourceTypes,
+  type Source,
+  type SourceType,
+  type SourceTypeDefinition,
+  type TestConnectionResult,
+} from '@/api/modules/sources'
+import {
+  getSourceSchema,
+  learnSchema,
+  type Schema,
+} from '@/api/modules/schemas'
+import {
+  profileSource,
+  type ProfileResult,
+  type ProfileOptions,
+} from '@/api/modules/profile'
+import {
+  runValidation,
+  type Validation,
+  type ValidationRunOptions,
+} from '@/api/modules/validations'
+import {
+  runPIIScan,
+  type PIIScan,
+  type PIIScanOptions,
+} from '@/api/modules/privacy'
+import {
+  compareDrift,
+  type DriftComparison,
   type DriftCompareRequest,
-  type DriftResult,
-} from '@/api/datasources'
-import type {
-  DataSource,
-  SourceType,
-  SourceTypeDefinition,
-  CreateSourceRequest,
-  UpdateSourceRequest,
-  TestConnectionRequest,
-  TestConnectionResponse,
-  ConnectionTestResult,
-} from '@/types/datasources'
-import { ApiError } from '@/api/base'
+} from '@/api/modules/drift'
+import { ApiError } from '@/api/core'
 
 // ============================================================================
 // Types
@@ -48,46 +64,38 @@ export interface UseMutationState<T> {
   success: boolean
 }
 
-// ============================================================================
-// Generic Hooks
-// ============================================================================
+// Re-export types for convenience
+export type {
+  Source as DataSource,
+  SourceType,
+  SourceTypeDefinition,
+  TestConnectionResult as ConnectionTestResult,
+}
 
-/**
- * Hook for async operations with loading/error state.
- */
-function useAsyncOperation<T, TArgs extends unknown[]>(
-  operation: (...args: TArgs) => Promise<T>
-): [
-  (...args: TArgs) => Promise<T | null>,
-  UseAsyncState<T> & { reset: () => void }
-] {
-  const [state, setState] = useState<UseAsyncState<T>>({
-    data: null,
-    loading: false,
-    error: null,
-  })
+export interface TestConnectionRequest {
+  type: SourceType
+  config: Record<string, unknown>
+}
 
-  const execute = useCallback(
-    async (...args: TArgs): Promise<T | null> => {
-      setState({ data: null, loading: true, error: null })
-      try {
-        const result = await operation(...args)
-        setState({ data: result, loading: false, error: null })
-        return result
-      } catch (err) {
-        const error = err instanceof ApiError ? err : new ApiError(0, 'Unknown error')
-        setState({ data: null, loading: false, error })
-        return null
-      }
-    },
-    [operation]
-  )
+export interface TestConnectionResponse {
+  success: boolean
+  connected: boolean
+  message?: string
+  error?: string
+}
 
-  const reset = useCallback(() => {
-    setState({ data: null, loading: false, error: null })
-  }, [])
+export interface CreateSourceRequest {
+  name: string
+  type: SourceType
+  config: Record<string, unknown>
+  description?: string
+}
 
-  return [execute, { ...state, reset }]
+export interface UpdateSourceRequest {
+  name?: string
+  config?: Record<string, unknown>
+  description?: string
+  is_active?: boolean
 }
 
 // ============================================================================
@@ -111,9 +119,9 @@ export function useSourceTypes() {
   const fetchTypes = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true, error: null }))
     try {
-      const types = await datasourcesApi.getSourceTypes()
-      setState({ types, loading: false, error: null })
-      return types
+      const response = await getSupportedSourceTypes()
+      setState({ types: response.types, loading: false, error: null })
+      return response.types
     } catch (err) {
       const error = err instanceof ApiError ? err : new ApiError(0, 'Unknown error')
       setState((prev) => ({ ...prev, loading: false, error }))
@@ -148,10 +156,14 @@ export function useSourceTypeDefinition(type: SourceType | null) {
     }
 
     setState((prev) => ({ ...prev, loading: true, error: null }))
-    datasourcesApi
-      .getSourceTypeDefinition(type)
-      .then((definition) => {
-        setState({ data: definition, loading: false, error: null })
+    getSupportedSourceTypes()
+      .then((response) => {
+        const definition = response.types.find((t) => t.type === type)
+        if (definition) {
+          setState({ data: definition, loading: false, error: null })
+        } else {
+          setState({ data: null, loading: false, error: new ApiError(404, 'Type not found') })
+        }
       })
       .catch((err) => {
         const error = err instanceof ApiError ? err : new ApiError(0, 'Unknown error')
@@ -166,13 +178,26 @@ export function useSourceTypeDefinition(type: SourceType | null) {
 // Sources List Hook
 // ============================================================================
 
+export interface SourceListParams {
+  search?: string
+  type?: SourceType
+  tags?: string[]
+  page?: number
+  page_size?: number
+  offset?: number
+  limit?: number
+  active_only?: boolean
+  sort_by?: 'name' | 'created_at' | 'updated_at' | 'type'
+  sort_order?: 'asc' | 'desc'
+}
+
 /**
  * Hook for listing data sources with pagination and filtering.
  */
 export function useSources(initialParams?: SourceListParams) {
   const [params, setParams] = useState<SourceListParams>(initialParams || {})
   const [state, setState] = useState<{
-    sources: DataSource[]
+    sources: Source[]
     total: number
     loading: boolean
     error: ApiError | null
@@ -187,9 +212,13 @@ export function useSources(initialParams?: SourceListParams) {
     const fetchParams = p || params
     setState((prev) => ({ ...prev, loading: true, error: null }))
     try {
-      const response = await datasourcesApi.list(fetchParams)
+      const response = await listSources({
+        offset: fetchParams.offset,
+        limit: fetchParams.limit,
+        active_only: fetchParams.active_only,
+      })
       setState({
-        sources: response.items,
+        sources: response.data,
         total: response.total,
         loading: false,
         error: null,
@@ -227,7 +256,7 @@ export function useSources(initialParams?: SourceListParams) {
  * Hook for fetching a single data source.
  */
 export function useSource(id: string | null) {
-  const [state, setState] = useState<UseAsyncState<DataSource>>({
+  const [state, setState] = useState<UseAsyncState<Source>>({
     data: null,
     loading: false,
     error: null,
@@ -241,7 +270,7 @@ export function useSource(id: string | null) {
 
     setState((prev) => ({ ...prev, loading: true, error: null }))
     try {
-      const source = await datasourcesApi.get(id)
+      const source = await getSource(id)
       setState({ data: source, loading: false, error: null })
       return source
     } catch (err) {
@@ -271,7 +300,7 @@ export function useSource(id: string | null) {
  * Hook for creating a data source.
  */
 export function useCreateSource() {
-  const [state, setState] = useState<UseMutationState<DataSource>>({
+  const [state, setState] = useState<UseMutationState<Source>>({
     data: null,
     loading: false,
     error: null,
@@ -281,7 +310,7 @@ export function useCreateSource() {
   const create = useCallback(async (data: CreateSourceRequest) => {
     setState({ data: null, loading: true, error: null, success: false })
     try {
-      const source = await datasourcesApi.create(data)
+      const source = await createSource(data)
       setState({ data: source, loading: false, error: null, success: true })
       return source
     } catch (err) {
@@ -302,7 +331,7 @@ export function useCreateSource() {
  * Hook for updating a data source.
  */
 export function useUpdateSource() {
-  const [state, setState] = useState<UseMutationState<DataSource>>({
+  const [state, setState] = useState<UseMutationState<Source>>({
     data: null,
     loading: false,
     error: null,
@@ -312,7 +341,7 @@ export function useUpdateSource() {
   const update = useCallback(async (id: string, data: UpdateSourceRequest) => {
     setState({ data: null, loading: true, error: null, success: false })
     try {
-      const source = await datasourcesApi.update(id, data)
+      const source = await updateSource(id, data)
       setState({ data: source, loading: false, error: null, success: true })
       return source
     } catch (err) {
@@ -343,7 +372,7 @@ export function useDeleteSource() {
   const remove = useCallback(async (id: string) => {
     setState({ data: null, loading: true, error: null, success: false })
     try {
-      await datasourcesApi.delete(id)
+      await deleteSource(id)
       setState({ data: undefined as unknown as null, loading: false, error: null, success: true })
       return true
     } catch (err) {
@@ -378,14 +407,20 @@ export function useConnectionTest() {
   const test = useCallback(async (request: TestConnectionRequest) => {
     setState({ data: null, loading: true, error: null, success: false })
     try {
-      const result = await datasourcesApi.testConnection(request)
+      const result = await testConnectionConfig(request.type, request.config)
+      const response: TestConnectionResponse = {
+        success: result.connected,
+        connected: result.connected,
+        message: result.message,
+        error: result.error,
+      }
       setState({
-        data: result,
+        data: response,
         loading: false,
         error: null,
-        success: result.success,
+        success: result.connected,
       })
-      return result
+      return response
     } catch (err) {
       const error = err instanceof ApiError ? err : new ApiError(0, 'Unknown error')
       setState({ data: null, loading: false, error, success: false })
@@ -396,14 +431,20 @@ export function useConnectionTest() {
   const testExisting = useCallback(async (id: string) => {
     setState({ data: null, loading: true, error: null, success: false })
     try {
-      const result = await datasourcesApi.testSourceConnection(id)
+      const result = await testSourceConnection(id)
+      const response: TestConnectionResponse = {
+        success: result.connected,
+        connected: result.connected,
+        message: result.message,
+        error: result.error,
+      }
       setState({
-        data: result as TestConnectionResponse,
+        data: response,
         loading: false,
         error: null,
-        success: result.success,
+        success: result.connected,
       })
-      return result
+      return response
     } catch (err) {
       const error = err instanceof ApiError ? err : new ApiError(0, 'Unknown error')
       setState({ data: null, loading: false, error, success: false })
@@ -426,7 +467,7 @@ export function useConnectionTest() {
  * Hook for schema operations.
  */
 export function useSourceSchema(sourceId: string | null) {
-  const [state, setState] = useState<UseAsyncState<SchemaResponse>>({
+  const [state, setState] = useState<UseAsyncState<Schema>>({
     data: null,
     loading: false,
     error: null,
@@ -437,7 +478,7 @@ export function useSourceSchema(sourceId: string | null) {
 
     setState((prev) => ({ ...prev, loading: true, error: null }))
     try {
-      const schema = await datasourcesApi.getSchema(sourceId)
+      const schema = await getSourceSchema(sourceId)
       setState({ data: schema, loading: false, error: null })
       return schema
     } catch (err) {
@@ -447,13 +488,13 @@ export function useSourceSchema(sourceId: string | null) {
     }
   }, [sourceId])
 
-  const learnSchema = useCallback(
+  const learn = useCallback(
     async (options?: { infer_constraints?: boolean; sample_size?: number }) => {
       if (!sourceId) return null
 
       setState((prev) => ({ ...prev, loading: true, error: null }))
       try {
-        const schema = await datasourcesApi.learnSchema(sourceId, options)
+        const schema = await learnSchema(sourceId, options)
         setState({ data: schema, loading: false, error: null })
         return schema
       } catch (err) {
@@ -474,7 +515,7 @@ export function useSourceSchema(sourceId: string | null) {
     loading: state.loading,
     error: state.error,
     refetch: fetchSchema,
-    learn: learnSchema,
+    learn,
   }
 }
 
@@ -482,7 +523,7 @@ export function useSourceSchema(sourceId: string | null) {
  * Hook for profile operations.
  */
 export function useSourceProfile(sourceId: string | null) {
-  const [state, setState] = useState<UseAsyncState<ProfileResponse>>({
+  const [state, setState] = useState<UseAsyncState<ProfileResult>>({
     data: null,
     loading: false,
     error: null,
@@ -493,7 +534,7 @@ export function useSourceProfile(sourceId: string | null) {
 
     setState((prev) => ({ ...prev, loading: true, error: null }))
     try {
-      const profile = await datasourcesApi.getProfile(sourceId)
+      const profile = await profileSource(sourceId)
       setState({ data: profile, loading: false, error: null })
       return profile
     } catch (err) {
@@ -504,12 +545,12 @@ export function useSourceProfile(sourceId: string | null) {
   }, [sourceId])
 
   const runProfile = useCallback(
-    async (options?: { sample_size?: number; columns?: string[] }) => {
+    async (options?: ProfileOptions) => {
       if (!sourceId) return null
 
       setState((prev) => ({ ...prev, loading: true, error: null }))
       try {
-        const profile = await datasourcesApi.profile(sourceId, options)
+        const profile = await profileSource(sourceId, options)
         setState({ data: profile, loading: false, error: null })
         return profile
       } catch (err) {
@@ -538,7 +579,7 @@ export function useSourceProfile(sourceId: string | null) {
  * Hook for running validations.
  */
 export function useValidation() {
-  const [state, setState] = useState<UseMutationState<ValidationResult>>({
+  const [state, setState] = useState<UseMutationState<Validation>>({
     data: null,
     loading: false,
     error: null,
@@ -546,10 +587,10 @@ export function useValidation() {
   })
 
   const validate = useCallback(
-    async (sourceId: string, options?: ValidationRequest) => {
+    async (sourceId: string, options?: ValidationRunOptions) => {
       setState({ data: null, loading: true, error: null, success: false })
       try {
-        const result = await datasourcesApi.validate(sourceId, options)
+        const result = await runValidation(sourceId, options)
         const success = result.status === 'success'
         setState({ data: result, loading: false, error: null, success })
         return result
@@ -577,7 +618,7 @@ export function useValidation() {
  * Hook for drift detection.
  */
 export function useDriftDetection() {
-  const [state, setState] = useState<UseMutationState<DriftResult>>({
+  const [state, setState] = useState<UseMutationState<DriftComparison>>({
     data: null,
     loading: false,
     error: null,
@@ -587,7 +628,7 @@ export function useDriftDetection() {
   const compare = useCallback(async (request: DriftCompareRequest) => {
     setState({ data: null, loading: true, error: null, success: false })
     try {
-      const result = await datasourcesApi.compareDrift(request)
+      const result = await compareDrift(request)
       setState({ data: result, loading: false, error: null, success: true })
       return result
     } catch (err) {
@@ -612,7 +653,7 @@ export function useDriftDetection() {
  * Hook for PII scanning.
  */
 export function usePIIScan() {
-  const [state, setState] = useState<UseMutationState<ScanResult>>({
+  const [state, setState] = useState<UseMutationState<PIIScan>>({
     data: null,
     loading: false,
     error: null,
@@ -620,10 +661,10 @@ export function usePIIScan() {
   })
 
   const scan = useCallback(
-    async (sourceId: string, options?: ScanRequest) => {
+    async (sourceId: string, options?: PIIScanOptions) => {
       setState({ data: null, loading: true, error: null, success: false })
       try {
-        const result = await datasourcesApi.scan(sourceId, options)
+        const result = await runPIIScan(sourceId, options)
         setState({ data: result, loading: false, error: null, success: true })
         return result
       } catch (err) {
@@ -652,9 +693,9 @@ export function usePIIScan() {
  */
 export function useSourceOperations(sourceId: string | null) {
   const { source, loading: sourceLoading, error: sourceError, refetch } = useSource(sourceId)
-  const { schema, loading: schemaLoading, learn: learnSchema } = useSourceSchema(sourceId)
-  const { profile, loading: profileLoading, run: runProfile } = useSourceProfile(sourceId)
-  const { test, testExisting, loading: testLoading, data: testResult } = useConnectionTest()
+  const { schema, loading: schemaLoading, learn: learnSchemaFn } = useSourceSchema(sourceId)
+  const { profile, loading: profileLoading, run: runProfileFn } = useSourceProfile(sourceId)
+  const { testExisting, loading: testLoading, data: testResult } = useConnectionTest()
   const { validate, loading: validating, data: validationResult } = useValidation()
   const { scan, loading: scanning, data: scanResult } = usePIIScan()
 
@@ -663,8 +704,8 @@ export function useSourceOperations(sourceId: string | null) {
     return testExisting(sourceId)
   }, [sourceId, testExisting])
 
-  const runValidation = useCallback(
-    async (options?: ValidationRequest) => {
+  const runValidationFn = useCallback(
+    async (options?: ValidationRunOptions) => {
       if (!sourceId) return null
       return validate(sourceId, options)
     },
@@ -672,7 +713,7 @@ export function useSourceOperations(sourceId: string | null) {
   )
 
   const runScan = useCallback(
-    async (options?: ScanRequest) => {
+    async (options?: PIIScanOptions) => {
       if (!sourceId) return null
       return scan(sourceId, options)
     },
@@ -689,12 +730,12 @@ export function useSourceOperations(sourceId: string | null) {
     // Schema
     schema,
     schemaLoading,
-    learnSchema,
+    learnSchema: learnSchemaFn,
 
     // Profile
     profile,
     profileLoading,
-    runProfile,
+    runProfile: runProfileFn,
 
     // Connection test
     testConnection,
@@ -702,7 +743,7 @@ export function useSourceOperations(sourceId: string | null) {
     testResult,
 
     // Validation
-    runValidation,
+    runValidation: runValidationFn,
     validating,
     validationResult,
 

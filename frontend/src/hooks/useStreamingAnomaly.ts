@@ -3,20 +3,18 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type {
-  StreamingSession,
-  StreamingSessionCreate,
-  StreamingAlert,
-  StreamingStatusResponse,
-  StreamingAlgorithmInfo,
-} from '@/api/client'
 import {
   startStreamingSession,
   stopStreamingSession,
   getStreamingStatus,
   listStreamingAlgorithms,
   getStreamingWebSocketUrl,
-} from '@/api/client'
+  type StreamingSession,
+  type StreamingSessionCreate,
+  type StreamingAlert,
+  type StreamingStatusResponse,
+  type StreamingAlgorithmInfo,
+} from '@/api/modules/anomaly'
 
 interface UseStreamingAnomalyOptions {
   /** Auto-reconnect on disconnect */

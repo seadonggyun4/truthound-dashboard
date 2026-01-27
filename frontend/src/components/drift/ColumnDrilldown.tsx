@@ -34,7 +34,7 @@ import { ColumnDriftCard } from './ColumnDriftCard'
 import { ColumnStatistics } from './ColumnStatistics'
 import { ColumnDistributionComparison } from './ColumnDistributionComparison'
 import { DriftScoreGauge } from './DriftScoreGauge'
-import type { ColumnDriftResult, DriftResult } from '@/api/client'
+import type { ColumnDriftResult, DriftResult } from '@/api/modules/drift'
 
 interface ColumnDrilldownProps {
   result: DriftResult

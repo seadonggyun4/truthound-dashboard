@@ -17,7 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useCatalogStore } from '@/stores/catalogStore'
-import { getAsset, type Source, type AssetType } from '@/api/client'
+import { getAsset, type AssetType } from '@/api/modules/catalog'
+import type { Source } from '@/api/modules/sources'
 import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
 

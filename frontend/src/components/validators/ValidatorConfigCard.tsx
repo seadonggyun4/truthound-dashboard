@@ -11,7 +11,8 @@ import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ValidatorParamInput } from './ValidatorParamInput'
-import type { ValidatorDefinition, ValidatorConfig } from '@/api/client'
+import type { ValidatorDefinition } from '@/api/modules/validators'
+import type { ValidatorConfig } from '@/api/modules/validations'
 
 interface ValidatorConfigCardProps {
   definition: ValidatorDefinition

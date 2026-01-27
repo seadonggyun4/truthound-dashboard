@@ -8,7 +8,7 @@ import { useIntlayer } from 'react-intlayer'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { EyeOff, Hash, Sparkles, Check } from 'lucide-react'
-import type { MaskingStrategy } from '@/api/client'
+import type { MaskingStrategy } from '@/api/modules/privacy'
 
 interface MaskingStrategySelectorProps {
   selected: MaskingStrategy

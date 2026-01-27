@@ -10,7 +10,7 @@ import type {
   ReporterFieldDefinition,
   ReporterOutputFormat,
   ValidatorTestResponse,
-} from '@/api/client'
+} from '@/api/modules/plugins'
 
 // Re-export API types
 export type {

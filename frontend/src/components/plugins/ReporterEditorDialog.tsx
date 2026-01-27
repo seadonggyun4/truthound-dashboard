@@ -47,7 +47,7 @@ import {
   createCustomReporter,
   updateCustomReporter,
   previewCustomReporter,
-} from '@/api/client'
+} from '@/api/modules/plugins'
 import type {
   CustomReporter,
   ReporterEditorDialogProps,

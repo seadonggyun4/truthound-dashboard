@@ -13,8 +13,8 @@ import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2, Play, Lock, Download, CheckCircle } from 'lucide-react'
 import { MaskingStrategySelector } from './MaskingStrategySelector'
-import type { DataMask, MaskingStrategy, MaskOptions } from '@/api/client'
-import { runDataMask, getDataMask } from '@/api/client'
+import type { DataMask, MaskingStrategy, MaskOptions } from '@/api/modules/privacy'
+import { runDataMask, getDataMask } from '@/api/modules/privacy'
 
 interface MaskingPanelProps {
   sourceId: string

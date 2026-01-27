@@ -8,7 +8,7 @@
 import { Link } from 'react-router-dom'
 import { GitBranch, Tag, Clock, Hash } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { type VersionInfo } from '@/api/client'
+import { type VersionInfo } from '@/api/modules/versioning'
 import { useIntlayer } from '@/providers'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'

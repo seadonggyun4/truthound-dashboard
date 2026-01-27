@@ -14,7 +14,7 @@ import {
   Cell,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { AnomalyRecord } from '@/api/client'
+import type { AnomalyRecord } from '@/api/modules/anomaly'
 
 interface AnomalyScoreChartProps {
   anomalies: AnomalyRecord[]

@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Search, BookOpen } from 'lucide-react'
-import type { GlossaryTerm } from '@/api/client'
+import type { GlossaryTerm } from '@/api/modules/glossary'
 import { str } from '@/lib/intlayer-utils'
 
 interface ColumnMappingDialogProps {

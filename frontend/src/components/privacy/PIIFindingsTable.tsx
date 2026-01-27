@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Shield, EyeOff, Check } from 'lucide-react'
-import type { PIIFinding } from '@/api/client'
+import type { PIIFinding } from '@/api/modules/privacy'
 
 interface PIIFindingsTableProps {
   findings: PIIFinding[]

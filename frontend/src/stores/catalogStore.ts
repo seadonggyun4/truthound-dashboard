@@ -17,7 +17,7 @@ import {
   type CatalogAsset,
   type AssetCreate,
   type AssetUpdate,
-} from '@/api/client'
+} from '@/api/modules/catalog'
 
 interface CatalogState {
   assets: AssetListItem[]

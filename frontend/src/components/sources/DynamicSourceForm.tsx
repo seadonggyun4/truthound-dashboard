@@ -21,7 +21,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import type { FieldDefinition, SourceTypeDefinition } from '@/api/client'
+import type { FieldDefinition, SourceTypeDefinition } from '@/api/modules/sources'
 import { useState } from 'react'
 
 interface DynamicSourceFormProps {

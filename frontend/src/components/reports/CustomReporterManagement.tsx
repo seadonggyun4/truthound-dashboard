@@ -20,7 +20,7 @@ import {
   deleteCustomReporter,
   updateCustomReporter,
   type CustomReporter,
-} from '@/api/client'
+} from '@/api/modules/plugins'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

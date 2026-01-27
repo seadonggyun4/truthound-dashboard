@@ -31,7 +31,7 @@ import {
   type ReportTheme,
   type ReportLocale,
   type LocaleInfo,
-} from '@/api/client'
+} from '@/api/modules/reports'
 import { CustomReporterSection } from './CustomReporterSection'
 
 export interface ReportDownloadButtonProps {

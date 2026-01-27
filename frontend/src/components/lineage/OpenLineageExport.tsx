@@ -51,7 +51,7 @@ import {
   type OpenLineageExportResponse,
   type OpenLineageExportRequest,
   type OpenLineageEmitRequest,
-} from '@/api/client'
+} from '@/api/modules/lineage'
 
 interface OpenLineageExportProps {
   sourceId?: string

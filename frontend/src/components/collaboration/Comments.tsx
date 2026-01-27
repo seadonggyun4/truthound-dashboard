@@ -9,7 +9,7 @@ import {
   deleteComment,
   type Comment as CommentType,
   type ResourceType,
-} from '@/api/client'
+} from '@/api/modules/collaboration'
 import { formatDate } from '@/lib/utils'
 import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'

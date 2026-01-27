@@ -44,7 +44,7 @@ import type {
   LineageNode as LineageNodeType,
   LineageGraph as LineageGraphType,
   ImpactAnalysisResponse,
-} from '@/api/client'
+} from '@/api/modules/lineage'
 import {
   getLineageGraph,
   createLineageNode,
@@ -52,7 +52,7 @@ import {
   autoDiscoverLineage,
   updateNodePositions,
   analyzeLineageImpact,
-} from '@/api/client'
+} from '@/api/modules/lineage'
 
 // Custom node types (standard mode)
 const nodeTypes: NodeTypes = {
@@ -249,7 +249,8 @@ function LineageGraphInner({ sourceId: _sourceId, className, forcePerformanceMod
   const handleAutoDiscover = useCallback(async () => {
     setIsDiscovering(true)
     try {
-      const result = await autoDiscoverLineage()
+      // Auto-discover requires a source_id, use empty string to discover all
+      const result = await autoDiscoverLineage({ source_id: '' })
       toast({
         title: str(t.discoveryComplete),
         description: `${result.nodes_created} ${str(t.nodesDiscovered)}, ${result.edges_created} ${str(t.edgesDiscovered)}`,
@@ -270,9 +271,9 @@ function LineageGraphInner({ sourceId: _sourceId, className, forcePerformanceMod
     setIsSaving(true)
     try {
       const updates = nodes.map((node: Node<LineageNodeData>) => ({
-        node_id: node.id,
-        position_x: node.position.x,
-        position_y: node.position.y,
+        id: node.id,
+        x: node.position.x,
+        y: node.position.y,
       }))
       await updateNodePositions(updates)
       toast({ title: str(t.positionsSaved) })

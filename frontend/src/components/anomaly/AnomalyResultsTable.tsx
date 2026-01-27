@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Lightbulb } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { AnomalyRecord } from '@/api/client'
+import type { AnomalyRecord } from '@/api/modules/anomaly'
 
 interface AnomalyResultsTableProps {
   anomalies: AnomalyRecord[]

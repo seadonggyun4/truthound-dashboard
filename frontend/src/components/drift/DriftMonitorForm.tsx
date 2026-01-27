@@ -32,7 +32,7 @@ import { DriftPreviewResults } from './DriftPreviewResults'
 import { SamplingConfig, type SamplingConfigData } from './SamplingConfig'
 import { InlineLargeDatasetWarning } from './LargeDatasetWarning'
 import type { DriftPreviewData } from './DriftPreview'
-import type { Source } from '@/api/client'
+import type { Source } from '@/api/modules/sources'
 
 const API_BASE = '/api/v1'
 
@@ -90,7 +90,7 @@ const SCHEDULE_PRESETS = [
 ]
 
 import { DriftMethodSelector } from './DriftMethodSelector'
-import type { DriftMethod } from '@/api/client'
+import type { DriftMethod } from '@/api/modules/drift'
 
 type FormStep = 'configure' | 'preview'
 

@@ -43,7 +43,7 @@ import {
   type RetentionPolicyConfig,
   type MaintenanceStatus,
   type CacheStats,
-} from '@/api/client'
+} from '@/api/modules/maintenance'
 
 export interface MaintenanceSettingsProps {
   className?: string

@@ -53,7 +53,7 @@ import {
   createCustomValidator,
   updateCustomValidator,
   testCustomValidator,
-} from '@/api/client'
+} from '@/api/modules/plugins'
 import type {
   CustomValidator,
   ValidatorEditorDialogProps,

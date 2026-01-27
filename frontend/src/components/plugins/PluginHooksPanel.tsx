@@ -54,7 +54,7 @@ import {
   RefreshCw,
   Search,
 } from 'lucide-react'
-import type { Plugin } from '@/api/client'
+import type { Plugin } from '@/api/modules/plugins'
 
 // Types
 type HookType =

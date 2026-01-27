@@ -32,12 +32,13 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ComparisonResultsTable } from './ComparisonResultsTable'
 import { ComparisonChart } from './ComparisonChart'
 import { AlgorithmAgreement } from './AlgorithmAgreement'
-import type {
-  AlgorithmInfo,
-  AlgorithmComparisonResult,
-  AnomalyAlgorithm,
-} from '@/api/client'
-import { listAnomalyAlgorithms, compareAlgorithms } from '@/api/client'
+import {
+  listAnomalyAlgorithms,
+  compareAlgorithms,
+  type AlgorithmInfo,
+  type AlgorithmComparisonResult,
+  type AnomalyAlgorithm,
+} from '@/api/modules/anomaly'
 
 interface AlgorithmComparisonProps {
   sourceId: string

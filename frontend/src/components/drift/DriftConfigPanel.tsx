@@ -42,7 +42,7 @@ import {
   type CorrectionMethod,
   CORRECTION_METHODS,
   DEFAULT_THRESHOLDS,
-} from '@/api/client'
+} from '@/api/modules/drift'
 import { DriftMethodSelector, type DriftMethodSelectorVariant } from './DriftMethodSelector'
 import { ChevronDown, Info, RotateCcw, Settings2, Columns3 } from 'lucide-react'
 

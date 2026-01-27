@@ -6,7 +6,7 @@
 
 import { memo } from 'react'
 import { EdgeLabelRenderer, getBezierPath, type EdgeProps } from 'reactflow'
-import type { LineageEdgeType } from '@/api/client'
+import type { LineageEdgeType } from '@/api/modules/lineage'
 
 export interface LineageEdgeData {
   edgeType: LineageEdgeType

@@ -16,7 +16,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import type { LineageNodeType } from '@/api/client'
+import type { LineageNodeType } from '@/api/modules/lineage'
 import type { LineageColumn } from './column-lineage-types'
 
 export type AnomalyStatusLevel = 'unknown' | 'clean' | 'low' | 'medium' | 'high'

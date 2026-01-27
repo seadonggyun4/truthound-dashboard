@@ -64,7 +64,7 @@ import type {
   RuleExportFormat,
   RuleCategory,
   RuleSuggestionRequest,
-} from '@/api/client'
+} from '@/api/modules/rule-suggestions'
 
 interface RuleSuggestionDialogProps {
   open: boolean

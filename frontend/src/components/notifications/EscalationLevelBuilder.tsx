@@ -57,8 +57,8 @@ import type {
   EscalationTarget,
   EscalationTargetType,
   NotificationChannel,
-} from '@/api/client'
-import { listNotificationChannels } from '@/api/client'
+} from '@/api/modules/notifications'
+import { listNotificationChannels } from '@/api/modules/notifications'
 
 // Re-export types for compatibility
 export type { EscalationLevel, EscalationTarget, EscalationTargetType }

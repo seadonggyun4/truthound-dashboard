@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/select'
 import { Loader2, Eye, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { DriftPreviewResults } from './DriftPreviewResults'
-import type { Source } from '@/api/client'
+import type { Source } from '@/api/modules/sources'
 
 // Preview result type matching backend schema
 export interface DriftPreviewData {

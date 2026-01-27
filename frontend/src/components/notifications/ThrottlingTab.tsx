@@ -36,7 +36,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { str } from '@/lib/intlayer-utils'
 import { Plus, Edit, Trash2, Loader2, Gauge } from 'lucide-react'
-import type { ThrottlingConfig, ThrottlingStats, NotificationChannel } from '@/api/client'
+import type { ThrottlingConfig, ThrottlingStats, NotificationChannel } from '@/api/modules/notifications'
 import {
   listThrottlingConfigs,
   createThrottlingConfig,
@@ -44,7 +44,7 @@ import {
   deleteThrottlingConfig,
   getThrottlingStats,
   listNotificationChannels,
-} from '@/api/client'
+} from '@/api/modules/notifications'
 import { ThrottlingAlgorithmGuide, BurstAllowanceVisual } from './StrategyGuide'
 import { TemplateQuickSelect } from './TemplateLibrary'
 import {

@@ -56,14 +56,14 @@ import {
   Check,
   AlertCircle,
 } from 'lucide-react'
-import type { RoutingRule, NotificationChannel } from '@/api/client'
+import type { RoutingRule, NotificationChannel } from '@/api/modules/notifications'
 import {
   listRoutingRules,
   createRoutingRule,
   updateRoutingRule,
   deleteRoutingRule,
   listNotificationChannels,
-} from '@/api/client'
+} from '@/api/modules/notifications'
 import {
   RuleBuilder,
   RuleTypeRegistry,

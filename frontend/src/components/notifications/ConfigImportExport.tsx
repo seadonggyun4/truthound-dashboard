@@ -67,13 +67,13 @@ import type {
   ConfigImportConflict,
   ConflictResolution,
   ConfigExportOptions,
-} from '@/api/client'
+} from '@/api/modules/notifications'
 import {
   downloadNotificationConfigAsFile,
   parseNotificationConfigFile,
   previewNotificationConfigImport,
   importNotificationConfig,
-} from '@/api/client'
+} from '@/api/modules/notifications'
 
 export interface ConfigImportExportProps {
   className?: string

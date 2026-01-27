@@ -41,14 +41,14 @@ import type {
   DeduplicationStats,
   DeduplicationStrategy,
   DeduplicationPolicy,
-} from '@/api/client'
+} from '@/api/modules/notifications'
 import {
   listDeduplicationConfigs,
   createDeduplicationConfig,
   updateDeduplicationConfig,
   deleteDeduplicationConfig,
   getDeduplicationStats,
-} from '@/api/client'
+} from '@/api/modules/notifications'
 import { DeduplicationStrategyGuide, DeduplicationPolicyGuide } from './StrategyGuide'
 import { TemplateQuickSelect } from './TemplateLibrary'
 import {

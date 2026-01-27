@@ -21,7 +21,7 @@ import {
   compareVersions,
   type VersionInfo,
   type VersionDiff,
-} from '@/api/client'
+} from '@/api/modules/versioning'
 import { useIntlayer } from '@/providers'
 import { str } from '@/lib/intlayer-utils'
 import { formatDate } from '@/lib/utils'

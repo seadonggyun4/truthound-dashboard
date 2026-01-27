@@ -37,7 +37,7 @@ import {
   testSourceConnection,
   type SourceTypeDefinition,
   type Source,
-} from '@/api/client'
+} from '@/api/modules/sources'
 import { DynamicSourceForm } from './DynamicSourceForm'
 import { useToast } from '@/hooks/use-toast'
 import { useIntlayer } from '@/providers'
@@ -132,8 +132,8 @@ export function EditSourceDialog({
     setLoadingTypes(true)
     try {
       const response = await getSupportedSourceTypes()
-      if (response.success) {
-        setSourceTypes(response.data.types)
+      if (response) {
+        setSourceTypes(response.types)
       }
     } catch (error) {
       console.error('Failed to load source types:', error)
@@ -224,7 +224,7 @@ export function EditSourceDialog({
 
     try {
       const response = await testSourceConnection(source.id)
-      setTestResult(response.data)
+      setTestResult({ success: response.connected, message: response.message, error: response.error })
     } catch (error) {
       setTestResult({
         success: false,

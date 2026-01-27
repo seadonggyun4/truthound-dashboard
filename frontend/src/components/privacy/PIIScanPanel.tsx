@@ -15,8 +15,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2, Play, Eye, AlertTriangle, Shield } from 'lucide-react'
 import { PIIFindingsTable } from './PIIFindingsTable'
-import type { PIIScan, PIIScanOptions, Regulation } from '@/api/client'
-import { runPIIScan, getPIIScan } from '@/api/client'
+import type { PIIScan, PIIScanOptions, Regulation } from '@/api/modules/privacy'
+import { runPIIScan, getPIIScan } from '@/api/modules/privacy'
 
 interface PIIScanPanelProps {
   sourceId: string

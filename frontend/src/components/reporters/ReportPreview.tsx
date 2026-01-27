@@ -27,7 +27,7 @@ import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { FormatIcon } from './FormatIcon'
 import type { ReportFormatType, ReportThemeType, ReportLocale } from '@/types/reporters'
-import { previewReport } from '@/api/reporters'
+import { previewValidationReport } from '@/api/modules/reports'
 
 interface ReportPreviewProps {
   /** Validation ID to preview */
@@ -79,7 +79,7 @@ export function ReportPreview({
     setError(null)
 
     try {
-      const result = await previewReport(validationId, { format, theme, locale })
+      const result = await previewValidationReport(validationId, format as 'html' | 'csv' | 'json' | 'markdown' | 'pdf' | 'junit', theme as 'light' | 'dark' | 'professional' | 'minimal' | 'high_contrast', locale as 'en' | 'ko' | 'ja' | 'zh' | 'de' | 'fr' | 'es' | 'pt' | 'it' | 'ru' | 'ar' | 'th' | 'vi' | 'id' | 'tr')
       setContent(result)
       onLoad?.(result)
     } catch (err) {

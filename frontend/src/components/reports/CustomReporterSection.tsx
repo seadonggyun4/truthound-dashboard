@@ -44,7 +44,7 @@ import {
   listCustomReporters,
   downloadCustomReport,
   type CustomReporter,
-} from '@/api/client'
+} from '@/api/modules/plugins'
 
 interface CustomReporterSectionProps {
   validationId: string

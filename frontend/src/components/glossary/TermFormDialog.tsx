@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useGlossaryStore } from '@/stores/glossaryStore'
-import { getTerm, type GlossaryCategory } from '@/api/client'
+import { getTerm, type GlossaryCategory } from '@/api/modules/glossary'
 import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
 

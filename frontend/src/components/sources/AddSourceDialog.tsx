@@ -40,7 +40,7 @@ import {
   type SourceCategoryDefinition,
   type SourceType,
   type SourceCategory,
-} from '@/api/client'
+} from '@/api/modules/sources'
 import { SourceTypeSelector } from './SourceTypeSelector'
 import { DynamicSourceForm } from './DynamicSourceForm'
 import { useToast } from '@/hooks/use-toast'
@@ -119,9 +119,9 @@ export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDial
     setLoadingTypes(true)
     try {
       const response = await getSupportedSourceTypes()
-      if (response.success) {
-        setSourceTypes(response.data.types)
-        setCategories(response.data.categories)
+      if (response) {
+        setSourceTypes(response.types)
+        setCategories(response.categories)
       }
     } catch (error) {
       console.error('Failed to load source types:', error)
@@ -225,7 +225,7 @@ export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDial
 
     try {
       const response = await testConnectionConfig(form.type, form.config)
-      setTestResult(response.data)
+      setTestResult({ success: response.connected, message: response.message, error: response.error })
     } catch (error) {
       setTestResult({
         success: false,

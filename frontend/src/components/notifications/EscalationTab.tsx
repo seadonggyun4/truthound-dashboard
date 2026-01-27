@@ -54,10 +54,7 @@ import type {
   EscalationStats,
   EscalationState,
   EscalationLevel,
-} from '@/api/client'
-
-// Adapter type that extends EscalationIncident with BulkActionItem compatibility
-type IncidentWithName = EscalationIncident & BulkActionItem
+} from '@/api/modules/notifications'
 import {
   listEscalationPolicies,
   createEscalationPolicy,
@@ -68,7 +65,10 @@ import {
   resolveEscalationIncident,
   getEscalationStats,
   getEscalationIncident,
-} from '@/api/client'
+} from '@/api/modules/notifications'
+
+// Adapter type that extends EscalationIncident with BulkActionItem compatibility
+type IncidentWithName = EscalationIncident & BulkActionItem
 
 interface EscalationTabProps {
   className?: string

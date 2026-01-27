@@ -10,7 +10,7 @@ import {
   Columns,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import type { Activity, ActivityAction } from '@/api/client'
+import type { Activity, ActivityAction } from '@/api/modules/collaboration'
 import { formatDate } from '@/lib/utils'
 
 interface ActivityFeedProps {

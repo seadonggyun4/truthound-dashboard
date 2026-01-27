@@ -41,7 +41,7 @@ import {
   downloadAsFile,
   downloadSvg,
 } from '@/lib/lineage-utils'
-import type { LineageNode, LineageEdge } from '@/api/client'
+import type { LineageNode, LineageEdge } from '@/api/modules/lineage'
 
 // Initialize mermaid with default configuration
 mermaid.initialize({

@@ -53,7 +53,7 @@ import {
   type OpenLineageWebhook,
   type CreateWebhookRequest,
   type WebhookTestResult,
-} from '@/api/client'
+} from '@/api/modules/lineage'
 
 import { WebhookForm } from './WebhookForm'
 import { WebhookStatus } from './WebhookStatus'

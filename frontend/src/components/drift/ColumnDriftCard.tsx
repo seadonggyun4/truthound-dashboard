@@ -14,7 +14,7 @@ import {
 } from 'recharts'
 import { AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { ColumnDriftResult } from '@/api/client'
+import type { ColumnDriftResult } from '@/api/modules/drift'
 
 interface ColumnDriftCardProps {
   result: ColumnDriftResult

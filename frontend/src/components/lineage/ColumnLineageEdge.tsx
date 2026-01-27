@@ -10,7 +10,7 @@ import { useIntlayer } from 'react-intlayer'
 import { ChevronDown, ChevronUp, ArrowRight, Columns } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { LineageEdgeType } from '@/api/client'
+import type { LineageEdgeType } from '@/api/modules/lineage'
 import type { ColumnMapping, ColumnTransformationType } from './column-lineage-types'
 
 export interface ColumnLineageEdgeData {

@@ -23,7 +23,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ValidatorConfigCard } from './ValidatorConfigCard'
-import type { ValidatorDefinition, ValidatorConfig, ValidatorCategory, UnifiedValidatorDefinition, ValidatorSource } from '@/api/client'
+import type { ValidatorDefinition, ValidatorCategory, UnifiedValidatorDefinition, ValidatorSource } from '@/api/modules/validators'
+import type { ValidatorConfig } from '@/api/modules/validations'
 import {
   createEmptyConfig,
   validateConfig,

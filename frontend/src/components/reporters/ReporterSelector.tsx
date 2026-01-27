@@ -40,7 +40,7 @@ import {
   formatSupportsI18n,
   createDefaultConfig,
 } from '@/types/reporters'
-import { getAvailableFormats, getAvailableLocales } from '@/api/reporters'
+import { getReportFormats, getReportLocales } from '@/api/modules/reports'
 
 interface ReporterSelectorProps {
   /** Current configuration */
@@ -89,8 +89,8 @@ export function ReporterSelector({
     setIsLoading(true)
     try {
       const [formatsResponse, localesResponse] = await Promise.all([
-        getAvailableFormats(),
-        getAvailableLocales(),
+        getReportFormats(),
+        getReportLocales(),
       ])
       setAvailableFormats(formatsResponse.formats)
       if (localesResponse.length > 0) {

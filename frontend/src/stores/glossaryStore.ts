@@ -21,7 +21,7 @@ import {
   type TermUpdate,
   type CategoryCreate,
   type CategoryUpdate,
-} from '@/api/client'
+} from '@/api/modules/glossary'
 
 interface GlossaryState {
   terms: GlossaryTerm[]

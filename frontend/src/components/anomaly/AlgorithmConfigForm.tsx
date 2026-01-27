@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
-import type { AlgorithmParameter, AlgorithmInfo, AnomalyDetectionConfig } from '@/api/client'
+import type { AlgorithmParameter, AlgorithmInfo, AnomalyDetectionConfig } from '@/api/modules/anomaly'
 
 interface AlgorithmConfigFormProps {
   algorithm: AlgorithmInfo

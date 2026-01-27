@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatDistanceToNow } from 'date-fns'
 import { Eye, Lock, AlertTriangle, Shield, ChevronRight, Loader2 } from 'lucide-react'
-import type { PIIScan, DataMaskListItem } from '@/api/client'
+import type { PIIScan, DataMaskListItem } from '@/api/modules/privacy'
 
 interface ScanHistoryListProps {
   scans: PIIScan[]

@@ -30,13 +30,14 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2, Database, AlertTriangle, CheckCircle2 } from 'lucide-react'
-import type {
-  Source,
-  AlgorithmInfo,
-  AnomalyAlgorithm,
-  BatchDetectionRequest,
-} from '@/api/client'
-import { listSources, listAnomalyAlgorithms, createBatchDetection } from '@/api/client'
+import { listSources, type Source } from '@/api/modules/sources'
+import {
+  listAnomalyAlgorithms,
+  createBatchDetection,
+  type AlgorithmInfo,
+  type AnomalyAlgorithm,
+  type BatchDetectionRequest,
+} from '@/api/modules/anomaly'
 
 interface BatchDetectionDialogProps {
   open: boolean

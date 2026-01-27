@@ -14,7 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import type { LineageNodeType } from '@/api/client'
+import type { LineageNodeType } from '@/api/modules/lineage'
 
 // ============================================================================
 // Types

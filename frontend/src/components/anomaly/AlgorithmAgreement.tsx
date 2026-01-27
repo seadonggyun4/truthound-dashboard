@@ -27,7 +27,7 @@ import {
   ShieldQuestion,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { AlgorithmComparisonResult, AgreementLevel } from '@/api/client'
+import type { AlgorithmComparisonResult, AgreementLevel } from '@/api/modules/anomaly'
 
 interface AlgorithmAgreementProps {
   result: AlgorithmComparisonResult

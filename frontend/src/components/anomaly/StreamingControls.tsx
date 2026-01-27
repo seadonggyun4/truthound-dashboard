@@ -24,7 +24,7 @@ import type {
   StreamingAlgorithmInfo,
   StreamingSession,
   StreamingSessionCreate,
-} from '@/api/client'
+} from '@/api/modules/anomaly'
 
 interface StreamingControlsProps {
   algorithms: StreamingAlgorithmInfo[]

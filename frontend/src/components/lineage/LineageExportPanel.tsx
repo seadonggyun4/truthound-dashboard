@@ -34,7 +34,7 @@ import {
   copyToClipboard,
   downloadAsFile,
 } from '@/lib/lineage-utils'
-import type { LineageNode, LineageEdge } from '@/api/client'
+import type { LineageNode, LineageEdge } from '@/api/modules/lineage'
 
 interface LineageExportPanelProps {
   nodes: LineageNode[]

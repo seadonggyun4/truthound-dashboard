@@ -18,7 +18,7 @@ import {
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import type { AlgorithmComparisonResult } from '@/api/client'
+import type { AlgorithmComparisonResult } from '@/api/modules/anomaly'
 
 interface ComparisonChartProps {
   result: AlgorithmComparisonResult

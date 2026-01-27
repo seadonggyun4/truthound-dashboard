@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { ZoomIn, ZoomOut, RotateCcw, Pause, Play } from 'lucide-react'
-import type { StreamingAlert, StreamingStatistics } from '@/api/client'
+import type { StreamingAlert, StreamingStatistics } from '@/api/modules/anomaly'
 
 interface DataPoint {
   timestamp: string
@@ -85,7 +85,8 @@ export function StreamingChart({
       const isAnomaly = alerts.some(
         (alert) =>
           alert.timestamp === point.timestamp &&
-          alert.data_point[selectedColumn] === value
+          alert.data_point &&
+          alert.data_point.values?.[selectedColumn] === value
       )
 
       return {

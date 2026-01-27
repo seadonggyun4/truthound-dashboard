@@ -9,7 +9,7 @@ import { Cpu, Network, Activity, GitBranch, BarChart3, Brain, Check } from 'luci
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { AlgorithmCategory, AlgorithmInfo } from '@/api/client'
+import type { AlgorithmCategory, AlgorithmInfo } from '@/api/modules/anomaly'
 
 interface AlgorithmSelectorProps {
   algorithms: AlgorithmInfo[]

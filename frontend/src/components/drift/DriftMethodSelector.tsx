@@ -31,7 +31,7 @@ import {
   type DriftMethod,
   DRIFT_METHODS,
   DEFAULT_THRESHOLDS,
-} from '@/api/client'
+} from '@/api/modules/drift'
 import { Info, Sparkles, BarChart3, Target, Hash, Divide, Truck, TrendingUp, Scale } from 'lucide-react'
 
 /**

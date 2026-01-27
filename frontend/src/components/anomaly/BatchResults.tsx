@@ -31,7 +31,7 @@ import {
   Database,
   Clock,
 } from 'lucide-react'
-import type { BatchDetectionJob, BatchSourceResult } from '@/api/client'
+import type { BatchDetectionJob, BatchSourceResult } from '@/api/modules/anomaly'
 
 interface BatchResultsProps {
   job: BatchDetectionJob

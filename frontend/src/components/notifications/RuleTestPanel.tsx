@@ -41,8 +41,8 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { useToast } from '@/hooks/use-toast'
-import type { RuleTestContext, RuleTestResult } from '@/api/client'
-import { testRoutingRule } from '@/api/client'
+import type { RuleTestContext, RuleTestResult } from '@/api/modules/notifications'
+import { testRoutingRule } from '@/api/modules/notifications'
 
 interface RuleTestPanelProps {
   ruleConfig: Record<string, unknown>

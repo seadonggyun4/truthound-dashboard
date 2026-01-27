@@ -15,7 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Eye, AlertTriangle, CheckCircle2, Clock, XCircle, Loader2 } from 'lucide-react'
-import type { AnomalyDetection } from '@/api/client'
+import type { AnomalyDetection } from '@/api/modules/anomaly'
 
 interface AnomalyHistoryListProps {
   detections: AnomalyDetection[]

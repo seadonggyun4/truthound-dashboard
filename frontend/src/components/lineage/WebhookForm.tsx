@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select'
 import { useIntlayer } from '@/providers'
 import { str } from '@/lib/intlayer-utils'
-import type { OpenLineageWebhook, WebhookEventType, CreateWebhookRequest } from '@/api/client'
+import type { OpenLineageWebhook, WebhookEventType, CreateWebhookRequest } from '@/api/modules/lineage'
 
 interface HeaderEntry {
   key: string

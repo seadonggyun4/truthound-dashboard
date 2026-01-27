@@ -29,7 +29,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { SourceTypeDefinition, SourceCategory } from '@/api/client'
+import type { SourceTypeDefinition, SourceCategory } from '@/api/modules/sources'
 
 interface SourceTypeSelectorProps {
   sourceTypes: SourceTypeDefinition[]

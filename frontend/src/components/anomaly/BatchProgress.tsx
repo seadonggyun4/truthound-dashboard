@@ -21,8 +21,11 @@ import {
   Database,
   Clock,
 } from 'lucide-react'
-import type { BatchDetectionJob } from '@/api/client'
-import { getBatchDetection, cancelBatchDetection } from '@/api/client'
+import {
+  getBatchDetection,
+  cancelBatchDetection,
+  type BatchDetectionJob,
+} from '@/api/modules/anomaly'
 
 interface BatchProgressProps {
   batchId: string

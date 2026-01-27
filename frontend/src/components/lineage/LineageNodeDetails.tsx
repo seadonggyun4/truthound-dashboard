@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import type { LineageNode as LineageNodeType, LineageEdge } from '@/api/client'
+import type { LineageNode as LineageNodeType, LineageEdge } from '@/api/modules/lineage'
 import type { LineageColumn, ColumnMapping, ColumnTransformationType } from './column-lineage-types'
 
 interface LineageNodeDetailsProps {

@@ -18,18 +18,16 @@ import { AnomalyScoreChart } from './AnomalyScoreChart'
 import { ColumnAnomalySummary } from './ColumnAnomalySummary'
 import { AnomalyHistoryList } from './AnomalyHistoryList'
 import { AnomalyExplanation, type ExplainabilityResult } from './AnomalyExplanation'
-import type {
-  AlgorithmInfo,
-  AnomalyDetection,
-  AnomalyDetectionConfig,
-} from '@/api/client'
 import {
   listAnomalyAlgorithms,
   runAnomalyDetection,
   getAnomalyDetection,
   listAnomalyDetections,
   explainAnomaly,
-} from '@/api/client'
+  type AlgorithmInfo,
+  type AnomalyDetection,
+  type AnomalyDetectionConfig,
+} from '@/api/modules/anomaly'
 
 interface AnomalyDetectionPanelProps {
   sourceId: string

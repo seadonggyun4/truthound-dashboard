@@ -27,7 +27,7 @@ import {
   Database,
   Clock,
 } from 'lucide-react'
-import type { StreamingAlert } from '@/api/client'
+import type { StreamingAlert } from '@/api/modules/anomaly'
 
 interface StreamingDashboardProps {
   sourceId?: string
@@ -320,7 +320,7 @@ function AlertCard({ alert }: { alert: StreamingAlert }) {
           <span className="font-medium">{alert.algorithm}</span>
         </div>
         <div className="mt-1 flex flex-wrap gap-1">
-          {Object.entries(alert.data_point).map(([key, value]) => (
+          {Object.entries(alert.data_point ?? {}).map(([key, value]) => (
             <Badge key={key} variant="outline" className="text-xs">
               {key}: {typeof value === 'number' ? value.toFixed(2) : String(value ?? '')}
             </Badge>

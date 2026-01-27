@@ -35,7 +35,7 @@ import {
   Edit,
   ShieldCheck,
 } from 'lucide-react'
-import type { CustomValidator, ValidatorParamDefinition } from '@/api/client'
+import type { CustomValidator, ValidatorParamDefinition } from '@/api/modules/plugins'
 
 /**
  * Configuration for a custom validator

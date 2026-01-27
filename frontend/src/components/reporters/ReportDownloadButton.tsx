@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import type { GeneratedReport, ReportFormatType } from '@/types/reporters'
 import { getFormatExtension, isReportDownloadable } from '@/types/reporters'
-import { downloadSavedReport, downloadReport } from '@/api/reporters'
+import { downloadSavedReport, downloadValidationReport } from '@/api/modules/reports'
 
 interface ReportDownloadButtonProps {
   /** Saved report to download */
@@ -63,7 +63,7 @@ export function ReportDownloadButton({
         downloadFilename += getFormatExtension(report.format)
       } else if (validationId) {
         // Generate and download
-        blob = await downloadReport(validationId, { format })
+        blob = await downloadValidationReport(validationId, { format: format as 'html' | 'csv' | 'json' | 'markdown' | 'pdf' | 'junit' })
         downloadFilename = filename || `report_${validationId.slice(0, 8)}`
         downloadFilename += getFormatExtension(format)
       } else {

@@ -35,7 +35,7 @@ import {
   Key,
   Play,
 } from 'lucide-react'
-import type { Plugin } from '@/api/client'
+import type { Plugin } from '@/api/modules/plugins'
 
 interface InstallStep {
   id: string

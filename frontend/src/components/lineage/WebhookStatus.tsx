@@ -13,7 +13,7 @@ import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { useIntlayer } from '@/providers'
 import { str } from '@/lib/intlayer-utils'
-import type { OpenLineageWebhook } from '@/api/client'
+import type { OpenLineageWebhook } from '@/api/modules/lineage'
 
 interface WebhookStatusProps {
   webhook: OpenLineageWebhook

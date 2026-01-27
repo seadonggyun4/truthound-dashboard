@@ -24,7 +24,7 @@ import {
   getCytoscapeLayoutConfig,
   type CytoscapeLayout,
 } from '@/lib/lineage-utils'
-import type { LineageNode, LineageEdge } from '@/api/client'
+import type { LineageNode, LineageEdge } from '@/api/modules/lineage'
 
 // Register the dagre layout extension
 cytoscape.use(dagre)
