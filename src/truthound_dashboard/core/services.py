@@ -324,6 +324,24 @@ class ValidationRepository(BaseRepository[Validation]):
         )
         return result.scalar_one_or_none()
 
+    async def get_with_source(self, validation_id: str) -> Validation | None:
+        """Get validation by ID with source eagerly loaded.
+
+        Args:
+            validation_id: Validation ID.
+
+        Returns:
+            Validation with source loaded, or None.
+        """
+        from sqlalchemy.orm import selectinload
+
+        result = await self.session.execute(
+            select(Validation)
+            .options(selectinload(Validation.source))
+            .where(Validation.id == validation_id)
+        )
+        return result.scalar_one_or_none()
+
 
 class SourceService:
     """Service for managing data sources.
@@ -776,15 +794,20 @@ class ValidationService:
             delta = validation.completed_at - validation.started_at
             validation.duration_ms = int(delta.total_seconds() * 1000)
 
-    async def get_validation(self, validation_id: str) -> Validation | None:
+    async def get_validation(
+        self, validation_id: str, *, with_source: bool = False
+    ) -> Validation | None:
         """Get validation by ID.
 
         Args:
             validation_id: Validation ID.
+            with_source: If True, eagerly load the source relationship.
 
         Returns:
             Validation or None.
         """
+        if with_source:
+            return await self.validation_repo.get_with_source(validation_id)
         return await self.validation_repo.get_by_id(validation_id)
 
     async def list_for_source(

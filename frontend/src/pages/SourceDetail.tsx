@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Database,
@@ -56,13 +56,14 @@ import {
   type UnifiedValidatorDefinition,
 } from '@/api/modules/validators'
 import type { CustomValidatorSelectionConfig } from '@/components/validators/ValidatorSelector'
-import { formatDate, formatDuration, formatNumber } from '@/lib/utils'
+import { formatDate, formatNumber } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ValidatorSelector } from '@/components/validators'
 import { EditSourceDialog } from '@/components/sources'
 import { AnomalyDetectionPanel } from '@/components/anomaly'
 import { LineageGraph } from '@/components/lineage'
+import { ValidationHistoryList, type ValidationHistoryListHandle } from '@/components/validations'
 import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { str } from '@/lib/intlayer-utils'
 
@@ -86,8 +87,11 @@ export default function SourceDetail() {
   const { id } = useParams<{ id: string }>()
   const [source, setSource] = useState<Source | null>(null)
   const [schema, setSchema] = useState<Schema | null>(null)
-  const [validations, setValidations] = useState<Validation[]>([])
+  const [latestValidation, setLatestValidation] = useState<Validation | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Ref for validation history list - allows adding validations without full re-render
+  const validationHistoryRef = useRef<ValidationHistoryListHandle>(null)
   const [validating, setValidating] = useState(false)
   const [validationDialogOpen, setValidationDialogOpen] = useState(false)
   const [validators, setValidators] = useState<ValidatorDefinition[]>([])
@@ -123,12 +127,12 @@ export default function SourceDetail() {
       const [sourceData, schemaData, validationsData, typesResponse] = await Promise.all([
         getSource(id),
         getSourceSchema(id),
-        listSourceValidations(id),
+        listSourceValidations(id, { offset: 0, limit: 1 }), // Only fetch latest for stats
         getSupportedSourceTypes(),
       ])
       setSource(sourceData)
       setSchema(schemaData)
-      setValidations(validationsData?.data ?? [])
+      setLatestValidation(validationsData?.data?.[0] ?? null)
 
       // Find the source type definition
       if (typesResponse && sourceData) {
@@ -197,7 +201,10 @@ export default function SourceDetail() {
       }
 
       const result = await runValidation(id, options)
-      setValidations((prev) => [result, ...prev])
+      // Update latest validation for stats cards
+      setLatestValidation(result)
+      // Add to history list without full re-render
+      validationHistoryRef.current?.addValidation(result)
       setValidationDialogOpen(false)
       toast({
         title: result.passed ? 'Validation Passed' : 'Validation Failed',
@@ -220,7 +227,10 @@ export default function SourceDetail() {
     try {
       setValidating(true)
       const result = await runValidation(id, {})
-      setValidations((prev) => [result, ...prev])
+      // Update latest validation for stats cards
+      setLatestValidation(result)
+      // Add to history list without full re-render
+      validationHistoryRef.current?.addValidation(result)
       toast({
         title: result.passed ? 'Validation Passed' : 'Validation Failed',
         description: `Found ${result.total_issues} issues`,
@@ -337,8 +347,6 @@ export default function SourceDetail() {
       </div>
     )
   }
-
-  const latestValidation = validations?.[0]
 
   return (
     <div className="space-y-6">
@@ -565,7 +573,7 @@ export default function SourceDetail() {
                 )}
               </CardHeader>
               <CardContent>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3">
                   {sourceTypeDefinition?.fields.map((field) => {
                     const value = source.config[field.name]
                     if (value === undefined && !field.required) return null
@@ -573,7 +581,7 @@ export default function SourceDetail() {
                     const isSensitive = field.type === 'password' || isSensitiveField(field.name)
 
                     return (
-                      <div key={field.name} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-muted/30">
+                      <div key={field.name} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
                         <div className="flex items-center gap-2 min-w-0">
                           {isSensitive && (
                             <Shield className="h-4 w-4 text-amber-500 flex-shrink-0" />
@@ -581,7 +589,7 @@ export default function SourceDetail() {
                           <span className="text-sm text-muted-foreground truncate">{field.label}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <code className="text-sm bg-background px-2 py-0.5 rounded max-w-[200px] truncate">
+                          <code className="text-sm bg-background px-2 py-0.5 rounded break-all">
                             {getConfigDisplayValue(field.name, value)}
                           </code>
                           {isSensitive && value !== undefined && value !== null && value !== '' && (
@@ -608,7 +616,7 @@ export default function SourceDetail() {
                     .map(([key, value]) => {
                       const isSensitive = isSensitiveField(key)
                       return (
-                        <div key={key} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-muted/30">
+                        <div key={key} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
                           <div className="flex items-center gap-2 min-w-0">
                             {isSensitive && (
                               <Shield className="h-4 w-4 text-amber-500 flex-shrink-0" />
@@ -616,7 +624,7 @@ export default function SourceDetail() {
                             <span className="text-sm text-muted-foreground truncate">{key}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <code className="text-sm bg-background px-2 py-0.5 rounded max-w-[200px] truncate">
+                            <code className="text-sm bg-background px-2 py-0.5 rounded break-all">
                               {getConfigDisplayValue(key, value)}
                             </code>
                             {isSensitive && value !== undefined && value !== null && value !== '' && (
@@ -715,59 +723,7 @@ export default function SourceDetail() {
           )}
 
           {/* Validation History */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="h-5 w-5" />
-                Validation History
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!validations || validations.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  No validations yet. Run your first validation to see results here.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {validations.map((validation) => (
-                    <Link
-                      key={validation.id}
-                      to={`/validations/${validation.id}`}
-                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        {validation.passed ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-600" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-red-600" />
-                        )}
-                        <div>
-                          <p className="font-medium">
-                            {validation.passed ? 'Passed' : 'Failed'} -{' '}
-                            {formatNumber(validation.total_issues)} issues
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {formatDate(validation.created_at)} •{' '}
-                            {formatDuration(validation.duration_ms)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {validation.critical_issues > 0 && (
-                          <Badge variant="critical">
-                            {validation.critical_issues} critical
-                          </Badge>
-                        )}
-                        {validation.high_issues > 0 && (
-                          <Badge variant="high">{validation.high_issues} high</Badge>
-                        )}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <ValidationHistoryList ref={validationHistoryRef} sourceId={id!} />
         </TabsContent>
 
         {/* Anomaly Detection Tab */}
