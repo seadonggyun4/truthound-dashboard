@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import { LoadingFallback } from './components/LoadingFallback'
+import { GlobalConfirmDialog } from './components/ConfirmDialog'
 import Dashboard from './pages/Dashboard'
 import Sources from './pages/Sources'
 import SourceDetail from './pages/SourceDetail'
@@ -36,6 +37,7 @@ import Reports from './pages/Reports'
 function App() {
   return (
     <Suspense fallback={<LoadingFallback />}>
+      <GlobalConfirmDialog />
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />

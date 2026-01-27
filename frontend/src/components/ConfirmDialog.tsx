@@ -1,8 +1,8 @@
 /**
  * Reusable confirmation dialog component and hook.
  *
- * Usage:
- *   const { confirm, ConfirmDialog } = useConfirm()
+ * Usage (Global - recommended):
+ *   import { confirm } from '@/components/ConfirmDialog'
  *
  *   const handleDelete = async () => {
  *     const confirmed = await confirm({
@@ -16,15 +16,12 @@
  *     }
  *   }
  *
- *   return (
- *     <>
- *       <button onClick={handleDelete}>Delete</button>
- *       <ConfirmDialog />
- *     </>
- *   )
+ * Usage (Hook - for custom behavior):
+ *   const { confirm, ConfirmDialog } = useConfirm()
+ *   // ... same as above but with local state
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, createContext, useContext } from 'react'
 import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   AlertDialog,
@@ -129,3 +126,103 @@ export function useConfirm() {
 }
 
 export default useConfirm
+
+// ============================================
+// Global confirm function (no hook required)
+// ============================================
+
+type ConfirmResolver = (value: boolean) => void
+
+interface GlobalConfirmState {
+  isOpen: boolean
+  options: ConfirmOptions
+  resolve: ConfirmResolver | null
+}
+
+let globalState: GlobalConfirmState = {
+  isOpen: false,
+  options: { title: '' },
+  resolve: null,
+}
+
+let listeners: Set<() => void> = new Set()
+
+function notifyListeners() {
+  listeners.forEach((listener) => listener())
+}
+
+/**
+ * Global confirm function - can be called from anywhere without hooks
+ */
+export function confirm(options: ConfirmOptions): Promise<boolean> {
+  return new Promise((resolve) => {
+    globalState = {
+      isOpen: true,
+      options,
+      resolve,
+    }
+    notifyListeners()
+  })
+}
+
+function handleGlobalConfirm() {
+  globalState.resolve?.(true)
+  globalState = { ...globalState, isOpen: false, resolve: null }
+  notifyListeners()
+}
+
+function handleGlobalCancel() {
+  globalState.resolve?.(false)
+  globalState = { ...globalState, isOpen: false, resolve: null }
+  notifyListeners()
+}
+
+/**
+ * Global ConfirmDialog component - mount once in App.tsx
+ */
+export function GlobalConfirmDialog() {
+  const common = useSafeIntlayer('common')
+  const [, forceUpdate] = useState({})
+
+  // Subscribe to global state changes
+  useState(() => {
+    const listener = () => forceUpdate({})
+    listeners.add(listener)
+    return () => listeners.delete(listener)
+  })
+
+  const { isOpen, options } = globalState
+  const {
+    title,
+    description,
+    confirmText,
+    cancelText,
+    variant = 'default',
+  } = options
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={(open) => !open && handleGlobalCancel()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          {description && (
+            <AlertDialogDescription>{description}</AlertDialogDescription>
+          )}
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={handleGlobalCancel}>
+            {cancelText || str(common.cancel)}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleGlobalConfirm}
+            className={cn(
+              variant === 'destructive' && buttonVariants({ variant: 'destructive' })
+            )}
+          >
+            {confirmText || str(common.confirm)}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
