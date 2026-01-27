@@ -2,11 +2,17 @@
 
 This module provides REST API endpoints for cross-feature integration
 between Anomaly Detection and Drift Monitoring alerts.
+
+API Design: Direct Response Style
+- Single resources return the resource directly
+- List endpoints return PaginatedResponse with data, total, offset, limit
+- Errors are handled via HTTPException
+- Success is indicated by HTTP status codes (200, 201, 204)
 """
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -14,6 +20,7 @@ from truthound_dashboard.core.cross_alerts import CrossAlertService
 from truthound_dashboard.schemas.cross_alerts import (
     CrossAlertCorrelation,
     CrossAlertCorrelationListResponse,
+    CorrelationSearchResult,
     AutoTriggerConfig,
     AutoTriggerConfigCreate,
     AutoTriggerConfigUpdate,
@@ -70,7 +77,6 @@ async def get_correlations(
     )
 
     return CrossAlertCorrelationListResponse(
-        success=True,
         data=[CrossAlertCorrelation(**c) for c in correlations],
         total=total,
         offset=offset,
@@ -80,7 +86,7 @@ async def get_correlations(
 
 @router.get(
     "/cross-alerts/correlations/{source_id}",
-    response_model=dict,
+    response_model=CorrelationSearchResult,
     summary="Find correlations for source",
     description="Find correlated anomaly and drift alerts for a specific source.",
 )
@@ -89,7 +95,7 @@ async def find_correlations_for_source(
     service: CrossAlertServiceDep,
     time_window_hours: int = Query(24, ge=1, le=168, description="Time window in hours"),
     limit: int = Query(50, ge=1, le=100, description="Maximum items to return"),
-) -> dict:
+) -> CorrelationSearchResult:
     """Find correlations for a specific source.
 
     This actively searches for correlations between recent anomaly
@@ -102,7 +108,7 @@ async def find_correlations_for_source(
         limit: Maximum correlations to return.
 
     Returns:
-        Dictionary with correlations found.
+        Search result with found correlations.
     """
     correlations = await service.correlate_anomaly_drift(
         source_id=source_id,
@@ -110,11 +116,10 @@ async def find_correlations_for_source(
         limit=limit,
     )
 
-    return {
-        "success": True,
-        "data": correlations,
-        "total": len(correlations),
-    }
+    return CorrelationSearchResult(
+        correlations=[CrossAlertCorrelation(**c) for c in correlations],
+        total=len(correlations),
+    )
 
 
 # =============================================================================
@@ -124,14 +129,14 @@ async def find_correlations_for_source(
 
 @router.get(
     "/cross-alerts/config",
-    response_model=dict,
+    response_model=AutoTriggerConfig,
     summary="Get auto-trigger config",
     description="Get auto-trigger configuration (global or source-specific).",
 )
 async def get_config(
     service: CrossAlertServiceDep,
     source_id: str | None = Query(None, description="Source ID for source-specific config"),
-) -> dict:
+) -> AutoTriggerConfig:
     """Get auto-trigger configuration.
 
     Args:
@@ -139,18 +144,15 @@ async def get_config(
         source_id: Optional source ID for source-specific config.
 
     Returns:
-        Configuration dictionary.
+        Configuration object.
     """
     config = service.get_config(source_id)
-    return {
-        "success": True,
-        "data": config,
-    }
+    return AutoTriggerConfig(**config)
 
 
 @router.post(
     "/cross-alerts/config",
-    response_model=dict,
+    response_model=AutoTriggerConfig,
     status_code=201,
     summary="Create/update auto-trigger config",
     description="Create or update auto-trigger configuration.",
@@ -158,7 +160,7 @@ async def get_config(
 async def update_config(
     request: AutoTriggerConfigCreate,
     service: CrossAlertServiceDep,
-) -> dict:
+) -> AutoTriggerConfig:
     """Create or update auto-trigger configuration.
 
     Args:
@@ -173,15 +175,12 @@ async def update_config(
 
     config = service.update_config(source_id, **update_data)
 
-    return {
-        "success": True,
-        "data": config,
-    }
+    return AutoTriggerConfig(**config)
 
 
 @router.put(
     "/cross-alerts/config",
-    response_model=dict,
+    response_model=AutoTriggerConfig,
     summary="Update auto-trigger config",
     description="Update existing auto-trigger configuration.",
 )
@@ -189,7 +188,7 @@ async def patch_config(
     request: AutoTriggerConfigUpdate,
     service: CrossAlertServiceDep,
     source_id: str | None = Query(None, description="Source ID for source-specific config"),
-) -> dict:
+) -> AutoTriggerConfig:
     """Update auto-trigger configuration.
 
     Args:
@@ -203,10 +202,7 @@ async def patch_config(
     update_data = request.model_dump(exclude_unset=True)
     config = service.update_config(source_id, **update_data)
 
-    return {
-        "success": True,
-        "data": config,
-    }
+    return AutoTriggerConfig(**config)
 
 
 # =============================================================================
@@ -244,7 +240,6 @@ async def list_events(
     )
 
     return AutoTriggerEventListResponse(
-        success=True,
         data=[AutoTriggerEvent(**e) for e in events],
         total=total,
         offset=offset,
@@ -259,14 +254,14 @@ async def list_events(
 
 @router.post(
     "/cross-alerts/trigger/drift-on-anomaly/{detection_id}",
-    response_model=dict,
+    response_model=AutoTriggerEvent,
     summary="Trigger drift check on anomaly",
     description="Manually trigger a drift check based on an anomaly detection result.",
 )
 async def trigger_drift_on_anomaly(
     detection_id: str,
     service: CrossAlertServiceDep,
-) -> dict:
+) -> AutoTriggerEvent:
     """Manually trigger drift check after anomaly detection.
 
     Args:
@@ -284,22 +279,19 @@ async def trigger_drift_on_anomaly(
     if not event:
         raise HTTPException(status_code=404, detail="Detection not found")
 
-    return {
-        "success": True,
-        "data": event,
-    }
+    return AutoTriggerEvent(**event)
 
 
 @router.post(
     "/cross-alerts/trigger/anomaly-on-drift/{monitor_id}",
-    response_model=dict,
+    response_model=AutoTriggerEvent,
     summary="Trigger anomaly check on drift",
     description="Manually trigger an anomaly check based on drift detection.",
 )
 async def trigger_anomaly_on_drift(
     monitor_id: str,
     service: CrossAlertServiceDep,
-) -> dict:
+) -> AutoTriggerEvent:
     """Manually trigger anomaly check after drift detection.
 
     Args:
@@ -317,10 +309,7 @@ async def trigger_anomaly_on_drift(
     if not event:
         raise HTTPException(status_code=404, detail="Monitor not found")
 
-    return {
-        "success": True,
-        "data": event,
-    }
+    return AutoTriggerEvent(**event)
 
 
 # =============================================================================
@@ -330,23 +319,20 @@ async def trigger_anomaly_on_drift(
 
 @router.get(
     "/cross-alerts/summary",
-    response_model=dict,
+    response_model=CrossAlertSummary,
     summary="Get cross-alert summary",
     description="Get summary statistics for cross-alert correlations.",
 )
 async def get_summary(
     service: CrossAlertServiceDep,
-) -> dict:
+) -> CrossAlertSummary:
     """Get cross-alert summary statistics.
 
     Args:
         service: Injected cross-alert service.
 
     Returns:
-        Summary statistics dictionary.
+        Summary statistics.
     """
     summary = await service.get_summary()
-    return {
-        "success": True,
-        "data": summary,
-    }
+    return CrossAlertSummary(**summary)

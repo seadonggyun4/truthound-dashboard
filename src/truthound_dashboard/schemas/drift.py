@@ -261,8 +261,9 @@ class DriftComparisonListItem(BaseModel, IDMixin, TimestampMixin):
 
 
 class DriftComparisonListResponse(BaseModel):
-    """List response for drift comparisons."""
+    """Paginated list response for drift comparisons."""
 
-    success: bool = True
     data: list[DriftComparisonListItem] = Field(default_factory=list)
     total: int = 0
+    offset: int = 0
+    limit: int = 100

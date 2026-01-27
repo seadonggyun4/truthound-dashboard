@@ -73,16 +73,16 @@ class ScheduleListItem(BaseModel, IDMixin, TimestampMixin):
 
 
 class ScheduleListResponse(BaseModel):
-    """List response for schedules."""
+    """Paginated list response for schedules."""
 
-    success: bool = True
     data: list[ScheduleListItem] = Field(default_factory=list)
     total: int = 0
+    offset: int = 0
+    limit: int = 100
 
 
 class ScheduleActionResponse(BaseModel):
     """Response for schedule actions (pause, resume, run)."""
 
-    success: bool = True
     message: str = Field(..., description="Action result message")
     schedule: ScheduleResponse | None = Field(None, description="Updated schedule")

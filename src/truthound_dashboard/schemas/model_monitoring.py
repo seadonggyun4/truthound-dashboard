@@ -372,3 +372,20 @@ class MonitoringOverview(BaseModel):
     active_alerts: int = Field(default=0, description="Currently active alerts")
     models_with_drift: int = Field(default=0, description="Models with detected drift")
     avg_latency_ms: float | None = Field(None, description="Average latency across all models")
+
+
+class AlertHandlerTestResult(BaseModel):
+    """Result of testing an alert handler."""
+
+    success: bool = Field(..., description="Whether test was successful")
+    message: str = Field(..., description="Test result message")
+    handler_id: str = Field(..., description="Handler ID that was tested")
+    handler_type: str = Field(..., description="Type of the handler")
+
+
+class RuleEvaluationResult(BaseModel):
+    """Result of rule evaluation for a model."""
+
+    model_id: str = Field(..., description="Model ID that was evaluated")
+    alerts_created: int = Field(..., description="Number of alerts created")
+    alert_ids: list[str] = Field(default_factory=list, description="IDs of created alerts")

@@ -1361,3 +1361,16 @@ class ExpressionValidateResponse(BaseModel):
         default_factory=list,
         description="Non-fatal warnings about the expression",
     )
+
+
+# =============================================================================
+# Cache Invalidation Response
+# =============================================================================
+
+
+class CacheInvalidateResponse(BaseSchema):
+    """Response for cache invalidation operations."""
+
+    message: str = Field(..., description="Descriptive message about the operation")
+    target: str = Field(..., description="Cache target that was invalidated")
+    timestamp: str = Field(..., description="ISO timestamp of the operation")

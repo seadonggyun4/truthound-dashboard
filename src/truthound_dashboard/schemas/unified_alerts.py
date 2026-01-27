@@ -221,3 +221,10 @@ class BulkAlertActionResponse(BaseModel):
     success_count: int = Field(default=0, description="Number of successful updates")
     failed_count: int = Field(default=0, description="Number of failed updates")
     failed_ids: list[str] = Field(default_factory=list, description="IDs that failed")
+
+
+class AlertCountResponse(BaseModel):
+    """Response for alert count query."""
+
+    count: int = Field(..., description="Number of matching alerts")
+    status_filter: str = Field(..., description="Status filter applied")

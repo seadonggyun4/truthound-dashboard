@@ -509,3 +509,19 @@ class WebhookTriggerResponse(BaseModel):
     triggered_schedules: list[str] = Field(default_factory=list)
     message: str
     request_id: str
+
+
+class WebhookTestReceivedData(BaseModel):
+    """Data received in webhook test."""
+
+    source: str
+    event_type: str
+
+
+class WebhookTestResponse(BaseModel):
+    """Response schema for webhook test endpoint."""
+
+    message: str = Field(..., description="Test result message")
+    received: WebhookTestReceivedData = Field(
+        ..., description="Data that was received in the test request"
+    )

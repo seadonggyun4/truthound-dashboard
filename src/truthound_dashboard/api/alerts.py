@@ -14,11 +14,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.unified_alerts import UnifiedAlertsService
 from ..db import get_db_session
-from ..schemas.base import DataResponse
 from ..schemas.unified_alerts import (
     AcknowledgeAlertRequest,
     AlertCorrelation,
     AlertCorrelationResponse,
+    AlertCountResponse,
     AlertSeverity,
     AlertSource,
     AlertStatus,
@@ -43,7 +43,7 @@ def get_service(session: AsyncSession = Depends(get_db_session)) -> UnifiedAlert
 # =============================================================================
 
 
-@router.get("", response_model=DataResponse[UnifiedAlertListResponse])
+@router.get("", response_model=UnifiedAlertListResponse)
 async def list_alerts(
     source: AlertSource | None = None,
     severity: AlertSeverity | None = None,
@@ -53,7 +53,7 @@ async def list_alerts(
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     service: UnifiedAlertsService = Depends(get_service),
-):
+) -> UnifiedAlertListResponse:
     """List all unified alerts from all sources.
 
     Aggregates alerts from:
@@ -72,34 +72,31 @@ async def list_alerts(
         limit=limit,
     )
 
-    return DataResponse(
-        data=UnifiedAlertListResponse(
-            items=alerts,
-            total=total,
-            offset=offset,
-            limit=limit,
-        )
+    return UnifiedAlertListResponse(
+        items=alerts,
+        total=total,
+        offset=offset,
+        limit=limit,
     )
 
 
-@router.get("/summary", response_model=DataResponse[AlertSummary])
+@router.get("/summary", response_model=AlertSummary)
 async def get_alert_summary(
     time_range_hours: int = Query(24, ge=1, le=720, description="Time range for summary"),
     service: UnifiedAlertsService = Depends(get_service),
-):
+) -> AlertSummary:
     """Get alert summary statistics.
 
     Returns counts by severity, source, status, and trend data.
     """
-    summary = await service.get_alert_summary(time_range_hours=time_range_hours)
-    return DataResponse(data=summary)
+    return await service.get_alert_summary(time_range_hours=time_range_hours)
 
 
-@router.get("/count")
+@router.get("/count", response_model=AlertCountResponse)
 async def get_alert_count(
     status: AlertStatus | None = Query(None, description="Filter by status"),
     service: UnifiedAlertsService = Depends(get_service),
-):
+) -> AlertCountResponse:
     """Get quick alert count (for badges).
 
     Returns just the count of alerts matching the criteria.
@@ -110,25 +107,23 @@ async def get_alert_count(
         limit=1,  # We only need the count
     )
 
-    return DataResponse(
-        data={
-            "count": total,
-            "status_filter": status.value if status else "all",
-        }
+    return AlertCountResponse(
+        count=total,
+        status_filter=status.value if status else "all",
     )
 
 
-@router.get("/{alert_id}", response_model=DataResponse[UnifiedAlertResponse])
+@router.get("/{alert_id}", response_model=UnifiedAlertResponse)
 async def get_alert(
     alert_id: str,
     service: UnifiedAlertsService = Depends(get_service),
-):
+) -> UnifiedAlertResponse:
     """Get a specific alert by unified ID."""
     alert = await service.get_alert_by_id(alert_id)
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
-    return DataResponse(data=alert)
+    return alert
 
 
 # =============================================================================
@@ -136,12 +131,12 @@ async def get_alert(
 # =============================================================================
 
 
-@router.post("/{alert_id}/acknowledge", response_model=DataResponse[UnifiedAlertResponse])
+@router.post("/{alert_id}/acknowledge", response_model=UnifiedAlertResponse)
 async def acknowledge_alert(
     alert_id: str,
     request: AcknowledgeAlertRequest,
     service: UnifiedAlertsService = Depends(get_service),
-):
+) -> UnifiedAlertResponse:
     """Acknowledge an alert.
 
     Note: Not all alert types support acknowledgement.
@@ -154,15 +149,15 @@ async def acknowledge_alert(
             detail="Alert not found or not eligible for acknowledgement",
         )
 
-    return DataResponse(data=alert)
+    return alert
 
 
-@router.post("/{alert_id}/resolve", response_model=DataResponse[UnifiedAlertResponse])
+@router.post("/{alert_id}/resolve", response_model=UnifiedAlertResponse)
 async def resolve_alert(
     alert_id: str,
     request: ResolveAlertRequest,
     service: UnifiedAlertsService = Depends(get_service),
-):
+) -> UnifiedAlertResponse:
     """Resolve an alert.
 
     Note: Not all alert types support resolution.
@@ -175,7 +170,7 @@ async def resolve_alert(
             detail="Alert not found or not eligible for resolution",
         )
 
-    return DataResponse(data=alert)
+    return alert
 
 
 # =============================================================================
@@ -183,11 +178,11 @@ async def resolve_alert(
 # =============================================================================
 
 
-@router.post("/bulk/acknowledge", response_model=DataResponse[BulkAlertActionResponse])
+@router.post("/bulk/acknowledge", response_model=BulkAlertActionResponse)
 async def bulk_acknowledge_alerts(
     request: BulkAlertActionRequest,
     service: UnifiedAlertsService = Depends(get_service),
-):
+) -> BulkAlertActionResponse:
     """Bulk acknowledge multiple alerts."""
     success, failed, failed_ids = await service.bulk_acknowledge(
         request.alert_ids,
@@ -195,20 +190,18 @@ async def bulk_acknowledge_alerts(
         request.message,
     )
 
-    return DataResponse(
-        data=BulkAlertActionResponse(
-            success_count=success,
-            failed_count=failed,
-            failed_ids=failed_ids,
-        )
+    return BulkAlertActionResponse(
+        success_count=success,
+        failed_count=failed,
+        failed_ids=failed_ids,
     )
 
 
-@router.post("/bulk/resolve", response_model=DataResponse[BulkAlertActionResponse])
+@router.post("/bulk/resolve", response_model=BulkAlertActionResponse)
 async def bulk_resolve_alerts(
     request: BulkAlertActionRequest,
     service: UnifiedAlertsService = Depends(get_service),
-):
+) -> BulkAlertActionResponse:
     """Bulk resolve multiple alerts."""
     success, failed, failed_ids = await service.bulk_resolve(
         request.alert_ids,
@@ -216,12 +209,10 @@ async def bulk_resolve_alerts(
         request.message,
     )
 
-    return DataResponse(
-        data=BulkAlertActionResponse(
-            success_count=success,
-            failed_count=failed,
-            failed_ids=failed_ids,
-        )
+    return BulkAlertActionResponse(
+        success_count=success,
+        failed_count=failed,
+        failed_ids=failed_ids,
     )
 
 
@@ -230,12 +221,12 @@ async def bulk_resolve_alerts(
 # =============================================================================
 
 
-@router.get("/{alert_id}/correlations", response_model=DataResponse[AlertCorrelationResponse])
+@router.get("/{alert_id}/correlations", response_model=AlertCorrelationResponse)
 async def get_alert_correlations(
     alert_id: str,
     time_window_hours: int = Query(1, ge=1, le=24, description="Correlation time window"),
     service: UnifiedAlertsService = Depends(get_service),
-):
+) -> AlertCorrelationResponse:
     """Get correlated alerts for a given alert.
 
     Finds alerts that are related by:
@@ -250,9 +241,7 @@ async def get_alert_correlations(
 
     total_correlated = sum(len(c.related_alerts) for c in correlations)
 
-    return DataResponse(
-        data=AlertCorrelationResponse(
-            correlations=correlations,
-            total_correlated=total_correlated,
-        )
+    return AlertCorrelationResponse(
+        correlations=correlations,
+        total_correlated=total_correlated,
     )

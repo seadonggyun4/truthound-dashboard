@@ -3,12 +3,18 @@
 This module provides reusable base classes and mixins for Pydantic schemas,
 enabling consistent patterns across all API schemas.
 
+Design Philosophy - Direct Response Style:
+- Single resources return the resource directly (no wrapper)
+- List endpoints return PaginatedResponse[T] with data, total, offset, limit
+- Errors are handled via HTTPException (FastAPI converts to proper JSON)
+- Success is indicated by HTTP status codes (200, 201, 204), not response fields
+
 The schema classes follow a consistent naming convention:
 - *Base: Common fields shared by create/update/response
 - *Create: Fields for creation (POST)
 - *Update: Fields for updates (PUT/PATCH)
 - *Response: Fields returned in responses
-- *ListResponse: Paginated list response wrapper
+- *ListResponse: Alias for PaginatedResponse[*Response]
 """
 
 from __future__ import annotations
@@ -49,28 +55,20 @@ class IDMixin:
     id: str = Field(..., description="Unique identifier")
 
 
-class ResponseWrapper(BaseSchema, Generic[T]):
-    """Generic wrapper for single item responses.
+class PaginatedResponse(BaseSchema, Generic[T]):
+    """Generic paginated list response.
 
-    Provides consistent structure for API responses.
+    RESTful design - no 'success' field. HTTP status codes indicate success/failure.
+
+    Example response:
+        {
+            "data": [...],
+            "total": 100,
+            "offset": 0,
+            "limit": 20
+        }
     """
 
-    success: bool = Field(default=True, description="Whether request succeeded")
-    data: T = Field(..., description="Response data")
-    message: str | None = Field(default=None, description="Optional message")
-
-
-# Alias for backward compatibility with newer code
-DataResponse = ResponseWrapper
-
-
-class ListResponseWrapper(BaseSchema, Generic[T]):
-    """Generic wrapper for list responses with pagination.
-
-    Provides consistent structure for paginated API responses.
-    """
-
-    success: bool = Field(default=True, description="Whether request succeeded")
     data: list[T] = Field(default_factory=list, description="List of items")
     total: int = Field(default=0, description="Total count of items")
     offset: int = Field(default=0, description="Offset for pagination")
@@ -82,10 +80,34 @@ class ListResponseWrapper(BaseSchema, Generic[T]):
         return self.offset + len(self.data) < self.total
 
 
-class ErrorResponse(BaseSchema):
-    """Standard error response schema."""
+# Backward compatibility aliases
+ListResponseWrapper = PaginatedResponse
+"""@deprecated Use PaginatedResponse instead."""
 
-    success: bool = Field(default=False)
+
+class ResponseWrapper(BaseSchema, Generic[T]):
+    """@deprecated - For backward compatibility only.
+
+    New code should return resources directly without wrapper.
+    """
+
+    success: bool = Field(default=True, description="Whether request succeeded")
+    data: T = Field(..., description="Response data")
+    message: str | None = Field(default=None, description="Optional message")
+
+
+# Alias for backward compatibility
+DataResponse = ResponseWrapper
+"""@deprecated Use direct response instead."""
+
+
+class ErrorResponse(BaseSchema):
+    """Standard error response schema.
+
+    Note: In most cases, use HTTPException instead. This schema is for
+    documentation purposes and complex error responses.
+    """
+
     detail: str = Field(..., description="Error description")
     code: str | None = Field(default=None, description="Error code")
     errors: list[dict[str, Any]] | None = Field(
@@ -94,7 +116,6 @@ class ErrorResponse(BaseSchema):
 
 
 class MessageResponse(BaseSchema):
-    """Simple message response schema."""
+    """Simple message response schema for delete/action endpoints."""
 
-    success: bool = Field(default=True)
     message: str = Field(..., description="Response message")

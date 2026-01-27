@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.model_monitoring import ModelMonitoringService
 from ..db import get_db_session
-from ..schemas.base import DataResponse
+from ..schemas.base import MessageResponse
 from ..schemas.model_monitoring import (
     AcknowledgeAlertRequest,
     AlertHandlerListResponse,
@@ -56,13 +56,13 @@ def get_service(session: AsyncSession = Depends(get_db_session)) -> ModelMonitor
 # =============================================================================
 
 
-@router.get("/models", response_model=DataResponse[RegisteredModelListResponse])
+@router.get("/models", response_model=RegisteredModelListResponse)
 async def list_models(
     status: ModelStatus | None = None,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> RegisteredModelListResponse:
     """List all registered models."""
     status_filter = status.value if status else None
     models, total = await service.list_models(
@@ -88,21 +88,19 @@ async def list_models(
         for m in models
     ]
 
-    return DataResponse(
-        data=RegisteredModelListResponse(
-            items=items,
-            total=total,
-            offset=offset,
-            limit=limit,
-        )
+    return RegisteredModelListResponse(
+        items=items,
+        total=total,
+        offset=offset,
+        limit=limit,
     )
 
 
-@router.post("/models", response_model=DataResponse[RegisteredModelResponse])
+@router.post("/models", response_model=RegisteredModelResponse, status_code=201)
 async def register_model(
     request: RegisterModelRequest,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> RegisteredModelResponse:
     """Register a new model for monitoring."""
     model = await service.register_model(
         name=request.name,
@@ -112,60 +110,56 @@ async def register_model(
         metadata=request.metadata,
     )
 
-    return DataResponse(
-        data=RegisteredModelResponse(
-            id=model.id,
-            name=model.name,
-            version=model.version,
-            description=model.description or "",
-            status=ModelStatus(model.status),
-            config=model.config,
-            metadata=model.metadata_json or {},
-            prediction_count=model.prediction_count,
-            last_prediction_at=model.last_prediction_at,
-            current_drift_score=model.current_drift_score,
-            health_score=model.health_score,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-        )
+    return RegisteredModelResponse(
+        id=model.id,
+        name=model.name,
+        version=model.version,
+        description=model.description or "",
+        status=ModelStatus(model.status),
+        config=model.config,
+        metadata=model.metadata_json or {},
+        prediction_count=model.prediction_count,
+        last_prediction_at=model.last_prediction_at,
+        current_drift_score=model.current_drift_score,
+        health_score=model.health_score,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
     )
 
 
-@router.get("/models/{model_id}", response_model=DataResponse[RegisteredModelResponse])
+@router.get("/models/{model_id}", response_model=RegisteredModelResponse)
 async def get_model(
     model_id: str,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> RegisteredModelResponse:
     """Get a registered model by ID."""
     model = await service.get_model(model_id)
     if not model:
         raise HTTPException(status_code=404, detail="Model not found")
 
-    return DataResponse(
-        data=RegisteredModelResponse(
-            id=model.id,
-            name=model.name,
-            version=model.version,
-            description=model.description or "",
-            status=ModelStatus(model.status),
-            config=model.config,
-            metadata=model.metadata_json or {},
-            prediction_count=model.prediction_count,
-            last_prediction_at=model.last_prediction_at,
-            current_drift_score=model.current_drift_score,
-            health_score=model.health_score,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-        )
+    return RegisteredModelResponse(
+        id=model.id,
+        name=model.name,
+        version=model.version,
+        description=model.description or "",
+        status=ModelStatus(model.status),
+        config=model.config,
+        metadata=model.metadata_json or {},
+        prediction_count=model.prediction_count,
+        last_prediction_at=model.last_prediction_at,
+        current_drift_score=model.current_drift_score,
+        health_score=model.health_score,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
     )
 
 
-@router.put("/models/{model_id}", response_model=DataResponse[RegisteredModelResponse])
+@router.put("/models/{model_id}", response_model=RegisteredModelResponse)
 async def update_model(
     model_id: str,
     request: UpdateModelRequest,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> RegisteredModelResponse:
     """Update a registered model."""
     updates = {}
     if request.name is not None:
@@ -185,62 +179,60 @@ async def update_model(
     if not model:
         raise HTTPException(status_code=404, detail="Model not found")
 
-    return DataResponse(
-        data=RegisteredModelResponse(
-            id=model.id,
-            name=model.name,
-            version=model.version,
-            description=model.description or "",
-            status=ModelStatus(model.status),
-            config=model.config,
-            metadata=model.metadata_json or {},
-            prediction_count=model.prediction_count,
-            last_prediction_at=model.last_prediction_at,
-            current_drift_score=model.current_drift_score,
-            health_score=model.health_score,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-        )
+    return RegisteredModelResponse(
+        id=model.id,
+        name=model.name,
+        version=model.version,
+        description=model.description or "",
+        status=ModelStatus(model.status),
+        config=model.config,
+        metadata=model.metadata_json or {},
+        prediction_count=model.prediction_count,
+        last_prediction_at=model.last_prediction_at,
+        current_drift_score=model.current_drift_score,
+        health_score=model.health_score,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
     )
 
 
-@router.delete("/models/{model_id}")
+@router.delete("/models/{model_id}", response_model=MessageResponse)
 async def delete_model(
     model_id: str,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> MessageResponse:
     """Delete a registered model."""
     deleted = await service.delete_model(model_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Model not found")
 
-    return {"success": True, "message": "Model deleted"}
+    return MessageResponse(message="Model deleted")
 
 
-@router.post("/models/{model_id}/pause")
+@router.post("/models/{model_id}/pause", response_model=MessageResponse)
 async def pause_model(
     model_id: str,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> MessageResponse:
     """Pause monitoring for a model."""
     model = await service.pause_model(model_id)
     if not model:
         raise HTTPException(status_code=404, detail="Model not found")
 
-    return {"success": True, "message": "Model monitoring paused"}
+    return MessageResponse(message="Model monitoring paused")
 
 
-@router.post("/models/{model_id}/resume")
+@router.post("/models/{model_id}/resume", response_model=MessageResponse)
 async def resume_model(
     model_id: str,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> MessageResponse:
     """Resume monitoring for a model."""
     model = await service.resume_model(model_id)
     if not model:
         raise HTTPException(status_code=404, detail="Model not found")
 
-    return {"success": True, "message": "Model monitoring resumed"}
+    return MessageResponse(message="Model monitoring resumed")
 
 
 # =============================================================================
@@ -250,13 +242,14 @@ async def resume_model(
 
 @router.post(
     "/models/{model_id}/predictions",
-    response_model=DataResponse[RecordPredictionResponse],
+    response_model=RecordPredictionResponse,
+    status_code=201,
 )
 async def record_prediction(
     model_id: str,
     request: RecordPredictionRequest,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> RecordPredictionResponse:
     """Record a model prediction."""
     try:
         prediction = await service.record_prediction(
@@ -268,35 +261,31 @@ async def record_prediction(
             metadata=request.metadata,
         )
 
-        return DataResponse(
-            data=RecordPredictionResponse(
-                id=prediction.id,
-                model_id=model_id,
-                recorded_at=prediction.recorded_at,
-            )
+        return RecordPredictionResponse(
+            id=prediction.id,
+            model_id=model_id,
+            recorded_at=prediction.recorded_at,
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.get("/models/{model_id}/metrics", response_model=DataResponse[MetricsResponse])
+@router.get("/models/{model_id}/metrics", response_model=MetricsResponse)
 async def get_model_metrics(
     model_id: str,
     hours: int = Query(24, ge=1, le=168),
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> MetricsResponse:
     """Get metrics for a model."""
     try:
         metrics_data = await service.get_model_metrics(model_id, hours)
 
-        return DataResponse(
-            data=MetricsResponse(
-                model_id=metrics_data["model_id"],
-                model_name=metrics_data["model_name"],
-                time_range_hours=metrics_data["time_range_hours"],
-                metrics=[MetricSummary(**m) for m in metrics_data["metrics"]],
-                data_points=metrics_data["data_points"],
-            )
+        return MetricsResponse(
+            model_id=metrics_data["model_id"],
+            model_name=metrics_data["model_name"],
+            time_range_hours=metrics_data["time_range_hours"],
+            metrics=[MetricSummary(**m) for m in metrics_data["metrics"]],
+            data_points=metrics_data["data_points"],
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -307,14 +296,14 @@ async def get_model_metrics(
 # =============================================================================
 
 
-@router.get("/rules", response_model=DataResponse[AlertRuleListResponse])
+@router.get("/rules", response_model=AlertRuleListResponse)
 async def list_alert_rules(
     model_id: str | None = None,
     active_only: bool = False,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> AlertRuleListResponse:
     """List all alert rules."""
     rules = await service.get_alert_rules(model_id=model_id, active_only=active_only)
 
@@ -339,21 +328,19 @@ async def list_alert_rules(
         for r in paginated
     ]
 
-    return DataResponse(
-        data=AlertRuleListResponse(
-            items=items,
-            total=total,
-            offset=offset,
-            limit=limit,
-        )
+    return AlertRuleListResponse(
+        items=items,
+        total=total,
+        offset=offset,
+        limit=limit,
     )
 
 
-@router.post("/rules", response_model=DataResponse[AlertRuleResponse])
+@router.post("/rules", response_model=AlertRuleResponse, status_code=201)
 async def create_alert_rule(
     request: CreateAlertRuleRequest,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> AlertRuleResponse:
     """Create a new alert rule."""
     try:
         rule = await service.create_alert_rule(
@@ -364,39 +351,7 @@ async def create_alert_rule(
             severity=request.severity.value,
         )
 
-        return DataResponse(
-            data=AlertRuleResponse(
-                id=rule.id,
-                name=rule.name,
-                model_id=rule.model_id,
-                rule_type=rule.rule_type,
-                severity=AlertSeverity(rule.severity),
-                config=rule.config,
-                is_active=rule.is_active,
-                last_triggered_at=rule.last_triggered_at,
-                trigger_count=rule.trigger_count,
-                created_at=rule.created_at,
-                updated_at=rule.updated_at,
-            )
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@router.get("/rules/{rule_id}", response_model=DataResponse[AlertRuleResponse])
-async def get_alert_rule(
-    rule_id: str,
-    service: ModelMonitoringService = Depends(get_service),
-):
-    """Get an alert rule by ID."""
-    rules = await service.get_alert_rules()
-    rule = next((r for r in rules if r.id == rule_id), None)
-
-    if not rule:
-        raise HTTPException(status_code=404, detail="Alert rule not found")
-
-    return DataResponse(
-        data=AlertRuleResponse(
+        return AlertRuleResponse(
             id=rule.id,
             name=rule.name,
             model_id=rule.model_id,
@@ -409,15 +364,43 @@ async def get_alert_rule(
             created_at=rule.created_at,
             updated_at=rule.updated_at,
         )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/rules/{rule_id}", response_model=AlertRuleResponse)
+async def get_alert_rule(
+    rule_id: str,
+    service: ModelMonitoringService = Depends(get_service),
+) -> AlertRuleResponse:
+    """Get an alert rule by ID."""
+    rules = await service.get_alert_rules()
+    rule = next((r for r in rules if r.id == rule_id), None)
+
+    if not rule:
+        raise HTTPException(status_code=404, detail="Alert rule not found")
+
+    return AlertRuleResponse(
+        id=rule.id,
+        name=rule.name,
+        model_id=rule.model_id,
+        rule_type=rule.rule_type,
+        severity=AlertSeverity(rule.severity),
+        config=rule.config,
+        is_active=rule.is_active,
+        last_triggered_at=rule.last_triggered_at,
+        trigger_count=rule.trigger_count,
+        created_at=rule.created_at,
+        updated_at=rule.updated_at,
     )
 
 
-@router.put("/rules/{rule_id}", response_model=DataResponse[AlertRuleResponse])
+@router.put("/rules/{rule_id}", response_model=AlertRuleResponse)
 async def update_alert_rule(
     rule_id: str,
     request: UpdateAlertRuleRequest,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> AlertRuleResponse:
     """Update an alert rule."""
     updates = {}
     if request.name is not None:
@@ -433,34 +416,32 @@ async def update_alert_rule(
     if not rule:
         raise HTTPException(status_code=404, detail="Alert rule not found")
 
-    return DataResponse(
-        data=AlertRuleResponse(
-            id=rule.id,
-            name=rule.name,
-            model_id=rule.model_id,
-            rule_type=rule.rule_type,
-            severity=AlertSeverity(rule.severity),
-            config=rule.config,
-            is_active=rule.is_active,
-            last_triggered_at=rule.last_triggered_at,
-            trigger_count=rule.trigger_count,
-            created_at=rule.created_at,
-            updated_at=rule.updated_at,
-        )
+    return AlertRuleResponse(
+        id=rule.id,
+        name=rule.name,
+        model_id=rule.model_id,
+        rule_type=rule.rule_type,
+        severity=AlertSeverity(rule.severity),
+        config=rule.config,
+        is_active=rule.is_active,
+        last_triggered_at=rule.last_triggered_at,
+        trigger_count=rule.trigger_count,
+        created_at=rule.created_at,
+        updated_at=rule.updated_at,
     )
 
 
-@router.delete("/rules/{rule_id}")
+@router.delete("/rules/{rule_id}", response_model=MessageResponse)
 async def delete_alert_rule(
     rule_id: str,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> MessageResponse:
     """Delete an alert rule."""
     deleted = await service.delete_alert_rule(rule_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Alert rule not found")
 
-    return {"success": True, "message": "Alert rule deleted"}
+    return MessageResponse(message="Alert rule deleted")
 
 
 # =============================================================================
@@ -468,13 +449,13 @@ async def delete_alert_rule(
 # =============================================================================
 
 
-@router.get("/handlers", response_model=DataResponse[AlertHandlerListResponse])
+@router.get("/handlers", response_model=AlertHandlerListResponse)
 async def list_alert_handlers(
     active_only: bool = False,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> AlertHandlerListResponse:
     """List all alert handlers."""
     handlers = await service.get_alert_handlers(active_only=active_only)
 
@@ -498,21 +479,19 @@ async def list_alert_handlers(
         for h in paginated
     ]
 
-    return DataResponse(
-        data=AlertHandlerListResponse(
-            items=items,
-            total=total,
-            offset=offset,
-            limit=limit,
-        )
+    return AlertHandlerListResponse(
+        items=items,
+        total=total,
+        offset=offset,
+        limit=limit,
     )
 
 
-@router.post("/handlers", response_model=DataResponse[AlertHandlerResponse])
+@router.post("/handlers", response_model=AlertHandlerResponse, status_code=201)
 async def create_alert_handler(
     request: CreateAlertHandlerRequest,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> AlertHandlerResponse:
     """Create a new alert handler."""
     handler = await service.create_alert_handler(
         name=request.name,
@@ -520,28 +499,26 @@ async def create_alert_handler(
         config=request.config,
     )
 
-    return DataResponse(
-        data=AlertHandlerResponse(
-            id=handler.id,
-            name=handler.name,
-            handler_type=handler.handler_type,
-            config=handler.config,
-            is_active=handler.is_active,
-            last_sent_at=handler.last_sent_at,
-            send_count=handler.send_count,
-            failure_count=handler.failure_count,
-            created_at=handler.created_at,
-            updated_at=handler.updated_at,
-        )
+    return AlertHandlerResponse(
+        id=handler.id,
+        name=handler.name,
+        handler_type=handler.handler_type,
+        config=handler.config,
+        is_active=handler.is_active,
+        last_sent_at=handler.last_sent_at,
+        send_count=handler.send_count,
+        failure_count=handler.failure_count,
+        created_at=handler.created_at,
+        updated_at=handler.updated_at,
     )
 
 
-@router.put("/handlers/{handler_id}", response_model=DataResponse[AlertHandlerResponse])
+@router.put("/handlers/{handler_id}", response_model=AlertHandlerResponse)
 async def update_alert_handler(
     handler_id: str,
     request: UpdateAlertHandlerRequest,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> AlertHandlerResponse:
     """Update an alert handler."""
     updates = {}
     if request.name is not None:
@@ -555,47 +532,45 @@ async def update_alert_handler(
     if not handler:
         raise HTTPException(status_code=404, detail="Alert handler not found")
 
-    return DataResponse(
-        data=AlertHandlerResponse(
-            id=handler.id,
-            name=handler.name,
-            handler_type=handler.handler_type,
-            config=handler.config,
-            is_active=handler.is_active,
-            last_sent_at=handler.last_sent_at,
-            send_count=handler.send_count,
-            failure_count=handler.failure_count,
-            created_at=handler.created_at,
-            updated_at=handler.updated_at,
-        )
+    return AlertHandlerResponse(
+        id=handler.id,
+        name=handler.name,
+        handler_type=handler.handler_type,
+        config=handler.config,
+        is_active=handler.is_active,
+        last_sent_at=handler.last_sent_at,
+        send_count=handler.send_count,
+        failure_count=handler.failure_count,
+        created_at=handler.created_at,
+        updated_at=handler.updated_at,
     )
 
 
-@router.delete("/handlers/{handler_id}")
+@router.delete("/handlers/{handler_id}", response_model=MessageResponse)
 async def delete_alert_handler(
     handler_id: str,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> MessageResponse:
     """Delete an alert handler."""
     deleted = await service.delete_alert_handler(handler_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Alert handler not found")
 
-    return {"success": True, "message": "Alert handler deleted"}
+    return MessageResponse(message="Alert handler deleted")
 
 
 @router.post("/handlers/{handler_id}/test")
 async def test_alert_handler(
     handler_id: str,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> dict:
     """Test an alert handler by sending a test notification.
 
     Validates the handler configuration and simulates sending a test notification.
     """
     try:
         result = await service.test_alert_handler(handler_id)
-        return DataResponse(data=result)
+        return result
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -605,7 +580,7 @@ async def test_alert_handler(
 # =============================================================================
 
 
-@router.get("/alerts", response_model=DataResponse[AlertListResponse])
+@router.get("/alerts", response_model=AlertListResponse)
 async def list_alerts(
     model_id: str | None = None,
     active_only: bool = False,
@@ -613,7 +588,7 @@ async def list_alerts(
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> AlertListResponse:
     """List alerts."""
     severity_filter = severity.value if severity else None
     alerts, total = await service.get_alerts(
@@ -644,75 +619,68 @@ async def list_alerts(
         for a in alerts
     ]
 
-    return DataResponse(
-        data=AlertListResponse(
-            items=items,
-            total=total,
-            offset=offset,
-            limit=limit,
-        )
+    return AlertListResponse(
+        items=items,
+        total=total,
+        offset=offset,
+        limit=limit,
     )
 
 
-@router.post("/alerts/{alert_id}/acknowledge")
+@router.post("/alerts/{alert_id}/acknowledge", response_model=AlertInstance)
 async def acknowledge_alert(
     alert_id: str,
     request: AcknowledgeAlertRequest,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> AlertInstance:
     """Acknowledge an alert."""
     alert = await service.acknowledge_alert(alert_id, request.actor)
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
-    if alert.acknowledged:
-        return DataResponse(
-            data=AlertInstance(
-                id=alert.id,
-                rule_id=alert.rule_id,
-                model_id=alert.model_id,
-                severity=AlertSeverity(alert.severity),
-                message=alert.message,
-                metric_value=alert.metric_value,
-                threshold_value=alert.threshold_value,
-                acknowledged=alert.acknowledged,
-                acknowledged_by=alert.acknowledged_by,
-                acknowledged_at=alert.acknowledged_at,
-                resolved=alert.resolved,
-                resolved_at=alert.resolved_at,
-                created_at=alert.created_at,
-                updated_at=alert.updated_at,
-            )
-        )
+    return AlertInstance(
+        id=alert.id,
+        rule_id=alert.rule_id,
+        model_id=alert.model_id,
+        severity=AlertSeverity(alert.severity),
+        message=alert.message,
+        metric_value=alert.metric_value,
+        threshold_value=alert.threshold_value,
+        acknowledged=alert.acknowledged,
+        acknowledged_by=alert.acknowledged_by,
+        acknowledged_at=alert.acknowledged_at,
+        resolved=alert.resolved,
+        resolved_at=alert.resolved_at,
+        created_at=alert.created_at,
+        updated_at=alert.updated_at,
+    )
 
 
-@router.post("/alerts/{alert_id}/resolve")
+@router.post("/alerts/{alert_id}/resolve", response_model=AlertInstance)
 async def resolve_alert(
     alert_id: str,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> AlertInstance:
     """Resolve an alert."""
     alert = await service.resolve_alert(alert_id)
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
-    return DataResponse(
-        data=AlertInstance(
-            id=alert.id,
-            rule_id=alert.rule_id,
-            model_id=alert.model_id,
-            severity=AlertSeverity(alert.severity),
-            message=alert.message,
-            metric_value=alert.metric_value,
-            threshold_value=alert.threshold_value,
-            acknowledged=alert.acknowledged,
-            acknowledged_by=alert.acknowledged_by,
-            acknowledged_at=alert.acknowledged_at,
-            resolved=alert.resolved,
-            resolved_at=alert.resolved_at,
-            created_at=alert.created_at,
-            updated_at=alert.updated_at,
-        )
+    return AlertInstance(
+        id=alert.id,
+        rule_id=alert.rule_id,
+        model_id=alert.model_id,
+        severity=AlertSeverity(alert.severity),
+        message=alert.message,
+        metric_value=alert.metric_value,
+        threshold_value=alert.threshold_value,
+        acknowledged=alert.acknowledged,
+        acknowledged_by=alert.acknowledged_by,
+        acknowledged_at=alert.acknowledged_at,
+        resolved=alert.resolved,
+        resolved_at=alert.resolved_at,
+        created_at=alert.created_at,
+        updated_at=alert.updated_at,
     )
 
 
@@ -721,31 +689,29 @@ async def resolve_alert(
 # =============================================================================
 
 
-@router.get("/overview", response_model=DataResponse[MonitoringOverview])
+@router.get("/overview", response_model=MonitoringOverview)
 async def get_monitoring_overview(
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> MonitoringOverview:
     """Get monitoring overview for dashboard."""
     overview = await service.get_monitoring_overview()
 
-    return DataResponse(
-        data=MonitoringOverview(
-            total_models=overview["total_models"],
-            active_models=overview["active_models"],
-            degraded_models=overview["degraded_models"],
-            total_predictions_24h=overview["total_predictions_24h"],
-            active_alerts=overview["active_alerts"],
-            models_with_drift=overview["models_with_drift"],
-            avg_latency_ms=overview["avg_latency_ms"],
-        )
+    return MonitoringOverview(
+        total_models=overview["total_models"],
+        active_models=overview["active_models"],
+        degraded_models=overview["degraded_models"],
+        total_predictions_24h=overview["total_predictions_24h"],
+        active_alerts=overview["active_alerts"],
+        models_with_drift=overview["models_with_drift"],
+        avg_latency_ms=overview["avg_latency_ms"],
     )
 
 
-@router.get("/models/{model_id}/dashboard", response_model=DataResponse[ModelDashboardData])
+@router.get("/models/{model_id}/dashboard", response_model=ModelDashboardData)
 async def get_model_dashboard(
     model_id: str,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> ModelDashboardData:
     """Get dashboard data for a specific model."""
     try:
         dashboard = await service.get_model_dashboard(model_id)
@@ -753,52 +719,50 @@ async def get_model_dashboard(
         model_data = dashboard["model"]
         metrics_data = dashboard["metrics"]
 
-        return DataResponse(
-            data=ModelDashboardData(
-                model=RegisteredModelResponse(
-                    id=model_data["id"],
-                    name=model_data["name"],
-                    version=model_data["version"],
-                    description=model_data["description"] or "",
-                    status=ModelStatus(model_data["status"]),
-                    config=model_data["config"],
-                    metadata=model_data["metadata"] or {},
-                    prediction_count=model_data["prediction_count"],
-                    last_prediction_at=model_data["last_prediction_at"],
-                    current_drift_score=model_data["current_drift_score"],
-                    health_score=model_data["health_score"],
-                    created_at=model_data["created_at"],
-                    updated_at=model_data["updated_at"],
-                ),
-                metrics=MetricsResponse(
-                    model_id=metrics_data["model_id"],
-                    model_name=metrics_data["model_name"],
-                    time_range_hours=metrics_data["time_range_hours"],
-                    metrics=[MetricSummary(**m) for m in metrics_data["metrics"]],
-                    data_points=metrics_data["data_points"],
-                ),
-                active_alerts=[
-                    AlertInstance(
-                        id=a["id"],
-                        rule_id=a["rule_id"],
-                        model_id=a["model_id"],
-                        severity=AlertSeverity(a["severity"]),
-                        message=a["message"],
-                        metric_value=a["metric_value"],
-                        threshold_value=a["threshold_value"],
-                        acknowledged=a["acknowledged"],
-                        acknowledged_by=a["acknowledged_by"],
-                        acknowledged_at=a["acknowledged_at"],
-                        resolved=a["resolved"],
-                        resolved_at=a["resolved_at"],
-                        created_at=a["created_at"],
-                        updated_at=a["updated_at"],
-                    )
-                    for a in dashboard["active_alerts"]
-                ],
-                recent_predictions=dashboard["recent_predictions"],
-                health_status=dashboard["health_status"],
-            )
+        return ModelDashboardData(
+            model=RegisteredModelResponse(
+                id=model_data["id"],
+                name=model_data["name"],
+                version=model_data["version"],
+                description=model_data["description"] or "",
+                status=ModelStatus(model_data["status"]),
+                config=model_data["config"],
+                metadata=model_data["metadata"] or {},
+                prediction_count=model_data["prediction_count"],
+                last_prediction_at=model_data["last_prediction_at"],
+                current_drift_score=model_data["current_drift_score"],
+                health_score=model_data["health_score"],
+                created_at=model_data["created_at"],
+                updated_at=model_data["updated_at"],
+            ),
+            metrics=MetricsResponse(
+                model_id=metrics_data["model_id"],
+                model_name=metrics_data["model_name"],
+                time_range_hours=metrics_data["time_range_hours"],
+                metrics=[MetricSummary(**m) for m in metrics_data["metrics"]],
+                data_points=metrics_data["data_points"],
+            ),
+            active_alerts=[
+                AlertInstance(
+                    id=a["id"],
+                    rule_id=a["rule_id"],
+                    model_id=a["model_id"],
+                    severity=AlertSeverity(a["severity"]),
+                    message=a["message"],
+                    metric_value=a["metric_value"],
+                    threshold_value=a["threshold_value"],
+                    acknowledged=a["acknowledged"],
+                    acknowledged_by=a["acknowledged_by"],
+                    acknowledged_at=a["acknowledged_at"],
+                    resolved=a["resolved"],
+                    resolved_at=a["resolved_at"],
+                    created_at=a["created_at"],
+                    updated_at=a["updated_at"],
+                )
+                for a in dashboard["active_alerts"]
+            ],
+            recent_predictions=dashboard["recent_predictions"],
+            health_status=dashboard["health_status"],
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -808,14 +772,12 @@ async def get_model_dashboard(
 async def evaluate_model_rules(
     model_id: str,
     service: ModelMonitoringService = Depends(get_service),
-):
+) -> dict:
     """Evaluate all active rules for a model and create alerts if triggered."""
     alerts = await service.evaluate_rules(model_id)
 
-    return DataResponse(
-        data={
-            "model_id": model_id,
-            "alerts_created": len(alerts),
-            "alert_ids": [a.id for a in alerts],
-        }
-    )
+    return {
+        "model_id": model_id,
+        "alerts_created": len(alerts),
+        "alert_ids": [a.id for a in alerts],
+    }

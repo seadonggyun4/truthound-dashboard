@@ -360,7 +360,8 @@ class Rule(Base, UUIDMixin, TimestampMixin):
     @property
     def column_count(self) -> int:
         """Get number of columns with rules defined."""
-        return len(self.column_rules)
+        rules = self.column_rules
+        return len(rules) if rules else 0
 
     def deactivate(self) -> None:
         """Mark this rule as inactive."""

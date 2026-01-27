@@ -1,13 +1,18 @@
 """Validation history API endpoints.
 
 Provides endpoints for validation history and trend analysis.
+
+API Design: Direct Response Style
+- Returns data directly without success wrapper
+- Errors handled via HTTPException
 """
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from truthound_dashboard.core import HistoryService
 
@@ -24,9 +29,56 @@ async def get_history_service(session: SessionDep) -> HistoryService:
 HistoryServiceDep = Annotated[HistoryService, Depends(get_history_service)]
 
 
+class HistorySummary(BaseModel):
+    """Validation history summary."""
+
+    total_runs: int
+    passed_runs: int
+    failed_runs: int
+    success_rate: float
+
+
+class TrendDataPoint(BaseModel):
+    """Single data point in trend."""
+
+    date: str
+    success_rate: float
+    run_count: int
+    passed_count: int
+    failed_count: int
+
+
+class FailureFrequency(BaseModel):
+    """Failure frequency item."""
+
+    issue: str
+    count: int
+
+
+class RecentValidation(BaseModel):
+    """Recent validation item."""
+
+    id: str
+    status: str
+    passed: bool
+    has_critical: bool
+    has_high: bool
+    total_issues: int
+    created_at: str
+
+
+class HistoryResponse(BaseModel):
+    """Validation history response."""
+
+    summary: HistorySummary
+    trend: list[TrendDataPoint]
+    failure_frequency: list[FailureFrequency]
+    recent_validations: list[RecentValidation]
+
+
 @router.get(
     "/sources/{source_id}/history",
-    response_model=dict,
+    response_model=HistoryResponse,
     summary="Get validation history",
     description="Get validation history with trend analysis for a source.",
 )
@@ -37,7 +89,7 @@ async def get_validation_history(
     granularity: Literal["hourly", "daily", "weekly"] = Query(
         "daily", description="Aggregation granularity"
     ),
-) -> dict:
+) -> HistoryResponse:
     """Get validation history with trend data.
 
     Args:
@@ -47,7 +99,7 @@ async def get_validation_history(
         granularity: Aggregation granularity (hourly, daily, weekly).
 
     Returns:
-        Dictionary with summary, trend, failure_frequency, and recent_validations.
+        History data with summary, trend, failure_frequency, and recent_validations.
     """
     try:
         data = await service.get_history(
@@ -55,7 +107,7 @@ async def get_validation_history(
             period=period,
             granularity=granularity,
         )
-        return {"success": True, "data": data}
+        return HistoryResponse(**data)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:

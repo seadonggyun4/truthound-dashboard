@@ -82,9 +82,11 @@ from ..db.models import (
     RoutingRuleModel,
     ThrottlingConfig,
 )
+from ..schemas.base import MessageResponse
 from ..schemas.notifications_advanced import (
     AcknowledgeRequest,
     CacheInfo,
+    CacheInvalidateResponse,
     CombinatorType,
     ConfigExportRequest,
     ConfigImportConflict,
@@ -550,11 +552,11 @@ async def update_routing_rule(
     return _routing_rule_to_response(rule)
 
 
-@router.delete("/routing/rules/{rule_id}")
+@router.delete("/routing/rules/{rule_id}", response_model=MessageResponse)
 async def delete_routing_rule(
     rule_id: str,
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> MessageResponse:
     """Delete a routing rule."""
     result = await session.execute(
         select(RoutingRuleModel).where(RoutingRuleModel.id == rule_id)
@@ -567,7 +569,7 @@ async def delete_routing_rule(
     await session.delete(rule)
     await session.commit()
 
-    return {"success": True, "message": "Routing rule deleted"}
+    return MessageResponse(message="Routing rule deleted")
 
 
 def _convert_nested_rule_config_to_dict(config: NestedRuleConfig) -> dict[str, Any]:
@@ -874,11 +876,11 @@ async def update_deduplication_config(
     return _dedup_config_to_response(config)
 
 
-@router.delete("/deduplication/configs/{config_id}")
+@router.delete("/deduplication/configs/{config_id}", response_model=MessageResponse)
 async def delete_deduplication_config(
     config_id: str,
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> MessageResponse:
     """Delete a deduplication config."""
     result = await session.execute(
         select(DeduplicationConfig).where(DeduplicationConfig.id == config_id)
@@ -891,7 +893,7 @@ async def delete_deduplication_config(
     await session.delete(config)
     await session.commit()
 
-    return {"success": True, "message": "Deduplication config deleted"}
+    return MessageResponse(message="Deduplication config deleted")
 
 
 @router.get("/deduplication/stats", response_model=DeduplicationStats)
@@ -1094,11 +1096,11 @@ async def update_throttling_config(
     return _throttle_config_to_response(config)
 
 
-@router.delete("/throttling/configs/{config_id}")
+@router.delete("/throttling/configs/{config_id}", response_model=MessageResponse)
 async def delete_throttling_config(
     config_id: str,
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> MessageResponse:
     """Delete a throttling config."""
     result = await session.execute(
         select(ThrottlingConfig).where(ThrottlingConfig.id == config_id)
@@ -1111,7 +1113,7 @@ async def delete_throttling_config(
     await session.delete(config)
     await session.commit()
 
-    return {"success": True, "message": "Throttling config deleted"}
+    return MessageResponse(message="Throttling config deleted")
 
 
 @router.get("/throttling/stats", response_model=ThrottlingStats)
@@ -1314,11 +1316,11 @@ async def update_escalation_policy(
     return _escalation_policy_to_response(policy)
 
 
-@router.delete("/escalation/policies/{policy_id}")
+@router.delete("/escalation/policies/{policy_id}", response_model=MessageResponse)
 async def delete_escalation_policy(
     policy_id: str,
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> MessageResponse:
     """Delete an escalation policy."""
     result = await session.execute(
         select(EscalationPolicyModel).where(EscalationPolicyModel.id == policy_id)
@@ -1331,7 +1333,7 @@ async def delete_escalation_policy(
     await session.delete(policy)
     await session.commit()
 
-    return {"success": True, "message": "Escalation policy deleted"}
+    return MessageResponse(message="Escalation policy deleted")
 
 
 # =============================================================================
@@ -2310,14 +2312,14 @@ async def get_stats_cache_status() -> StatsCacheStatus:
     )
 
 
-@router.post("/stats/cache/invalidate")
+@router.post("/stats/cache/invalidate", response_model=CacheInvalidateResponse)
 async def invalidate_stats_cache(
     target: str = Query(
         default="all",
         description="Cache target to invalidate: all, escalation, deduplication, throttling",
     ),
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> CacheInvalidateResponse:
     """Invalidate stats cache entries.
 
     Use this endpoint to force fresh database queries on the next stats request.
@@ -2349,12 +2351,11 @@ async def invalidate_stats_cache(
             detail=f"Invalid target: {target}. Must be one of: all, escalation, deduplication, throttling",
         )
 
-    return {
-        "success": True,
-        "message": message,
-        "target": target,
-        "timestamp": datetime.utcnow().isoformat(),
-    }
+    return CacheInvalidateResponse(
+        message=message,
+        target=target,
+        timestamp=datetime.utcnow().isoformat(),
+    )
 
 
 # =============================================================================

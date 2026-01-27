@@ -51,7 +51,7 @@ async def list_schema_versions(
         List of schema versions.
     """
     # Verify source exists
-    source = await source_service.get(source_id)
+    source = await source_service.get_by_id(source_id)
     if not source:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -93,7 +93,7 @@ async def get_schema_version(
         Schema version details.
     """
     # Verify source exists
-    source = await source_service.get(source_id)
+    source = await source_service.get_by_id(source_id)
     if not source:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -136,7 +136,7 @@ async def list_schema_changes(
         List of schema changes.
     """
     # Verify source exists
-    source = await source_service.get(source_id)
+    source = await source_service.get_by_id(source_id)
     if not source:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -178,7 +178,7 @@ async def detect_schema_changes(
         Schema evolution detection result.
     """
     # Verify source exists
-    source = await source_service.get(source_id)
+    source = await source_service.get_by_id(source_id)
     if not source:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -186,7 +186,7 @@ async def detect_schema_changes(
         )
 
     # Get current schema
-    schema = await schema_service.get_active(source_id)
+    schema = await schema_service.get_schema(source_id)
     if not schema:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -221,7 +221,7 @@ async def get_evolution_summary(
         Evolution summary.
     """
     # Verify source exists
-    source = await source_service.get(source_id)
+    source = await source_service.get_by_id(source_id)
     if not source:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -84,7 +84,7 @@ class SchemaVersionRepository(BaseRepository[SchemaVersion]):
             offset=offset,
             limit=limit,
             filters=[SchemaVersion.source_id == source_id],
-            order_by=[SchemaVersion.version_number.desc()],
+            order_by=SchemaVersion.version_number.desc(),
         )
 
     async def get_next_version_number(self, source_id: str) -> int:
@@ -151,7 +151,7 @@ class SchemaChangeRepository(BaseRepository[SchemaChange]):
             offset=offset,
             limit=limit,
             filters=[SchemaChange.source_id == source_id],
-            order_by=[SchemaChange.created_at.desc()],
+            order_by=SchemaChange.created_at.desc(),
         )
 
     async def get_for_version(
@@ -167,7 +167,7 @@ class SchemaChangeRepository(BaseRepository[SchemaChange]):
         """
         return await self.list(
             filters=[SchemaChange.to_version_id == to_version_id],
-            order_by=[SchemaChange.created_at.desc()],
+            order_by=SchemaChange.created_at.desc(),
         )
 
     async def count_breaking_changes(self, source_id: str) -> int:

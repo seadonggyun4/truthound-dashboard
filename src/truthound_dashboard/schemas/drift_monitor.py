@@ -1,6 +1,12 @@
 """Drift monitoring schemas.
 
 This module defines schemas for automatic drift monitoring operations.
+
+API Design: Direct Response Style
+- Single resources return the resource directly
+- List endpoints return PaginatedResponse with data, total, offset, limit
+- Errors are handled via HTTPException
+- Success is indicated by HTTP status codes (200, 201, 204)
 """
 
 from __future__ import annotations
@@ -10,7 +16,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from .base import BaseSchema, IDMixin, ListResponseWrapper, TimestampMixin
+from .base import BaseSchema, IDMixin, PaginatedResponse, TimestampMixin
 
 # Drift monitoring status
 DriftMonitorStatus = Literal["active", "paused", "error"]
@@ -132,10 +138,10 @@ class DriftMonitorResponse(DriftMonitorBase, IDMixin, TimestampMixin):
     )
 
 
-class DriftMonitorListResponse(ListResponseWrapper):
+class DriftMonitorListResponse(PaginatedResponse[DriftMonitorResponse]):
     """List response for drift monitors."""
 
-    data: list[DriftMonitorResponse]
+    pass
 
 
 # Drift Alert Schemas
@@ -197,10 +203,10 @@ class DriftAlertResponse(DriftAlertBase, IDMixin, TimestampMixin):
     )
 
 
-class DriftAlertListResponse(ListResponseWrapper):
+class DriftAlertListResponse(PaginatedResponse[DriftAlertResponse]):
     """List response for drift alerts."""
 
-    data: list[DriftAlertResponse]
+    pass
 
 
 class DriftAlertUpdate(BaseSchema):
@@ -476,13 +482,6 @@ class RootCauseAnalysis(BaseSchema):
     )
 
 
-class RootCauseAnalysisResponse(BaseSchema):
-    """Response wrapper for root cause analysis."""
-
-    success: bool = Field(default=True)
-    data: RootCauseAnalysis
-
-
 # Drift Preview Schemas
 
 
@@ -615,13 +614,6 @@ class DriftPreviewData(BaseSchema):
         default_factory=list,
         description="List of most affected columns (sorted by severity)",
     )
-
-
-class DriftPreviewResponse(BaseSchema):
-    """Response for drift preview."""
-
-    success: bool = Field(default=True)
-    data: DriftPreviewData
 
 
 # Large-Scale Dataset Optimization Schemas
@@ -883,8 +875,12 @@ class SampledComparisonResult(BaseSchema):
     )
 
 
-class SampledComparisonResponse(BaseSchema):
-    """Response for sampled comparison."""
+class MonitorRunResult(BaseSchema):
+    """Result of running a drift monitor."""
 
-    success: bool = Field(default=True)
-    data: SampledComparisonResult
+    comparison_id: str = Field(..., description="Comparison ID")
+    has_drift: bool = Field(..., description="Whether drift was detected")
+    drift_percentage: float = Field(..., description="Percentage of drifted columns")
+    drifted_columns: list[str] = Field(
+        default_factory=list, description="List of drifted column names"
+    )

@@ -72,7 +72,7 @@ async def suggest_rules(
         Rule suggestion response with single-column and cross-column suggestions.
     """
     # Verify source exists
-    source = await source_service.get(source_id)
+    source = await source_service.get_by_id(source_id)
     if not source:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -100,7 +100,7 @@ async def suggest_rules(
             )
 
     # Get schema (optional)
-    schema = await schema_service.get_active(source_id)
+    schema = await schema_service.get_schema(source_id)
 
     # Generate suggestions with advanced options including cross-column
     result = await generator_service.generate_suggestions(
@@ -144,7 +144,7 @@ async def apply_rule_suggestions(
         Apply rules response.
     """
     # Verify source exists
-    source = await source_service.get(source_id)
+    source = await source_service.get_by_id(source_id)
     if not source:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -200,7 +200,7 @@ async def export_rules(
         Export response with content.
     """
     # Verify source exists
-    source = await source_service.get(source_id)
+    source = await source_service.get_by_id(source_id)
     if not source:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -250,7 +250,7 @@ async def download_exported_rules(
         Plain text response with file content.
     """
     # Verify source exists
-    source = await source_service.get(source_id)
+    source = await source_service.get_by_id(source_id)
     if not source:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -18,6 +18,8 @@ from truthound_dashboard.schemas.triggers import (
     TriggerCheckStatus,
     TriggerMonitoringResponse,
     TriggerMonitoringStats,
+    WebhookTestReceivedData,
+    WebhookTestResponse,
     WebhookTriggerRequest,
     WebhookTriggerResponse,
 )
@@ -95,9 +97,10 @@ async def get_trigger_monitoring() -> TriggerMonitoringResponse:
 
 @router.get(
     "/schedules/{schedule_id}/status",
+    response_model=TriggerCheckStatus,
     summary="Get trigger status for a specific schedule",
 )
-async def get_schedule_trigger_status(schedule_id: str) -> dict[str, Any]:
+async def get_schedule_trigger_status(schedule_id: str) -> TriggerCheckStatus:
     """Get trigger status for a specific schedule.
 
     Args:
@@ -111,7 +114,7 @@ async def get_schedule_trigger_status(schedule_id: str) -> dict[str, Any]:
 
     for schedule in schedules:
         if schedule["schedule_id"] == schedule_id:
-            return schedule
+            return TriggerCheckStatus(**schedule)
 
     raise HTTPException(
         status_code=404,
@@ -163,12 +166,13 @@ async def receive_webhook(
 
 @router.post(
     "/webhook/test",
+    response_model=WebhookTestResponse,
     summary="Test webhook configuration",
 )
 async def test_webhook(
     source: str = "test",
     event_type: str = "test_event",
-) -> dict[str, Any]:
+) -> WebhookTestResponse:
     """Test webhook endpoint without triggering any schedules.
 
     Useful for verifying connectivity and configuration.
@@ -180,11 +184,10 @@ async def test_webhook(
     Returns:
         Test result.
     """
-    return {
-        "success": True,
-        "message": "Webhook endpoint is accessible",
-        "received": {
-            "source": source,
-            "event_type": event_type,
-        },
-    }
+    return WebhookTestResponse(
+        message="Webhook endpoint is accessible",
+        received=WebhookTestReceivedData(
+            source=source,
+            event_type=event_type,
+        ),
+    )

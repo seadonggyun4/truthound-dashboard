@@ -34,7 +34,6 @@ class VersionInfoResponse(BaseSchema):
 class VersionListResponse(BaseSchema):
     """Response for listing versions."""
 
-    success: bool = Field(default=True)
     data: list[VersionInfoResponse] = Field(..., description="List of versions")
     total: int = Field(..., description="Total number of versions")
     source_id: str = Field(..., description="Source ID for these versions")
@@ -81,7 +80,6 @@ class VersionCompareRequest(BaseSchema):
 class VersionHistoryResponse(BaseSchema):
     """Response for version history chain."""
 
-    success: bool = Field(default=True)
     data: list[VersionInfoResponse] = Field(..., description="Version history chain")
     depth: int = Field(..., description="Depth of history returned")
 
@@ -101,8 +99,7 @@ class CreateVersionRequest(BaseSchema):
 class CreateVersionResponse(BaseSchema):
     """Response after creating a version."""
 
-    success: bool = Field(default=True)
-    data: VersionInfoResponse = Field(..., description="Created version info")
+    version: VersionInfoResponse = Field(..., description="Created version info")
     message: str = Field(..., description="Success message")
 
 
@@ -120,7 +117,6 @@ class RollbackRequest(BaseSchema):
 class RollbackResponse(BaseSchema):
     """Response after a rollback operation."""
 
-    success: bool = Field(default=True)
     source_id: str = Field(..., description="Source ID that was rolled back")
     from_version: VersionInfoResponse | None = Field(
         None, description="Version rolled back from"
@@ -138,7 +134,6 @@ class RollbackResponse(BaseSchema):
 class RollbackAvailabilityResponse(BaseSchema):
     """Response for checking rollback availability."""
 
-    success: bool = Field(default=True)
     can_rollback: bool = Field(..., description="Whether rollback is available")
     current_version_id: str | None = Field(
         None, description="Current active version ID"

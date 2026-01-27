@@ -68,7 +68,6 @@ async def list_source_versions(
     versions = await manager.list_versions(source_id=source_id, limit=limit)
 
     return VersionListResponse(
-        success=True,
         data=[_version_info_to_response(v) for v in versions],
         total=len(versions),
         source_id=source_id,
@@ -202,7 +201,6 @@ async def get_version_history(
     history = await manager.get_version_history(version_id=version_id, depth=depth)
 
     return VersionHistoryResponse(
-        success=True,
         data=[_version_info_to_response(v) for v in history],
         depth=len(history),
     )
@@ -244,8 +242,7 @@ async def create_version(
     )
 
     return CreateVersionResponse(
-        success=True,
-        data=_version_info_to_response(version),
+        version=_version_info_to_response(version),
         message=f"Created version {version.version_number} for validation {request.validation_id}",
     )
 
@@ -264,7 +261,6 @@ async def check_rollback_availability(
     availability = await manager.can_rollback(source_id)
 
     return RollbackAvailabilityResponse(
-        success=True,
         can_rollback=availability["can_rollback"],
         current_version_id=availability["current_version_id"],
         available_versions=availability["available_versions"],
@@ -299,7 +295,6 @@ async def rollback_to_version(
         )
 
     return RollbackResponse(
-        success=result.success,
         source_id=result.source_id,
         from_version=_version_info_to_response(result.from_version) if result.from_version else None,
         to_version=_version_info_to_response(result.to_version) if result.to_version else None,

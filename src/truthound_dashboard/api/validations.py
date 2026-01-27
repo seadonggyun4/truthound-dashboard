@@ -141,7 +141,8 @@ async def list_source_validations(
     service: ValidationServiceDep,
     source_service: SourceServiceDep,
     source_id: Annotated[str, Path(description="Source ID")],
-    limit: Annotated[int, Query(ge=1, le=100, description="Maximum items")] = 20,
+    offset: Annotated[int, Query(ge=0, description="Offset for pagination")] = 0,
+    limit: Annotated[int, Query(ge=1, le=100, description="Maximum items")] = 10,
 ) -> ValidationListResponse:
     """List validation history for a source.
 
@@ -149,6 +150,7 @@ async def list_source_validations(
         service: Injected validation service.
         source_service: Injected source service.
         source_id: Source to get validations for.
+        offset: Number of items to skip.
         limit: Maximum validations to return.
 
     Returns:
@@ -162,10 +164,11 @@ async def list_source_validations(
     if source is None:
         raise HTTPException(status_code=404, detail="Source not found")
 
-    validations = await service.list_for_source(source_id, limit=limit)
+    validations, total = await service.list_for_source(source_id, offset=offset, limit=limit)
 
     return ValidationListResponse(
         data=[ValidationListItem.from_model(v) for v in validations],
-        total=len(validations),
+        total=total,
+        offset=offset,
         limit=limit,
     )

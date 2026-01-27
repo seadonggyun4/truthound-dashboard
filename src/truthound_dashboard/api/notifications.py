@@ -3,6 +3,12 @@
 This module provides REST API endpoints for managing notification
 channels, rules, and viewing delivery logs.
 
+API Design: Direct Response Style
+- Single resources return the resource directly
+- List endpoints return data array with count
+- Errors are handled via HTTPException
+- Success is indicated by HTTP status codes (200, 201, 204)
+
 Endpoints:
     Channels:
         GET    /notifications/channels              - List channels
@@ -79,6 +85,13 @@ class ChannelResponse(BaseModel):
     updated_at: str
 
 
+class ChannelListResponse(BaseModel):
+    """Response schema for channel list."""
+
+    data: list[ChannelResponse]
+    count: int
+
+
 class RuleCreate(BaseModel):
     """Request schema for creating a notification rule."""
 
@@ -117,6 +130,13 @@ class RuleResponse(BaseModel):
     updated_at: str
 
 
+class RuleListResponse(BaseModel):
+    """Response schema for rule list."""
+
+    data: list[RuleResponse]
+    count: int
+
+
 class LogResponse(BaseModel):
     """Response schema for a notification log."""
 
@@ -131,31 +151,64 @@ class LogResponse(BaseModel):
     sent_at: str | None
 
 
+class LogDetailResponse(BaseModel):
+    """Detailed response schema for a notification log."""
+
+    id: str
+    channel_id: str
+    rule_id: str | None
+    event_type: str
+    event_data: dict[str, Any] | None
+    status: str
+    message: str
+    error_message: str | None
+    created_at: str
+    sent_at: str | None
+
+
+class LogListResponse(BaseModel):
+    """Response schema for log list."""
+
+    data: list[LogResponse]
+    count: int
+
+
+class TestChannelResponse(BaseModel):
+    """Response schema for channel test."""
+
+    success: bool
+    message: str
+    error: str | None = None
+
+
+class MessageResponse(BaseModel):
+    """Simple message response."""
+
+    message: str
+
+
 # =============================================================================
 # Channel Endpoints
 # =============================================================================
 
 
-@router.get("/channels/types")
+@router.get("/channels/types", response_model=list[dict[str, Any]])
 async def get_channel_types(
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> list[dict[str, Any]]:
     """Get available notification channel types with their configuration schemas."""
     service = NotificationChannelService(session)
-    return {
-        "success": True,
-        "data": service.get_available_types(),
-    }
+    return service.get_available_types()
 
 
-@router.get("/channels")
+@router.get("/channels", response_model=ChannelListResponse)
 async def list_channels(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
     active_only: bool = Query(default=False),
     channel_type: str | None = Query(default=None),
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> ChannelListResponse:
     """List notification channels."""
     service = NotificationChannelService(session)
     channels = await service.list(
@@ -165,29 +218,27 @@ async def list_channels(
         channel_type=channel_type,
     )
 
-    return {
-        "success": True,
-        "data": [
-            {
-                "id": c.id,
-                "name": c.name,
-                "type": c.type,
-                "is_active": c.is_active,
-                "config_summary": c.get_config_summary(),
-                "created_at": c.created_at.isoformat(),
-                "updated_at": c.updated_at.isoformat(),
-            }
-            for c in channels
-        ],
-        "count": len(channels),
-    }
+    data = [
+        ChannelResponse(
+            id=c.id,
+            name=c.name,
+            type=c.type,
+            is_active=c.is_active,
+            config_summary=c.get_config_summary(),
+            created_at=c.created_at.isoformat(),
+            updated_at=c.updated_at.isoformat(),
+        )
+        for c in channels
+    ]
+
+    return ChannelListResponse(data=data, count=len(data))
 
 
-@router.post("/channels")
+@router.post("/channels", response_model=ChannelResponse, status_code=201)
 async def create_channel(
     request: ChannelCreate,
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> ChannelResponse:
     """Create a new notification channel."""
     service = NotificationChannelService(session)
 
@@ -200,24 +251,24 @@ async def create_channel(
         )
         await session.commit()
 
-        return {
-            "success": True,
-            "data": {
-                "id": channel.id,
-                "name": channel.name,
-                "type": channel.type,
-                "is_active": channel.is_active,
-            },
-        }
+        return ChannelResponse(
+            id=channel.id,
+            name=channel.name,
+            type=channel.type,
+            is_active=channel.is_active,
+            config_summary=channel.get_config_summary(),
+            created_at=channel.created_at.isoformat(),
+            updated_at=channel.updated_at.isoformat(),
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/channels/{channel_id}")
+@router.get("/channels/{channel_id}", response_model=ChannelResponse)
 async def get_channel(
     channel_id: str,
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> ChannelResponse:
     """Get a notification channel by ID."""
     service = NotificationChannelService(session)
     channel = await service.get_by_id(channel_id)
@@ -225,26 +276,23 @@ async def get_channel(
     if channel is None:
         raise HTTPException(status_code=404, detail="Channel not found")
 
-    return {
-        "success": True,
-        "data": {
-            "id": channel.id,
-            "name": channel.name,
-            "type": channel.type,
-            "is_active": channel.is_active,
-            "config_summary": channel.get_config_summary(),
-            "created_at": channel.created_at.isoformat(),
-            "updated_at": channel.updated_at.isoformat(),
-        },
-    }
+    return ChannelResponse(
+        id=channel.id,
+        name=channel.name,
+        type=channel.type,
+        is_active=channel.is_active,
+        config_summary=channel.get_config_summary(),
+        created_at=channel.created_at.isoformat(),
+        updated_at=channel.updated_at.isoformat(),
+    )
 
 
-@router.put("/channels/{channel_id}")
+@router.put("/channels/{channel_id}", response_model=ChannelResponse)
 async def update_channel(
     channel_id: str,
     request: ChannelUpdate,
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> ChannelResponse:
     """Update a notification channel."""
     service = NotificationChannelService(session)
 
@@ -260,24 +308,24 @@ async def update_channel(
         if channel is None:
             raise HTTPException(status_code=404, detail="Channel not found")
 
-        return {
-            "success": True,
-            "data": {
-                "id": channel.id,
-                "name": channel.name,
-                "type": channel.type,
-                "is_active": channel.is_active,
-            },
-        }
+        return ChannelResponse(
+            id=channel.id,
+            name=channel.name,
+            type=channel.type,
+            is_active=channel.is_active,
+            config_summary=channel.get_config_summary(),
+            created_at=channel.created_at.isoformat(),
+            updated_at=channel.updated_at.isoformat(),
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.delete("/channels/{channel_id}")
+@router.delete("/channels/{channel_id}", response_model=MessageResponse)
 async def delete_channel(
     channel_id: str,
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> MessageResponse:
     """Delete a notification channel."""
     service = NotificationChannelService(session)
     deleted = await service.delete(channel_id)
@@ -286,24 +334,24 @@ async def delete_channel(
     if not deleted:
         raise HTTPException(status_code=404, detail="Channel not found")
 
-    return {"success": True}
+    return MessageResponse(message="Channel deleted")
 
 
-@router.post("/channels/{channel_id}/test")
+@router.post("/channels/{channel_id}/test", response_model=TestChannelResponse)
 async def test_channel(
     channel_id: str,
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> TestChannelResponse:
     """Send a test notification to a channel."""
     dispatcher = create_dispatcher(session)
     result = await dispatcher.test_channel(channel_id)
     await session.commit()
 
-    return {
-        "success": result.success,
-        "message": "Test notification sent" if result.success else "Test failed",
-        "error": result.error,
-    }
+    return TestChannelResponse(
+        success=result.success,
+        message="Test notification sent" if result.success else "Test failed",
+        error=result.error,
+    )
 
 
 # =============================================================================
@@ -311,26 +359,23 @@ async def test_channel(
 # =============================================================================
 
 
-@router.get("/rules/conditions")
+@router.get("/rules/conditions", response_model=list[dict[str, Any]])
 async def get_rule_conditions(
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> list[dict[str, Any]]:
     """Get valid notification rule conditions."""
     service = NotificationRuleService(session)
-    return {
-        "success": True,
-        "data": service.get_valid_conditions(),
-    }
+    return service.get_valid_conditions()
 
 
-@router.get("/rules")
+@router.get("/rules", response_model=RuleListResponse)
 async def list_rules(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
     active_only: bool = Query(default=False),
     condition: str | None = Query(default=None),
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> RuleListResponse:
     """List notification rules."""
     service = NotificationRuleService(session)
     rules = await service.list(
@@ -340,31 +385,29 @@ async def list_rules(
         condition=condition,
     )
 
-    return {
-        "success": True,
-        "data": [
-            {
-                "id": r.id,
-                "name": r.name,
-                "condition": r.condition,
-                "condition_config": r.condition_config,
-                "channel_ids": r.channel_ids,
-                "source_ids": r.source_ids,
-                "is_active": r.is_active,
-                "created_at": r.created_at.isoformat(),
-                "updated_at": r.updated_at.isoformat(),
-            }
-            for r in rules
-        ],
-        "count": len(rules),
-    }
+    data = [
+        RuleResponse(
+            id=r.id,
+            name=r.name,
+            condition=r.condition,
+            condition_config=r.condition_config,
+            channel_ids=r.channel_ids,
+            source_ids=r.source_ids,
+            is_active=r.is_active,
+            created_at=r.created_at.isoformat(),
+            updated_at=r.updated_at.isoformat(),
+        )
+        for r in rules
+    ]
+
+    return RuleListResponse(data=data, count=len(data))
 
 
-@router.post("/rules")
+@router.post("/rules", response_model=RuleResponse, status_code=201)
 async def create_rule(
     request: RuleCreate,
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> RuleResponse:
     """Create a new notification rule."""
     service = NotificationRuleService(session)
 
@@ -379,23 +422,26 @@ async def create_rule(
         )
         await session.commit()
 
-        return {
-            "success": True,
-            "data": {
-                "id": rule.id,
-                "name": rule.name,
-                "condition": rule.condition,
-            },
-        }
+        return RuleResponse(
+            id=rule.id,
+            name=rule.name,
+            condition=rule.condition,
+            condition_config=rule.condition_config,
+            channel_ids=rule.channel_ids,
+            source_ids=rule.source_ids,
+            is_active=rule.is_active,
+            created_at=rule.created_at.isoformat(),
+            updated_at=rule.updated_at.isoformat(),
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/rules/{rule_id}")
+@router.get("/rules/{rule_id}", response_model=RuleResponse)
 async def get_rule(
     rule_id: str,
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> RuleResponse:
     """Get a notification rule by ID."""
     service = NotificationRuleService(session)
     rule = await service.get_by_id(rule_id)
@@ -403,28 +449,25 @@ async def get_rule(
     if rule is None:
         raise HTTPException(status_code=404, detail="Rule not found")
 
-    return {
-        "success": True,
-        "data": {
-            "id": rule.id,
-            "name": rule.name,
-            "condition": rule.condition,
-            "condition_config": rule.condition_config,
-            "channel_ids": rule.channel_ids,
-            "source_ids": rule.source_ids,
-            "is_active": rule.is_active,
-            "created_at": rule.created_at.isoformat(),
-            "updated_at": rule.updated_at.isoformat(),
-        },
-    }
+    return RuleResponse(
+        id=rule.id,
+        name=rule.name,
+        condition=rule.condition,
+        condition_config=rule.condition_config,
+        channel_ids=rule.channel_ids,
+        source_ids=rule.source_ids,
+        is_active=rule.is_active,
+        created_at=rule.created_at.isoformat(),
+        updated_at=rule.updated_at.isoformat(),
+    )
 
 
-@router.put("/rules/{rule_id}")
+@router.put("/rules/{rule_id}", response_model=RuleResponse)
 async def update_rule(
     rule_id: str,
     request: RuleUpdate,
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> RuleResponse:
     """Update a notification rule."""
     service = NotificationRuleService(session)
 
@@ -443,23 +486,26 @@ async def update_rule(
         if rule is None:
             raise HTTPException(status_code=404, detail="Rule not found")
 
-        return {
-            "success": True,
-            "data": {
-                "id": rule.id,
-                "name": rule.name,
-                "condition": rule.condition,
-            },
-        }
+        return RuleResponse(
+            id=rule.id,
+            name=rule.name,
+            condition=rule.condition,
+            condition_config=rule.condition_config,
+            channel_ids=rule.channel_ids,
+            source_ids=rule.source_ids,
+            is_active=rule.is_active,
+            created_at=rule.created_at.isoformat(),
+            updated_at=rule.updated_at.isoformat(),
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.delete("/rules/{rule_id}")
+@router.delete("/rules/{rule_id}", response_model=MessageResponse)
 async def delete_rule(
     rule_id: str,
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> MessageResponse:
     """Delete a notification rule."""
     service = NotificationRuleService(session)
     deleted = await service.delete(rule_id)
@@ -468,7 +514,7 @@ async def delete_rule(
     if not deleted:
         raise HTTPException(status_code=404, detail="Rule not found")
 
-    return {"success": True}
+    return MessageResponse(message="Rule deleted")
 
 
 # =============================================================================
@@ -476,7 +522,7 @@ async def delete_rule(
 # =============================================================================
 
 
-@router.get("/logs")
+@router.get("/logs", response_model=LogListResponse)
 async def list_logs(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
@@ -484,7 +530,7 @@ async def list_logs(
     status: str | None = Query(default=None),
     hours: int | None = Query(default=None, ge=1, le=168),
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> LogListResponse:
     """List notification delivery logs."""
     service = NotificationLogService(session)
     logs = await service.list(
@@ -495,48 +541,41 @@ async def list_logs(
         hours=hours,
     )
 
-    return {
-        "success": True,
-        "data": [
-            {
-                "id": log.id,
-                "channel_id": log.channel_id,
-                "rule_id": log.rule_id,
-                "event_type": log.event_type,
-                "status": log.status,
-                "message_preview": (
-                    log.message[:100] + "..." if len(log.message) > 100 else log.message
-                ),
-                "error_message": log.error_message,
-                "created_at": log.created_at.isoformat(),
-                "sent_at": log.sent_at.isoformat() if log.sent_at else None,
-            }
-            for log in logs
-        ],
-        "count": len(logs),
-    }
+    data = [
+        LogResponse(
+            id=log.id,
+            channel_id=log.channel_id,
+            rule_id=log.rule_id,
+            event_type=log.event_type,
+            status=log.status,
+            message_preview=(
+                log.message[:100] + "..." if len(log.message) > 100 else log.message
+            ),
+            error_message=log.error_message,
+            created_at=log.created_at.isoformat(),
+            sent_at=log.sent_at.isoformat() if log.sent_at else None,
+        )
+        for log in logs
+    ]
+
+    return LogListResponse(data=data, count=len(data))
 
 
-@router.get("/logs/stats")
+@router.get("/logs/stats", response_model=dict[str, Any])
 async def get_log_stats(
     hours: int = Query(default=24, ge=1, le=168),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     """Get notification delivery statistics."""
     service = NotificationLogService(session)
-    stats = await service.get_stats(hours=hours)
-
-    return {
-        "success": True,
-        "data": stats,
-    }
+    return await service.get_stats(hours=hours)
 
 
-@router.get("/logs/{log_id}")
+@router.get("/logs/{log_id}", response_model=LogDetailResponse)
 async def get_log(
     log_id: str,
     session: AsyncSession = Depends(get_session),
-) -> dict[str, Any]:
+) -> LogDetailResponse:
     """Get a notification log by ID."""
     service = NotificationLogService(session)
     log = await service.get_by_id(log_id)
@@ -544,18 +583,15 @@ async def get_log(
     if log is None:
         raise HTTPException(status_code=404, detail="Log not found")
 
-    return {
-        "success": True,
-        "data": {
-            "id": log.id,
-            "channel_id": log.channel_id,
-            "rule_id": log.rule_id,
-            "event_type": log.event_type,
-            "event_data": log.event_data,
-            "status": log.status,
-            "message": log.message,
-            "error_message": log.error_message,
-            "created_at": log.created_at.isoformat(),
-            "sent_at": log.sent_at.isoformat() if log.sent_at else None,
-        },
-    }
+    return LogDetailResponse(
+        id=log.id,
+        channel_id=log.channel_id,
+        rule_id=log.rule_id,
+        event_type=log.event_type,
+        event_data=log.event_data,
+        status=log.status,
+        message=log.message,
+        error_message=log.error_message,
+        created_at=log.created_at.isoformat(),
+        sent_at=log.sent_at.isoformat() if log.sent_at else None,
+    )

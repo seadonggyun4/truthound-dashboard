@@ -1,6 +1,12 @@
 """Sources API endpoints.
 
 This module provides CRUD endpoints for managing data sources.
+
+API Design: Direct Response Style
+- Single resources return the resource directly
+- List endpoints return PaginatedResponse with data, total, offset, limit
+- Errors are handled via HTTPException
+- Success is indicated by HTTP status codes (200, 201, 204)
 """
 
 from __future__ import annotations
@@ -9,13 +15,18 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Path, Query
 
+from pydantic import Field
+
 from truthound_dashboard.schemas import (
     MessageResponse,
     SourceCreate,
     SourceListResponse,
     SourceResponse,
+    SourceTypesResponse,
     SourceUpdate,
+    TestConnectionResponse,
 )
+from truthound_dashboard.schemas.base import BaseSchema
 
 from .deps import SourceServiceDep
 
@@ -182,33 +193,46 @@ async def delete_source(
     return MessageResponse(message="Source deleted successfully")
 
 
+class BulkDeleteRequest(BaseSchema):
+    """Request for bulk delete operation."""
+
+    ids: list[str] = Field(..., description="List of source IDs to delete")
+
+
+class BulkDeleteResponse(BaseSchema):
+    """Response for bulk delete operation."""
+
+    deleted_count: int = Field(..., description="Number of successfully deleted sources")
+    failed_ids: list[str] = Field(default_factory=list, description="IDs that failed to delete")
+    total_requested: int = Field(..., description="Total number of IDs requested")
+
+
 @router.post(
     "/bulk-delete",
-    response_model=dict,
+    response_model=BulkDeleteResponse,
     summary="Bulk delete sources",
     description="Delete multiple data sources at once",
 )
 async def bulk_delete_sources(
     service: SourceServiceDep,
-    request: dict,
-) -> dict:
+    request: BulkDeleteRequest,
+) -> BulkDeleteResponse:
     """Delete multiple data sources.
 
     Args:
         service: Injected source service.
-        request: Dictionary with 'ids' key containing list of source IDs.
+        request: Request with list of source IDs.
 
     Returns:
         Result with deleted count and any failed IDs.
     """
-    ids = request.get("ids", [])
-    if not ids:
+    if not request.ids:
         raise HTTPException(status_code=400, detail="No source IDs provided")
 
     deleted_count = 0
     failed_ids = []
 
-    for source_id in ids:
+    for source_id in request.ids:
         try:
             deleted = await service.delete(source_id)
             if deleted:
@@ -218,26 +242,23 @@ async def bulk_delete_sources(
         except Exception:
             failed_ids.append(source_id)
 
-    return {
-        "success": True,
-        "data": {
-            "deleted_count": deleted_count,
-            "failed_ids": failed_ids,
-            "total_requested": len(ids),
-        },
-    }
+    return BulkDeleteResponse(
+        deleted_count=deleted_count,
+        failed_ids=failed_ids,
+        total_requested=len(request.ids),
+    )
 
 
 @router.post(
     "/{source_id}/test",
-    response_model=dict,
+    response_model=TestConnectionResponse,
     summary="Test source connection",
     description="Test connection to a data source",
 )
 async def test_source_connection(
     service: SourceServiceDep,
     source_id: Annotated[str, Path(description="Source ID")],
-) -> dict:
+) -> TestConnectionResponse:
     """Test connection to a data source.
 
     Args:
@@ -245,7 +266,7 @@ async def test_source_connection(
         source_id: Source unique identifier.
 
     Returns:
-        Connection test result with success status and message.
+        Connection test result.
 
     Raises:
         HTTPException: 404 if source not found.
@@ -257,16 +278,20 @@ async def test_source_connection(
         raise HTTPException(status_code=404, detail="Source not found")
 
     result = await test_connection(source.type, source.config)
-    return {"success": True, "data": result}
+    return TestConnectionResponse(
+        connected=result.get("success", False),
+        message=result.get("message"),
+        error=result.get("error"),
+    )
 
 
 @router.get(
     "/types/supported",
-    response_model=dict,
+    response_model=SourceTypesResponse,
     summary="Get supported source types",
     description="Get list of supported data source types and their configuration",
 )
-async def get_supported_types() -> dict:
+async def get_supported_types() -> SourceTypesResponse:
     """Get list of supported source types.
 
     Returns comprehensive information about each source type including
@@ -280,42 +305,40 @@ async def get_supported_types() -> dict:
         get_supported_source_types,
     )
 
-    return {
-        "success": True,
-        "data": {
-            "types": get_supported_source_types(),
-            "categories": get_source_type_categories(),
-        },
-    }
+    return SourceTypesResponse(
+        types=get_supported_source_types(),
+        categories=get_source_type_categories(),
+    )
+
+
+from truthound_dashboard.schemas.source import TestConnectionRequest
 
 
 @router.post(
     "/test-connection",
-    response_model=dict,
+    response_model=TestConnectionResponse,
     summary="Test connection configuration",
     description="Test a connection configuration before creating a source",
 )
 async def test_connection_config(
-    request: dict,
-) -> dict:
+    request: TestConnectionRequest,
+) -> TestConnectionResponse:
     """Test connection configuration before creating a source.
 
     This endpoint allows testing connection settings without
     persisting them to the database.
 
     Args:
-        request: Dictionary with 'type' and 'config' keys.
+        request: Connection test request with type and config.
 
     Returns:
-        Connection test result with success status and message.
+        Connection test result.
     """
     from truthound_dashboard.core.connections import test_connection
 
-    source_type = request.get("type")
-    config = request.get("config", {})
-
-    if not source_type:
-        raise HTTPException(status_code=400, detail="Source type is required")
-
-    result = await test_connection(source_type, config)
-    return {"success": True, "data": result}
+    result = await test_connection(request.type, request.config)
+    return TestConnectionResponse(
+        connected=result.get("success", False),
+        message=result.get("message"),
+        error=result.get("error"),
+    )

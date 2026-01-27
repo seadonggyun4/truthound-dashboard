@@ -27,6 +27,7 @@ from truthound_dashboard.core.plugins.validator_executor import ValidatorContext
 from truthound_dashboard.db.models import PluginStatus as DBPluginStatus
 from truthound_dashboard.db.models import PluginType as DBPluginType
 from truthound_dashboard.db.models import Validation
+from truthound_dashboard.schemas.base import MessageResponse
 from truthound_dashboard.schemas.plugins import (
     AddSignerRequest,
     CodeAnalysisResult,
@@ -1744,11 +1745,14 @@ async def add_trusted_signer(
     )
 
 
-@router.delete("/plugins/security/trust-store/signers/{signer_id}")
+@router.delete(
+    "/plugins/security/trust-store/signers/{signer_id}",
+    response_model=MessageResponse,
+)
 async def remove_trusted_signer(
     session: SessionDep,
     signer_id: str,
-) -> dict[str, bool]:
+) -> MessageResponse:
     """Remove a trusted signer from the trust store.
 
     Args:
@@ -1756,10 +1760,10 @@ async def remove_trusted_signer(
         signer_id: Signer ID to remove.
 
     Returns:
-        Success status.
+        Success message.
     """
     # In production, this would remove from the actual TrustStore
-    return {"success": True}
+    return MessageResponse(message=f"Trusted signer '{signer_id}' removed")
 
 
 @router.get("/plugins/security/policy", response_model=SecurityPolicyConfig)
@@ -1950,11 +1954,11 @@ async def register_hook(
     )
 
 
-@router.delete("/plugins/hooks/{hook_id}")
+@router.delete("/plugins/hooks/{hook_id}", response_model=MessageResponse)
 async def unregister_hook(
     session: SessionDep,
     hook_id: str,
-) -> dict[str, bool]:
+) -> MessageResponse:
     """Unregister a hook.
 
     Args:
@@ -1962,10 +1966,10 @@ async def unregister_hook(
         hook_id: Hook ID to unregister.
 
     Returns:
-        Success status.
+        Success message.
     """
     # In production, this would unregister from the HookManager
-    return {"success": True}
+    return MessageResponse(message=f"Hook '{hook_id}' unregistered")
 
 
 @router.get("/plugins/hooks/types")

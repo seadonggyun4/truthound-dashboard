@@ -2,6 +2,12 @@
 
 This module defines schemas for cross-feature integration between
 Anomaly Detection and Drift Monitoring alerts.
+
+API Design: Direct Response Style
+- Single resources return the resource directly
+- List endpoints return PaginatedResponse with data, total, offset, limit
+- Errors are handled via HTTPException
+- Success is indicated by HTTP status codes (200, 201, 204)
 """
 
 from __future__ import annotations
@@ -11,7 +17,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from .base import BaseSchema, IDMixin, TimestampMixin, ListResponseWrapper
+from .base import BaseSchema, IDMixin, TimestampMixin, PaginatedResponse
 
 
 # =============================================================================
@@ -105,10 +111,20 @@ class CrossAlertCorrelation(IDMixin, TimestampMixin, BaseSchema):
     )
 
 
-class CrossAlertCorrelationListResponse(ListResponseWrapper[CrossAlertCorrelation]):
+class CrossAlertCorrelationListResponse(PaginatedResponse[CrossAlertCorrelation]):
     """Paginated list of cross-alert correlations."""
 
     pass
+
+
+class CorrelationSearchResult(BaseSchema):
+    """Result of a correlation search for a specific source."""
+
+    correlations: list[CrossAlertCorrelation] = Field(
+        default_factory=list,
+        description="Found correlations",
+    )
+    total: int = Field(default=0, description="Total correlations found")
 
 
 # =============================================================================
@@ -272,7 +288,7 @@ class AutoTriggerEvent(IDMixin, TimestampMixin, BaseSchema):
     )
 
 
-class AutoTriggerEventListResponse(ListResponseWrapper[AutoTriggerEvent]):
+class AutoTriggerEventListResponse(PaginatedResponse[AutoTriggerEvent]):
     """Paginated list of auto-trigger events."""
 
     pass

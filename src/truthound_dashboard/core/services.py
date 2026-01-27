@@ -284,22 +284,28 @@ class ValidationRepository(BaseRepository[Validation]):
         self,
         source_id: str,
         *,
+        offset: int = 0,
         limit: int = 20,
-    ) -> Sequence[Validation]:
-        """Get validations for a source.
+    ) -> tuple[Sequence[Validation], int]:
+        """Get validations for a source with pagination.
 
         Args:
             source_id: Source ID.
+            offset: Number of items to skip.
             limit: Maximum to return.
 
         Returns:
-            Sequence of validations.
+            Tuple of (validations, total_count).
         """
-        return await self.list(
+        filters = [Validation.source_id == source_id]
+        validations = await self.list(
+            offset=offset,
             limit=limit,
-            filters=[Validation.source_id == source_id],
+            filters=filters,
             order_by=Validation.created_at.desc(),
         )
+        total = await self.count(filters=filters)
+        return validations, total
 
     async def get_latest_for_source(self, source_id: str) -> Validation | None:
         """Get most recent validation for a source.
@@ -473,7 +479,8 @@ class SourceService:
         Returns:
             Sequence of validations.
         """
-        return await self.validation_repo.get_for_source(source_id, limit=limit)
+        validations, _ = await self.validation_repo.get_for_source(source_id, limit=limit)
+        return validations
 
 
 class ValidationService:
@@ -784,18 +791,22 @@ class ValidationService:
         self,
         source_id: str,
         *,
+        offset: int = 0,
         limit: int = 20,
-    ) -> Sequence[Validation]:
-        """List validations for a source.
+    ) -> tuple[Sequence[Validation], int]:
+        """List validations for a source with pagination.
 
         Args:
             source_id: Source ID.
+            offset: Number of items to skip.
             limit: Maximum to return.
 
         Returns:
-            Sequence of validations.
+            Tuple of (validations, total_count).
         """
-        return await self.validation_repo.get_for_source(source_id, limit=limit)
+        return await self.validation_repo.get_for_source(
+            source_id, offset=offset, limit=limit
+        )
 
 
 class SchemaService:
@@ -1146,17 +1157,20 @@ class ProfileRepository(BaseRepository[Profile]):
         source_id: str,
         *,
         limit: int = 20,
+        offset: int = 0,
     ) -> Sequence[Profile]:
         """Get profiles for a source.
 
         Args:
             source_id: Source ID.
             limit: Maximum to return.
+            offset: Number to skip.
 
         Returns:
             Sequence of profiles.
         """
         return await self.list(
+            offset=offset,
             limit=limit,
             filters=[Profile.source_id == source_id],
             order_by=Profile.created_at.desc(),
@@ -1539,6 +1553,28 @@ class ProfileService:
             "yaml_content": result.yaml_content,
             "json_content": result.json_content,
         }
+
+    async def get(self, profile_id: str) -> Profile | None:
+        """Get a profile by ID.
+
+        Args:
+            profile_id: Profile ID.
+
+        Returns:
+            Profile or None.
+        """
+        return await self.profile_repo.get_by_id(profile_id)
+
+    async def get_latest(self, source_id: str) -> Profile | None:
+        """Get the latest profile for a source.
+
+        Args:
+            source_id: Source ID.
+
+        Returns:
+            Latest profile or None.
+        """
+        return await self.profile_repo.get_latest_for_source(source_id)
 
     async def get_latest_profile(self, source_id: str) -> Profile | None:
         """Get the latest profile for a source.
