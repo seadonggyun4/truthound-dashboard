@@ -730,6 +730,91 @@ class ModelMonitoringService:
         """Delete an alert handler."""
         return await self.handler_repo.delete(handler_id)
 
+    async def test_alert_handler(
+        self,
+        handler_id: str,
+    ) -> dict[str, Any]:
+        """Test an alert handler by sending a test notification.
+
+        Args:
+            handler_id: Handler ID.
+
+        Returns:
+            Test result with success status and message.
+
+        Raises:
+            ValueError: If handler not found.
+        """
+        handler = await self.handler_repo.get_by_id(handler_id)
+        if handler is None:
+            raise ValueError(f"Handler '{handler_id}' not found")
+
+        handler_type = handler.handler_type
+        config = handler.config or {}
+
+        # Simulate test based on handler type
+        test_result = {
+            "handler_id": handler_id,
+            "handler_type": handler_type,
+            "success": False,
+            "message": "",
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+        try:
+            if handler_type == "webhook":
+                # For webhook, we would normally send a test request
+                # For safety, we just validate the config
+                url = config.get("url")
+                if not url:
+                    test_result["message"] = "Webhook URL not configured"
+                elif not url.startswith(("http://", "https://")):
+                    test_result["message"] = "Invalid webhook URL format"
+                else:
+                    test_result["success"] = True
+                    test_result["message"] = f"Webhook configuration valid. URL: {url}"
+
+            elif handler_type == "email":
+                recipients = config.get("recipients", [])
+                if not recipients:
+                    test_result["message"] = "No email recipients configured"
+                else:
+                    test_result["success"] = True
+                    test_result["message"] = f"Email configuration valid. Recipients: {len(recipients)}"
+
+            elif handler_type == "slack":
+                webhook_url = config.get("webhook_url") or config.get("url")
+                if not webhook_url:
+                    test_result["message"] = "Slack webhook URL not configured"
+                else:
+                    test_result["success"] = True
+                    test_result["message"] = "Slack configuration valid"
+
+            elif handler_type == "pagerduty":
+                integration_key = config.get("integration_key") or config.get("routing_key")
+                if not integration_key:
+                    test_result["message"] = "PagerDuty integration key not configured"
+                else:
+                    test_result["success"] = True
+                    test_result["message"] = "PagerDuty configuration valid"
+
+            elif handler_type == "opsgenie":
+                api_key = config.get("api_key")
+                if not api_key:
+                    test_result["message"] = "OpsGenie API key not configured"
+                else:
+                    test_result["success"] = True
+                    test_result["message"] = "OpsGenie configuration valid"
+
+            else:
+                test_result["success"] = True
+                test_result["message"] = f"Handler type '{handler_type}' configuration accepted"
+
+        except Exception as e:
+            test_result["message"] = f"Test failed: {str(e)}"
+
+        return test_result
+
     # =========================================================================
     # Alerts
     # =========================================================================

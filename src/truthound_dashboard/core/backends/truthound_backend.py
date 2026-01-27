@@ -318,44 +318,15 @@ class TruthoundBackend(BaseDataQualityBackend):
         # Resolve DataSource to LazyFrame if needed
         resolved_source = self._resolve_data_input(source)
 
-        # Try new profiler API first
-        try:
-            from truthound.profiler import DataProfiler, ProfilerConfig
+        # Use th.profile() API which handles file paths and DataFrames
+        # Note: th.profile() doesn't support advanced ProfilerConfig options,
+        # those are only available via DataProfiler with LazyFrame input.
+        # See: .truthound_docs/python-api/core-functions.md
+        th = self._get_truthound()
 
-            config = ProfilerConfig(
-                sample_size=sample_size,
-                include_patterns=include_patterns,
-                include_correlations=include_correlations,
-                include_distributions=include_distributions,
-                top_n_values=top_n_values,
-                pattern_sample_size=pattern_sample_size,
-                correlation_threshold=correlation_threshold,
-                min_pattern_match_ratio=min_pattern_match_ratio,
-                n_jobs=n_jobs,
-            )
-
-            profiler = DataProfiler(config)
-
-            if isinstance(resolved_source, str):
-                func = partial(profiler.profile_file, resolved_source)
-            else:
-                func = partial(profiler.profile_dataframe, resolved_source)
-
-            result = await self._run_in_executor(func)
-            return self._convert_profile_result(result)
-
-        except ImportError:
-            # Fallback to legacy th.profile() API
-            logger.debug("Using legacy th.profile() API")
-            th = self._get_truthound()
-
-            kwargs: dict[str, Any] = {}
-            if sample_size is not None:
-                kwargs["sample_size"] = sample_size
-
-            func = partial(th.profile, resolved_source, **kwargs)
-            result = await self._run_in_executor(func)
-            return self._convert_profile_result(result)
+        func = partial(th.profile, resolved_source)
+        result = await self._run_in_executor(func)
+        return self._convert_profile_result(result)
 
     async def compare(
         self,
@@ -435,19 +406,19 @@ class TruthoundBackend(BaseDataQualityBackend):
         # Resolve DataSource to LazyFrame if needed
         resolved_data = self._resolve_data_input(data)
 
-        kwargs: dict[str, Any] = {
-            "min_confidence": min_confidence,
-        }
-
-        if columns is not None:
-            kwargs["columns"] = columns
-        if regulations is not None:
-            kwargs["regulations"] = regulations
+        # Note: truthound's th.scan() does not support min_confidence, columns,
+        # or regulations parameters. We filter results after scanning.
+        # See: .truthound_docs/python-api/core-functions.md
 
         try:
-            func = partial(th.scan, resolved_data, **kwargs)
+            func = partial(th.scan, resolved_data)
             result = await self._run_in_executor(func)
-            return self._convert_scan_result(result)
+            return self._convert_scan_result(
+                result,
+                min_confidence=min_confidence,
+                columns=columns,
+                regulations=regulations,
+            )
         except Exception as e:
             if "truthound" in str(type(e).__module__):
                 raise BackendOperationError(
@@ -651,19 +622,63 @@ class TruthoundBackend(BaseDataQualityBackend):
             columns=data["columns"],
         )
 
-    def _convert_scan_result(self, result: Any) -> ScanResult:
-        """Convert truthound PIIReport to ScanResult."""
+    def _convert_scan_result(
+        self,
+        result: Any,
+        *,
+        min_confidence: float = 0.8,
+        columns: list[str] | None = None,
+        regulations: list[str] | None = None,
+    ) -> ScanResult:
+        """Convert truthound PIIReport to ScanResult with optional filtering.
+
+        Args:
+            result: truthound PIIReport object.
+            min_confidence: Filter findings by minimum confidence (0.0-1.0).
+            columns: Filter findings to specific columns only.
+            regulations: Filter findings by regulation types.
+
+        Returns:
+            ScanResult with filtered PII findings.
+        """
         data = self._converter.convert_scan_result(result)
+
+        # Filter findings based on parameters
+        findings = data["findings"]
+        if findings:
+            # Filter by min_confidence (confidence is 0-100 in findings)
+            findings = [
+                f for f in findings
+                if f.get("confidence", 100) >= min_confidence * 100
+            ]
+
+            # Filter by columns
+            if columns:
+                findings = [
+                    f for f in findings
+                    if f.get("column") in columns
+                ]
+
+            # Filter by regulations (if finding has regulation info)
+            if regulations:
+                findings = [
+                    f for f in findings
+                    if not f.get("regulation") or f.get("regulation") in regulations
+                ]
+
+        # Recalculate summary stats after filtering
+        columns_with_pii = len({f.get("column") for f in findings if f.get("column")})
+
         return ScanResult(
             source=data["source"],
             row_count=data["row_count"],
             column_count=data["column_count"],
             total_columns_scanned=data["total_columns_scanned"],
-            columns_with_pii=data["columns_with_pii"],
-            total_findings=data["total_findings"],
+            columns_with_pii=columns_with_pii,
+            total_findings=len(findings),
             has_violations=data["has_violations"],
             total_violations=data["total_violations"],
-            findings=data["findings"],
+            findings=findings,
             violations=data["violations"],
         )
 

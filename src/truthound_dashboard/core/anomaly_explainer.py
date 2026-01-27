@@ -159,10 +159,11 @@ class AnomalyExplainerService:
         algorithm used for detection.
         """
         try:
-            import truthound as th
+            from truthound.datasources import get_datasource
 
-            # Load data
-            df = th.read(source.config)
+            # Load data using truthound datasources factory
+            datasource = get_datasource(source.config.get("path", source.config))
+            df = datasource.to_polars_lazyframe().collect().to_pandas()
 
             # Get columns that were analyzed
             columns = detection.columns_analyzed or list(

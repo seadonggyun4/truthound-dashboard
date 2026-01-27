@@ -716,50 +716,17 @@ class TruthoundAdapter:
         Returns:
             ProfileResult with comprehensive profiling information.
         """
-        # Try to use new profiler API first, fallback to legacy th.profile()
-        try:
-            from truthound.profiler import DataProfiler, ProfilerConfig
+        # Use th.profile() API which handles file paths and DataFrames
+        # Note: th.profile() doesn't support advanced ProfilerConfig options,
+        # those are only available via DataProfiler with LazyFrame input.
+        # See: .truthound_docs/python-api/core-functions.md
+        import truthound as th
 
-            # Build ProfilerConfig with all options
-            config = ProfilerConfig(
-                sample_size=sample_size,
-                include_patterns=include_patterns,
-                include_correlations=include_correlations,
-                include_distributions=include_distributions,
-                top_n_values=top_n_values,
-                pattern_sample_size=pattern_sample_size,
-                correlation_threshold=correlation_threshold,
-                min_pattern_match_ratio=min_pattern_match_ratio,
-                n_jobs=n_jobs,
-            )
+        func = partial(th.profile, source)
 
-            profiler = DataProfiler(config)
-
-            # Determine which method to use based on source type
-            if isinstance(source, str):
-                func = partial(profiler.profile_file, source)
-            else:
-                # For DataSource objects, use profile() with LazyFrame
-                func = partial(profiler.profile_dataframe, source)
-
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(self._executor, func)
-            return self._convert_profile_result(result)
-
-        except ImportError:
-            # Fallback to legacy th.profile() API
-            logger.debug("Using legacy th.profile() API")
-            import truthound as th
-
-            kwargs: dict[str, Any] = {}
-            if sample_size is not None:
-                kwargs["sample_size"] = sample_size
-
-            func = partial(th.profile, source, **kwargs)
-
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(self._executor, func)
-            return self._convert_profile_result(result)
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(self._executor, func)
+        return self._convert_profile_result(result)
 
     async def profile_advanced(
         self,
@@ -771,6 +738,10 @@ class TruthoundAdapter:
 
         This method provides direct access to all ProfilerConfig options
         through a configuration dictionary.
+
+        Note: DataProfiler.profile() only accepts LazyFrame, so file paths
+        are converted to LazyFrame first. For simple profiling without
+        advanced config, use profile() method instead.
 
         Args:
             source: Data source - file path string or DataSource object.
@@ -792,6 +763,8 @@ class TruthoundAdapter:
         Raises:
             ImportError: If truthound.profiler module is not available.
         """
+        import polars as pl
+
         from truthound.profiler import DataProfiler, ProfilerConfig
 
         config = config or {}
@@ -809,12 +782,43 @@ class TruthoundAdapter:
             n_jobs=config.get("n_jobs", 1),
         )
 
-        profiler = DataProfiler(profiler_config)
+        profiler = DataProfiler(config=profiler_config)
 
+        # DataProfiler.profile() only accepts LazyFrame
+        # Convert file path to LazyFrame
         if isinstance(source, str):
-            func = partial(profiler.profile_file, source)
+            # Determine file format and create LazyFrame
+            source_lower = source.lower()
+            if source_lower.endswith(".csv"):
+                lf = pl.scan_csv(source)
+            elif source_lower.endswith(".parquet"):
+                lf = pl.scan_parquet(source)
+            elif source_lower.endswith((".json", ".ndjson", ".jsonl")):
+                lf = pl.scan_ndjson(source)
+            else:
+                # Fallback to th.profile() for unsupported formats
+                import truthound as th
+
+                func = partial(th.profile, source)
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(self._executor, func)
+                return self._convert_profile_result(result)
+
+            func = partial(profiler.profile, lf, name=source, source=source)
+        elif hasattr(source, "lazy"):
+            # DataFrame with .lazy() method
+            func = partial(profiler.profile, source.lazy())
+        elif hasattr(source, "collect"):
+            # Already a LazyFrame
+            func = partial(profiler.profile, source)
         else:
-            func = partial(profiler.profile_dataframe, source)
+            # Fallback to th.profile() for other types
+            import truthound as th
+
+            func = partial(th.profile, source)
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(self._executor, func)
+            return self._convert_profile_result(result)
 
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(self._executor, func)
@@ -1033,22 +1037,21 @@ class TruthoundAdapter:
         """
         import truthound as th
 
-        # Build kwargs dynamically to let truthound use its defaults
-        kwargs: dict[str, Any] = {
-            "min_confidence": min_confidence,
-        }
+        # Note: truthound's th.scan() does not support min_confidence, columns,
+        # or regulations parameters. We filter results after scanning.
+        # See: .truthound_docs/python-api/core-functions.md
 
-        if columns is not None:
-            kwargs["columns"] = columns
-        if regulations is not None:
-            kwargs["regulations"] = regulations
-
-        func = partial(th.scan, data, **kwargs)
+        func = partial(th.scan, data)
 
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(self._executor, func)
 
-        return self._convert_scan_result(result)
+        return self._convert_scan_result(
+            result,
+            min_confidence=min_confidence,
+            columns=columns,
+            regulations=regulations,
+        )
 
     async def compare(
         self,
@@ -1751,8 +1754,15 @@ class TruthoundAdapter:
             size_bytes=getattr(result, "size_bytes", 0),
         )
 
-    def _convert_scan_result(self, result: Any) -> ScanResult:
-        """Convert truthound PIIReport to ScanResult.
+    def _convert_scan_result(
+        self,
+        result: Any,
+        *,
+        min_confidence: float = 0.8,
+        columns: list[str] | None = None,
+        regulations: list[str] | None = None,
+    ) -> ScanResult:
+        """Convert truthound PIIReport to ScanResult with optional filtering.
 
         The truthound PIIReport contains:
         - source: str
@@ -1765,7 +1775,7 @@ class TruthoundAdapter:
         Each PIIFinding has:
         - column: str
         - pii_type: str
-        - confidence: float
+        - confidence: float (0-100)
         - sample_count: int
         - sample_values: list[str] (optional)
 
@@ -1775,25 +1785,62 @@ class TruthoundAdapter:
         - pii_type: str
         - message: str
         - severity: str (optional)
+
+        Args:
+            result: truthound PIIReport object.
+            min_confidence: Filter findings by minimum confidence (0.0-1.0).
+            columns: Filter findings to specific columns only.
+            regulations: Filter findings by regulation types.
+
+        Returns:
+            ScanResult with filtered PII findings.
         """
         # Convert findings to dictionaries
         findings = []
         columns_with_pii = set()
         for finding in result.findings:
-            columns_with_pii.add(finding.column)
+            # Handle both dict and object-style findings
+            if isinstance(finding, dict):
+                confidence = finding.get("confidence", 0)
+                column = finding.get("column", "")
+                pii_type = finding.get("pii_type", "unknown")
+                sample_count = finding.get("count", finding.get("sample_count", 0))
+                sample_values = finding.get("sample_values")
+            else:
+                confidence = getattr(finding, "confidence", 0)
+                column = getattr(finding, "column", "")
+                pii_type = getattr(finding, "pii_type", "unknown")
+                sample_count = getattr(finding, "sample_count", getattr(finding, "count", 0))
+                sample_values = getattr(finding, "sample_values", None)
+
+            # Apply min_confidence filter (confidence is 0-100 in findings)
+            if confidence < min_confidence * 100:
+                continue
+
+            # Apply columns filter
+            if columns and column not in columns:
+                continue
+
+            columns_with_pii.add(column)
+            # Normalize confidence to 0-1 range if it's in 0-100 range
+            normalized_confidence = confidence / 100.0 if confidence > 1 else confidence
             findings.append(
                 {
-                    "column": finding.column,
-                    "pii_type": finding.pii_type,
-                    "confidence": finding.confidence,
-                    "sample_count": finding.sample_count,
-                    "sample_values": getattr(finding, "sample_values", None),
+                    "column": column,
+                    "pii_type": pii_type,
+                    "confidence": normalized_confidence,
+                    "sample_count": sample_count,
+                    "sample_values": sample_values,
                 }
             )
 
         # Convert violations to dictionaries
         violations = []
         for violation in getattr(result, "violations", []):
+            # Apply regulations filter
+            if regulations and violation.regulation not in regulations:
+                continue
+
             violations.append(
                 {
                     "regulation": violation.regulation,
@@ -1804,11 +1851,14 @@ class TruthoundAdapter:
                 }
             )
 
+        # Get column_count with fallback (not present in some truthound versions)
+        column_count = getattr(result, "column_count", len(columns_with_pii) if columns_with_pii else 0)
+
         return ScanResult(
             source=result.source,
             row_count=result.row_count,
-            column_count=result.column_count,
-            total_columns_scanned=result.column_count,
+            column_count=column_count,
+            total_columns_scanned=column_count,
             columns_with_pii=len(columns_with_pii),
             total_findings=len(findings),
             has_violations=getattr(result, "has_violations", len(violations) > 0),

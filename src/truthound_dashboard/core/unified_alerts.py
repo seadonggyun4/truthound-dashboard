@@ -351,8 +351,6 @@ class UnifiedAlertsService:
                 alert.status = "acknowledged"
                 alert.acknowledged_by = actor
                 alert.acknowledged_at = now
-                if message:
-                    alert.notes = message
                 await self.session.commit()
                 return await self._get_single_drift_alert(source_id)
 
@@ -408,8 +406,6 @@ class UnifiedAlertsService:
             if alert:
                 alert.status = "resolved"
                 alert.resolved_at = now
-                if message:
-                    alert.notes = message
                 await self.session.commit()
                 return await self._get_single_drift_alert(source_id)
 
@@ -663,6 +659,7 @@ class UnifiedAlertsService:
             if severity and alert_severity != severity:
                 continue
 
+            drift_pct = (alert.drift_score or 0) * 100
             unified.append(
                 UnifiedAlertResponse(
                     id=_generate_alert_id(AlertSource.DRIFT, alert.id),
@@ -671,18 +668,18 @@ class UnifiedAlertsService:
                     source_name=monitor_names.get(alert.monitor_id, "Unknown Monitor"),
                     severity=alert_severity,
                     status=_map_drift_status(alert.status),
-                    title=f"Drift Alert: {alert.drift_percentage:.1f}% drift detected",
+                    title=f"Drift Alert: {drift_pct:.1f}% drift detected",
                     message=alert.message,
                     details={
-                        "comparison_id": alert.comparison_id,
-                        "drift_percentage": alert.drift_percentage,
-                        "drifted_columns": alert.drifted_columns,
+                        "run_id": alert.run_id,
+                        "drift_score": alert.drift_score,
+                        "affected_columns": alert.affected_columns,
                     },
                     acknowledged_at=alert.acknowledged_at,
                     acknowledged_by=alert.acknowledged_by,
                     resolved_at=alert.resolved_at,
                     created_at=alert.created_at,
-                    updated_at=alert.updated_at,
+                    updated_at=alert.created_at,  # DriftAlert has no updated_at
                 )
             )
 
@@ -760,7 +757,7 @@ class UnifiedAlertsService:
                         "columns_analyzed": detection.columns_analyzed,
                     },
                     created_at=detection.created_at,
-                    updated_at=detection.updated_at,
+                    updated_at=detection.created_at,  # AnomalyDetection has no updated_at
                 )
             )
 
@@ -793,10 +790,10 @@ class UnifiedAlertsService:
 
         unified = []
         for validation in validations:
-            # Determine severity based on critical/high issue counts
-            issues = validation.issues or []
-            critical_count = sum(1 for i in issues if i.get("severity") == "critical")
-            high_count = sum(1 for i in issues if i.get("severity") == "high")
+            # Use summary fields from model
+            critical_count = validation.critical_issues or 0
+            high_count = validation.high_issues or 0
+            total_issues = validation.total_issues or 0
 
             if critical_count > 0:
                 alert_severity = AlertSeverity.CRITICAL
@@ -812,6 +809,12 @@ class UnifiedAlertsService:
             if status and status != AlertStatus.OPEN:
                 continue
 
+            # Calculate pass rate from row_count if available
+            pass_rate = 0.0
+            if validation.row_count and validation.row_count > 0:
+                failed_rows = total_issues
+                pass_rate = ((validation.row_count - failed_rows) / validation.row_count) * 100
+
             unified.append(
                 UnifiedAlertResponse(
                     id=_generate_alert_id(AlertSource.VALIDATION, validation.id),
@@ -820,18 +823,18 @@ class UnifiedAlertsService:
                     source_name=source_names.get(validation.source_id, "Unknown Source"),
                     severity=alert_severity,
                     status=AlertStatus.OPEN,
-                    title=f"Validation Failed: {len(issues)} issues",
+                    title=f"Validation Failed: {total_issues} issues",
                     message=f"Validation failed with {critical_count} critical, "
-                    f"{high_count} high severity issues. "
-                    f"Pass rate: {validation.pass_rate:.1f}%",
+                    f"{high_count} high severity issues.",
                     details={
-                        "pass_rate": validation.pass_rate,
-                        "total_issues": len(issues),
+                        "total_issues": total_issues,
                         "critical_issues": critical_count,
                         "high_issues": high_count,
+                        "medium_issues": validation.medium_issues or 0,
+                        "low_issues": validation.low_issues or 0,
                     },
                     created_at=validation.created_at,
-                    updated_at=validation.updated_at,
+                    updated_at=validation.created_at,  # Validation has no updated_at
                 )
             )
 

@@ -73,6 +73,25 @@ class LineageNodeRepository(BaseRepository[LineageNode]):
             filters=[LineageNode.node_type == node_type],
         )
 
+    async def get_by_name_and_type(
+        self, name: str, node_type: str
+    ) -> LineageNode | None:
+        """Get a node by name and type combination.
+
+        Args:
+            name: Node name.
+            node_type: Node type (source, transform, sink).
+
+        Returns:
+            LineageNode or None if not found.
+        """
+        result = await self.session.execute(
+            select(LineageNode)
+            .where(LineageNode.name == name, LineageNode.node_type == node_type)
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
 
 class LineageEdgeRepository(BaseRepository[LineageEdge]):
     """Repository for LineageEdge model operations."""
@@ -248,6 +267,20 @@ class LineageService:
     # Node Operations
     # =========================================================================
 
+    async def get_node_by_name_and_type(
+        self, name: str, node_type: str
+    ) -> LineageNode | None:
+        """Get a node by name and type.
+
+        Args:
+            name: Node name.
+            node_type: Node type (source, transform, sink).
+
+        Returns:
+            LineageNode or None if not found.
+        """
+        return await self.node_repo.get_by_name_and_type(name, node_type)
+
     async def create_node(
         self,
         *,
@@ -270,7 +303,17 @@ class LineageService:
 
         Returns:
             Created node.
+
+        Raises:
+            ValueError: If a node with same name and type already exists.
         """
+        # Check for existing node with same name and type
+        existing = await self.get_node_by_name_and_type(name, node_type)
+        if existing:
+            raise ValueError(
+                f"Node with name '{name}' and type '{node_type}' already exists"
+            )
+
         node = await self.node_repo.create(
             name=name,
             node_type=node_type,
@@ -280,6 +323,43 @@ class LineageService:
             position_y=position_y,
         )
         return node
+
+    async def get_or_create_node(
+        self,
+        *,
+        name: str,
+        node_type: str,
+        source_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        position_x: float | None = None,
+        position_y: float | None = None,
+    ) -> tuple[LineageNode, bool]:
+        """Get an existing node or create a new one.
+
+        Args:
+            name: Node name.
+            node_type: Node type (source, transform, sink).
+            source_id: Optional linked data source ID.
+            metadata: Optional additional metadata.
+            position_x: X coordinate for visualization.
+            position_y: Y coordinate for visualization.
+
+        Returns:
+            Tuple of (node, created) where created is True if new node was created.
+        """
+        existing = await self.get_node_by_name_and_type(name, node_type)
+        if existing:
+            return existing, False
+
+        node = await self.node_repo.create(
+            name=name,
+            node_type=node_type,
+            source_id=source_id,
+            metadata_json=metadata,
+            position_x=position_x,
+            position_y=position_y,
+        )
+        return node, True
 
     async def get_node(self, node_id: str) -> LineageNode | None:
         """Get a node by ID.

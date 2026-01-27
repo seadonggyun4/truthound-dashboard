@@ -248,10 +248,12 @@ class AnomalyDetectionService:
             Detection results dictionary.
         """
         try:
-            import truthound as th
+            from truthound.datasources import get_datasource
 
-            # Load data from source
-            df = th.read(source.config)
+            # Load data from source using truthound datasources factory
+            # The source.config contains the path or connection info
+            datasource = get_datasource(source.config.get("path", source.config))
+            df = datasource.to_polars_lazyframe().collect()
 
             # Get columns to analyze
             columns = None
@@ -1146,11 +1148,13 @@ class AnomalyDetectionService:
 
         # Load data once
         try:
-            import truthound as th
+            from truthound.datasources import get_datasource
             import numpy as np
             import pandas as pd
 
-            df = th.read(source.config)
+            # Load data using truthound datasources factory
+            datasource = get_datasource(source.config.get("path", source.config))
+            df = datasource.to_polars_lazyframe().collect().to_pandas()
 
             # Sample if needed
             if sample_size and len(df) > sample_size:

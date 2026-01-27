@@ -361,6 +361,19 @@ class SourceService:
             return await self.repository.get_active(offset=offset, limit=limit)
         return await self.repository.list(offset=offset, limit=limit)
 
+    async def count(self, *, active_only: bool = True) -> int:
+        """Count sources.
+
+        Args:
+            active_only: Only count active sources.
+
+        Returns:
+            Total count of sources.
+        """
+        if active_only:
+            return await self.repository.count(filters=[Source.is_active == True])
+        return await self.repository.count()
+
     async def create(
         self,
         *,
