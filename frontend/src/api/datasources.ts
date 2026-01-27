@@ -437,8 +437,20 @@ export async function maskSource(
 /**
  * Delete multiple sources.
  */
-export async function deleteSources(ids: string[]): Promise<void> {
-  return apiClient.post('/sources/bulk/delete', { ids })
+export async function deleteSources(ids: string[]): Promise<{
+  deleted_count: number
+  failed_ids: string[]
+  total_requested: number
+}> {
+  const response = await apiClient.post<{
+    success: boolean
+    data: {
+      deleted_count: number
+      failed_ids: string[]
+      total_requested: number
+    }
+  }>('/sources/bulk-delete', { ids })
+  return response.data
 }
 
 /**

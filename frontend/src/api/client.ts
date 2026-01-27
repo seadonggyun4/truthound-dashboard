@@ -344,8 +344,7 @@ export async function listSources(params?: {
 }
 
 export async function getSource(id: string): Promise<Source> {
-  const response = await request<{ success: boolean; data: Source }>(`/sources/${id}`)
-  return response.data
+  return request<Source>(`/sources/${id}`)
 }
 
 export async function createSource(data: {
@@ -479,17 +478,17 @@ export async function runValidation(
   sourceId: string,
   options?: ValidationRunOptions
 ): Promise<Validation> {
-  const response = await request<{ success: boolean; data: Validation }>(`/validations/sources/${sourceId}/validate`, {
+  return request<Validation>(`/validations/sources/${sourceId}/validate`, {
     method: 'POST',
     body: JSON.stringify(options || {}),
   })
-  return response.data
 }
 
 export async function getValidation(id: string): Promise<Validation> {
-  const response = await request<{ success: boolean; data: Validation }>(`/validations/${id}`)
-  return response.data
+  return request<Validation>(`/validations/${id}`)
 }
+
+// Note: getValidation uses /validations/{id} which is correct with the prefix
 
 export async function listSourceValidations(
   sourceId: string,
@@ -517,19 +516,17 @@ export interface Schema {
 }
 
 export async function getSourceSchema(sourceId: string): Promise<Schema | null> {
-  const response = await request<{ success: boolean; data: Schema | null }>(`/sources/${sourceId}/schema`)
-  return response.data
+  return request<Schema | null>(`/sources/${sourceId}/schema`)
 }
 
 export async function learnSchema(
   sourceId: string,
   data?: { infer_constraints?: boolean }
 ): Promise<Schema> {
-  const response = await request<{ success: boolean; data: Schema }>(`/sources/${sourceId}/learn`, {
+  return request<Schema>(`/sources/${sourceId}/learn`, {
     method: 'POST',
     body: JSON.stringify(data || {}),
   })
-  return response.data
 }
 
 export async function updateSchema(
