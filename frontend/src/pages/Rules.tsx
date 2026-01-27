@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
-import { apiClient } from '@/api/client'
+import { request } from '@/api/core'
+import { confirm } from '@/components/ConfirmDialog'
 
 interface Rule {
   id: string
@@ -89,7 +90,7 @@ export default function Rules() {
   const fetchSource = useCallback(async () => {
     if (!sourceId) return
     try {
-      const data = await apiClient.get<Source>(`/sources/${sourceId}`)
+      const data = await request<Source>(`/sources/${sourceId}`)
       setSource(data)
     } catch {
       toast({
@@ -103,7 +104,7 @@ export default function Rules() {
   const fetchRules = useCallback(async () => {
     if (!sourceId) return
     try {
-      const data = await apiClient.get<{ data: RuleListItem[] }>(
+      const data = await request<{ data: RuleListItem[] }>(
         `/sources/${sourceId}/rules`
       )
       setRules(data.data)
@@ -119,7 +120,7 @@ export default function Rules() {
   const fetchActiveRule = useCallback(async () => {
     if (!sourceId) return
     try {
-      const data = await apiClient.get<Rule | null>(
+      const data = await request<Rule | null>(
         `/sources/${sourceId}/rules/active`
       )
       if (data) {
@@ -162,10 +163,13 @@ export default function Rules() {
     try {
       if (activeRule) {
         // Update existing rule
-        await apiClient.put<Rule>(`/rules/${activeRule.id}`, {
-          name: ruleName,
-          description: ruleDescription || null,
-          rules_yaml: yamlContent,
+        await request<Rule>(`/rules/${activeRule.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            name: ruleName,
+            description: ruleDescription || null,
+            rules_yaml: yamlContent,
+          }),
         })
         toast({
           title: 'Saved',
@@ -173,10 +177,13 @@ export default function Rules() {
         })
       } else {
         // Create new rule
-        await apiClient.post<Rule>(`/sources/${sourceId}/rules?activate=true`, {
-          name: ruleName,
-          description: ruleDescription || null,
-          rules_yaml: yamlContent,
+        await request<Rule>(`/sources/${sourceId}/rules?activate=true`, {
+          method: 'POST',
+          body: JSON.stringify({
+            name: ruleName,
+            description: ruleDescription || null,
+            rules_yaml: yamlContent,
+          }),
         })
         toast({
           title: 'Created',
@@ -201,10 +208,13 @@ export default function Rules() {
 
     setIsCreating(true)
     try {
-      await apiClient.post<Rule>(`/sources/${sourceId}/rules?activate=true`, {
-        name: 'New Rules',
-        description: null,
-        rules_yaml: DEFAULT_RULES_YAML,
+      await request<Rule>(`/sources/${sourceId}/rules?activate=true`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'New Rules',
+          description: null,
+          rules_yaml: DEFAULT_RULES_YAML,
+        }),
       })
       toast({
         title: 'Created',
@@ -224,7 +234,7 @@ export default function Rules() {
 
   const handleActivateRule = async (ruleId: string) => {
     try {
-      await apiClient.post<Rule>(`/rules/${ruleId}/activate`, {})
+      await request<Rule>(`/rules/${ruleId}/activate`, { method: 'POST' })
       toast({
         title: 'Activated',
         description: 'Rule activated successfully',
@@ -240,10 +250,17 @@ export default function Rules() {
   }
 
   const handleDeleteRule = async (ruleId: string) => {
-    if (!confirm('Are you sure you want to delete this rule?')) return
+    const confirmed = await confirm({
+      title: 'Delete Rule',
+      description: 'Are you sure you want to delete this rule?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+    })
+    if (!confirmed) return
 
     try {
-      await apiClient.delete(`/rules/${ruleId}`)
+      await request(`/rules/${ruleId}`, { method: 'DELETE' })
       toast({
         title: 'Deleted',
         description: 'Rule deleted successfully',

@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
+import { confirm } from '@/components/ConfirmDialog'
 import {
   Loader2,
   RefreshCw,
@@ -323,7 +324,14 @@ export default function ModelMonitoring() {
 
   const handleDeleteModel = useCallback(
     async (model: RegisteredModel) => {
-      if (!confirm(str(t.confirm.deleteModel))) return
+      const confirmed = await confirm({
+        title: 'Delete Model',
+        description: str(t.confirm.deleteModel),
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        variant: 'destructive',
+      })
+      if (!confirmed) return
       try {
         await deleteModel(model.id)
         toast({ title: str(t.messages.modelDeleted) })
@@ -398,7 +406,14 @@ export default function ModelMonitoring() {
 
   const handleDeleteRule = useCallback(
     async (rule: AlertRule) => {
-      if (!confirm(str(t.confirm.deleteRule))) return
+      const confirmed = await confirm({
+        title: 'Delete Rule',
+        description: str(t.confirm.deleteRule),
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        variant: 'destructive',
+      })
+      if (!confirmed) return
       try {
         await deleteAlertRule(rule.id)
         toast({ title: str(t.messages.ruleDeleted) })
@@ -432,7 +447,14 @@ export default function ModelMonitoring() {
 
   const handleDeleteHandler = useCallback(
     async (handler: AlertHandler) => {
-      if (!confirm(str(t.confirm.deleteHandler))) return
+      const confirmed = await confirm({
+        title: 'Delete Handler',
+        description: str(t.confirm.deleteHandler),
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        variant: 'destructive',
+      })
+      if (!confirmed) return
       try {
         await deleteAlertHandler(handler.id)
         toast({ title: str(t.messages.handlerDeleted) })

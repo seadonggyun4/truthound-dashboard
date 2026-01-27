@@ -54,6 +54,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { toast } from '@/hooks/use-toast'
+import { confirm } from '@/components/ConfirmDialog'
 import {
   Shield,
   ShieldCheck,
@@ -895,13 +896,27 @@ export function PluginSettingsTab() {
   }
 
   const handleRemoveSigner = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this signer?')) return
+    const confirmed = await confirm({
+      title: 'Remove Signer',
+      description: 'Are you sure you want to remove this signer?',
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+    })
+    if (!confirmed) return
     setTrustedSigners((prev) => prev.filter((s) => s.id !== id))
     toast({ title: 'Signer removed' })
   }
 
   const handleRevokeSigner = async (id: string) => {
-    if (!confirm('Are you sure you want to revoke this signer? This cannot be undone.')) return
+    const confirmed = await confirm({
+      title: 'Revoke Signer',
+      description: 'Are you sure you want to revoke this signer? This cannot be undone.',
+      confirmText: 'Revoke',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+    })
+    if (!confirmed) return
     setTrustedSigners((prev) =>
       prev.map((s) =>
         s.id === id ? { ...s, trust_level: 'revoked', is_active: false } : s

@@ -17,7 +17,7 @@ import {
   type PluginStatus,
   type CustomValidator,
   type CustomReporter,
-} from '@/api/client'
+} from '@/api/modules/plugins'
 import { str } from '@/lib/intlayer-utils'
 
 import { Button } from '@/components/ui/button'
@@ -60,6 +60,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { toast } from '@/hooks/use-toast'
+import { confirm } from '@/components/ConfirmDialog'
 import {
   Search,
   Download,
@@ -168,7 +169,14 @@ export function Plugins() {
   }, [])
 
   const handleDeleteValidator = useCallback(async (validator: CustomValidator) => {
-    if (!confirm(`Are you sure you want to delete "${validator.display_name}"?`)) return
+    const confirmed = await confirm({
+      title: 'Delete Validator',
+      description: `Are you sure you want to delete "${validator.display_name}"?`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+    })
+    if (!confirmed) return
     try {
       await doDeleteValidator(validator.id)
       toast({ title: str(t.messages.validatorDeleted) })
@@ -190,7 +198,14 @@ export function Plugins() {
   }, [])
 
   const handleDeleteReporter = useCallback(async (reporter: CustomReporter) => {
-    if (!confirm(`Are you sure you want to delete "${reporter.display_name}"?`)) return
+    const confirmed = await confirm({
+      title: 'Delete Reporter',
+      description: `Are you sure you want to delete "${reporter.display_name}"?`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+    })
+    if (!confirmed) return
     try {
       await doDeleteReporter(reporter.id)
       toast({ title: str(t.messages.reporterDeleted) })

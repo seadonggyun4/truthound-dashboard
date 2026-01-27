@@ -24,6 +24,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { useToast } from '@/hooks/use-toast'
+import { confirm } from '@/components/ConfirmDialog'
 import { Loader2, Plus, RefreshCw, Activity, Bell, TrendingUp, Columns, Eye, Search } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -41,8 +42,8 @@ import type { RootCauseAnalysisData, RemediationSuggestion } from '@/components/
 import { RelatedAlerts, AutoTriggerConfigPanel } from '@/components/cross-alerts'
 import type { DriftMonitor } from '@/components/drift/DriftMonitorList'
 import type { DriftAlert } from '@/components/drift/DriftAlertList'
-import type { Source, DriftResult } from '@/api/client'
-import { listSources } from '@/api/client'
+import { listSources, type Source } from '@/api/modules/sources'
+import type { DriftResult } from '@/api/modules/drift'
 
 // API functions for drift monitoring
 const API_BASE = '/api/v1'
@@ -290,7 +291,14 @@ export default function DriftMonitoring() {
 
   const handleDeleteMonitor = useCallback(
     async (monitor: DriftMonitor) => {
-      if (!confirm(str(t.confirm.deleteMonitor))) return
+      const confirmed = await confirm({
+        title: 'Delete Monitor',
+        description: str(t.confirm.deleteMonitor),
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        variant: 'destructive',
+      })
+      if (!confirmed) return
       try {
         await deleteDriftMonitor(monitor.id)
         toast({ title: str(t.messages.monitorDeleted) })
