@@ -1,6 +1,11 @@
 """Schedule management API endpoints.
 
 Provides CRUD endpoints for validation schedules.
+
+API Design: Direct Response Style
+- Single resources return the resource directly
+- List endpoints return PaginatedResponse with data, total, offset, limit
+- Errors are handled via HTTPException
 """
 
 from __future__ import annotations
@@ -11,11 +16,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from truthound_dashboard.core import ScheduleService, ValidationService
 from truthound_dashboard.schemas import (
+    MessageResponse,
     ScheduleActionResponse,
     ScheduleCreate,
     ScheduleListResponse,
+    ScheduleResponse,
     ScheduleUpdate,
 )
+from truthound_dashboard.schemas.schedule import ScheduleListItem
 
 from .deps import SessionDep
 
@@ -30,25 +38,45 @@ async def get_schedule_service(session: SessionDep) -> ScheduleService:
 ScheduleServiceDep = Annotated[ScheduleService, Depends(get_schedule_service)]
 
 
-def _schedule_to_response(schedule) -> dict:
-    """Convert schedule model to response dict."""
-    return {
-        "id": schedule.id,
-        "name": schedule.name,
-        "source_id": schedule.source_id,
-        "cron_expression": schedule.cron_expression,
-        "is_active": schedule.is_active,
-        "notify_on_failure": schedule.notify_on_failure,
-        "last_run_at": (
+def _schedule_to_response(schedule) -> ScheduleResponse:
+    """Convert schedule model to response schema."""
+    return ScheduleResponse(
+        id=schedule.id,
+        name=schedule.name,
+        source_id=schedule.source_id,
+        cron_expression=schedule.cron_expression,
+        is_active=schedule.is_active,
+        notify_on_failure=schedule.notify_on_failure,
+        last_run_at=(
             schedule.last_run_at.isoformat() if schedule.last_run_at else None
         ),
-        "next_run_at": (
+        next_run_at=(
             schedule.next_run_at.isoformat() if schedule.next_run_at else None
         ),
-        "config": schedule.config,
-        "created_at": schedule.created_at.isoformat() if schedule.created_at else None,
-        "updated_at": schedule.updated_at.isoformat() if schedule.updated_at else None,
-    }
+        config=schedule.config,
+        created_at=schedule.created_at,
+        updated_at=schedule.updated_at,
+    )
+
+
+def _schedule_to_list_item(schedule) -> ScheduleListItem:
+    """Convert schedule model to list item schema."""
+    return ScheduleListItem(
+        id=schedule.id,
+        name=schedule.name,
+        source_id=schedule.source_id,
+        cron_expression=schedule.cron_expression,
+        is_active=schedule.is_active,
+        notify_on_failure=schedule.notify_on_failure,
+        last_run_at=(
+            schedule.last_run_at.isoformat() if schedule.last_run_at else None
+        ),
+        next_run_at=(
+            schedule.next_run_at.isoformat() if schedule.next_run_at else None
+        ),
+        created_at=schedule.created_at,
+        updated_at=schedule.updated_at,
+    )
 
 
 @router.get(
@@ -61,6 +89,7 @@ async def list_schedules(
     service: ScheduleServiceDep,
     source_id: str | None = Query(None, description="Filter by source ID"),
     active_only: bool = Query(False, description="Only return active schedules"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
     limit: int = Query(100, ge=1, le=500, description="Maximum results"),
 ) -> ScheduleListResponse:
     """List validation schedules.
@@ -69,10 +98,11 @@ async def list_schedules(
         service: Schedule service.
         source_id: Optional source ID filter.
         active_only: Only return active schedules.
+        offset: Offset for pagination.
         limit: Maximum results.
 
     Returns:
-        List of schedules.
+        Paginated list of schedules.
     """
     schedules = await service.list_schedules(
         source_id=source_id,
@@ -81,15 +111,16 @@ async def list_schedules(
     )
 
     return ScheduleListResponse(
-        success=True,
-        data=[_schedule_to_response(s) for s in schedules],
+        data=[_schedule_to_list_item(s) for s in schedules],
         total=len(schedules),
+        offset=offset,
+        limit=limit,
     )
 
 
 @router.post(
     "/schedules",
-    response_model=dict,
+    response_model=ScheduleResponse,
     status_code=201,
     summary="Create schedule",
     description="Create a new validation schedule.",
@@ -97,7 +128,7 @@ async def list_schedules(
 async def create_schedule(
     request: ScheduleCreate,
     service: ScheduleServiceDep,
-) -> dict:
+) -> ScheduleResponse:
     """Create a new schedule.
 
     Args:
@@ -115,11 +146,7 @@ async def create_schedule(
             notify_on_failure=request.notify_on_failure,
             config=request.config,
         )
-
-        return {
-            "success": True,
-            "data": _schedule_to_response(schedule),
-        }
+        return _schedule_to_response(schedule)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -128,14 +155,14 @@ async def create_schedule(
 
 @router.get(
     "/schedules/{schedule_id}",
-    response_model=dict,
+    response_model=ScheduleResponse,
     summary="Get schedule",
     description="Get a specific schedule by ID.",
 )
 async def get_schedule(
     schedule_id: str,
     service: ScheduleServiceDep,
-) -> dict:
+) -> ScheduleResponse:
     """Get a schedule by ID.
 
     Args:
@@ -149,15 +176,12 @@ async def get_schedule(
     if schedule is None:
         raise HTTPException(status_code=404, detail="Schedule not found")
 
-    return {
-        "success": True,
-        "data": _schedule_to_response(schedule),
-    }
+    return _schedule_to_response(schedule)
 
 
 @router.put(
     "/schedules/{schedule_id}",
-    response_model=dict,
+    response_model=ScheduleResponse,
     summary="Update schedule",
     description="Update an existing schedule.",
 )
@@ -165,7 +189,7 @@ async def update_schedule(
     schedule_id: str,
     request: ScheduleUpdate,
     service: ScheduleServiceDep,
-) -> dict:
+) -> ScheduleResponse:
     """Update a schedule.
 
     Args:
@@ -188,24 +212,21 @@ async def update_schedule(
         if schedule is None:
             raise HTTPException(status_code=404, detail="Schedule not found")
 
-        return {
-            "success": True,
-            "data": _schedule_to_response(schedule),
-        }
+        return _schedule_to_response(schedule)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete(
     "/schedules/{schedule_id}",
-    response_model=dict,
+    response_model=MessageResponse,
     summary="Delete schedule",
     description="Delete a schedule.",
 )
 async def delete_schedule(
     schedule_id: str,
     service: ScheduleServiceDep,
-) -> dict:
+) -> MessageResponse:
     """Delete a schedule.
 
     Args:
@@ -219,7 +240,7 @@ async def delete_schedule(
     if not deleted:
         raise HTTPException(status_code=404, detail="Schedule not found")
 
-    return {"success": True, "message": "Schedule deleted"}
+    return MessageResponse(message="Schedule deleted")
 
 
 @router.post(
@@ -246,7 +267,6 @@ async def pause_schedule(
         raise HTTPException(status_code=404, detail="Schedule not found")
 
     return ScheduleActionResponse(
-        success=True,
         message="Schedule paused",
         schedule=_schedule_to_response(schedule),
     )
@@ -276,15 +296,25 @@ async def resume_schedule(
         raise HTTPException(status_code=404, detail="Schedule not found")
 
     return ScheduleActionResponse(
-        success=True,
         message="Schedule resumed",
         schedule=_schedule_to_response(schedule),
     )
 
 
+from pydantic import BaseModel
+
+
+class ScheduleRunResponse(BaseModel):
+    """Response for schedule run action."""
+
+    message: str
+    validation_id: str
+    passed: bool
+
+
 @router.post(
     "/schedules/{schedule_id}/run",
-    response_model=dict,
+    response_model=ScheduleRunResponse,
     summary="Run schedule now",
     description="Trigger immediate execution of a scheduled validation.",
 )
@@ -292,7 +322,7 @@ async def run_schedule_now(
     schedule_id: str,
     service: ScheduleServiceDep,
     session: SessionDep,
-) -> dict:
+) -> ScheduleRunResponse:
     """Run a scheduled validation immediately.
 
     Args:
@@ -319,11 +349,10 @@ async def run_schedule_now(
             auto_schema=config.get("auto_schema", False),
         )
 
-        return {
-            "success": True,
-            "message": "Validation triggered",
-            "validation_id": validation.id,
-            "passed": validation.passed,
-        }
+        return ScheduleRunResponse(
+            message="Validation triggered",
+            validation_id=validation.id,
+            passed=validation.passed,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
