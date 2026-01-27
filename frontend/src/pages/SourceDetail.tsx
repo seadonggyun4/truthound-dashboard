@@ -126,7 +126,7 @@ export default function SourceDetail() {
       ])
       setSource(sourceData)
       setSchema(schemaData)
-      setValidations(validationsData.data)
+      setValidations(validationsData?.data ?? [])
 
       // Find the source type definition
       if (typesResponse.success && sourceData) {
@@ -336,7 +336,7 @@ export default function SourceDetail() {
     )
   }
 
-  const latestValidation = validations[0]
+  const latestValidation = validations?.[0]
 
   return (
     <div className="space-y-6">
@@ -641,7 +641,7 @@ export default function SourceDetail() {
           )}
 
           {/* Latest Issues */}
-          {latestValidation && latestValidation.issues.length > 0 && (
+          {latestValidation && latestValidation.issues && latestValidation.issues.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -721,7 +721,7 @@ export default function SourceDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {validations.length === 0 ? (
+              {!validations || validations.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
                   No validations yet. Run your first validation to see results here.
                 </p>
