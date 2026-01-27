@@ -336,10 +336,10 @@ export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDial
                 value={categoryFilter || 'all'}
                 onValueChange={(v) => setCategoryFilter(v === 'all' ? null : (v as SourceCategory))}
               >
-                <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="all">All</TabsTrigger>
+                <TabsList className="flex w-full flex-wrap h-auto gap-1 p-1">
+                  <TabsTrigger value="all" className="flex-shrink-0">All</TabsTrigger>
                   {categories.map((cat) => (
-                    <TabsTrigger key={cat.value} value={cat.value}>
+                    <TabsTrigger key={cat.value} value={cat.value} className="flex-shrink-0">
                       {cat.label}
                     </TabsTrigger>
                   ))}

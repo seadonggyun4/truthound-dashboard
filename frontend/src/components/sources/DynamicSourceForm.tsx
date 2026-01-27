@@ -97,9 +97,24 @@ export function DynamicSourceForm({
 
     switch (field.type) {
       case 'text':
-      case 'file_path':
         return (
           <div key={field.name} className="space-y-2">
+            {labelElement}
+            <Input
+              id={fieldId}
+              type="text"
+              placeholder={field.placeholder}
+              value={(value as string) ?? field.default ?? ''}
+              onChange={(e) => handleFieldChange(field.name, e.target.value)}
+              className={cn(error && 'border-destructive')}
+            />
+            {error && <p className="text-xs text-destructive">{error}</p>}
+          </div>
+        )
+
+      case 'file_path':
+        return (
+          <div key={field.name} className="space-y-2 col-span-full">
             {labelElement}
             <Input
               id={fieldId}

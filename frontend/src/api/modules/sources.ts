@@ -282,7 +282,7 @@ export interface BulkDeleteResponse {
 }
 
 export async function deleteSources(ids: string[]): Promise<BulkDeleteResponse> {
-  return request<BulkDeleteResponse>('/sources/bulk/delete', {
+  return request<BulkDeleteResponse>('/sources/bulk-delete', {
     method: 'POST',
     body: JSON.stringify({ ids }),
   })
