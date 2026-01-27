@@ -14,21 +14,36 @@ from .base import BaseSchema, IDMixin, ListResponseWrapper, TimestampMixin
 
 # Supported source types - must match SourceType enum in connections.py
 SourceType = Literal[
+    # File-based
     "file",
+    "csv",
+    "parquet",
+    "json",
+    "ndjson",
+    "jsonl",
+    # Core SQL
     "postgresql",
     "mysql",
     "sqlite",
+    # Cloud Data Warehouses
     "snowflake",
     "bigquery",
     "redshift",
     "databricks",
+    # Enterprise
     "oracle",
     "sqlserver",
+    # Big Data
     "spark",
+    # NoSQL
+    "mongodb",
+    "elasticsearch",
+    # Streaming
+    "kafka",
 ]
 
 # Source type categories for UI grouping
-SourceCategory = Literal["file", "database", "warehouse", "bigdata"]
+SourceCategory = Literal["file", "database", "warehouse", "bigdata", "nosql", "streaming"]
 
 # Field types for dynamic form rendering
 FieldType = Literal["text", "password", "number", "select", "boolean", "file_path", "textarea"]
@@ -248,6 +263,6 @@ class TestConnectionRequest(BaseSchema):
 class TestConnectionResponse(BaseSchema):
     """Response from connection test."""
 
-    success: bool = Field(..., description="Whether connection was successful")
+    connected: bool = Field(..., description="Whether connection was successful")
     message: str | None = Field(default=None, description="Success message")
     error: str | None = Field(default=None, description="Error message if failed")
