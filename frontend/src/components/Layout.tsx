@@ -32,7 +32,7 @@ import { useTheme } from '@/components/theme-provider'
 import { LanguageSelector } from '@/components/common'
 import { useState, useEffect } from 'react'
 import logoImg from '@/assets/logo.png'
-import { apiClient } from '@/api/client'
+import { request } from '@/api/core'
 import {
   Collapsible,
   CollapsibleContent,
@@ -104,8 +104,8 @@ export default function Layout() {
   useEffect(() => {
     const fetchAlertCount = async () => {
       try {
-        const response = await apiClient.get('/alerts/count?status=open') as { data: { data?: { count?: number } } }
-        setAlertCount(response.data.data?.count || 0)
+        const response = await request<{ count?: number }>('/alerts/count', { params: { status: 'open' } })
+        setAlertCount(response.count || 0)
       } catch {
         // Silently fail - badge just won't show
       }
@@ -130,12 +130,12 @@ export default function Layout() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 bottom-0 z-50 w-[220px] transform bg-card border-r transition-transform duration-200 lg:translate-x-0',
+          'fixed left-0 top-0 bottom-0 z-50 w-[220px] transform bg-card border-r transition-transform duration-200 lg:translate-x-0 flex flex-col h-screen',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center gap-2 border-b px-6">
+        <div className="flex h-16 items-center gap-2 border-b px-6 flex-shrink-0">
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
             <img src={logoImg} alt="Truthound" className="h-6 w-6" />
           </div>
@@ -145,7 +145,7 @@ export default function Layout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+        <nav className="flex-1 overflow-y-auto p-4 space-y-2 min-h-0">
           {/* Data Management Section */}
           <Collapsible open={dataOpen} onOpenChange={setDataOpen}>
             <CollapsibleTrigger className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
