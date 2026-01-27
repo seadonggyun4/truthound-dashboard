@@ -120,7 +120,7 @@ export function RuleSuggestionDialog({
   // Advanced options state
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [strictness, setStrictness] = useState<StrictnessLevel>('medium')
-  const [preset, setPreset] = useState<RulePreset | ''>('')
+  const [preset, setPreset] = useState<RulePreset | 'none'>('none')
   const [minConfidence, setMinConfidence] = useState(50)
   const [includedCategories, setIncludedCategories] = useState<RuleCategory[]>([...ALL_CATEGORIES])
 
@@ -175,8 +175,8 @@ export function RuleSuggestionDialog({
       min_confidence: minConfidence / 100,
       include_categories: includedCategories.length < ALL_CATEGORIES.length ? includedCategories : undefined,
     }
-    if (preset) {
-      options.preset = preset
+    if (preset && preset !== 'none') {
+      options.preset = preset as RulePreset
     }
     await onGenerate(options)
   }
@@ -250,7 +250,7 @@ export function RuleSuggestionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-3xl h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -268,7 +268,7 @@ export function RuleSuggestionDialog({
           </TabsList>
 
           {/* Suggestions Tab */}
-          <TabsContent value="suggestions" className="flex-1 flex flex-col min-h-0 mt-4">
+          <TabsContent value="suggestions" className="flex-1 flex flex-col min-h-0 mt-4 data-[state=inactive]:hidden">
             {isLoading ? (
               <div className="flex-1 flex items-center justify-center py-12">
                 <div className="flex flex-col items-center gap-2">
@@ -356,8 +356,8 @@ export function RuleSuggestionDialog({
                 </div>
 
                 {/* Suggestions List */}
-                <ScrollArea className="flex-1 min-h-[200px] max-h-[350px]">
-                  <div className="space-y-2 py-2 pr-4">
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  <div className="space-y-2 py-2 pr-2">
                     {filteredSuggestions.length === 0 ? (
                       <p className="text-center text-muted-foreground py-8">
                         {str(content.noSuggestionsMatch)}
@@ -378,22 +378,23 @@ export function RuleSuggestionDialog({
                       ))
                     )}
                   </div>
-                </ScrollArea>
+                </div>
               </>
             )}
           </TabsContent>
 
           {/* Settings Tab */}
-          <TabsContent value="settings" className="flex-1 flex flex-col gap-6 mt-4 overflow-auto">
-            {/* Generation Settings */}
-            <div className="space-y-4">
+          <TabsContent value="settings" className="flex-1 min-h-0 overflow-y-auto mt-4 data-[state=inactive]:hidden">
+            <div className="space-y-6 pr-2">
+              {/* Generation Settings */}
+              <div className="space-y-4">
               <h4 className="font-medium flex items-center gap-2">
                 <Settings2 className="h-4 w-4" />
                 {str(content.generationSettings)}
               </h4>
 
-              {/* Strictness */}
-              <div className="grid grid-cols-3 gap-4">
+              {/* Strictness & Preset */}
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{str(content.strictness)}</Label>
                   <Select value={strictness} onValueChange={(v) => setStrictness(v as StrictnessLevel)}>
@@ -401,37 +402,27 @@ export function RuleSuggestionDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="loose">
-                        <div className="flex flex-col">
-                          <span>{str(content.strictnessLoose)}</span>
-                          <span className="text-xs text-muted-foreground">{str(content.strictnessLooseDesc)}</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="medium">
-                        <div className="flex flex-col">
-                          <span>{str(content.strictnessMedium)}</span>
-                          <span className="text-xs text-muted-foreground">{str(content.strictnessMediumDesc)}</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="strict">
-                        <div className="flex flex-col">
-                          <span>{str(content.strictnessStrict)}</span>
-                          <span className="text-xs text-muted-foreground">{str(content.strictnessStrictDesc)}</span>
-                        </div>
-                      </SelectItem>
+                      <SelectItem value="loose">{str(content.strictnessLoose)}</SelectItem>
+                      <SelectItem value="medium">{str(content.strictnessMedium)}</SelectItem>
+                      <SelectItem value="strict">{str(content.strictnessStrict)}</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {strictness === 'loose' && str(content.strictnessLooseDesc)}
+                    {strictness === 'medium' && str(content.strictnessMediumDesc)}
+                    {strictness === 'strict' && str(content.strictnessStrictDesc)}
+                  </p>
                 </div>
 
                 {/* Preset */}
                 <div className="space-y-2">
                   <Label>{str(content.preset)}</Label>
-                  <Select value={preset} onValueChange={(v) => setPreset(v as RulePreset)}>
+                  <Select value={preset} onValueChange={(v) => setPreset(v as RulePreset | 'none')}>
                     <SelectTrigger>
                       <SelectValue placeholder={str(content.presetNone)} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">{str(content.presetNone)}</SelectItem>
+                      <SelectItem value="none">{str(content.presetNone)}</SelectItem>
                       <SelectItem value="default">{str(content.presetDefault)}</SelectItem>
                       <SelectItem value="strict">{str(content.presetStrict)}</SelectItem>
                       <SelectItem value="loose">{str(content.presetLoose)}</SelectItem>
@@ -443,19 +434,18 @@ export function RuleSuggestionDialog({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
 
-                {/* Min Confidence */}
-                <div className="space-y-2">
-                  <Label>{str(content.minConfidence)}: {minConfidence}%</Label>
-                  <Slider
-                    value={[minConfidence]}
-                    onValueChange={([v]) => setMinConfidence(v)}
-                    min={0}
-                    max={100}
-                    step={5}
-                    className="mt-2"
-                  />
-                </div>
+              {/* Min Confidence */}
+              <div className="space-y-2">
+                <Label>{str(content.minConfidence)}: {minConfidence}%</Label>
+                <Slider
+                  value={[minConfidence]}
+                  onValueChange={([v]) => setMinConfidence(v)}
+                  min={0}
+                  max={100}
+                  step={5}
+                />
               </div>
 
               {/* Category Selection */}
@@ -497,11 +487,11 @@ export function RuleSuggestionDialog({
                   </>
                 )}
               </Button>
-            </div>
+              </div>
 
-            {/* Export Options */}
-            {suggestions.length > 0 && selectedIds.size > 0 && onExport && (
-              <div className="space-y-4 border-t pt-4">
+              {/* Export Options */}
+              {suggestions.length > 0 && selectedIds.size > 0 && onExport && (
+                <div className="space-y-4 border-t pt-4">
                 <h4 className="font-medium flex items-center gap-2">
                   <Download className="h-4 w-4" />
                   {str(content.exportOptions)}
@@ -577,8 +567,9 @@ export function RuleSuggestionDialog({
                     </Button>
                   </div>
                 </div>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
 

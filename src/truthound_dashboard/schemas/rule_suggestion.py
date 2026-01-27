@@ -115,6 +115,10 @@ class CrossColumnRuleType(str, Enum):
 class SuggestedRule(BaseSchema):
     """A single suggested validation rule."""
 
+    id: str = Field(
+        default_factory=lambda: str(__import__("uuid").uuid4()),
+        description="Unique identifier for the suggestion",
+    )
     column: str = Field(..., description="Target column name (or primary column for multi-column rules)")
     validator_name: str = Field(..., description="Validator to apply")
     params: dict[str, Any] = Field(
@@ -153,7 +157,10 @@ class SuggestedRule(BaseSchema):
 class CrossColumnRuleSuggestion(BaseSchema):
     """A suggested cross-column validation rule with detailed relationship info."""
 
-    id: str = Field(default_factory=lambda: "", description="Unique suggestion ID")
+    id: str = Field(
+        default_factory=lambda: str(__import__("uuid").uuid4()),
+        description="Unique suggestion ID",
+    )
     rule_type: CrossColumnRuleType = Field(..., description="Type of cross-column rule")
     columns: list[str] = Field(..., description="Columns involved in the relationship")
     validator_name: str = Field(..., description="Validator to apply")

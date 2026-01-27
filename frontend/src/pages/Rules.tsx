@@ -326,7 +326,7 @@ export default function Rules() {
                 {rules.length} rule{rules.length !== 1 ? 's' : ''} defined
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-2 max-h-[600px] overflow-y-auto">
               {rules.length === 0 ? (
                 <div className="text-center py-4 text-sm text-muted-foreground">
                   No rules defined yet
