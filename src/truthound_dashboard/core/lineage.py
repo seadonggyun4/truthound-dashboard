@@ -634,7 +634,13 @@ class LineageService:
         # Check if node already exists for this source
         existing_node = await self.node_repo.get_by_source_id(source_id)
         if existing_node:
-            return await self.get_graph(source_id)
+            graph = await self.get_graph(source_id)
+            return {
+                "source_id": source_id,
+                "discovered_nodes": 0,
+                "discovered_edges": 0,
+                "graph": graph,
+            }
 
         # Get source info
         from truthound_dashboard.db import Source as SourceModel

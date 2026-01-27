@@ -77,7 +77,7 @@ interface LineageGraphProps {
   forcePerformanceMode?: boolean
 }
 
-function LineageGraphInner({ sourceId: _sourceId, className, forcePerformanceMode }: LineageGraphProps) {
+function LineageGraphInner({ sourceId, className, forcePerformanceMode }: LineageGraphProps) {
   const t = useIntlayer('lineage')
   const { toast } = useToast()
 
@@ -247,10 +247,17 @@ function LineageGraphInner({ sourceId: _sourceId, className, forcePerformanceMod
 
   // Handle auto-discover
   const handleAutoDiscover = useCallback(async () => {
+    if (!sourceId) {
+      toast({
+        title: str(t.discoveryFailed),
+        description: 'Source ID is required for auto-discovery',
+        variant: 'destructive',
+      })
+      return
+    }
     setIsDiscovering(true)
     try {
-      // Auto-discover requires a source_id, use empty string to discover all
-      const result = await autoDiscoverLineage({ source_id: '' })
+      const result = await autoDiscoverLineage({ source_id: sourceId })
       toast({
         title: str(t.discoveryComplete),
         description: `${result.nodes_created} ${str(t.nodesDiscovered)}, ${result.edges_created} ${str(t.edgesDiscovered)}`,
@@ -264,7 +271,7 @@ function LineageGraphInner({ sourceId: _sourceId, className, forcePerformanceMod
     } finally {
       setIsDiscovering(false)
     }
-  }, [loadLineageData, toast, t])
+  }, [sourceId, loadLineageData, toast, t])
 
   // Handle save positions
   const handleSavePositions = useCallback(async () => {
