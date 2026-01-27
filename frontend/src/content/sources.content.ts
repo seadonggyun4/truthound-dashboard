@@ -85,6 +85,33 @@ const sourcesContent = {
       ko: '이 소스를 삭제하시겠습니까? 관련된 모든 스키마, 규칙, 검증 결과도 함께 삭제됩니다.',
   }),
 
+    // Bulk delete
+    bulkDelete: {
+      title: t({ en: 'Delete Sources', ko: '소스 삭제' }),
+      description: t({
+        en: 'Are you sure you want to delete {count} sources? This action cannot be undone.',
+        ko: '{count}개의 소스를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.',
+      }),
+      success: t({
+        en: '{count} sources deleted successfully',
+        ko: '{count}개의 소스가 삭제되었습니다',
+      }),
+      partialSuccess: t({ en: 'Partial Success', ko: '부분 성공' }),
+      error: t({
+        en: 'Failed to delete sources',
+        ko: '소스 삭제에 실패했습니다',
+      }),
+      deleting: t({ en: 'Deleting...', ko: '삭제 중...' }),
+    },
+
+    // Selection
+    selection: {
+      selectAll: t({ en: 'Select all', ko: '전체 선택' }),
+      deselectAll: t({ en: 'Deselect all', ko: '전체 선택 해제' }),
+      selected: t({ en: '{count} of {total} selected', ko: '{total}개 중 {count}개 선택됨' }),
+      sources: t({ en: '{count} sources', ko: '{count}개 소스' }),
+    },
+
     // Source types
     types: {
       // File-based
