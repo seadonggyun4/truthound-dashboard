@@ -188,6 +188,8 @@ class BaseRepository(Generic[ModelT]):
         if instance is None:
             return False
 
+        # Refresh to load all relationships for proper cascade delete
+        await self.session.refresh(instance)
         await self.session.delete(instance)
         await self.session.flush()
         return True

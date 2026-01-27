@@ -213,14 +213,53 @@ class Source(Base, UUIDMixin, TimestampMixin):
     assets: Mapped[list[CatalogAsset]] = relationship(
         "CatalogAsset",
         back_populates="source",
+        cascade="all, delete-orphan",
         lazy="selectin",
     )
     # Generated reports for this source
     generated_reports: Mapped[list["GeneratedReport"]] = relationship(
         "GeneratedReport",
         back_populates="source",
+        cascade="all, delete-orphan",
         lazy="selectin",
         order_by="desc(GeneratedReport.created_at)",
+    )
+    # Anomaly detections for this source
+    anomaly_detections: Mapped[list["AnomalyDetection"]] = relationship(
+        "AnomalyDetection",
+        back_populates="source",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    # Drift comparisons where this source is the baseline
+    baseline_comparisons: Mapped[list["DriftComparison"]] = relationship(
+        "DriftComparison",
+        foreign_keys="[DriftComparison.baseline_source_id]",
+        back_populates="baseline_source",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    # Drift comparisons where this source is the current
+    current_comparisons: Mapped[list["DriftComparison"]] = relationship(
+        "DriftComparison",
+        foreign_keys="[DriftComparison.current_source_id]",
+        back_populates="current_source",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    # Data masks for this source
+    data_masks: Mapped[list["DataMask"]] = relationship(
+        "DataMask",
+        back_populates="source",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    # PII scans for this source
+    pii_scans: Mapped[list["PIIScan"]] = relationship(
+        "PIIScan",
+        back_populates="source",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     @property
@@ -722,12 +761,12 @@ class DriftComparison(Base, UUIDMixin, TimestampMixin):
     baseline_source: Mapped[Source] = relationship(
         "Source",
         foreign_keys=[baseline_source_id],
-        backref="baseline_comparisons",
+        back_populates="baseline_comparisons",
     )
     current_source: Mapped[Source] = relationship(
         "Source",
         foreign_keys=[current_source_id],
-        backref="current_comparisons",
+        back_populates="current_comparisons",
     )
 
     @property
@@ -825,7 +864,7 @@ class DataMask(Base, UUIDMixin):
     # Relationships
     source: Mapped[Source] = relationship(
         "Source",
-        backref="data_masks",
+        back_populates="data_masks",
     )
 
     @property
@@ -939,7 +978,7 @@ class PIIScan(Base, UUIDMixin):
     # Relationships
     source: Mapped[Source] = relationship(
         "Source",
-        backref="pii_scans",
+        back_populates="pii_scans",
     )
 
     @property
@@ -1240,6 +1279,7 @@ class GlossaryCategory(Base, UUIDMixin, TimestampMixin):
         "GlossaryCategory",
         remote_side="GlossaryCategory.id",
         back_populates="children",
+        lazy="selectin",
     )
     children: Mapped[list[GlossaryCategory]] = relationship(
         "GlossaryCategory",
@@ -1307,6 +1347,7 @@ class GlossaryTerm(Base, UUIDMixin, TimestampMixin):
     category: Mapped[GlossaryCategory | None] = relationship(
         "GlossaryCategory",
         back_populates="terms",
+        lazy="selectin",
     )
     history: Mapped[list[TermHistory]] = relationship(
         "TermHistory",
@@ -1538,6 +1579,7 @@ class CatalogAsset(Base, UUIDMixin, TimestampMixin):
     source: Mapped[Source | None] = relationship(
         "Source",
         back_populates="assets",
+        lazy="selectin",
     )
     columns: Mapped[list[AssetColumn]] = relationship(
         "AssetColumn",
@@ -2548,6 +2590,7 @@ class LineageNode(Base, UUIDMixin, TimestampMixin):
     __table_args__ = (
         Index("idx_lineage_nodes_type", "node_type"),
         Index("idx_lineage_nodes_source", "source_id"),
+        Index("idx_lineage_nodes_name_type", "name", "node_type", unique=True),
     )
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -2873,7 +2916,7 @@ class AnomalyDetection(Base, UUIDMixin):
     # Relationships
     source: Mapped[Source] = relationship(
         "Source",
-        backref="anomaly_detections",
+        back_populates="anomaly_detections",
     )
 
     @property

@@ -148,8 +148,14 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         async def get_sources(session: AsyncSession = Depends(get_db_session)):
             ...
     """
-    async with get_session() as session:
-        yield session
+    factory = get_session_factory()
+    async with factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 async def _run_migrations(engine: AsyncEngine) -> None:
