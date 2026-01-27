@@ -90,6 +90,10 @@ export default function Layout() {
 
   const isRouteActive = (path: string) => {
     if (path === '/') return location.pathname === '/'
+    // /validations/* routes should highlight Data Sources (sources)
+    if (path === '/sources' && location.pathname.startsWith('/validations')) {
+      return true
+    }
     return location.pathname === path || location.pathname.startsWith(`${path}/`)
   }
 
