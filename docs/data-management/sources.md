@@ -196,7 +196,137 @@ Sensitive configuration fields are masked in the user interface by default. User
 | `/sources/{id}` | PUT | Update source configuration |
 | `/sources/{id}` | DELETE | Delete a data source |
 | `/sources/{id}/test` | POST | Test connection |
-| `/sources/{id}/validate` | POST | Execute validation |
-| `/sources/{id}/learn-schema` | POST | Generate schema automatically |
+| `/validations/sources/{id}/validate` | POST | Execute validation |
+| `/sources/{id}/learn` | POST | Generate schema automatically |
 | `/sources/{id}/schema` | GET | Retrieve current schema |
-| `/sources/{id}/validations` | GET | Retrieve validation history |
+| `/sources/{id}/profile` | POST | Generate data profile |
+| `/scans/sources/{id}/scan` | POST | Scan for PII |
+| `/masks/sources/{id}/mask` | POST | Mask sensitive data |
+| `/drift/compare` | POST | Compare two sources for drift |
+
+## Dashboard Extended API Parameters
+
+The Dashboard extends the core Truthound library functions with additional parameters for enhanced flexibility. These extensions are available through the REST API.
+
+### Schema Learning (`/sources/{id}/learn`)
+
+Extends `th.learn()` with additional sampling support.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `infer_constraints` | `bool` | `true` | Infer min/max and allowed values from data |
+| `categorical_threshold` | `int` | `20` | Max unique values for categorical detection (1-1000) |
+| `sample_size` | `int` | `null` | Number of rows to sample for large datasets |
+
+**Example Request:**
+```json
+{
+  "infer_constraints": true,
+  "categorical_threshold": 50,
+  "sample_size": 10000
+}
+```
+
+### Validation (`/validations/sources/{id}/validate`)
+
+Extends `th.check()` with column filtering and custom validators.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `validators` | `list[str]` | `null` | Specific validators to run |
+| `validator_config` | `dict` | `null` | Configuration for validators |
+| `columns` | `list[str]` | `null` | Specific columns to validate |
+| `min_severity` | `str` | `null` | Minimum severity to report (low/medium/high/critical) |
+| `strict` | `bool` | `false` | Raise exception on validation failures |
+| `parallel` | `bool` | `false` | Enable parallel execution |
+| `max_workers` | `int` | `null` | Max threads for parallel execution |
+| `pushdown` | `bool` | `null` | Enable query pushdown for SQL sources |
+| `auto_schema` | `bool` | `false` | Auto-learn schema if not present |
+| `custom_validators` | `list` | `null` | Custom validator configurations |
+
+**Example Request:**
+```json
+{
+  "validators": ["null", "duplicate", "range"],
+  "columns": ["id", "email", "age"],
+  "min_severity": "medium",
+  "parallel": true,
+  "max_workers": 4
+}
+```
+
+### PII Scanning (`/scans/sources/{id}/scan`)
+
+Extends `th.scan()` with regulation compliance and confidence filtering.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `columns` | `list[str]` | `null` | Specific columns to scan |
+| `regulations` | `list[str]` | `null` | Regulations to check (gdpr, ccpa, lgpd) |
+| `min_confidence` | `float` | `0.8` | Minimum confidence threshold (0.0-1.0) |
+
+**Example Request:**
+```json
+{
+  "columns": ["email", "ssn", "phone"],
+  "regulations": ["gdpr", "ccpa"],
+  "min_confidence": 0.9
+}
+```
+
+### Data Masking (`/masks/sources/{id}/mask`)
+
+Extends `th.mask()` with output format selection.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `columns` | `list[str]` | `null` | Columns to mask (auto-detect if null) |
+| `strategy` | `str` | `"redact"` | Masking strategy (redact/hash/fake) |
+| `output_format` | `str` | `"csv"` | Output format (csv/parquet/json) |
+
+**Example Request:**
+```json
+{
+  "columns": ["ssn", "credit_card", "email"],
+  "strategy": "hash",
+  "output_format": "parquet"
+}
+```
+
+### Drift Detection (`/drift/compare`)
+
+Extends `th.compare()` with statistical correction methods.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `baseline_source_id` | `str` | Required | Baseline source ID |
+| `current_source_id` | `str` | Required | Current source ID |
+| `columns` | `list[str]` | `null` | Columns to compare |
+| `method` | `str` | `"auto"` | Detection method (auto/ks/psi/chi2/js/wasserstein/cvm/anderson) |
+| `threshold` | `float` | `null` | Custom drift threshold |
+| `correction` | `str` | `null` | P-value correction (none/bonferroni/holm/bh) |
+| `sample_size` | `int` | `null` | Sample size for large datasets |
+
+**Extended Detection Methods:**
+
+| Method | Description | Best For |
+|--------|-------------|----------|
+| `auto` | Automatic selection based on dtype | General use |
+| `ks` | Kolmogorov-Smirnov test | Continuous numeric |
+| `psi` | Population Stability Index | ML monitoring |
+| `chi2` | Chi-squared test | Categorical |
+| `js` | Jensen-Shannon divergence | Any distribution |
+| `wasserstein` | Wasserstein distance | Distribution shape |
+| `cvm` | Cramér-von Mises test | Continuous distributions |
+| `anderson` | Anderson-Darling test | Tail-sensitive detection |
+
+**Example Request:**
+```json
+{
+  "baseline_source_id": "abc-123",
+  "current_source_id": "def-456",
+  "columns": ["age", "income", "score"],
+  "method": "psi",
+  "correction": "bonferroni",
+  "sample_size": 10000
+}

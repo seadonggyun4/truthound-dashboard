@@ -6,6 +6,8 @@ The Anomaly Detection module provides machine learning-based identification of u
 
 Anomaly detection identifies data points, records, or patterns that deviate significantly from expected behavior. This module implements multiple ML algorithms to detect various types of anomalies, enabling users to select the most appropriate method for their data characteristics.
 
+> **Technical Note**: The dashboard uses `truthound.datasources.get_datasource()` to load data from various source types (files, databases, etc.) for anomaly detection.
+
 ## Anomaly Detection Interface
 
 ### Statistics Dashboard
@@ -267,14 +269,96 @@ Configure automated responses to anomaly detection:
 | Time series | Autoencoder or Statistical |
 | Categorical heavy | Statistical methods preferred |
 
+## Technical Notes
+
+### Data Loading
+
+The dashboard uses `truthound.datasources.get_datasource()` to load data from various source types (CSV, Parquet, JSON, databases, etc.) for anomaly detection. This provides a unified interface for accessing data regardless of the underlying storage format.
+
+### Truthound Integration
+
+The anomaly detection algorithms in the dashboard leverage truthound's ML module (`truthound.ml.anomaly_models`):
+
+| Algorithm | Truthound Implementation |
+|-----------|--------------------------|
+| Statistical | `truthound.ml.anomaly_models.statistical.StatisticalAnomalyDetector` |
+| Isolation Forest | `truthound.ml.anomaly_models.isolation_forest.IsolationForestDetector` |
+| Ensemble | `truthound.ml.anomaly_models.ensemble.EnsembleAnomalyDetector` |
+
+### Anomaly Types
+
+Truthound classifies anomalies into the following types:
+
+| Type | Description |
+|------|-------------|
+| POINT | Single point anomaly - individual outlier |
+| CONTEXTUAL | Anomaly in context - normal value at wrong time/place |
+| COLLECTIVE | Group of related anomalies |
+| PATTERN | Pattern violation - sequence deviates from learned pattern |
+| TREND | Trend deviation - unexpected direction change |
+| SEASONAL | Seasonal violation - deviates from expected periodicity |
+
+### Performance Characteristics
+
+| Operation | Complexity | Notes |
+|-----------|------------|-------|
+| Statistical fit | O(n) | Single pass through data |
+| Statistical score | O(m) | m = number of test rows |
+| Isolation Forest fit | O(n log n × k) | k = number of trees |
+| Isolation Forest score | O(m × k × d) | d = tree depth |
+
+### Thread Safety
+
+All anomaly detection models use `threading.RLock()` for concurrent access, enabling safe use in multi-threaded environments like the dashboard's async API handlers.
+
 ## API Reference
+
+### Detection Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/sources/{id}/anomaly-detect` | POST | Execute anomaly detection |
-| `/sources/{id}/anomaly-detections` | GET | Retrieve detection history |
-| `/anomaly/batch-jobs` | POST | Create batch detection job |
-| `/anomaly/batch-jobs` | GET | List batch jobs |
-| `/anomaly/batch-jobs/{id}` | GET | Retrieve batch job details |
-| `/anomaly/batch-jobs/{id}/progress` | GET | Retrieve batch progress |
-| `/anomaly/algorithms/compare` | POST | Execute algorithm comparison |
+| `/sources/{source_id}/anomaly/detect` | POST | Execute anomaly detection on a source |
+| `/sources/{source_id}/anomaly/detections` | GET | Retrieve detection history for a source |
+| `/sources/{source_id}/anomaly/latest` | GET | Get the latest detection result |
+| `/anomaly/detection/{detection_id}` | GET | Get a specific detection result |
+
+### Batch Detection Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/anomaly/batch` | POST | Create batch detection job |
+| `/anomaly/batch` | GET | List all batch jobs |
+| `/anomaly/batch/{batch_id}` | GET | Retrieve batch job details |
+| `/anomaly/batch/{batch_id}/results` | GET | Get detailed results for each source |
+| `/anomaly/batch/{batch_id}/cancel` | POST | Cancel a running batch job |
+| `/anomaly/batch/{batch_id}` | DELETE | Delete a batch job |
+
+### Algorithm Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/anomaly/algorithms` | GET | List available algorithms |
+| `/anomaly/compare` | POST | Execute algorithm comparison (query param: source_id) |
+
+### Explainability Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/anomaly/detection/{detection_id}/explain` | POST | Generate SHAP/LIME explanations |
+| `/anomaly/detection/{detection_id}/explanations` | GET | Get cached explanations |
+
+### Streaming Detection Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/anomaly/streaming/start` | POST | Start a streaming detection session |
+| `/anomaly/streaming/sessions` | GET | List all streaming sessions |
+| `/anomaly/streaming/algorithms` | GET | List available streaming algorithms |
+| `/anomaly/streaming/{session_id}/data` | POST | Push data point for detection |
+| `/anomaly/streaming/{session_id}/batch` | POST | Push batch of data points |
+| `/anomaly/streaming/{session_id}/status` | GET | Get session status and statistics |
+| `/anomaly/streaming/{session_id}/alerts` | GET | List session alerts |
+| `/anomaly/streaming/{session_id}/data` | GET | Get recent data points |
+| `/anomaly/streaming/{session_id}/stop` | POST | Stop a streaming session |
+| `/anomaly/streaming/{session_id}` | DELETE | Delete a streaming session |
+| `/anomaly/streaming/{session_id}/ws` | WebSocket | Real-time streaming connection |

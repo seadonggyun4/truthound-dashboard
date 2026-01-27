@@ -22,17 +22,24 @@ Data drift occurs when the statistical properties of data change over time. The 
 
 The system supports multiple statistical methods for drift detection:
 
-| Method | Description | Best For |
-|--------|-------------|----------|
-| **auto** | Automatic method selection based on data characteristics | General use when unsure which method to apply |
-| **ks** | Kolmogorov-Smirnov test | Continuous numerical distributions |
-| **psi** | Population Stability Index | Credit scoring and risk modeling |
-| **chi2** | Chi-squared test | Categorical variables |
-| **js** | Jensen-Shannon divergence | Probability distributions |
-| **kl** | Kullback-Leibler divergence | Information-theoretic comparison |
-| **wasserstein** | Wasserstein distance (Earth Mover's Distance) | Comparing distributions with different supports |
-| **cvm** | Cramér-von Mises criterion | Continuous distributions |
-| **anderson** | Anderson-Darling test | Distribution tails sensitivity |
+| Method | Description | Best For | Column Type |
+|--------|-------------|----------|-------------|
+| **auto** | Automatic method selection based on data characteristics | General use when unsure which method to apply | Any |
+| **ks** | Kolmogorov-Smirnov test | Continuous numerical distributions | Numeric only |
+| **psi** | Population Stability Index | Credit scoring and risk modeling | Numeric only |
+| **chi2** | Chi-squared test | Categorical variables | Categorical |
+| **js** | Jensen-Shannon divergence | Probability distributions (symmetric, bounded 0-1) | Any |
+| **kl** | Kullback-Leibler divergence | Information-theoretic comparison (asymmetric) | Numeric only |
+| **wasserstein** | Wasserstein distance (Earth Mover's Distance) | Comparing distributions with different supports | Numeric only |
+| **cvm** | Cramér-von Mises criterion | More sensitive to tails than KS test | Numeric only |
+| **anderson** | Anderson-Darling test | Most sensitive to tail differences | Numeric only |
+| **hellinger** | Hellinger distance | Bounded metric with triangle inequality | Any |
+| **bhattacharyya** | Bhattacharyya distance | Classification error bounds | Any |
+| **tv** | Total Variation distance | Maximum probability difference | Any |
+| **energy** | Energy distance | Location and scale sensitivity | Numeric only |
+| **mmd** | Maximum Mean Discrepancy | High-dimensional kernel-based comparison | Numeric only |
+
+> **Note**: All 14 methods are fully supported by truthound v1.2.9+. For categorical columns, use `auto`, `chi2`, `js`, `hellinger`, `bhattacharyya`, or `tv`. For numeric columns, all methods are available.
 
 #### Threshold Override
 
@@ -141,8 +148,9 @@ JS divergence is a symmetric measure of distribution similarity:
 KL divergence measures information loss when approximating one distribution with another:
 
 - **Range**: 0 to infinity
-- **Properties**: Asymmetric
+- **Properties**: Asymmetric (KL(P||Q) ≠ KL(Q||P))
 - **Interpretation**: Lower values indicate better approximation
+- **Tip**: Use `method="js"` for a symmetric variant
 
 ### Wasserstein Distance
 
@@ -150,6 +158,68 @@ Also known as Earth Mover's Distance, measures the minimum cost of transforming 
 
 - **Interpretation**: Accounts for distance between distribution supports
 - **Use Case**: Distributions with different supports or shifted means
+- **Properties**: Intuitive physical interpretation, normalized by baseline std
+
+### Cramér-von Mises Test
+
+The CvM test is more sensitive to differences in the tails than the KS test:
+
+- **Properties**: Integrates squared differences between CDFs
+- **Use Case**: When tail behavior is important
+- **Interpretation**: Lower p-values indicate greater distribution difference
+
+### Anderson-Darling Test
+
+The AD test is the most sensitive to tail differences:
+
+- **Properties**: Weights tail differences more heavily than center
+- **Use Case**: Detecting subtle changes in distribution tails
+- **Interpretation**: Higher statistic values indicate greater difference
+
+### Hellinger Distance
+
+Hellinger distance is a bounded metric for comparing probability distributions:
+
+- **Range**: 0 (identical) to 1 (no overlap)
+- **Properties**: Symmetric, satisfies triangle inequality, true metric
+- **Formula**: H(P,Q) = (1/√2) × √(Σ(√p_i - √q_i)²)
+- **Use Case**: When you need a proper metric with bounded range
+
+### Bhattacharyya Distance
+
+Measures overlap between two probability distributions:
+
+- **Range**: 0 to ∞ (0 = identical)
+- **Properties**: Related to classification error bounds
+- **Formula**: D_B = -ln(Σ√(p_i × q_i))
+- **Use Case**: Classification problems, measuring distribution overlap
+
+### Total Variation Distance
+
+Measures the maximum probability difference between distributions:
+
+- **Range**: 0 (identical) to 1 (completely different)
+- **Properties**: Symmetric, bounded, triangle inequality
+- **Formula**: TV(P,Q) = (1/2) × Σ|p_i - q_i|
+- **Use Case**: Simple interpretation - "largest probability difference"
+
+### Energy Distance
+
+Measures differences in location and scale of distributions:
+
+- **Range**: 0 to ∞ (0 = identical)
+- **Properties**: Characterizes distributions, consistent statistical test
+- **Formula**: E(P,Q) = 2E[|X-Y|] - E[|X-X'|] - E[|Y-Y'|]
+- **Use Case**: Detecting shifts in mean or variance
+
+### Maximum Mean Discrepancy (MMD)
+
+Kernel-based method for comparing distributions:
+
+- **Range**: 0 to ∞ (0 = identical in RKHS)
+- **Properties**: Non-parametric, works in high dimensions
+- **Kernel**: Gaussian RBF (default), with automatic bandwidth selection
+- **Use Case**: High-dimensional data where density estimation fails
 
 ## Use Cases
 

@@ -216,6 +216,54 @@ When term definitions require modification:
 | `/glossary/terms/{id}` | PUT | Update term metadata |
 | `/glossary/terms/{id}` | DELETE | Delete a term |
 | `/glossary/terms/{id}/history` | GET | Retrieve term modification history |
-| `/glossary/terms/{id}/relationships` | GET | Retrieve term relationships |
+| `/glossary/terms/{id}/relationships` | POST | Add term relationship |
+| `/glossary/terms/{id}/relationships/{rel_id}` | DELETE | Remove term relationship |
 | `/glossary/categories` | GET | List available categories |
 | `/glossary/categories` | POST | Create a new category |
+| `/glossary/categories/{id}` | GET | Retrieve category details |
+| `/glossary/categories/{id}` | PUT | Update category |
+| `/glossary/categories/{id}` | DELETE | Delete category |
+
+### Term Creation Request
+
+```json
+{
+  "name": "Customer Lifetime Value",
+  "definition": "The total revenue expected from a customer over their entire relationship with the company.",
+  "category_id": "finance-terms-uuid",
+  "status": "draft",
+  "owner_id": "analytics-team"
+}
+```
+
+### Term Update Request
+
+```json
+{
+  "definition": "Updated definition text...",
+  "status": "approved",
+  "category_id": "new-category-uuid"
+}
+```
+
+### Term Status Values
+
+| Status | Description |
+|--------|-------------|
+| `draft` | Term is under development, not yet approved |
+| `approved` | Term has been reviewed and approved for use |
+| `deprecated` | Term is being phased out, avoid new usage |
+
+### Category with Hierarchy
+
+Categories support parent-child relationships for hierarchical organization:
+
+```json
+{
+  "name": "Financial Metrics",
+  "description": "Terms related to financial performance measurement",
+  "parent_id": "business-metrics-uuid"
+}
+```
+
+The `full_path` field in category responses shows the complete hierarchy path (e.g., "Business Metrics > Financial Metrics").

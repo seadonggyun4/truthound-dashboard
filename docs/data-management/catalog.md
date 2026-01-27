@@ -198,6 +198,52 @@ The Catalog provides context for lineage analysis:
 | `/catalog/assets/{id}` | PUT | Update asset metadata |
 | `/catalog/assets/{id}` | DELETE | Delete an asset |
 | `/catalog/assets/{id}/columns` | GET | List asset columns |
+| `/catalog/assets/{id}/columns` | POST | Add a column to asset |
+| `/catalog/columns/{id}` | PUT | Update column metadata |
+| `/catalog/columns/{id}` | DELETE | Delete a column |
 | `/catalog/columns/{id}/term` | PUT | Map column to glossary term |
 | `/catalog/columns/{id}/term` | DELETE | Remove column-term mapping |
 | `/catalog/assets/{id}/tags` | GET | List asset tags |
+| `/catalog/assets/{id}/tags` | POST | Add a tag to asset |
+| `/catalog/tags/{id}` | DELETE | Delete a tag |
+
+### Asset Creation Request
+
+When creating an asset, you can include initial columns and tags:
+
+```json
+{
+  "name": "Customer Orders",
+  "asset_type": "table",
+  "source_id": "abc-123-def",
+  "description": "All customer order records",
+  "owner_id": "data-engineering-team",
+  "columns": [
+    {
+      "name": "order_id",
+      "data_type": "string",
+      "is_primary_key": true,
+      "is_nullable": false,
+      "sensitivity_level": "internal"
+    },
+    {
+      "name": "customer_email",
+      "data_type": "string",
+      "sensitivity_level": "confidential"
+    }
+  ],
+  "tags": [
+    {"tag_name": "domain", "tag_value": "sales"},
+    {"tag_name": "compliance", "tag_value": "gdpr"}
+  ]
+}
+```
+
+### Column Sensitivity Levels
+
+| Level | Description |
+|-------|-------------|
+| `public` | Non-sensitive data, can be shared freely |
+| `internal` | Internal use only, not for external sharing |
+| `confidential` | Sensitive data requiring access controls |
+| `restricted` | Highly sensitive data with strict access requirements |
