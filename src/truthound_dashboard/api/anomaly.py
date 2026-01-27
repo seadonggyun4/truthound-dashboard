@@ -115,7 +115,7 @@ async def run_anomaly_detection(
 
 
 @router.get(
-    "/anomaly/{detection_id}",
+    "/anomaly/detection/{detection_id}",
     response_model=AnomalyDetectionResponse,
     summary="Get detection result",
     description="Get a specific anomaly detection result by ID",
@@ -246,7 +246,7 @@ async def list_algorithms(
 
 
 @router.post(
-    "/anomaly/{detection_id}/explain",
+    "/anomaly/detection/{detection_id}/explain",
     response_model=ExplainabilityResponse,
     summary="Generate anomaly explanations",
     description="Generate SHAP/LIME explanations for specific anomaly rows",
@@ -314,7 +314,7 @@ async def explain_anomaly(
 
 
 @router.get(
-    "/anomaly/{detection_id}/explanations",
+    "/anomaly/detection/{detection_id}/explanations",
     response_model=CachedExplanationsListResponse,
     summary="Get cached explanations",
     description="Get cached SHAP/LIME explanations for a detection",

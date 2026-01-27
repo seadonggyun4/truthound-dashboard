@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.model_monitoring import ModelMonitoringService
-from ..db import get_session
+from ..db import get_db_session
 from ..schemas.base import DataResponse
 from ..schemas.model_monitoring import (
     AcknowledgeAlertRequest,
@@ -46,7 +46,7 @@ from ..schemas.model_monitoring import (
 router = APIRouter(prefix="/model-monitoring", tags=["model-monitoring"])
 
 
-def get_service(session: AsyncSession = Depends(get_session)) -> ModelMonitoringService:
+def get_service(session: AsyncSession = Depends(get_db_session)) -> ModelMonitoringService:
     """Get model monitoring service instance."""
     return ModelMonitoringService(session)
 
@@ -582,6 +582,22 @@ async def delete_alert_handler(
         raise HTTPException(status_code=404, detail="Alert handler not found")
 
     return {"success": True, "message": "Alert handler deleted"}
+
+
+@router.post("/handlers/{handler_id}/test")
+async def test_alert_handler(
+    handler_id: str,
+    service: ModelMonitoringService = Depends(get_service),
+):
+    """Test an alert handler by sending a test notification.
+
+    Validates the handler configuration and simulates sending a test notification.
+    """
+    try:
+        result = await service.test_alert_handler(handler_id)
+        return DataResponse(data=result)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # =============================================================================

@@ -49,11 +49,13 @@ async def list_sources(
     Returns:
         Paginated list of sources.
     """
+    # Sequential execution required - SQLAlchemy session doesn't support concurrent operations
     sources = await service.list(offset=offset, limit=limit, active_only=active_only)
+    total = await service.count(active_only=active_only)
 
     return SourceListResponse(
         data=[SourceResponse.from_model(s) for s in sources],
-        total=len(sources),  # TODO: Get actual total count
+        total=total,
         offset=offset,
         limit=limit,
     )
@@ -178,6 +180,52 @@ async def delete_source(
     if not deleted:
         raise HTTPException(status_code=404, detail="Source not found")
     return MessageResponse(message="Source deleted successfully")
+
+
+@router.post(
+    "/bulk-delete",
+    response_model=dict,
+    summary="Bulk delete sources",
+    description="Delete multiple data sources at once",
+)
+async def bulk_delete_sources(
+    service: SourceServiceDep,
+    request: dict,
+) -> dict:
+    """Delete multiple data sources.
+
+    Args:
+        service: Injected source service.
+        request: Dictionary with 'ids' key containing list of source IDs.
+
+    Returns:
+        Result with deleted count and any failed IDs.
+    """
+    ids = request.get("ids", [])
+    if not ids:
+        raise HTTPException(status_code=400, detail="No source IDs provided")
+
+    deleted_count = 0
+    failed_ids = []
+
+    for source_id in ids:
+        try:
+            deleted = await service.delete(source_id)
+            if deleted:
+                deleted_count += 1
+            else:
+                failed_ids.append(source_id)
+        except Exception:
+            failed_ids.append(source_id)
+
+    return {
+        "success": True,
+        "data": {
+            "deleted_count": deleted_count,
+            "failed_ids": failed_ids,
+            "total_requested": len(ids),
+        },
+    }
 
 
 @router.post(

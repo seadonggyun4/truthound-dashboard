@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.unified_alerts import UnifiedAlertsService
-from ..db import get_session
+from ..db import get_db_session
 from ..schemas.base import DataResponse
 from ..schemas.unified_alerts import (
     AcknowledgeAlertRequest,
@@ -33,7 +33,7 @@ from ..schemas.unified_alerts import (
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
 
-def get_service(session: AsyncSession = Depends(get_session)) -> UnifiedAlertsService:
+def get_service(session: AsyncSession = Depends(get_db_session)) -> UnifiedAlertsService:
     """Get unified alerts service instance."""
     return UnifiedAlertsService(session)
 
