@@ -10,7 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getValidationHistory, getSource, type HistoryResponse, type Source } from '@/api/client'
+import { getSource, type Source } from '@/api/modules/sources'
+import { getValidationHistory, type HistoryResponse } from '@/api/modules/history'
 import { formatDate } from '@/lib/utils'
 import {
   LineChart,
@@ -24,16 +25,19 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
-import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react'
+import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+
+const PAGE_SIZE = 10
 
 export default function History() {
   const { id: sourceId } = useParams<{ id: string }>()
   const [source, setSource] = useState<Source | null>(null)
-  const [historyData, setHistoryData] = useState<HistoryResponse['data'] | null>(null)
+  const [historyData, setHistoryData] = useState<HistoryResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d')
   const [granularity, setGranularity] = useState<'hourly' | 'daily' | 'weekly'>('daily')
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     if (!sourceId) return
@@ -46,7 +50,7 @@ export default function History() {
           getValidationHistory(sourceId!, { period, granularity }),
         ])
         setSource(sourceData)
-        setHistoryData(historyRes.data)
+        setHistoryData(historyRes)
         setError(null)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load history')
@@ -81,6 +85,18 @@ export default function History() {
   }
 
   const { summary, trend, failure_frequency, recent_validations } = historyData
+
+  // Pagination for recent validations
+  const totalPages = Math.ceil(recent_validations.length / PAGE_SIZE)
+  const paginatedValidations = recent_validations.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  )
+
+  // Reset page when period/granularity changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [period, granularity])
 
   return (
     <div className="p-6 space-y-6">
@@ -253,12 +269,19 @@ export default function History() {
         <Card>
           <CardHeader>
             <CardTitle>Recent Validations</CardTitle>
-            <CardDescription>Latest validation runs</CardDescription>
+            <CardDescription>
+              Latest validation runs
+              {recent_validations.length > 0 && (
+                <span className="ml-2 text-xs">
+                  ({recent_validations.length} total)
+                </span>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recent_validations.length > 0 ? (
-                recent_validations.map((v) => (
+              {paginatedValidations.length > 0 ? (
+                paginatedValidations.map((v: { id: string; passed: boolean; has_critical: boolean; created_at: string; total_issues: number }) => (
                   <Link
                     key={v.id}
                     to={`/validations/${v.id}`}
@@ -293,6 +316,33 @@ export default function History() {
                 </div>
               )}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
