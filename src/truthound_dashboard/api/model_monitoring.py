@@ -781,3 +781,148 @@ async def evaluate_model_rules(
         "alerts_created": len(alerts),
         "alert_ids": [a.id for a in alerts],
     }
+
+
+# =============================================================================
+# Truthound Integration - Drift Detection
+# =============================================================================
+
+
+class DriftDetectionRequest(BaseModel):
+    """Request for drift detection using truthound th.compare()."""
+
+    reference_source_id: str = Field(..., description="Source ID for reference/baseline data")
+    current_source_id: str = Field(..., description="Source ID for current data to compare")
+    method: str = Field(
+        default="auto",
+        description="Drift detection method (auto, psi, ks, js, wasserstein, chi2, etc.)",
+    )
+    columns: list[str] | None = Field(
+        default=None,
+        description="Specific columns to check (default: all)",
+    )
+
+
+class DriftDetectionResponse(BaseModel):
+    """Response from drift detection."""
+
+    model_id: str
+    method: str
+    has_drift: bool
+    overall_score: float
+    drift_threshold: float
+    drifted_columns: list[str]
+    column_scores: dict[str, float]
+    timestamp: str
+
+
+@router.post(
+    "/models/{model_id}/detect-drift",
+    response_model=DriftDetectionResponse,
+    summary="Detect drift for a model",
+    description="""
+    Compute drift score using truthound th.compare().
+
+    Available methods:
+    - auto: Auto-select best method based on column type
+    - psi: Population Stability Index (<0.1 stable, 0.1-0.25 small drift, >0.25 significant)
+    - ks: Kolmogorov-Smirnov test
+    - js: Jensen-Shannon divergence
+    - wasserstein: Earth Mover's Distance
+    - chi2: Chi-squared (categorical)
+    - kl: Kullback-Leibler divergence
+    - cvm: Cramér-von Mises test
+    - anderson: Anderson-Darling test
+    - hellinger: Hellinger distance
+    - bhattacharyya: Bhattacharyya distance
+    - tv: Total Variation distance
+    - energy: Energy distance
+    - mmd: Maximum Mean Discrepancy
+    """,
+)
+async def detect_model_drift(
+    model_id: str,
+    request: DriftDetectionRequest,
+    service: ModelMonitoringService = Depends(get_service),
+) -> DriftDetectionResponse:
+    """Detect drift between reference and current data for a model."""
+    from truthound_dashboard.core.services import SourceService
+    from truthound_dashboard.db import get_async_session
+
+    # Get source data
+    async with get_async_session() as session:
+        source_service = SourceService(session)
+
+        reference_source = await source_service.get_source(request.reference_source_id)
+        if reference_source is None:
+            raise HTTPException(status_code=404, detail=f"Reference source '{request.reference_source_id}' not found")
+
+        current_source = await source_service.get_source(request.current_source_id)
+        if current_source is None:
+            raise HTTPException(status_code=404, detail=f"Current source '{request.current_source_id}' not found")
+
+    try:
+        result = await service.compute_drift_score(
+            model_id=model_id,
+            reference_data=reference_source.connection_string,
+            current_data=current_source.connection_string,
+            method=request.method,
+            columns=request.columns,
+        )
+
+        return DriftDetectionResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Drift detection failed: {str(e)}")
+
+
+# =============================================================================
+# Truthound Integration - Quality Metrics
+# =============================================================================
+
+
+class QualityMetricsResponse(BaseModel):
+    """Response from quality metrics computation."""
+
+    model_id: str
+    enabled: bool
+    has_data: bool = False
+    model_type: str | None = None
+    sample_count: int | None = None
+    time_range_hours: int | None = None
+    metrics: dict[str, float | None] | None = None
+    message: str | None = None
+    timestamp: str | None = None
+
+
+@router.get(
+    "/models/{model_id}/quality-metrics",
+    response_model=QualityMetricsResponse,
+    summary="Get quality metrics for a model",
+    description="""
+    Compute quality metrics from predictions with actual values.
+
+    For classification models:
+    - accuracy: Overall accuracy
+    - precision: Precision (binary only)
+    - recall: Recall (binary only)
+    - f1_score: F1 score (binary only)
+
+    For regression models:
+    - mae: Mean Absolute Error
+    - mse: Mean Squared Error
+    - rmse: Root Mean Squared Error
+    """,
+)
+async def get_model_quality_metrics(
+    model_id: str,
+    hours: int = Query(default=24, ge=1, le=168, description="Time range in hours"),
+    service: ModelMonitoringService = Depends(get_service),
+) -> QualityMetricsResponse:
+    """Get quality metrics for a model."""
+    try:
+        result = await service.compute_quality_metrics(model_id, hours=hours)
+        return QualityMetricsResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

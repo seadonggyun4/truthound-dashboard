@@ -54,19 +54,32 @@ class MetricType(str, Enum):
 
 
 class AlertRuleType(str, Enum):
-    """Types of alert rules."""
+    """Types of alert rules.
+
+    Maps to truthound.ml.monitoring.alerting rules:
+    - ThresholdRule: Threshold-based alerting
+    - AnomalyRule: Anomaly-based alerting (statistical)
+    - TrendRule: Trend-based alerting
+    """
 
     THRESHOLD = "threshold"
-    STATISTICAL = "statistical"
+    STATISTICAL = "statistical"  # Maps to AnomalyRule
     TREND = "trend"
 
 
 class AlertHandlerType(str, Enum):
-    """Types of alert handlers."""
+    """Types of alert handlers.
+
+    Maps to truthound.ml.monitoring.alerting handlers:
+    - SlackAlertHandler
+    - PagerDutyAlertHandler
+    - WebhookAlertHandler
+    """
 
     SLACK = "slack"
     WEBHOOK = "webhook"
     EMAIL = "email"
+    PAGERDUTY = "pagerduty"
 
 
 # =============================================================================
@@ -75,14 +88,63 @@ class AlertHandlerType(str, Enum):
 
 
 class ModelConfigBase(BaseSchema):
-    """Configuration for model monitoring."""
+    """Configuration for model monitoring.
 
-    enable_drift_detection: bool = Field(default=True, description="Enable drift detection")
-    enable_quality_metrics: bool = Field(default=True, description="Enable quality metrics")
-    enable_performance_metrics: bool = Field(default=True, description="Enable performance metrics")
-    sample_rate: float = Field(default=1.0, description="Sampling rate for metrics", ge=0.0, le=1.0)
-    drift_threshold: float = Field(default=0.1, description="Threshold for drift detection", ge=0.0, le=1.0)
-    drift_window_size: int = Field(default=1000, description="Window size for drift detection", ge=100)
+    Maps to truthound.ml.monitoring.MonitorConfig parameters.
+    See: .truthound_docs/advanced/ml-anomaly.md#model-monitoring
+    """
+
+    # Core monitoring settings (from MonitorConfig)
+    batch_size: int = Field(
+        default=100,
+        description="Batch size for metric collection",
+        ge=1,
+        le=10000,
+    )
+    collect_interval_seconds: int = Field(
+        default=60,
+        description="Interval for collecting metrics (seconds)",
+        ge=1,
+        le=3600,
+    )
+    alert_evaluation_interval_seconds: int = Field(
+        default=30,
+        description="Interval for evaluating alert rules (seconds)",
+        ge=1,
+        le=3600,
+    )
+    retention_hours: int = Field(
+        default=24,
+        description="Hours to retain metrics data",
+        ge=1,
+        le=720,  # 30 days max
+    )
+
+    # Feature toggles
+    enable_drift_detection: bool = Field(
+        default=True,
+        description="Enable drift detection using th.compare()",
+    )
+    enable_quality_metrics: bool = Field(
+        default=True,
+        description="Enable quality metrics (accuracy, precision, recall, F1)",
+    )
+    enable_performance_metrics: bool = Field(
+        default=True,
+        description="Enable performance metrics (latency, throughput, error rate)",
+    )
+
+    # Drift detection settings
+    drift_threshold: float = Field(
+        default=0.1,
+        description="Threshold for drift detection alerts",
+        ge=0.0,
+        le=1.0,
+    )
+    drift_method: str = Field(
+        default="auto",
+        description="Drift detection method (auto, psi, ks, js, wasserstein, chi2, etc.)",
+    )
 
 
 class RegisteredModelBase(BaseSchema):

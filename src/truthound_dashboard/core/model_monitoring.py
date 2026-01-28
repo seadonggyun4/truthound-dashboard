@@ -978,19 +978,34 @@ class ModelMonitoringService:
 
         elif rule_type == "statistical":
             # Statistical anomaly detection based on standard deviations
+            # Maps to truthound.ml.monitoring.alerting.AnomalyRule
             metric_name = config.get("metric_name", "latency_ms")
             std_devs = config.get("std_devs", 3.0)
+            window_size = config.get("window_size", 100)
 
             for m in metrics.get("metrics", []):
                 if m.get("name") == metric_name:
                     avg = m.get("avg_value")
                     p95 = m.get("p95_value")
+                    count = m.get("count", 0)
+
+                    # Only evaluate if we have enough samples
+                    if count < window_size:
+                        break
+
                     if avg and p95:
-                        # Simple heuristic: if p95 is more than std_devs times avg
-                        if p95 > avg * (1 + std_devs * 0.1):
-                            return True, p95, avg * (1 + std_devs * 0.1)
+                        # AnomalyRule: if p95 is more than std_devs above the mean
+                        threshold_value = avg * (1 + std_devs * 0.1)
+                        if p95 > threshold_value:
+                            return True, p95, threshold_value
                     break
 
+            return False, None, None
+
+        elif rule_type == "trend":
+            # Trend-based alerting - evaluated async separately
+            # This is a placeholder; actual evaluation done in evaluate_trend_rule()
+            # Return False here as trend rules need historical data
             return False, None, None
 
         return False, None, None
@@ -1126,3 +1141,331 @@ class ModelMonitoringService:
             "created_at": alert.created_at.isoformat() if alert.created_at else None,
             "updated_at": alert.updated_at.isoformat() if alert.updated_at else None,
         }
+
+    # =========================================================================
+    # Truthound Integration - Drift Detection
+    # =========================================================================
+
+    async def compute_drift_score(
+        self,
+        model_id: str,
+        reference_data: Any,
+        current_data: Any,
+        *,
+        method: str = "auto",
+        columns: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Compute drift score using truthound th.compare().
+
+        Uses truthound's drift detection methods:
+        - auto: Auto-select best method based on column type
+        - psi: Population Stability Index
+        - ks: Kolmogorov-Smirnov test
+        - js: Jensen-Shannon divergence
+        - wasserstein: Earth Mover's Distance
+        - chi2: Chi-squared (categorical)
+        - kl: Kullback-Leibler divergence
+        - cvm: Cramér-von Mises test
+        - anderson: Anderson-Darling test
+        - hellinger: Hellinger distance
+        - energy: Energy distance
+        - mmd: Maximum Mean Discrepancy
+
+        Args:
+            model_id: Model ID to update.
+            reference_data: Reference/baseline dataset.
+            current_data: Current dataset to compare.
+            method: Drift detection method (default: auto).
+            columns: Specific columns to check (default: all).
+
+        Returns:
+            Drift detection result with per-column scores.
+        """
+        import truthound as th
+
+        model = await self.model_repo.get_by_id(model_id)
+        if model is None:
+            raise ValueError(f"Model '{model_id}' not found")
+
+        # Get method from model config if not specified
+        if method == "auto":
+            config = model.config or {}
+            method = config.get("drift_method", "auto")
+
+        # Run drift detection
+        drift_result = th.compare(
+            reference_data,
+            current_data,
+            method=method,
+            columns=columns,
+        )
+
+        # Calculate overall drift score
+        if drift_result.has_drift:
+            # Get max drift score across columns
+            max_score = 0.0
+            drifted_columns = []
+            column_scores = {}
+
+            for col in drift_result.columns:
+                score = col.result.statistic if hasattr(col.result, "statistic") else 0.0
+                column_scores[col.column] = score
+                if col.result.drifted:
+                    drifted_columns.append(col.column)
+                    if score > max_score:
+                        max_score = score
+
+            overall_score = max_score
+        else:
+            overall_score = 0.0
+            drifted_columns = []
+            column_scores = {}
+            for col in drift_result.columns:
+                score = col.result.statistic if hasattr(col.result, "statistic") else 0.0
+                column_scores[col.column] = score
+
+        # Update model drift score
+        model.update_drift_score(overall_score)
+
+        # Get drift threshold from config
+        config = model.config or {}
+        drift_threshold = config.get("drift_threshold", 0.1)
+
+        # Create alert if drift exceeds threshold
+        if overall_score > drift_threshold:
+            # Find or create drift alert rule
+            rules = await self.rule_repo.get_by_model_id(model_id, active_only=True)
+            drift_rule = next(
+                (r for r in rules if "drift" in r.name.lower()),
+                None
+            )
+
+            if drift_rule:
+                await self.create_alert(
+                    model_id=model_id,
+                    rule_id=drift_rule.id,
+                    message=f"Drift detected: score={overall_score:.3f} exceeds threshold={drift_threshold:.3f}. "
+                            f"Drifted columns: {', '.join(drifted_columns)}",
+                    severity="warning" if overall_score < 0.25 else "critical",
+                    metric_value=overall_score,
+                    threshold_value=drift_threshold,
+                )
+
+        await self.session.flush()
+
+        return {
+            "model_id": model_id,
+            "method": method,
+            "has_drift": drift_result.has_drift,
+            "overall_score": overall_score,
+            "drift_threshold": drift_threshold,
+            "drifted_columns": drifted_columns,
+            "column_scores": column_scores,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+    async def compute_quality_metrics(
+        self,
+        model_id: str,
+        hours: int = 24,
+    ) -> dict[str, Any]:
+        """Compute quality metrics from predictions with actual values.
+
+        Calculates accuracy, precision, recall, F1 for classification models,
+        or MAE, MSE, RMSE for regression models.
+
+        Args:
+            model_id: Model ID.
+            hours: Time range in hours.
+
+        Returns:
+            Quality metrics dictionary.
+        """
+        model = await self.model_repo.get_by_id(model_id)
+        if model is None:
+            raise ValueError(f"Model '{model_id}' not found")
+
+        # Check if quality metrics are enabled
+        config = model.config or {}
+        if not config.get("enable_quality_metrics", True):
+            return {
+                "model_id": model_id,
+                "enabled": False,
+                "message": "Quality metrics are disabled for this model",
+            }
+
+        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        predictions = await self.prediction_repo.get_by_model_id(
+            model_id, limit=10000, since=cutoff
+        )
+
+        # Filter predictions with actual values
+        with_actuals = [
+            p for p in predictions
+            if p.actual is not None
+        ]
+
+        if not with_actuals:
+            return {
+                "model_id": model_id,
+                "enabled": True,
+                "has_data": False,
+                "message": "No predictions with actual values found",
+            }
+
+        # Determine if classification or regression
+        predictions_list = [p.prediction for p in with_actuals]
+        actuals_list = [p.actual for p in with_actuals]
+
+        # Check if values are binary/categorical (classification)
+        unique_preds = set(predictions_list)
+        unique_actuals = set(actuals_list)
+
+        is_classification = (
+            len(unique_preds) <= 10 and len(unique_actuals) <= 10
+        ) or all(isinstance(v, (bool, str)) for v in actuals_list[:100])
+
+        if is_classification:
+            # Classification metrics
+            correct = sum(
+                1 for p, a in zip(predictions_list, actuals_list)
+                if p == a
+            )
+            accuracy = correct / len(with_actuals) if with_actuals else 0.0
+
+            # For binary classification
+            if len(unique_actuals) == 2:
+                positive_class = max(unique_actuals)
+                tp = sum(1 for p, a in zip(predictions_list, actuals_list)
+                        if p == positive_class and a == positive_class)
+                fp = sum(1 for p, a in zip(predictions_list, actuals_list)
+                        if p == positive_class and a != positive_class)
+                fn = sum(1 for p, a in zip(predictions_list, actuals_list)
+                        if p != positive_class and a == positive_class)
+
+                precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+                recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+                f1 = (2 * precision * recall / (precision + recall)
+                      if (precision + recall) > 0 else 0.0)
+            else:
+                precision = None
+                recall = None
+                f1 = None
+
+            return {
+                "model_id": model_id,
+                "enabled": True,
+                "has_data": True,
+                "model_type": "classification",
+                "sample_count": len(with_actuals),
+                "time_range_hours": hours,
+                "metrics": {
+                    "accuracy": accuracy,
+                    "precision": precision,
+                    "recall": recall,
+                    "f1_score": f1,
+                },
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        else:
+            # Regression metrics
+            errors = [
+                float(p) - float(a)
+                for p, a in zip(predictions_list, actuals_list)
+                if isinstance(p, (int, float)) and isinstance(a, (int, float))
+            ]
+
+            if not errors:
+                return {
+                    "model_id": model_id,
+                    "enabled": True,
+                    "has_data": False,
+                    "message": "No numeric predictions found for regression metrics",
+                }
+
+            mae = sum(abs(e) for e in errors) / len(errors)
+            mse = sum(e ** 2 for e in errors) / len(errors)
+            rmse = mse ** 0.5
+
+            return {
+                "model_id": model_id,
+                "enabled": True,
+                "has_data": True,
+                "model_type": "regression",
+                "sample_count": len(errors),
+                "time_range_hours": hours,
+                "metrics": {
+                    "mae": mae,
+                    "mse": mse,
+                    "rmse": rmse,
+                },
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+
+    # =========================================================================
+    # Truthound Integration - Trend Rule Evaluation
+    # =========================================================================
+
+    async def evaluate_trend_rule(
+        self,
+        rule: ModelAlertRule,
+        model_id: str,
+    ) -> tuple[bool, float | None, float | None]:
+        """Evaluate a trend-based alert rule.
+
+        Maps to truthound.ml.monitoring.alerting.TrendRule:
+        - metric_name: The metric to monitor
+        - direction: "increasing" or "decreasing"
+        - slope_threshold: Minimum slope to trigger
+        - lookback_minutes: Time window for trend calculation
+
+        Args:
+            rule: The alert rule to evaluate.
+            model_id: Model ID.
+
+        Returns:
+            Tuple of (triggered, slope_value, slope_threshold).
+        """
+        config = rule.config or {}
+        metric_name = config.get("metric_name", "latency_ms")
+        direction = config.get("direction", "increasing")
+        slope_threshold = config.get("slope_threshold", 0.01)
+        lookback_minutes = config.get("lookback_minutes", 60)
+
+        # Get metrics for lookback period
+        cutoff = datetime.utcnow() - timedelta(minutes=lookback_minutes)
+
+        # Get metric values over time
+        metrics = await self.metric_repo.get_by_model_id(
+            model_id,
+            metric_type=metric_name.split("_")[0] if "_" in metric_name else "latency",
+            since=cutoff,
+            limit=1000,
+        )
+
+        if len(metrics) < 10:
+            # Not enough data points
+            return False, None, slope_threshold
+
+        # Calculate simple linear regression slope
+        values = [m.value for m in metrics]
+        n = len(values)
+        x = list(range(n))
+        x_mean = sum(x) / n
+        y_mean = sum(values) / n
+
+        numerator = sum((xi - x_mean) * (yi - y_mean) for xi, yi in zip(x, values))
+        denominator = sum((xi - x_mean) ** 2 for xi in x)
+
+        if denominator == 0:
+            return False, 0.0, slope_threshold
+
+        slope = numerator / denominator
+
+        # Check if trend matches expected direction
+        if direction == "increasing":
+            triggered = slope > slope_threshold
+        else:  # decreasing
+            triggered = slope < -slope_threshold
+
+        return triggered, slope, slope_threshold

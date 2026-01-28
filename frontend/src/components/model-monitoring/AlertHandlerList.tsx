@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   MoreHorizontal,
-  Edit,
   Trash2,
   Loader2,
   Slack,
@@ -63,7 +62,6 @@ export interface AlertHandler {
 interface AlertHandlerListProps {
   handlers: AlertHandler[]
   isLoading: boolean
-  onEdit: (handler: AlertHandler) => void
   onDelete: (handler: AlertHandler) => void
   onToggle: (handler: AlertHandler) => void
   onTest: (handler: AlertHandler) => void
@@ -72,7 +70,6 @@ interface AlertHandlerListProps {
 export function AlertHandlerList({
   handlers,
   isLoading,
-  onEdit,
   onDelete,
   onToggle,
   onTest,
@@ -218,10 +215,6 @@ export function AlertHandlerList({
                   <DropdownMenuItem onClick={() => onTest(handler)}>
                     <TestTube className="h-4 w-4 mr-2" />
                     Test Handler
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onEdit(handler)}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    {common.edit}
                   </DropdownMenuItem>
                   <DropdownMenuItem className="text-destructive" onClick={() => onDelete(handler)}>
                     <Trash2 className="h-4 w-4 mr-2" />

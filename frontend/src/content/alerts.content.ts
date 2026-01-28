@@ -1,17 +1,18 @@
 /**
- * Unified Alerts page translations.
+ * Dashboard Alerts page translations.
  *
- * Contains translations for the unified alerts management page.
+ * Contains translations for the dashboard alerts management page.
+ * Note: This is dashboard-only alert aggregation, not truthound checkpoint alerts.
  */
 import { t, type Dictionary } from 'intlayer'
 
 const alertsContent = {
   key: 'alerts',
   content: {
-    title: t({ en: 'Alerts', ko: '알림' }),
+    title: t({ en: 'Dashboard Alerts', ko: '대시보드 알림' }),
     subtitle: t({
-      en: 'Unified view of all system alerts',
-      ko: '모든 시스템 알림 통합 보기',
+      en: 'Aggregated view of all dashboard monitoring alerts',
+      ko: '모든 대시보드 모니터링 알림 통합 보기',
     }),
 
     // Summary cards

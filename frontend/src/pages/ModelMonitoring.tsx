@@ -201,6 +201,73 @@ async function testAlertHandler(id: string): Promise<{ success: boolean; message
   return response.json()
 }
 
+// Drift Detection API (truthound th.compare integration)
+interface DriftDetectionRequest {
+  reference_source_id: string
+  current_source_id: string
+  method?: string
+  columns?: string[]
+}
+
+interface DriftDetectionResponse {
+  model_id: string
+  method: string
+  has_drift: boolean
+  overall_score: number
+  drift_threshold: number
+  drifted_columns: string[]
+  column_scores: Record<string, number>
+  timestamp: string
+}
+
+async function detectDrift(
+  modelId: string,
+  request: DriftDetectionRequest
+): Promise<DriftDetectionResponse> {
+  const response = await fetch(`${API_BASE}/model-monitoring/models/${modelId}/detect-drift`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+  if (!response.ok) throw new Error('Failed to detect drift')
+  return response.json()
+}
+
+// Quality Metrics API (truthound quality collectors)
+interface QualityMetricsResponse {
+  model_id: string
+  enabled: boolean
+  has_data?: boolean
+  model_type?: 'classification' | 'regression'
+  sample_count?: number
+  time_range_hours?: number
+  metrics?: {
+    // Classification metrics
+    accuracy?: number
+    precision?: number | null
+    recall?: number | null
+    f1_score?: number | null
+    // Regression metrics
+    mae?: number
+    mse?: number
+    rmse?: number
+  }
+  message?: string
+  timestamp?: string
+}
+
+async function getQualityMetrics(modelId: string, hours: number = 24): Promise<QualityMetricsResponse> {
+  const response = await fetch(
+    `${API_BASE}/model-monitoring/models/${modelId}/quality-metrics?hours=${hours}`
+  )
+  if (!response.ok) throw new Error('Failed to fetch quality metrics')
+  return response.json()
+}
+
+// Export for use in other components
+export { detectDrift, getQualityMetrics }
+export type { DriftDetectionRequest, DriftDetectionResponse, QualityMetricsResponse }
+
 export default function ModelMonitoring() {
   const t = useSafeIntlayer('modelMonitoring')
   const common = useSafeIntlayer('common')
@@ -301,12 +368,15 @@ export default function ModelMonitoring() {
       version: string
       description: string
       config: {
+        batch_size: number
+        collect_interval_seconds: number
+        alert_evaluation_interval_seconds: number
+        retention_hours: number
         enable_drift_detection: boolean
         enable_quality_metrics: boolean
         enable_performance_metrics: boolean
-        sample_rate: number
         drift_threshold: number
-        drift_window_size: number
+        drift_method: string
       }
       metadata: Record<string, string>
     }) => {
@@ -653,16 +723,14 @@ export default function ModelMonitoring() {
               <div className="flex justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-semibold">{t.rules.title}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Manage alert rules via API. UI editor coming soon.
+                  </p>
                 </div>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t.rules.addRule}
-                </Button>
               </div>
               <AlertRuleList
                 rules={rules}
                 isLoading={isLoading}
-                onEdit={() => {}}
                 onDelete={handleDeleteRule}
                 onToggle={handleToggleRule}
               />
@@ -673,16 +741,14 @@ export default function ModelMonitoring() {
               <div className="flex justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-semibold">{t.handlers.title}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Manage alert handlers via API. UI editor coming soon.
+                  </p>
                 </div>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t.handlers.addHandler}
-                </Button>
               </div>
               <AlertHandlerList
                 handlers={handlers}
                 isLoading={isLoading}
-                onEdit={() => {}}
                 onDelete={handleDeleteHandler}
                 onToggle={handleToggleHandler}
                 onTest={handleTestHandler}

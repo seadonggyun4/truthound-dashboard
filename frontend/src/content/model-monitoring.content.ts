@@ -62,15 +62,18 @@ const modelMonitoringContent = {
       error: t({ en: 'Error', ko: '오류' }),
     },
 
-    // Model config
+    // Model config (maps to truthound MonitorConfig)
     config: {
       title: t({ en: 'Monitoring Configuration', ko: '모니터링 설정' }),
       enableDrift: t({ en: 'Enable Drift Detection', ko: '드리프트 감지 활성화' }),
       enableQuality: t({ en: 'Enable Quality Metrics', ko: '품질 메트릭 활성화' }),
       enablePerformance: t({ en: 'Enable Performance Metrics', ko: '성능 메트릭 활성화' }),
-      sampleRate: t({ en: 'Sample Rate', ko: '샘플링 비율' }),
       driftThreshold: t({ en: 'Drift Threshold', ko: '드리프트 임계값' }),
-      driftWindowSize: t({ en: 'Drift Window Size', ko: '드리프트 윈도우 크기' }),
+      driftMethod: t({ en: 'Drift Detection Method', ko: '드리프트 감지 방법' }),
+      batchSize: t({ en: 'Batch Size', ko: '배치 크기' }),
+      collectInterval: t({ en: 'Collection Interval', ko: '수집 간격' }),
+      alertEvalInterval: t({ en: 'Alert Evaluation Interval', ko: '알림 평가 간격' }),
+      retentionHours: t({ en: 'Retention Hours', ko: '보존 시간' }),
     },
 
     // Metrics

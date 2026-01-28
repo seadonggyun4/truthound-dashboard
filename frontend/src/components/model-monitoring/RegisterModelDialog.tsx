@@ -21,6 +21,13 @@ import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Loader2, Cpu, Settings, Bell } from 'lucide-react'
 
 interface RegisterModelFormData {
@@ -28,12 +35,18 @@ interface RegisterModelFormData {
   version: string
   description: string
   config: {
+    // Core monitoring settings (from truthound MonitorConfig)
+    batch_size: number
+    collect_interval_seconds: number
+    alert_evaluation_interval_seconds: number
+    retention_hours: number
+    // Feature toggles
     enable_drift_detection: boolean
     enable_quality_metrics: boolean
     enable_performance_metrics: boolean
-    sample_rate: number
+    // Drift settings
     drift_threshold: number
-    drift_window_size: number
+    drift_method: string
   }
   metadata: Record<string, string>
 }
@@ -51,15 +64,32 @@ const DEFAULT_FORM_DATA: RegisterModelFormData = {
   version: '1.0.0',
   description: '',
   config: {
+    // Core monitoring settings (truthound MonitorConfig defaults)
+    batch_size: 100,
+    collect_interval_seconds: 60,
+    alert_evaluation_interval_seconds: 30,
+    retention_hours: 24,
+    // Feature toggles (all enabled by default)
     enable_drift_detection: true,
     enable_quality_metrics: true,
     enable_performance_metrics: true,
-    sample_rate: 1.0,
+    // Drift settings
     drift_threshold: 0.1,
-    drift_window_size: 1000,
+    drift_method: 'auto',
   },
   metadata: {},
 }
+
+const DRIFT_METHODS = [
+  { value: 'auto', label: 'Auto (recommended)' },
+  { value: 'psi', label: 'PSI (Population Stability Index)' },
+  { value: 'ks', label: 'KS (Kolmogorov-Smirnov)' },
+  { value: 'js', label: 'JS (Jensen-Shannon)' },
+  { value: 'wasserstein', label: 'Wasserstein (Earth Mover)' },
+  { value: 'chi2', label: 'Chi-squared (categorical)' },
+  { value: 'kl', label: 'KL (Kullback-Leibler)' },
+  { value: 'hellinger', label: 'Hellinger' },
+]
 
 export function RegisterModelDialog({
   open,
@@ -111,7 +141,7 @@ export function RegisterModelDialog({
   }, [])
 
   const updateConfig = useCallback(
-    (key: keyof RegisterModelFormData['config'], value: boolean | number) => {
+    (key: keyof RegisterModelFormData['config'], value: number | boolean | string) => {
       setFormData((prev) => ({
         ...prev,
         config: { ...prev.config, [key]: value },
@@ -231,36 +261,9 @@ export function RegisterModelDialog({
 
           {/* Configuration Tab */}
           <TabsContent value="config" className="space-y-6 py-4">
+            {/* Feature Toggles */}
             <div className="space-y-4">
-              <h4 className="text-sm font-medium">{t.config.title}</h4>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="enable-drift">{t.config.enableDrift}</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Monitor input/output distribution changes
-                  </p>
-                </div>
-                <Switch
-                  id="enable-drift"
-                  checked={formData.config.enable_drift_detection}
-                  onCheckedChange={(checked) => updateConfig('enable_drift_detection', checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="enable-quality">{t.config.enableQuality}</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Track null rates, type violations, etc.
-                  </p>
-                </div>
-                <Switch
-                  id="enable-quality"
-                  checked={formData.config.enable_quality_metrics}
-                  onCheckedChange={(checked) => updateConfig('enable_quality_metrics', checked)}
-                />
-              </div>
+              <h4 className="text-sm font-medium">Monitoring Features</h4>
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
@@ -275,69 +278,141 @@ export function RegisterModelDialog({
                   onCheckedChange={(checked) => updateConfig('enable_performance_metrics', checked)}
                 />
               </div>
-            </div>
 
-            <div className="space-y-4 rounded-lg border p-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>{t.config.sampleRate}</Label>
-                  <span className="text-sm text-muted-foreground">
-                    {(formData.config.sample_rate * 100).toFixed(0)}%
-                  </span>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="enable-drift">{t.config.enableDrift}</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Monitor input/output distribution changes using th.compare()
+                  </p>
                 </div>
-                <Slider
-                  value={[formData.config.sample_rate]}
-                  onValueChange={([value]) => updateConfig('sample_rate', value)}
-                  min={0.01}
-                  max={1}
-                  step={0.01}
+                <Switch
+                  id="enable-drift"
+                  checked={formData.config.enable_drift_detection}
+                  onCheckedChange={(checked) => updateConfig('enable_drift_detection', checked)}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Percentage of predictions to sample for monitoring
-                </p>
               </div>
 
-              {formData.config.enable_drift_detection && (
-                <>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>{t.config.driftThreshold}</Label>
-                      <span className="text-sm text-muted-foreground">
-                        {(formData.config.drift_threshold * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                    <Slider
-                      value={[formData.config.drift_threshold]}
-                      onValueChange={([value]) => updateConfig('drift_threshold', value)}
-                      min={0.01}
-                      max={0.5}
-                      step={0.01}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Threshold for triggering drift alerts
-                    </p>
-                  </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="enable-quality">{t.config.enableQuality}</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Track accuracy, precision, recall, F1 (requires actual values)
+                  </p>
+                </div>
+                <Switch
+                  id="enable-quality"
+                  checked={formData.config.enable_quality_metrics}
+                  onCheckedChange={(checked) => updateConfig('enable_quality_metrics', checked)}
+                />
+              </div>
+            </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>{t.config.driftWindowSize}</Label>
-                      <span className="text-sm text-muted-foreground">
-                        {formData.config.drift_window_size.toLocaleString()} samples
-                      </span>
-                    </div>
-                    <Slider
-                      value={[formData.config.drift_window_size]}
-                      onValueChange={([value]) => updateConfig('drift_window_size', value)}
-                      min={100}
-                      max={10000}
-                      step={100}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Number of samples to use for drift comparison
-                    </p>
+            {/* Drift Detection Settings */}
+            {formData.config.enable_drift_detection && (
+              <div className="space-y-4 rounded-lg border p-4">
+                <h4 className="text-sm font-medium">Drift Detection (truthound th.compare)</h4>
+
+                <div className="space-y-2">
+                  <Label>Drift Method</Label>
+                  <Select
+                    value={formData.config.drift_method}
+                    onValueChange={(value) => updateConfig('drift_method', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DRIFT_METHODS.map((method) => (
+                        <SelectItem key={method.value} value={method.value}>
+                          {method.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Statistical method for drift detection
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>{t.config.driftThreshold}</Label>
+                    <span className="text-sm text-muted-foreground">
+                      {(formData.config.drift_threshold * 100).toFixed(0)}%
+                    </span>
                   </div>
-                </>
-              )}
+                  <Slider
+                    value={[formData.config.drift_threshold]}
+                    onValueChange={([value]) => updateConfig('drift_threshold', value)}
+                    min={0.01}
+                    max={0.5}
+                    step={0.01}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    PSI: &lt;0.1 stable, 0.1-0.25 small drift, &gt;0.25 significant
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Advanced Settings */}
+            <div className="space-y-4 rounded-lg border p-4">
+              <h4 className="text-sm font-medium">Collection Settings</h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Batch Size</Label>
+                  <Input
+                    type="number"
+                    value={formData.config.batch_size}
+                    onChange={(e) => updateConfig('batch_size', parseInt(e.target.value) || 100)}
+                    min={1}
+                    max={10000}
+                  />
+                  <p className="text-xs text-muted-foreground">Metrics batch size</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Retention (hours)</Label>
+                  <Input
+                    type="number"
+                    value={formData.config.retention_hours}
+                    onChange={(e) => updateConfig('retention_hours', parseInt(e.target.value) || 24)}
+                    min={1}
+                    max={720}
+                  />
+                  <p className="text-xs text-muted-foreground">Metrics retention period</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Collect Interval (sec)</Label>
+                  <Input
+                    type="number"
+                    value={formData.config.collect_interval_seconds}
+                    onChange={(e) =>
+                      updateConfig('collect_interval_seconds', parseInt(e.target.value) || 60)
+                    }
+                    min={1}
+                    max={3600}
+                  />
+                  <p className="text-xs text-muted-foreground">Metric collection interval</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Alert Eval Interval (sec)</Label>
+                  <Input
+                    type="number"
+                    value={formData.config.alert_evaluation_interval_seconds}
+                    onChange={(e) =>
+                      updateConfig('alert_evaluation_interval_seconds', parseInt(e.target.value) || 30)
+                    }
+                    min={1}
+                    max={3600}
+                  />
+                  <p className="text-xs text-muted-foreground">Alert rule evaluation interval</p>
+                </div>
+              </div>
             </div>
           </TabsContent>
 

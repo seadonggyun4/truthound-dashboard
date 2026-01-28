@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Edit, Trash2, Loader2 } from 'lucide-react'
+import { MoreHorizontal, Trash2, Loader2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 export interface AlertRule {
@@ -39,7 +39,6 @@ export interface AlertRule {
 interface AlertRuleListProps {
   rules: AlertRule[]
   isLoading: boolean
-  onEdit: (rule: AlertRule) => void
   onDelete: (rule: AlertRule) => void
   onToggle: (rule: AlertRule) => void
 }
@@ -47,7 +46,6 @@ interface AlertRuleListProps {
 export function AlertRuleList({
   rules,
   isLoading,
-  onEdit,
   onDelete,
   onToggle,
 }: AlertRuleListProps) {
@@ -147,10 +145,6 @@ export function AlertRuleList({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onEdit(rule)}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    {common.edit}
-                  </DropdownMenuItem>
                   <DropdownMenuItem
                     className="text-destructive"
                     onClick={() => onDelete(rule)}
