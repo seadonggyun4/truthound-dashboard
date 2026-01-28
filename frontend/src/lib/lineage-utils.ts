@@ -275,23 +275,43 @@ export function graphToMermaidSimple(
 // ============================================================================
 
 /**
- * Sanitize node ID for Mermaid (remove special characters).
+ * Sanitize node ID for Mermaid.
+ * Mermaid requires alphanumeric IDs, so we create a hash-based ID
+ * while preserving the original name in the label.
  */
 function sanitizeId(id: string): string {
-  // Replace dashes with underscores and remove other special chars
+  // Create a simple hash for non-ASCII IDs to ensure valid Mermaid node IDs
+  const hasNonAscii = /[^\x00-\x7F]/.test(id)
+  if (hasNonAscii) {
+    // Create a deterministic alphanumeric ID from the original
+    let hash = 0
+    for (let i = 0; i < id.length; i++) {
+      const char = id.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash // Convert to 32bit integer
+    }
+    // Ensure positive number and add prefix for valid ID
+    return `node_${Math.abs(hash).toString(36)}`
+  }
+  // Replace dashes with underscores and remove other special chars for ASCII IDs
   return id.replace(/-/g, '_').replace(/[^a-zA-Z0-9_]/g, '')
 }
 
 /**
  * Sanitize label for Mermaid (escape quotes and special chars).
+ * Korean and other Unicode text is preserved but special Mermaid characters are escaped.
  */
 function sanitizeLabel(label: string): string {
   return label
-    .replace(/"/g, "'")
-    .replace(/\[/g, '(')
-    .replace(/\]/g, ')')
-    .replace(/\{/g, '(')
-    .replace(/\}/g, ')')
+    .replace(/"/g, '#quot;')  // Use HTML entity for quotes
+    .replace(/'/g, '#apos;')  // Use HTML entity for apostrophes
+    .replace(/\[/g, '#91;')   // Use HTML entity for [
+    .replace(/\]/g, '#93;')   // Use HTML entity for ]
+    .replace(/\{/g, '#123;')  // Use HTML entity for {
+    .replace(/\}/g, '#125;')  // Use HTML entity for }
+    .replace(/\|/g, '#124;')  // Use HTML entity for | (edge label separator)
+    .replace(/</g, '#lt;')    // Use HTML entity for <
+    .replace(/>/g, '#gt;')    // Use HTML entity for >
 }
 
 /**

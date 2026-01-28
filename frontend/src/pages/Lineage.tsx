@@ -44,14 +44,13 @@ import {
 // Tabs imported but not currently used in main view - keeping for potential future use
 // import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PERFORMANCE_THRESHOLDS } from '@/lib/lineage-performance'
+import { useLineageStore } from '@/stores/lineageStore'
 import {
-  getLineageGraph,
   createLineageNode,
   deleteLineageNode,
   autoDiscoverLineage,
   analyzeLineageImpact,
   type LineageNode,
-  type LineageGraph as LineageGraphType,
   type ImpactAnalysisResponse,
 } from '@/api/modules/lineage'
 
@@ -62,11 +61,18 @@ export default function Lineage() {
   const t = useSafeIntlayer('lineage')
   const { toast } = useToast()
 
-  // State
-  const [lineageData, setLineageData] = useState<LineageGraphType | null>(null)
+  // Zustand store for lineage data (persists across navigation)
+  const {
+    lineageData,
+    isLoading,
+    fetchLineageData,
+    addNode,
+    removeNode,
+  } = useLineageStore()
+
+  // Local UI state
   const [selectedNode, setSelectedNode] = useState<LineageNode | null>(null)
   const [impactAnalysis, setImpactAnalysis] = useState<ImpactAnalysisResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
@@ -106,7 +112,7 @@ export default function Lineage() {
       localStorage.setItem(RENDERER_PREFERENCE_KEY, newRenderer)
       toast({ title: str(t.savedRendererPreference) })
     },
-    [toast, t]
+    [] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
   // Handle manual performance mode toggle
@@ -114,25 +120,15 @@ export default function Lineage() {
     setForcePerformanceMode(checked ? true : undefined)
   }, [])
 
-  // Load lineage data
-  const loadLineageData = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const data = await getLineageGraph()
-      setLineageData(data)
-    } catch (error) {
-      toast({
-        title: str(t.errorLoadingLineage),
-        variant: 'destructive',
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [toast, t])
-
+  // Load lineage data on mount (uses cached data if available)
   useEffect(() => {
-    loadLineageData()
-  }, [loadLineageData])
+    fetchLineageData()
+  }, [fetchLineageData])
+
+  // Force refresh handler
+  const handleRefresh = useCallback(() => {
+    fetchLineageData(true)
+  }, [fetchLineageData])
 
   // Handle node selection
   const handleNodeClick = useCallback(
@@ -152,15 +148,8 @@ export default function Lineage() {
           node_type: nodeType,
         })
 
-        setLineageData((prev) =>
-          prev
-            ? {
-                ...prev,
-                nodes: [...prev.nodes, newNode],
-                total_nodes: prev.total_nodes + 1,
-              }
-            : null
-        )
+        // Optimistic update via store
+        addNode(newNode)
 
         toast({ title: str(t.nodeCreated) })
       } catch (error) {
@@ -170,7 +159,7 @@ export default function Lineage() {
         })
       }
     },
-    [toast, t]
+    [addNode] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
   // Handle delete node
@@ -179,18 +168,8 @@ export default function Lineage() {
       try {
         await deleteLineageNode(nodeId)
 
-        setLineageData((prev) =>
-          prev
-            ? {
-                ...prev,
-                nodes: prev.nodes.filter((n) => n.id !== nodeId),
-                edges: prev.edges.filter(
-                  (e) => e.source_node_id !== nodeId && e.target_node_id !== nodeId
-                ),
-                total_nodes: prev.total_nodes - 1,
-              }
-            : null
-        )
+        // Optimistic update via store
+        removeNode(nodeId)
         setSelectedNode(null)
 
         toast({ title: str(t.nodeDeleted) })
@@ -201,7 +180,7 @@ export default function Lineage() {
         })
       }
     },
-    [toast, t]
+    [removeNode] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
   // Handle auto-discover
@@ -214,7 +193,7 @@ export default function Lineage() {
         title: str(t.discoveryComplete),
         description: `${result.nodes_created} ${str(t.nodesDiscovered)}, ${result.edges_created} ${str(t.edgesDiscovered)}`,
       })
-      loadLineageData()
+      fetchLineageData(true) // Force refresh
     } catch (error) {
       toast({
         title: str(t.discoveryFailed),
@@ -223,7 +202,7 @@ export default function Lineage() {
     } finally {
       setIsDiscovering(false)
     }
-  }, [loadLineageData, toast, t])
+  }, [fetchLineageData]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle impact analysis
   const handleAnalyzeImpact = useCallback(
@@ -355,7 +334,7 @@ export default function Lineage() {
             onAddNode={handleAddNode}
             onAutoDiscover={handleAutoDiscover}
             onSavePositions={() => {}}
-            onRefresh={loadLineageData}
+            onRefresh={handleRefresh}
             isDiscovering={isDiscovering}
             isSaving={false}
           />

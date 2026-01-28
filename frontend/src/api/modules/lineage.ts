@@ -241,14 +241,15 @@ export interface WebhookTestResult {
 // ============================================================================
 
 export async function getLineageGraph(): Promise<LineageGraph> {
-  return request<LineageGraph>('/lineage')
+  return request<LineageGraph>('/lineage', { dedupe: 'lineage-graph' })
 }
 
 export async function getSourceLineage(
   sourceId: string,
   params?: { depth?: number }
 ): Promise<LineageGraph> {
-  return request<LineageGraph>(`/lineage/sources/${sourceId}`, { params })
+  const dedupeKey = `lineage-source-${sourceId}-${params?.depth ?? 'default'}`
+  return request<LineageGraph>(`/lineage/sources/${sourceId}`, { params, dedupe: dedupeKey })
 }
 
 export async function createLineageNode(data: LineageNodeCreate): Promise<LineageNode> {
@@ -259,7 +260,7 @@ export async function createLineageNode(data: LineageNodeCreate): Promise<Lineag
 }
 
 export async function getLineageNode(nodeId: string): Promise<LineageNode> {
-  return request<LineageNode>(`/lineage/nodes/${nodeId}`)
+  return request<LineageNode>(`/lineage/nodes/${nodeId}`, { dedupe: `lineage-node-${nodeId}` })
 }
 
 export async function updateLineageNode(

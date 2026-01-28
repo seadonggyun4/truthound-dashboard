@@ -48,6 +48,7 @@ import type {
 import {
   getLineageGraph,
   createLineageNode,
+  createLineageEdge,
   deleteLineageNode,
   autoDiscoverLineage,
   updateNodePositions,
@@ -313,21 +314,44 @@ function LineageGraphInner({ sourceId, className, forcePerformanceMode }: Lineag
     [toast]
   )
 
-  // Handle new connection
+  // Handle new connection - persist to backend and update local state
   const onConnect = useCallback(
-    (params: Connection) => {
-      setEdges((eds: Edge<LineageEdgeData>[]) =>
-        addEdge(
-          {
-            ...params,
-            type: 'lineageEdge',
-            data: { edgeType: 'derives_from' },
-          },
-          eds
+    async (params: Connection) => {
+      if (!params.source || !params.target) return
+
+      try {
+        // Persist edge to backend first
+        const newEdge = await createLineageEdge({
+          source_node_id: params.source,
+          target_node_id: params.target,
+          edge_type: 'derives_from',
+        })
+
+        // Update local state with the persisted edge
+        setEdges((eds: Edge<LineageEdgeData>[]) =>
+          addEdge(
+            {
+              id: newEdge.id,
+              source: newEdge.source_node_id,
+              target: newEdge.target_node_id,
+              type: 'lineageEdge',
+              data: { edgeType: newEdge.edge_type },
+            },
+            eds
+          )
         )
-      )
+
+        toast({
+          title: str(t.edgeCreated),
+        })
+      } catch (error) {
+        toast({
+          title: str(t.errorCreatingEdge),
+          variant: 'destructive',
+        })
+      }
     },
-    [setEdges]
+    [setEdges, toast, t]
   )
 
   // Empty state
