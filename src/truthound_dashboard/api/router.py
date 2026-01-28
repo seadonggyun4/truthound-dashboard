@@ -17,6 +17,7 @@ from . import (
     notifications,
     notifications_advanced,
     profile,
+    quality_reporter,
     reports,
     rules,
     scan,
@@ -35,6 +36,7 @@ from . import (
     # Schema Evolution & Rule Suggestions
     rule_suggestions,
     schema_evolution,
+    schema_watcher,
     # Phase 9: Plugin System
     plugins,
     # Phase 10: ML & Lineage
@@ -43,6 +45,12 @@ from . import (
     model_monitoring,
     # Cross-Feature Integration
     cross_alerts,
+    # Storage Tiering (truthound 1.2.10+)
+    tiering,
+    # Enterprise Sampling (truthound 1.2.10+)
+    enterprise_sampling,
+    # Observability (truthound store observability)
+    observability,
 )
 
 api_router = APIRouter()
@@ -285,4 +293,55 @@ api_router.include_router(
 api_router.include_router(
     plugins.router,
     tags=["plugins"],
+)
+
+# =============================================================================
+# Storage Tiering (truthound 1.2.10+)
+# =============================================================================
+
+# Storage tiering endpoints (tiers, policies, configs, migrations)
+api_router.include_router(
+    tiering.router,
+    tags=["tiering"],
+)
+
+# =============================================================================
+# Quality Reporter (truthound 1.2.10+)
+# =============================================================================
+
+# Quality scoring and reporting endpoints
+api_router.include_router(
+    quality_reporter.router,
+    tags=["quality-reporter"],
+)
+
+# =============================================================================
+# Schema Watcher (truthound 1.2.10+)
+# =============================================================================
+
+# Schema watcher endpoints for continuous schema monitoring
+api_router.include_router(
+    schema_watcher.router,
+    tags=["schema-watcher"],
+)
+
+# =============================================================================
+# Enterprise Sampling (truthound 1.2.10+)
+# =============================================================================
+
+# Enterprise sampling endpoints (block, multi-stage, column-aware, progressive)
+api_router.include_router(
+    enterprise_sampling.router,
+    tags=["enterprise-sampling"],
+)
+
+# =============================================================================
+# Observability (truthound store observability)
+# =============================================================================
+
+# Observability endpoints (audit, metrics, tracing)
+api_router.include_router(
+    observability.router,
+    prefix="/observability",
+    tags=["observability"],
 )

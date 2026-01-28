@@ -25,6 +25,9 @@ import {
   ChevronDown,
   ChevronRight,
   Loader2,
+  HardDrive,
+  Eye,
+  BarChart3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -43,7 +46,7 @@ import {
 // Navigation throttle delay (ms) - must wait this long between navigations
 const NAV_THROTTLE_MS = 800
 
-type NavKey = 'dashboard' | 'sources' | 'catalog' | 'glossary' | 'drift' | 'lineage' | 'schedules' | 'activity' | 'notifications' | 'maintenance' | 'anomaly' | 'privacy' | 'driftMonitoring' | 'modelMonitoring' | 'notificationsAdvanced' | 'alerts' | 'reports' | 'plugins'
+type NavKey = 'dashboard' | 'sources' | 'catalog' | 'glossary' | 'drift' | 'lineage' | 'schedules' | 'activity' | 'notifications' | 'maintenance' | 'anomaly' | 'privacy' | 'driftMonitoring' | 'modelMonitoring' | 'notificationsAdvanced' | 'alerts' | 'reports' | 'plugins' | 'storageTiering' | 'schemaWatcher' | 'observability'
 
 interface NavItem {
   key: NavKey
@@ -62,6 +65,7 @@ const navigation: NavItem[] = [
   // Data Quality
   { key: 'drift', href: '/drift', icon: GitCompare, section: 'quality' },
   { key: 'driftMonitoring', href: '/drift-monitoring', icon: Radio, section: 'quality' },
+  { key: 'schemaWatcher', href: '/schema-watcher', icon: Eye, section: 'quality' },
   { key: 'privacy', href: '/privacy', icon: Shield, section: 'quality' },
   { key: 'lineage', href: '/lineage', icon: Network, section: 'quality' },
   // ML & Monitoring
@@ -75,6 +79,8 @@ const navigation: NavItem[] = [
   { key: 'notificationsAdvanced', href: '/notifications/advanced', icon: BellRing, section: 'system' },
   { key: 'reports', href: '/reports', icon: FileText, section: 'system' },
   { key: 'plugins', href: '/plugins', icon: Puzzle, section: 'system' },
+  { key: 'storageTiering', href: '/storage-tiering', icon: HardDrive, section: 'system' },
+  { key: 'observability', href: '/observability', icon: BarChart3, section: 'system' },
   { key: 'maintenance', href: '/maintenance', icon: Settings, section: 'system' },
 ]
 

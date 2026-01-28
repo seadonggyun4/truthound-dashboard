@@ -37,11 +37,10 @@ async def run_validation(
 
     Supports all th.check() parameters for maximum flexibility:
     - validators: Specific validators to run
+    - validator_configs: Per-validator parameter configuration
     - schema_path: Path to schema YAML file
     - auto_schema: Auto-learn and cache schema
-    - columns: Specific columns to validate
     - min_severity: Minimum severity to report
-    - strict: Raise exception on failures
     - parallel: Use parallel execution
     - max_workers: Max threads for parallel
     - pushdown: Enable query pushdown for SQL
@@ -91,9 +90,7 @@ async def run_validation(
             custom_validators=custom_validators,
             schema_path=request.schema_path,
             auto_schema=request.auto_schema,
-            columns=request.columns,
             min_severity=request.min_severity,
-            strict=request.strict,
             parallel=request.parallel,
             max_workers=request.max_workers,
             pushdown=request.pushdown,

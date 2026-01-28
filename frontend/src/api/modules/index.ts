@@ -73,3 +73,12 @@ export * from './plugins'
 
 // Triggers
 export * from './triggers'
+
+// Schema Watcher
+export * from './schema-watcher'
+
+// Enterprise Sampling
+export * from './enterprise-sampling'
+
+// Observability
+export * from './observability'

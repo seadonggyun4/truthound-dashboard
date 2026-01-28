@@ -102,24 +102,11 @@ class ValidationRunRequest(BaseSchema):
         description="Auto-learn and cache schema for validation",
     )
 
-    # Column filtering
-    columns: list[str] | None = Field(
-        default=None,
-        description="Columns to validate. If None, all columns are validated.",
-        examples=[["user_id", "email", "created_at"]],
-    )
-
     # Severity filtering
     min_severity: Literal["low", "medium", "high", "critical"] | None = Field(
         default=None,
         description="Minimum severity level to report. Issues below this level are ignored.",
         examples=["medium"],
-    )
-
-    # Execution behavior
-    strict: bool = Field(
-        default=False,
-        description="If True, raise exception on validation failures instead of returning results.",
     )
 
     # Performance options

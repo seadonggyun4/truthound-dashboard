@@ -65,9 +65,7 @@ export interface ValidationRunOptions {
   }>
   schema_path?: string
   auto_schema?: boolean
-  columns?: string[]
   min_severity?: 'low' | 'medium' | 'high' | 'critical'
-  strict?: boolean
   parallel?: boolean
   max_workers?: number
   pushdown?: boolean

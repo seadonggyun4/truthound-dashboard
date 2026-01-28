@@ -1,21 +1,34 @@
 """Maintenance API endpoints.
 
 This module provides endpoints for database maintenance, retention policies,
-and cache management.
+and cache management using truthound's store features.
+
+Migrated features (using truthound):
+- Retention policies (truthound.stores.retention)
+- Caching (truthound.stores.caching)
+
+Dashboard-specific features (not in truthound):
+- SQLite VACUUM (SQLite-specific optimization)
 """
 
 from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 
-from truthound_dashboard.core.cache import get_cache, get_cache_manager
 from truthound_dashboard.core.maintenance import (
     MaintenanceConfig,
     get_maintenance_manager,
+)
+from truthound_dashboard.core.store_manager import (
+    CacheType,
+    DashboardStoreConfig,
+    DashboardStoreManager,
+    RetentionPolicySettings,
+    get_store_manager,
 )
 from truthound_dashboard.core.scheduler import get_scheduler
 from truthound_dashboard.schemas import (
@@ -145,12 +158,15 @@ async def get_maintenance_status() -> MaintenanceStatusResponse:
     "/cleanup",
     response_model=MaintenanceReportResponse,
     summary="Trigger cleanup",
-    description="Manually trigger database cleanup",
+    description="Manually trigger database cleanup using truthound retention policies",
 )
 async def trigger_cleanup(
     request: CleanupTriggerRequest,
 ) -> MaintenanceReportResponse:
     """Manually trigger database cleanup.
+
+    This endpoint now uses truthound's retention system for cleanup
+    while maintaining backward compatibility with the existing API.
 
     Args:
         request: Cleanup options.
@@ -163,7 +179,7 @@ async def trigger_cleanup(
     manager = get_maintenance_manager()
 
     if request.tasks:
-        # Run specific tasks
+        # Run specific tasks (legacy behavior)
         started_at = datetime.utcnow()
         results = []
 
@@ -190,7 +206,7 @@ async def trigger_cleanup(
                     )
                 )
 
-        # Run vacuum if requested
+        # Run vacuum if requested (SQLite-specific, not in truthound)
         vacuum_performed = False
         vacuum_error = None
         if request.run_vacuum:
@@ -254,10 +270,13 @@ async def trigger_cleanup(
     "/vacuum",
     response_model=MaintenanceReportResponse,
     summary="Run database vacuum",
-    description="Run SQLite VACUUM to reclaim disk space",
+    description="Run SQLite VACUUM to reclaim disk space (SQLite-specific, not part of truthound)",
 )
 async def run_vacuum() -> MaintenanceReportResponse:
     """Run SQLite VACUUM to reclaim disk space.
+
+    Note: This is a dashboard-specific operation for SQLite.
+    truthound's store system is backend-agnostic and doesn't include VACUUM.
 
     Returns:
         Vacuum operation result.
@@ -293,31 +312,50 @@ async def run_vacuum() -> MaintenanceReportResponse:
     "/cache/stats",
     response_model=CacheStatsResponse,
     summary="Get cache statistics",
-    description="Get current cache usage statistics",
+    description="Get current cache usage statistics from truthound's caching system",
 )
 async def get_cache_stats() -> CacheStatsResponse:
-    """Get cache statistics.
+    """Get cache statistics using truthound's cache metrics.
 
     Returns:
         Cache usage statistics.
     """
-    cache = get_cache()
-    stats = await cache.get_stats()
+    try:
+        store_manager = get_store_manager()
+        if not store_manager._initialized:
+            store_manager.initialize()
 
-    return CacheStatsResponse(
-        total_entries=stats.get("total_entries", 0),
-        expired_entries=stats.get("expired_entries", 0),
-        valid_entries=stats.get("valid_entries", 0),
-        max_size=stats.get("max_size", 0),
-        hit_rate=None,  # Not tracked by default
-    )
+        stats = store_manager.get_cache_stats()
+
+        return CacheStatsResponse(
+            total_entries=stats.get("total_entries", 0),
+            expired_entries=stats.get("expired_entries", 0),
+            valid_entries=stats.get("valid_entries", 0),
+            max_size=stats.get("max_size", 0),
+            hit_rate=stats.get("hit_rate"),
+        )
+    except Exception as e:
+        logger.warning(f"Failed to get cache stats from store manager: {e}")
+        # Fallback to legacy cache
+        from truthound_dashboard.core.cache import get_cache
+
+        cache = get_cache()
+        stats = await cache.get_stats()
+
+        return CacheStatsResponse(
+            total_entries=stats.get("total_entries", 0),
+            expired_entries=stats.get("expired_entries", 0),
+            valid_entries=stats.get("valid_entries", 0),
+            max_size=stats.get("max_size", 0),
+            hit_rate=stats.get("hit_rate"),
+        )
 
 
 @router.post(
     "/cache/clear",
     response_model=CacheStatsResponse,
     summary="Clear cache",
-    description="Clear cached data",
+    description="Clear cached data using truthound's caching system",
 )
 async def clear_cache(request: CacheClearRequest) -> CacheStatsResponse:
     """Clear cache data.
@@ -328,36 +366,53 @@ async def clear_cache(request: CacheClearRequest) -> CacheStatsResponse:
     Returns:
         Updated cache statistics.
     """
-    if request.namespace:
-        # Clear specific namespace
-        manager = get_cache_manager()
-        cache = manager.get(request.namespace)
-        if cache:
+    try:
+        store_manager = get_store_manager()
+        if not store_manager._initialized:
+            store_manager.initialize()
+
+        store_manager.clear_cache(pattern=request.pattern)
+        stats = store_manager.get_cache_stats()
+
+        return CacheStatsResponse(
+            total_entries=stats.get("total_entries", 0),
+            expired_entries=stats.get("expired_entries", 0),
+            valid_entries=stats.get("valid_entries", 0),
+            max_size=stats.get("max_size", 0),
+            hit_rate=stats.get("hit_rate"),
+        )
+    except Exception as e:
+        logger.warning(f"Failed to clear cache from store manager: {e}")
+        # Fallback to legacy cache
+        from truthound_dashboard.core.cache import get_cache, get_cache_manager
+
+        if request.namespace:
+            manager = get_cache_manager()
+            cache = manager.get(request.namespace)
+            if cache:
+                if request.pattern:
+                    await cache.invalidate_pattern(request.pattern)
+                else:
+                    await cache.clear()
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Cache namespace not found: {request.namespace}",
+                )
+        else:
+            cache = get_cache()
             if request.pattern:
                 await cache.invalidate_pattern(request.pattern)
             else:
                 await cache.clear()
-        else:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Cache namespace not found: {request.namespace}",
-            )
-    else:
-        # Clear default cache
+
         cache = get_cache()
-        if request.pattern:
-            await cache.invalidate_pattern(request.pattern)
-        else:
-            await cache.clear()
+        stats = await cache.get_stats()
 
-    # Return updated stats
-    cache = get_cache()
-    stats = await cache.get_stats()
-
-    return CacheStatsResponse(
-        total_entries=stats.get("total_entries", 0),
-        expired_entries=stats.get("expired_entries", 0),
-        valid_entries=stats.get("valid_entries", 0),
-        max_size=stats.get("max_size", 0),
-        hit_rate=None,
-    )
+        return CacheStatsResponse(
+            total_entries=stats.get("total_entries", 0),
+            expired_entries=stats.get("expired_entries", 0),
+            valid_entries=stats.get("valid_entries", 0),
+            max_size=stats.get("max_size", 0),
+            hit_rate=None,
+        )

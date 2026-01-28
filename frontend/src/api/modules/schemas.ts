@@ -29,13 +29,25 @@ export async function getSourceSchema(sourceId: string): Promise<Schema | null> 
   return request<Schema | null>(`/sources/${sourceId}/schema`)
 }
 
+/**
+ * Options for schema learning.
+ */
+export interface LearnSchemaOptions {
+  /** Infer constraints (min/max, allowed values) from data statistics */
+  infer_constraints?: boolean
+  /** Maximum unique values for categorical detection (1-1000). Default: 20 */
+  categorical_threshold?: number
+  /** Number of rows to sample for large datasets. If null, uses all rows. */
+  sample_size?: number
+}
+
 export async function learnSchema(
   sourceId: string,
-  data?: { infer_constraints?: boolean }
+  options?: LearnSchemaOptions
 ): Promise<Schema> {
   return request<Schema>(`/sources/${sourceId}/learn`, {
     method: 'POST',
-    body: JSON.stringify(data || {}),
+    body: JSON.stringify(options || {}),
   })
 }
 

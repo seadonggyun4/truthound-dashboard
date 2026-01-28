@@ -359,12 +359,8 @@ export interface ValidationRunOptionsExtended {
   schema_path?: string
   /** Auto-learn schema */
   auto_schema?: boolean
-  /** Columns to validate */
-  columns?: string[]
   /** Minimum severity to report */
   min_severity?: IssueSeverity
-  /** Raise exception on failure */
-  strict?: boolean
   /** Use parallel execution */
   parallel?: boolean
   /** Max worker threads */

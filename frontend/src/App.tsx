@@ -33,6 +33,10 @@ import ProfileComparison from './pages/ProfileComparison'
 import RuleSuggestions from './pages/RuleSuggestions'
 import Plugins from './pages/Plugins'
 import Reports from './pages/Reports'
+import QualityReporter from './pages/QualityReporter'
+import StorageTiering from './pages/StorageTiering'
+import SchemaWatcher from './pages/SchemaWatcher'
+import Observability from './pages/Observability'
 
 function App() {
   return (
@@ -80,6 +84,14 @@ function App() {
           <Route path="plugins" element={<Plugins />} />
           {/* Reports & History */}
           <Route path="reports" element={<Reports />} />
+          {/* Quality Reporter */}
+          <Route path="quality-reporter" element={<QualityReporter />} />
+          {/* Storage Tiering (truthound 1.2.10+) */}
+          <Route path="storage-tiering" element={<StorageTiering />} />
+          {/* Schema Watcher (truthound 1.2.10+) */}
+          <Route path="schema-watcher" element={<SchemaWatcher />} />
+          {/* Observability (truthound store observability) */}
+          <Route path="observability" element={<Observability />} />
         </Route>
       </Routes>
     </Suspense>
