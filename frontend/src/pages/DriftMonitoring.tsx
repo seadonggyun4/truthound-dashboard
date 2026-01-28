@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/sheet'
 import { useToast } from '@/hooks/use-toast'
 import { confirm } from '@/components/ConfirmDialog'
-import { Loader2, Plus, RefreshCw, Activity, Bell, TrendingUp, Columns, Eye, Search } from 'lucide-react'
+import { Loader2, Plus, RefreshCw, Activity, Bell, TrendingUp, Columns, Search } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   DriftMonitorList,
@@ -34,7 +34,6 @@ import {
   DriftTrendChart,
   DriftMonitorStats,
   ColumnDrilldown,
-  DriftPreview,
   RootCauseAnalysis,
   RemediationPanel,
 } from '@/components/drift'
@@ -92,9 +91,6 @@ export default function DriftMonitoring() {
   const [latestRunResult, setLatestRunResult] = useState<DriftResult | null>(null)
   const [isLoadingLatestRun, setIsLoadingLatestRun] = useState(false)
 
-  // Preview state
-  const [showPreview, setShowPreview] = useState(false)
-
   // Root cause analysis state
   const [rootCauseData, setRootCauseData] = useState<RootCauseAnalysisData | null>(null)
   const [isLoadingRootCause, setIsLoadingRootCause] = useState(false)
@@ -140,7 +136,6 @@ export default function DriftMonitoring() {
     // Reset form states
     setShowCreateForm(false)
     setEditingMonitor(null)
-    setShowPreview(false)
 
     // Reset drilldown states
     setShowColumnDrilldown(false)
@@ -426,10 +421,6 @@ export default function DriftMonitoring() {
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             {common.refresh}
           </Button>
-          <Button variant="outline" onClick={() => setShowPreview(true)}>
-            <Eye className="mr-2 h-4 w-4" />
-            {t.preview?.previewDrift ?? 'Preview Drift'}
-          </Button>
           <Button onClick={() => setShowCreateForm(true)}>
             <Plus className="mr-2 h-4 w-4" />
             {t.monitor.createMonitor}
@@ -550,18 +541,6 @@ export default function DriftMonitoring() {
           isEditing
         />
       )}
-
-      {/* Preview Dialog */}
-      <DriftPreview
-        open={showPreview}
-        onOpenChange={setShowPreview}
-        sources={sources}
-        onCreateMonitor={() => {
-          setShowPreview(false)
-          // Pre-fill form with preview data
-          setShowCreateForm(true)
-        }}
-      />
 
       {/* Column Drilldown Sheet */}
       <Sheet open={showColumnDrilldown} onOpenChange={setShowColumnDrilldown}>

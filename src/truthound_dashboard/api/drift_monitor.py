@@ -221,15 +221,25 @@ async def run_monitor(
     service: DriftMonitorServiceDep,
 ) -> MonitorRunResult:
     """Manually run a drift monitor."""
-    comparison = await service.run_monitor(monitor_id)
+    # force=True allows running paused monitors manually
+    comparison = await service.run_monitor(monitor_id, force=True)
     if not comparison:
         raise HTTPException(status_code=400, detail="Monitor run failed")
+
+    # Extract drifted column names from result_json
+    drifted_column_names: list[str] = []
+    if comparison.result_json and "columns" in comparison.result_json:
+        drifted_column_names = [
+            col["column"]
+            for col in comparison.result_json["columns"]
+            if col.get("drifted", False)
+        ]
 
     return MonitorRunResult(
         comparison_id=comparison.id,
         has_drift=comparison.has_drift,
-        drift_percentage=comparison.drift_percentage,
-        drifted_columns=comparison.drifted_columns,
+        drift_percentage=comparison.drift_percentage or 0.0,
+        drifted_columns=drifted_column_names,
     )
 
 
@@ -250,6 +260,141 @@ async def get_monitor_trend(
         raise HTTPException(status_code=404, detail="Monitor not found")
 
     return DriftTrendResponse(**trend)
+
+
+# Run History Endpoints
+
+from truthound_dashboard.schemas.drift_monitor import (
+    DriftMonitorRunResponse,
+    DriftMonitorRunListResponse,
+    DriftMonitorRunStatistics,
+)
+
+
+@router.get(
+    "/drift/monitors/{monitor_id}/runs",
+    response_model=DriftMonitorRunListResponse,
+    summary="List monitor runs",
+    description="Get execution history for a drift monitor.",
+)
+async def list_monitor_runs(
+    monitor_id: str,
+    service: DriftMonitorServiceDep,
+    status: str | None = Query(None, description="Filter by status"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+) -> DriftMonitorRunListResponse:
+    """List runs for a drift monitor."""
+    runs, total = await service.list_runs(
+        monitor_id=monitor_id,
+        status=status,
+        limit=limit,
+        offset=offset,
+    )
+
+    return DriftMonitorRunListResponse(
+        data=[
+            DriftMonitorRunResponse(
+                id=run.id,
+                monitor_id=run.monitor_id,
+                status=run.status,
+                has_drift=run.has_drift,
+                max_drift_score=run.max_drift_score,
+                total_columns=run.total_columns,
+                drifted_columns=run.drifted_columns,
+                column_results=run.column_results,
+                root_cause_analysis=run.root_cause_analysis,
+                duration_ms=run.duration_ms,
+                error_message=run.error_message,
+                created_at=run.created_at,
+                completed_at=run.completed_at,
+            )
+            for run in runs
+        ],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/drift/monitors/{monitor_id}/runs/latest",
+    response_model=DriftMonitorRunResponse | None,
+    summary="Get latest run",
+    description="Get the most recent run for a drift monitor.",
+)
+async def get_latest_run(
+    monitor_id: str,
+    service: DriftMonitorServiceDep,
+) -> DriftMonitorRunResponse | None:
+    """Get the latest run for a monitor."""
+    run = await service.get_latest_run(monitor_id)
+    if not run:
+        return None
+
+    return DriftMonitorRunResponse(
+        id=run.id,
+        monitor_id=run.monitor_id,
+        status=run.status,
+        has_drift=run.has_drift,
+        max_drift_score=run.max_drift_score,
+        total_columns=run.total_columns,
+        drifted_columns=run.drifted_columns,
+        column_results=run.column_results,
+        root_cause_analysis=run.root_cause_analysis,
+        duration_ms=run.duration_ms,
+        error_message=run.error_message,
+        created_at=run.created_at,
+        completed_at=run.completed_at,
+    )
+
+
+@router.get(
+    "/drift/monitors/{monitor_id}/runs/statistics",
+    response_model=DriftMonitorRunStatistics,
+    summary="Get run statistics",
+    description="Get aggregated statistics for drift monitor runs.",
+)
+async def get_run_statistics(
+    monitor_id: str,
+    service: DriftMonitorServiceDep,
+) -> DriftMonitorRunStatistics:
+    """Get run statistics for a monitor."""
+    stats = await service.get_run_statistics(monitor_id)
+    return DriftMonitorRunStatistics(**stats)
+
+
+@router.get(
+    "/drift/monitors/{monitor_id}/runs/{run_id}",
+    response_model=DriftMonitorRunResponse,
+    summary="Get run details",
+    description="Get detailed information about a specific run.",
+)
+async def get_run(
+    monitor_id: str,
+    run_id: str,
+    service: DriftMonitorServiceDep,
+) -> DriftMonitorRunResponse:
+    """Get a specific run."""
+    run = await service.get_run(run_id)
+    if not run or run.monitor_id != monitor_id:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    return DriftMonitorRunResponse(
+        id=run.id,
+        monitor_id=run.monitor_id,
+        status=run.status,
+        has_drift=run.has_drift,
+        max_drift_score=run.max_drift_score,
+        total_columns=run.total_columns,
+        drifted_columns=run.drifted_columns,
+        column_results=run.column_results,
+        root_cause_analysis=run.root_cause_analysis,
+        duration_ms=run.duration_ms,
+        error_message=run.error_message,
+        created_at=run.created_at,
+        completed_at=run.completed_at,
+    )
 
 
 @router.get(

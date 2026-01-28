@@ -6,6 +6,7 @@
 
 import { useState, useMemo } from 'react'
 import { useIntlayer } from 'react-intlayer'
+import { str } from '@/lib/intlayer-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -203,7 +204,7 @@ export function ColumnDrilldown({
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder={String(t.columnDrilldown?.searchPlaceholder ?? 'Search columns...')}
+            placeholder={str(t.columnDrilldown?.searchPlaceholder) || 'Search columns...'}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="pl-9"

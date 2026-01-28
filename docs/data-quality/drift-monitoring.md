@@ -230,7 +230,10 @@ Choose detection method based on data characteristics:
 | `/drift/monitors/{id}` | DELETE | Delete a drift monitor |
 | `/drift/monitors/{id}/run` | POST | Execute monitor immediately |
 | `/drift/monitors/{id}/trend` | GET | Retrieve drift trend data |
-| `/drift/monitors/{id}/latest-run` | GET | Retrieve most recent run results |
+| `/drift/monitors/{id}/runs` | GET | List execution history for a monitor |
+| `/drift/monitors/{id}/runs/latest` | GET | Retrieve most recent run results |
+| `/drift/monitors/{id}/runs/statistics` | GET | Retrieve aggregated run statistics |
+| `/drift/monitors/{id}/runs/{runId}` | GET | Retrieve specific run details |
 | `/drift/monitors/{id}/runs/{runId}/root-cause` | GET | Retrieve root cause analysis |
 | `/drift/alerts` | GET | List drift alerts |
 | `/drift/alerts/{id}` | PUT | Update alert status |

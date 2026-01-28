@@ -252,11 +252,12 @@ export async function listDriftMonitors(params?: {
   limit?: number
   offset?: number
 }): Promise<DriftMonitorListResponse> {
-  return request<DriftMonitorListResponse>('/drift/monitors', { params })
+  const dedupeKey = `drift-monitors-${JSON.stringify(params ?? {})}`
+  return request<DriftMonitorListResponse>('/drift/monitors', { params, dedupe: dedupeKey })
 }
 
 export async function getDriftMonitorsSummary(): Promise<DriftMonitorSummary> {
-  return request<DriftMonitorSummary>('/drift/monitors/summary')
+  return request<DriftMonitorSummary>('/drift/monitors/summary', { dedupe: 'drift-monitors-summary' })
 }
 
 export async function createDriftMonitor(
@@ -269,7 +270,7 @@ export async function createDriftMonitor(
 }
 
 export async function getDriftMonitor(id: string): Promise<DriftMonitor> {
-  return request<DriftMonitor>(`/drift/monitors/${id}`)
+  return request<DriftMonitor>(`/drift/monitors/${id}`, { dedupe: `drift-monitor-${id}` })
 }
 
 export async function updateDriftMonitor(
@@ -333,11 +334,12 @@ export async function listDriftAlerts(params?: {
   limit?: number
   offset?: number
 }): Promise<DriftAlertListResponse> {
-  return request<DriftAlertListResponse>('/drift/alerts', { params })
+  const dedupeKey = `drift-alerts-${JSON.stringify(params ?? {})}`
+  return request<DriftAlertListResponse>('/drift/alerts', { params, dedupe: dedupeKey })
 }
 
 export async function getDriftAlert(id: string): Promise<DriftAlert> {
-  return request<DriftAlert>(`/drift/alerts/${id}`)
+  return request<DriftAlert>(`/drift/alerts/${id}`, { dedupe: `drift-alert-${id}` })
 }
 
 export async function updateDriftAlert(

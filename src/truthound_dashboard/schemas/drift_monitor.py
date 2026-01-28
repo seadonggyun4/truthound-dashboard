@@ -892,3 +892,43 @@ class MonitorRunResult(BaseSchema):
     drifted_columns: list[str] = Field(
         default_factory=list, description="List of drifted column names"
     )
+
+
+# Run History Schemas
+
+RunStatus = Literal["running", "completed", "failed"]
+
+
+class DriftMonitorRunResponse(BaseSchema, IDMixin):
+    """Response schema for drift monitor run."""
+
+    monitor_id: str = Field(..., description="Associated monitor ID")
+    status: RunStatus = Field(..., description="Run status")
+    has_drift: bool | None = Field(None, description="Whether drift was detected")
+    max_drift_score: float | None = Field(None, description="Maximum drift score")
+    total_columns: int | None = Field(None, description="Total columns compared")
+    drifted_columns: int | None = Field(None, description="Number of drifted columns")
+    column_results: dict | None = Field(None, description="Per-column results")
+    root_cause_analysis: dict | None = Field(None, description="Root cause analysis")
+    duration_ms: int | None = Field(None, description="Run duration in milliseconds")
+    error_message: str | None = Field(None, description="Error message if failed")
+    created_at: datetime = Field(..., description="When run started")
+    completed_at: datetime | None = Field(None, description="When run completed")
+
+
+class DriftMonitorRunListResponse(PaginatedResponse[DriftMonitorRunResponse]):
+    """List response for drift monitor runs."""
+
+    pass
+
+
+class DriftMonitorRunStatistics(BaseSchema):
+    """Statistics for drift monitor runs."""
+
+    total_runs: int = Field(..., description="Total number of runs")
+    completed_runs: int = Field(..., description="Number of completed runs")
+    failed_runs: int = Field(..., description="Number of failed runs")
+    runs_with_drift: int = Field(..., description="Number of runs with drift detected")
+    success_rate: float = Field(..., description="Percentage of successful runs")
+    drift_rate: float = Field(..., description="Percentage of runs with drift")
+    avg_duration_ms: int = Field(..., description="Average run duration in milliseconds")

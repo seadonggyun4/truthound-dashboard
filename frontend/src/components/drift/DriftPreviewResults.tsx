@@ -33,7 +33,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { ColumnDistributionChart } from './ColumnDistributionChart'
-import type { DriftPreviewData } from './DriftPreview'
+import type { DriftPreviewData } from './types'
 
 interface DriftPreviewResultsProps {
   data: DriftPreviewData

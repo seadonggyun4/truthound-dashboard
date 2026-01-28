@@ -28,8 +28,7 @@ export { DriftScoreGauge } from './DriftScoreGauge'
 export { RootCauseAnalysis } from './RootCauseAnalysis'
 export { RemediationPanel } from './RemediationPanel'
 
-// Preview components
-export { DriftPreview } from './DriftPreview'
+// Preview components (used in DriftMonitorForm)
 export { DriftPreviewResults } from './DriftPreviewResults'
 export { ColumnDistributionChart } from './ColumnDistributionChart'
 
@@ -40,9 +39,5 @@ export { ChunkedProgress, InlineProgress } from './ChunkedProgress'
 
 // Re-export types
 export type { RootCauseAnalysisData, ColumnRootCause, DataVolumeChange, RemediationSuggestion } from './RootCauseAnalysis'
-export type {
-  DriftPreviewData,
-  ColumnPreviewResult,
-  DistributionData,
-} from './DriftPreview'
 export type { SamplingConfigData } from './SamplingConfig'
+export type { DriftPreviewData, ColumnPreviewResult, DistributionData } from './types'

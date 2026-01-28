@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .drift_sampling import (
@@ -332,20 +332,39 @@ class DriftMonitorService:
         logger.info(f"Deleted drift monitor: {monitor_id}")
         return True
 
-    async def run_monitor(self, monitor_id: str) -> "DriftComparison | None":
+    async def run_monitor(self, monitor_id: str, force: bool = False) -> "DriftComparison | None":
         """Execute a drift monitoring run.
+
+        Creates a DriftMonitorRun record to track execution history,
+        then performs drift comparison and creates alerts if needed.
 
         Args:
             monitor_id: Monitor ID.
+            force: If True, run even if monitor is paused (for manual runs).
 
         Returns:
             Drift comparison result or None on error.
         """
         from truthound_dashboard.core.services import DriftService
+        from truthound_dashboard.db.models import DriftMonitorRun
 
         monitor = await self.get_monitor(monitor_id)
-        if not monitor or monitor.status != "active":
+        if not monitor:
             return None
+        # Skip status check if force=True (manual run) or if status is active
+        if not force and monitor.status != "active":
+            return None
+
+        # Create run record to track execution
+        start_time = datetime.utcnow()
+        run = DriftMonitorRun(
+            id=str(uuid.uuid4()),
+            monitor_id=monitor.id,
+            status="running",
+            created_at=start_time,
+        )
+        self.session.add(run)
+        await self.session.flush()  # Get run.id without committing
 
         try:
             # Create drift service and run comparison
@@ -358,45 +377,79 @@ class DriftMonitorService:
                 columns=monitor.columns_json,
             )
 
+            # Calculate duration
+            end_time = datetime.utcnow()
+            duration_ms = int((end_time - start_time).total_seconds() * 1000)
+
+            # Extract drifted column names
+            drifted_columns = []
+            if comparison.result_json and "columns" in comparison.result_json:
+                drifted_columns = [
+                    col["column"]
+                    for col in comparison.result_json["columns"]
+                    if col.get("drifted", False)
+                ]
+
+            # Update run record with results
+            run.status = "completed"
+            run.has_drift = comparison.has_drift
+            run.max_drift_score = comparison.drift_percentage
+            run.total_columns = comparison.total_columns
+            run.drifted_columns = len(drifted_columns)
+            run.column_results = comparison.result_json
+            run.duration_ms = duration_ms
+            run.completed_at = end_time
+
             # Update monitor stats
-            monitor.last_run_at = datetime.utcnow()
+            monitor.last_run_at = end_time
             monitor.total_runs += 1
-            # last_drift_detected is computed from latest_run, no need to set
 
             if comparison.has_drift:
                 monitor.drift_detected_count += 1
                 monitor.consecutive_drift_count += 1
 
-                # Create alert if configured
+                # Create alert if configured, linking to this run
                 if monitor.alert_on_drift:
-                    await self._create_drift_alert(monitor, comparison)
+                    await self._create_drift_alert(monitor, comparison, run.id)
             else:
                 monitor.consecutive_drift_count = 0
 
             await self.session.commit()
             await self.session.refresh(monitor)
+            await self.session.refresh(run)
 
             logger.info(
-                f"Drift monitor {monitor_id} run complete: drift={comparison.has_drift}"
+                f"Drift monitor {monitor_id} run complete: "
+                f"run_id={run.id}, drift={comparison.has_drift}, duration={duration_ms}ms"
             )
             return comparison
 
         except Exception as e:
-            logger.error(f"Drift monitor {monitor_id} run failed: {e}")
+            # Update run record with error
+            end_time = datetime.utcnow()
+            run.status = "failed"
+            run.error_message = str(e)
+            run.duration_ms = int((end_time - start_time).total_seconds() * 1000)
+            run.completed_at = end_time
+
             monitor.status = "error"
             await self.session.commit()
+
+            logger.error(f"Drift monitor {monitor_id} run failed: {e}")
             return None
 
     async def _create_drift_alert(
         self,
         monitor: "DriftMonitor",
         comparison: "DriftComparison",
+        run_id: str | None = None,
     ) -> "DriftAlert":
         """Create a drift alert.
 
         Args:
             monitor: Drift monitor.
             comparison: Drift comparison result.
+            run_id: Optional DriftMonitorRun ID to link to this alert.
 
         Returns:
             Created alert.
@@ -426,7 +479,7 @@ class DriftMonitorService:
         alert = DriftAlert(
             id=str(uuid.uuid4()),
             monitor_id=monitor.id,
-            run_id=None,  # No DriftMonitorRun is created in current implementation
+            run_id=run_id,  # Link to DriftMonitorRun for execution history tracking
             severity=severity,
             drift_score=drift_pct,
             affected_columns=drifted_columns,
@@ -435,11 +488,154 @@ class DriftMonitorService:
         )
 
         self.session.add(alert)
-        await self.session.commit()
-        await self.session.refresh(alert)
+        # Don't commit here - let the caller manage the transaction
+        await self.session.flush()
 
-        logger.info(f"Created drift alert: {alert.id} (severity={severity})")
+        logger.info(f"Created drift alert: {alert.id} (severity={severity}, run_id={run_id})")
         return alert
+
+    # Run History Management
+
+    async def list_runs(
+        self,
+        monitor_id: str,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list["DriftMonitorRun"], int]:
+        """List drift monitor runs.
+
+        Args:
+            monitor_id: Monitor ID to list runs for.
+            status: Filter by status (running, completed, failed).
+            limit: Maximum number of runs.
+            offset: Number to skip.
+
+        Returns:
+            Tuple of (runs, total_count).
+        """
+        from truthound_dashboard.db.models import DriftMonitorRun
+
+        query = select(DriftMonitorRun).where(DriftMonitorRun.monitor_id == monitor_id)
+        count_query = select(func.count(DriftMonitorRun.id)).where(
+            DriftMonitorRun.monitor_id == monitor_id
+        )
+
+        if status:
+            query = query.where(DriftMonitorRun.status == status)
+            count_query = count_query.where(DriftMonitorRun.status == status)
+
+        # Order by created_at descending (newest first)
+        query = query.order_by(desc(DriftMonitorRun.created_at))
+        query = query.offset(offset).limit(limit)
+
+        result = await self.session.execute(query)
+        runs = list(result.scalars().all())
+
+        count_result = await self.session.execute(count_query)
+        total = count_result.scalar() or 0
+
+        return runs, total
+
+    async def get_run(self, run_id: str) -> "DriftMonitorRun | None":
+        """Get a specific run by ID.
+
+        Args:
+            run_id: Run ID.
+
+        Returns:
+            Run or None if not found.
+        """
+        from truthound_dashboard.db.models import DriftMonitorRun
+
+        result = await self.session.execute(
+            select(DriftMonitorRun).where(DriftMonitorRun.id == run_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_latest_run(self, monitor_id: str) -> "DriftMonitorRun | None":
+        """Get the latest run for a monitor.
+
+        Args:
+            monitor_id: Monitor ID.
+
+        Returns:
+            Latest run or None if no runs exist.
+        """
+        from truthound_dashboard.db.models import DriftMonitorRun
+
+        result = await self.session.execute(
+            select(DriftMonitorRun)
+            .where(DriftMonitorRun.monitor_id == monitor_id)
+            .order_by(desc(DriftMonitorRun.created_at))
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_run_statistics(self, monitor_id: str) -> dict:
+        """Get run statistics for a monitor.
+
+        Args:
+            monitor_id: Monitor ID.
+
+        Returns:
+            Dictionary with run statistics.
+        """
+        from truthound_dashboard.db.models import DriftMonitorRun
+
+        # Total runs
+        total_result = await self.session.execute(
+            select(func.count(DriftMonitorRun.id)).where(
+                DriftMonitorRun.monitor_id == monitor_id
+            )
+        )
+        total_runs = total_result.scalar() or 0
+
+        # Completed runs
+        completed_result = await self.session.execute(
+            select(func.count(DriftMonitorRun.id)).where(
+                DriftMonitorRun.monitor_id == monitor_id,
+                DriftMonitorRun.status == "completed",
+            )
+        )
+        completed_runs = completed_result.scalar() or 0
+
+        # Failed runs
+        failed_result = await self.session.execute(
+            select(func.count(DriftMonitorRun.id)).where(
+                DriftMonitorRun.monitor_id == monitor_id,
+                DriftMonitorRun.status == "failed",
+            )
+        )
+        failed_runs = failed_result.scalar() or 0
+
+        # Runs with drift
+        drift_result = await self.session.execute(
+            select(func.count(DriftMonitorRun.id)).where(
+                DriftMonitorRun.monitor_id == monitor_id,
+                DriftMonitorRun.has_drift == True,  # noqa: E712
+            )
+        )
+        runs_with_drift = drift_result.scalar() or 0
+
+        # Average duration
+        avg_duration_result = await self.session.execute(
+            select(func.avg(DriftMonitorRun.duration_ms)).where(
+                DriftMonitorRun.monitor_id == monitor_id,
+                DriftMonitorRun.status == "completed",
+            )
+        )
+        avg_duration_ms = avg_duration_result.scalar() or 0
+
+        return {
+            "total_runs": total_runs,
+            "completed_runs": completed_runs,
+            "failed_runs": failed_runs,
+            "runs_with_drift": runs_with_drift,
+            "success_rate": (completed_runs / total_runs * 100) if total_runs > 0 else 0,
+            "drift_rate": (runs_with_drift / completed_runs * 100) if completed_runs > 0 else 0,
+            "avg_duration_ms": int(avg_duration_ms),
+        }
 
     # Alert Management
 

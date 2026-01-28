@@ -20,7 +20,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import type { ColumnPreviewResult } from './DriftPreview'
+import type { ColumnPreviewResult } from './types'
 
 interface ColumnDistributionChartProps {
   column: ColumnPreviewResult

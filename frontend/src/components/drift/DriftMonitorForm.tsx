@@ -4,7 +4,7 @@
  * Form for creating and editing drift monitors.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useIntlayer } from 'react-intlayer'
 import {
   Dialog,
@@ -26,12 +26,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Eye, ArrowLeft, CheckCircle2, AlertTriangle, Zap } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Loader2, Eye, ArrowLeft, CheckCircle2, AlertTriangle, Zap, Info } from 'lucide-react'
+import { getSourceSchema, learnSchema, type Schema } from '@/api/modules/schemas'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DriftPreviewResults } from './DriftPreviewResults'
 import { SamplingConfig, type SamplingConfigData } from './SamplingConfig'
 import { InlineLargeDatasetWarning } from './LargeDatasetWarning'
-import type { DriftPreviewData } from './DriftPreview'
+import type { DriftPreviewData } from './types'
 import type { Source } from '@/api/modules/sources'
 
 const API_BASE = '/api/v1'
@@ -145,11 +147,94 @@ export function DriftMonitorForm({
   const [previewResult, setPreviewResult] = useState<DriftPreviewData | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
 
+  // Schema compatibility check state
+  const [baselineSchema, setBaselineSchema] = useState<Schema | null>(null)
+  const [currentSchema, setCurrentSchema] = useState<Schema | null>(null)
+  const [isLoadingSchema, setIsLoadingSchema] = useState(false)
+
   useEffect(() => {
     if (initialData) {
       setFormData((prev) => ({ ...prev, ...initialData }))
     }
   }, [initialData])
+
+  // Fetch schema when baseline source changes
+  useEffect(() => {
+    if (!formData.baseline_source_id) {
+      setBaselineSchema(null)
+      return
+    }
+
+    const fetchSchema = async () => {
+      setIsLoadingSchema(true)
+      try {
+        let schema = await getSourceSchema(formData.baseline_source_id)
+        if (!schema) {
+          // Learn schema if not exists
+          schema = await learnSchema(formData.baseline_source_id)
+        }
+        setBaselineSchema(schema)
+      } catch {
+        setBaselineSchema(null)
+      } finally {
+        setIsLoadingSchema(false)
+      }
+    }
+    fetchSchema()
+  }, [formData.baseline_source_id])
+
+  // Fetch schema when current source changes
+  useEffect(() => {
+    if (!formData.current_source_id) {
+      setCurrentSchema(null)
+      return
+    }
+
+    const fetchSchema = async () => {
+      setIsLoadingSchema(true)
+      try {
+        let schema = await getSourceSchema(formData.current_source_id)
+        if (!schema) {
+          // Learn schema if not exists
+          schema = await learnSchema(formData.current_source_id)
+        }
+        setCurrentSchema(schema)
+      } catch {
+        setCurrentSchema(null)
+      } finally {
+        setIsLoadingSchema(false)
+      }
+    }
+    fetchSchema()
+  }, [formData.current_source_id])
+
+  // Schema compatibility check
+  const schemaCompatibility = useMemo(() => {
+    if (!baselineSchema || !currentSchema) {
+      return null
+    }
+
+    const baselineColumns = new Set(baselineSchema.columns || [])
+    const currentColumns = new Set(currentSchema.columns || [])
+
+    const matchingColumns = [...baselineColumns].filter(col => currentColumns.has(col))
+    const onlyInBaseline = [...baselineColumns].filter(col => !currentColumns.has(col))
+    const onlyInCurrent = [...currentColumns].filter(col => !baselineColumns.has(col))
+
+    const totalUniqueColumns = new Set([...baselineColumns, ...currentColumns]).size
+    const matchPercentage = totalUniqueColumns > 0
+      ? Math.round((matchingColumns.length / totalUniqueColumns) * 100)
+      : 0
+
+    return {
+      matchingColumns,
+      onlyInBaseline,
+      onlyInCurrent,
+      matchPercentage,
+      isCompatible: matchingColumns.length > 0,
+      isFullMatch: onlyInBaseline.length === 0 && onlyInCurrent.length === 0,
+    }
+  }, [baselineSchema, currentSchema])
 
   // Reset step when dialog closes
   useEffect(() => {
@@ -310,6 +395,63 @@ export function DriftMonitorForm({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Schema Compatibility Warning */}
+            {isLoadingSchema && formData.baseline_source_id && formData.current_source_id && (
+              <Alert>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <AlertDescription>Checking schema compatibility...</AlertDescription>
+              </Alert>
+            )}
+
+            {!isLoadingSchema && schemaCompatibility && !schemaCompatibility.isCompatible && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Schema mismatch:</strong> No matching columns between sources.
+                  <br />
+                  <span className="text-xs">
+                    Baseline: {baselineSchema?.columns?.join(', ') || 'N/A'}
+                    <br />
+                    Current: {currentSchema?.columns?.join(', ') || 'N/A'}
+                  </span>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {!isLoadingSchema && schemaCompatibility && schemaCompatibility.isCompatible && !schemaCompatibility.isFullMatch && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Partial schema match ({schemaCompatibility.matchPercentage}%)</strong>
+                  <br />
+                  <span className="text-xs text-muted-foreground">
+                    {schemaCompatibility.matchingColumns.length} matching columns: {schemaCompatibility.matchingColumns.join(', ')}
+                    {schemaCompatibility.onlyInBaseline.length > 0 && (
+                      <>
+                        <br />
+                        Only in baseline: {schemaCompatibility.onlyInBaseline.join(', ')}
+                      </>
+                    )}
+                    {schemaCompatibility.onlyInCurrent.length > 0 && (
+                      <>
+                        <br />
+                        Only in current: {schemaCompatibility.onlyInCurrent.join(', ')}
+                      </>
+                    )}
+                  </span>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {!isLoadingSchema && schemaCompatibility?.isFullMatch && (
+              <Alert className="border-green-500/50 bg-green-500/10">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <AlertDescription className="text-green-600 dark:text-green-400">
+                  Schemas fully match ({schemaCompatibility.matchingColumns.length} columns)
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Large Dataset Warning */}
             {isLargeDataset && (
