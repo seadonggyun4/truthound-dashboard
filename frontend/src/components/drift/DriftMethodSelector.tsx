@@ -4,8 +4,10 @@
  * A reusable component for selecting drift detection methods with descriptions,
  * recommended badges, and default threshold information.
  *
- * Supports all 9 truthound drift detection methods:
- * - auto, ks, psi, chi2, js, kl, wasserstein, cvm, anderson
+ * Supports all 14 truthound drift detection methods (v1.2.9+):
+ * - General purpose: auto, js, hellinger, bhattacharyya, tv
+ * - Numeric only: ks, psi, kl, wasserstein, cvm, anderson, energy, mmd
+ * - Categorical: chi2
  */
 
 import { useCallback, useMemo } from 'react'
@@ -33,33 +35,51 @@ import {
   DRIFT_METHODS,
   DEFAULT_THRESHOLDS,
 } from '@/api/modules/drift'
-import { Info, Sparkles, BarChart3, Target, Hash, Divide, Truck, TrendingUp, Scale } from 'lucide-react'
+import { Info, Sparkles, BarChart3, Target, Hash, Divide, Truck, TrendingUp, Scale, Circle, Layers, Activity, Zap, Brain } from 'lucide-react'
 
 /**
  * Method metadata including icons and categories.
+ * All 14 methods supported by truthound v1.2.9+.
  */
 const METHOD_ICONS: Record<DriftMethod, React.ElementType> = {
+  // General purpose
   auto: Sparkles,
+  js: Divide,
+  hellinger: Circle,
+  bhattacharyya: Layers,
+  tv: Activity,
+  // Numeric columns
   ks: TrendingUp,
   psi: BarChart3,
-  chi2: Hash,
-  js: Divide,
   kl: Divide,
   wasserstein: Truck,
   cvm: Scale,
   anderson: Target,
+  energy: Zap,
+  mmd: Brain,
+  // Categorical
+  chi2: Hash,
 }
 
 const METHOD_CATEGORIES: Record<DriftMethod, 'recommended' | 'statistical' | 'divergence' | 'distribution'> = {
+  // Recommended
   auto: 'recommended',
+  // Statistical tests
   ks: 'statistical',
   psi: 'statistical',
   chi2: 'statistical',
+  cvm: 'statistical',
+  anderson: 'statistical',
+  // Divergence measures
   js: 'divergence',
   kl: 'divergence',
+  hellinger: 'divergence',
+  bhattacharyya: 'divergence',
+  tv: 'divergence',
+  // Distribution analysis
   wasserstein: 'distribution',
-  cvm: 'distribution',
-  anderson: 'distribution',
+  energy: 'distribution',
+  mmd: 'distribution',
 }
 
 export type DriftMethodSelectorVariant = 'compact' | 'detailed' | 'cards'

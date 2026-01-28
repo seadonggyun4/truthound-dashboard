@@ -2,7 +2,7 @@
  * Drift Configuration Panel component.
  *
  * A comprehensive panel for configuring drift detection parameters:
- * - Detection method selection (9 methods)
+ * - Detection method selection (14 methods in truthound v1.2.9+)
  * - Threshold configuration with method-specific defaults
  * - Column selection for targeted comparison
  */

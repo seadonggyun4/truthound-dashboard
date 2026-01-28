@@ -33,11 +33,9 @@ export { DriftPreviewResults } from './DriftPreviewResults'
 export { ColumnDistributionChart } from './ColumnDistributionChart'
 
 // Large-scale dataset optimization components
-export { SamplingConfig } from './SamplingConfig'
 export { LargeDatasetWarning, InlineLargeDatasetWarning } from './LargeDatasetWarning'
 export { ChunkedProgress, InlineProgress } from './ChunkedProgress'
 
 // Re-export types
 export type { RootCauseAnalysisData, ColumnRootCause, DataVolumeChange, RemediationSuggestion } from './RootCauseAnalysis'
-export type { SamplingConfigData } from './SamplingConfig'
 export type { DriftPreviewData, ColumnPreviewResult, DistributionData } from './types'

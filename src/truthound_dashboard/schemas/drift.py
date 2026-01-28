@@ -2,7 +2,7 @@
 
 Schemas for drift comparison request/response.
 
-Drift Methods (all 14 supported by th.compare() in truthound v1.2.9+):
+Drift Methods (14 supported by th.compare() in truthound v1.2.9+):
 
 General purpose (any column type):
 - auto: Smart selection (numeric → PSI, categorical → chi2) [RECOMMENDED]

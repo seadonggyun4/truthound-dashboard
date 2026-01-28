@@ -380,65 +380,28 @@ const driftMonitorContent = {
       },
     },
 
-    // Sampling Configuration (Large-Scale Optimization)
-    sampling: {
-      title: t({ en: 'Sampling Configuration', ko: '샘플링 설정' }),
-      description: t({
-        en: 'Enable sampling for faster processing of large datasets',
-        ko: '대용량 데이터셋의 빠른 처리를 위해 샘플링을 활성화하세요',
-      }),
-      method: t({ en: 'Sampling Method', ko: '샘플링 방법' }),
-      sampleSize: t({ en: 'Sample Size', ko: '샘플 크기' }),
-      confidenceLevel: t({ en: 'Confidence Level', ko: '신뢰 수준' }),
-      marginOfError: t({ en: 'Margin of Error', ko: '오차 범위' }),
-      strataColumn: t({ en: 'Stratification Column', ko: '계층화 컬럼' }),
-      estimatedTime: t({ en: 'Est. Time', ko: '예상 시간' }),
-      speedup: t({ en: 'Speedup', ko: '속도 향상' }),
-      autoEstimate: t({ en: 'Auto-estimated', ko: '자동 추정' }),
-      advancedSettings: t({ en: 'Advanced Settings', ko: '고급 설정' }),
-      earlyStopThreshold: t({ en: 'Early Stop Threshold', ko: '조기 중단 임계값' }),
-      earlyStopDescription: t({
-        en: 'Stop processing when this percentage of columns show drift',
-        ko: '이 비율의 컬럼에서 드리프트가 감지되면 처리를 중단합니다',
-      }),
-      maxWorkers: t({ en: 'Max Parallel Workers', ko: '최대 병렬 워커' }),
-      largeDatasetNotice: t({ en: 'Large Dataset Detected', ko: '대용량 데이터셋 감지됨' }),
-      largeDatasetDescription: t({
-        en: 'This dataset has {rows} rows. Sampling is recommended for optimal performance.',
-        ko: '이 데이터셋은 {rows} 행을 포함합니다. 최적의 성능을 위해 샘플링을 권장합니다.',
-      }),
-    },
-
     // Large Dataset Warning
     largeDataset: {
       title: t({ en: 'Large Dataset Warning', ko: '대용량 데이터셋 경고' }),
       rows: t({ en: 'rows', ko: '행' }),
       description: t({
-        en: 'Processing this dataset without sampling may take a long time. We recommend enabling sampling for better performance.',
-        ko: '샘플링 없이 이 데이터셋을 처리하면 오랜 시간이 걸릴 수 있습니다. 더 나은 성능을 위해 샘플링을 활성화하는 것을 권장합니다.',
+        en: 'Processing this large dataset may take a long time. Consider using the sample_size parameter for faster analysis.',
+        ko: '이 대용량 데이터셋을 처리하는 데 시간이 오래 걸릴 수 있습니다. 빠른 분석을 위해 sample_size 파라미터 사용을 고려하세요.',
       }),
       fullScan: t({ en: 'Full Scan', ko: '전체 스캔' }),
-      withSampling: t({ en: 'With Sampling', ko: '샘플링 사용' }),
       estimatedTime: t({ en: 'Estimated Time', ko: '예상 시간' }),
-      faster: t({ en: 'faster', ko: '더 빠름' }),
       recommendations: t({ en: 'Recommendations', ko: '권장 사항' }),
       recommendation1: t({
-        en: 'Enable sampling to process only a statistically significant subset',
-        ko: '통계적으로 유의미한 부분집합만 처리하도록 샘플링을 활성화하세요',
-      }),
-      recommendation2: t({
-        en: 'Use stratified sampling if you need to ensure category coverage',
-        ko: '카테고리 커버리지를 보장해야 한다면 계층화 샘플링을 사용하세요',
+        en: 'Use the sample_size parameter to process a representative subset',
+        ko: '대표적인 부분집합을 처리하기 위해 sample_size 파라미터를 사용하세요',
       }),
       recommendation3: t({
         en: 'Consider increasing the threshold for faster processing',
         ko: '더 빠른 처리를 위해 임계값을 높이는 것을 고려하세요',
       }),
-      enableSampling: t({ en: 'Enable Sampling', ko: '샘플링 활성화' }),
-      enableSamplingShort: t({ en: 'Enable', ko: '활성화' }),
       inlineWarning: t({
-        en: 'Dataset has {rows} rows. Sampling recommended.',
-        ko: '데이터셋에 {rows} 행이 있습니다. 샘플링을 권장합니다.',
+        en: 'Dataset has {rows} rows. Consider using sample_size.',
+        ko: '데이터셋에 {rows} 행이 있습니다. sample_size 사용을 고려하세요.',
       }),
     },
 

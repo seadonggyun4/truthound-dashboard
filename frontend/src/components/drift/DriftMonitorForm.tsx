@@ -27,19 +27,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, Eye, ArrowLeft, CheckCircle2, AlertTriangle, Zap, Info } from 'lucide-react'
+import { Loader2, Eye, ArrowLeft, CheckCircle2, AlertTriangle, Info } from 'lucide-react'
 import { getSourceSchema, learnSchema, type Schema } from '@/api/modules/schemas'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DriftPreviewResults } from './DriftPreviewResults'
-import { SamplingConfig, type SamplingConfigData } from './SamplingConfig'
-import { InlineLargeDatasetWarning } from './LargeDatasetWarning'
 import type { DriftPreviewData } from './types'
 import type { Source } from '@/api/modules/sources'
 
 const API_BASE = '/api/v1'
-
-// Threshold for large dataset warning (10 million rows)
-const LARGE_DATASET_THRESHOLD = 10_000_000
 
 async function previewDrift(data: {
   baseline_source_id: string
@@ -89,8 +84,6 @@ export interface DriftMonitorFormData {
   alert_on_drift: boolean
   alert_threshold_critical: number
   alert_threshold_high: number
-  sampling_enabled?: boolean
-  sampling_config?: SamplingConfigData
 }
 
 type FormStep = 'configure' | 'preview'
@@ -118,28 +111,7 @@ export function DriftMonitorForm({
     alert_on_drift: true,
     alert_threshold_critical: 0.3,
     alert_threshold_high: 0.2,
-    sampling_enabled: false,
-    sampling_config: {
-      enabled: false,
-      method: 'random',
-      sampleSize: null,
-      confidenceLevel: 0.95,
-      marginOfError: 0.03,
-      earlyStopThreshold: 0.5,
-      maxWorkers: 4,
-    },
   })
-
-  // Estimate dataset size (from source metadata)
-  const getEstimatedRows = (_sourceId: string) => {
-    // Placeholder - metadata not available in Source type
-    return 0
-  }
-
-  const baselineRows = getEstimatedRows(formData.baseline_source_id)
-  const currentRows = getEstimatedRows(formData.current_source_id)
-  const populationSize = Math.max(baselineRows, currentRows)
-  const isLargeDataset = populationSize >= LARGE_DATASET_THRESHOLD
 
   // Preview step state
   const [step, setStep] = useState<FormStep>('configure')
@@ -330,13 +302,9 @@ export function DriftMonitorForm({
         {step === 'configure' && (
           <>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="py-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="basic">{t.tabs?.basic ?? 'Basic'}</TabsTrigger>
             <TabsTrigger value="alerts">{t.tabs?.alerts ?? 'Alerts'}</TabsTrigger>
-            <TabsTrigger value="performance" className="flex items-center gap-1">
-              <Zap className="h-3 w-3" />
-              {t.tabs?.performance ?? 'Performance'}
-            </TabsTrigger>
           </TabsList>
 
           {/* Basic Configuration Tab */}
@@ -453,22 +421,6 @@ export function DriftMonitorForm({
               </Alert>
             )}
 
-            {/* Large Dataset Warning */}
-            {isLargeDataset && (
-              <InlineLargeDatasetWarning
-                rowCount={populationSize}
-                threshold={LARGE_DATASET_THRESHOLD}
-                onEnableSampling={() => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    sampling_enabled: true,
-                    sampling_config: { ...prev.sampling_config!, enabled: true },
-                  }))
-                  setActiveTab('performance')
-                }}
-              />
-            )}
-
             {/* Schedule */}
             <div className="space-y-2">
               <Label>{t.monitor.schedule}</Label>
@@ -574,34 +526,6 @@ export function DriftMonitorForm({
                 </div>
               </div>
             )}
-          </TabsContent>
-
-          {/* Performance / Sampling Tab */}
-          <TabsContent value="performance" className="space-y-4 mt-4">
-            <SamplingConfig
-              config={formData.sampling_config!}
-              onChange={(samplingConfig) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  sampling_enabled: samplingConfig.enabled,
-                  sampling_config: samplingConfig,
-                }))
-              }
-              populationSize={populationSize > 0 ? populationSize : undefined}
-              isLargeDataset={isLargeDataset}
-              estimate={
-                populationSize > 0
-                  ? {
-                      recommendedSize: Math.min(100000, Math.ceil(populationSize * 0.01)),
-                      minSize: 1000,
-                      maxSize: Math.min(1000000, populationSize),
-                      estimatedTimeSeconds: 30,
-                      memoryMb: 256,
-                      speedupFactor: Math.max(1, populationSize / 100000),
-                    }
-                  : undefined
-              }
-            />
           </TabsContent>
         </Tabs>
 

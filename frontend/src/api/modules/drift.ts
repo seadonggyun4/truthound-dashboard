@@ -9,7 +9,7 @@ import type { PaginatedResponse } from '../core'
 // ============================================================================
 
 /**
- * Drift detection methods.
+ * Drift detection methods (14 methods supported by truthound v1.2.9+).
  */
 export type DriftMethod =
   | 'auto'
@@ -21,20 +21,39 @@ export type DriftMethod =
   | 'wasserstein'
   | 'cvm'
   | 'anderson'
+  // New in v1.2.9
+  | 'hellinger'
+  | 'bhattacharyya'
+  | 'tv'
+  | 'energy'
+  | 'mmd'
 
 /**
- * All drift methods for UI selection.
+ * All drift methods for UI selection (14 methods).
+ *
+ * Categories:
+ * - General purpose (any column type): auto, js, hellinger, bhattacharyya, tv
+ * - Numeric columns only: ks, psi, kl, wasserstein, cvm, anderson, energy, mmd
+ * - Categorical columns: chi2
  */
 export const DRIFT_METHODS: { value: DriftMethod; label: string; description: string }[] = [
+  // General purpose
   { value: 'auto', label: 'Auto', description: 'Smart selection based on data type' },
+  { value: 'js', label: 'Jensen-Shannon', description: 'Symmetric divergence, bounded 0-1' },
+  { value: 'hellinger', label: 'Hellinger', description: 'Bounded metric (0-1), satisfies triangle inequality' },
+  { value: 'bhattacharyya', label: 'Bhattacharyya', description: 'Classification error bounds estimation' },
+  { value: 'tv', label: 'Total Variation', description: 'Maximum probability difference' },
+  // Numeric columns
   { value: 'ks', label: 'Kolmogorov-Smirnov', description: 'Best for continuous distributions' },
   { value: 'psi', label: 'PSI', description: 'Population Stability Index - industry standard' },
-  { value: 'chi2', label: 'Chi-Square', description: 'Best for categorical data' },
-  { value: 'js', label: 'Jensen-Shannon', description: 'Symmetric divergence, bounded 0-1' },
-  { value: 'kl', label: 'Kullback-Leibler', description: 'Information loss measure' },
+  { value: 'kl', label: 'Kullback-Leibler', description: 'Information loss measure (asymmetric)' },
   { value: 'wasserstein', label: 'Wasserstein', description: "Earth Mover's Distance" },
   { value: 'cvm', label: 'Cramér-von Mises', description: 'More sensitive to tails than KS' },
-  { value: 'anderson', label: 'Anderson-Darling', description: 'Tail-weighted sensitivity' },
+  { value: 'anderson', label: 'Anderson-Darling', description: 'Most sensitive to tail differences' },
+  { value: 'energy', label: 'Energy', description: 'Location and scale sensitive' },
+  { value: 'mmd', label: 'MMD', description: 'Maximum Mean Discrepancy - kernel-based, high-dimensional' },
+  // Categorical columns
+  { value: 'chi2', label: 'Chi-Square', description: 'Best for categorical data' },
 ]
 
 /**
@@ -50,6 +69,12 @@ export const DEFAULT_THRESHOLDS: Record<DriftMethod, number> = {
   wasserstein: 0.1,
   cvm: 0.05,
   anderson: 0.05,
+  // New in v1.2.9
+  hellinger: 0.1,
+  bhattacharyya: 0.1,
+  tv: 0.1,
+  energy: 0.1,
+  mmd: 0.1,
 }
 
 export interface DriftCompareRequest {

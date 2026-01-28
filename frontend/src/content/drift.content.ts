@@ -93,25 +93,51 @@ const driftContent = {
     columnDetails: t({ en: 'Column Details', ko: '컬럼 상세',
   }),
 
-    // Detection methods - full list
+    // Detection methods - full list (14 methods in truthound v1.2.9+)
     methods: {
+      // General purpose (any column type)
       auto: t({ en: 'Auto (recommended)', ko: '자동 (권장)' }),
+      js: t({ en: 'Jensen-Shannon', ko: '젠슨-샤논' }),
+      hellinger: t({ en: 'Hellinger', ko: '헬링거' }),
+      bhattacharyya: t({ en: 'Bhattacharyya', ko: '바타차리야' }),
+      tv: t({ en: 'Total Variation', ko: '총 변동' }),
+      // Numeric columns only
       ks: t({ en: 'Kolmogorov-Smirnov', ko: '콜모고로프-스미르노프' }),
       psi: t({ en: 'Population Stability Index', ko: '모집단 안정성 지수' }),
-      chi2: t({ en: 'Chi-Square', ko: '카이제곱' }),
-      js: t({ en: 'Jensen-Shannon', ko: '젠슨-샤논' }),
       kl: t({ en: 'Kullback-Leibler', ko: '쿨백-라이블러' }),
       wasserstein: t({ en: 'Wasserstein (EMD)', ko: '바서슈타인 (EMD)' }),
       cvm: t({ en: 'Cramér-von Mises', ko: '크라메르-폰 미제스' }),
       anderson: t({ en: 'Anderson-Darling', ko: '앤더슨-달링' }),
+      energy: t({ en: 'Energy Distance', ko: '에너지 거리' }),
+      mmd: t({ en: 'Maximum Mean Discrepancy', ko: '최대 평균 불일치' }),
+      // Categorical columns
+      chi2: t({ en: 'Chi-Square', ko: '카이제곱' }),
     },
 
-    // Method descriptions
+    // Method descriptions (14 methods in truthound v1.2.9+)
     methodDescriptions: {
+      // General purpose
       auto: t({
         en: 'Automatically selects the best method based on data type',
         ko: '데이터 타입에 따라 최적의 방법을 자동 선택',
       }),
+      js: t({
+        en: 'Symmetric divergence measure, bounded between 0-1',
+        ko: '대칭 발산 측정, 0-1 사이 값',
+      }),
+      hellinger: t({
+        en: 'Bounded metric (0-1) satisfying triangle inequality',
+        ko: '삼각 부등식을 만족하는 경계 메트릭 (0-1)',
+      }),
+      bhattacharyya: t({
+        en: 'Measures distribution overlap, related to classification error',
+        ko: '분포 중첩 측정, 분류 오류와 관련',
+      }),
+      tv: t({
+        en: 'Maximum probability difference between distributions',
+        ko: '분포 간 최대 확률 차이',
+      }),
+      // Numeric columns
       ks: t({
         en: 'Best for continuous distributions, compares cumulative distributions',
         ko: '연속 분포에 최적, 누적 분포 비교',
@@ -119,14 +145,6 @@ const driftContent = {
       psi: t({
         en: 'Industry standard for model monitoring, works with any distribution',
         ko: '모델 모니터링의 업계 표준, 모든 분포에 적용 가능',
-      }),
-      chi2: t({
-        en: 'Statistical test for categorical data independence',
-        ko: '범주형 데이터의 독립성 통계 검정',
-      }),
-      js: t({
-        en: 'Symmetric divergence measure, bounded between 0-1',
-        ko: '대칭 발산 측정, 0-1 사이 값',
       }),
       kl: t({
         en: 'Measures information loss between distributions',
@@ -144,19 +162,40 @@ const driftContent = {
         en: 'Weighted test emphasizing tail sensitivity',
         ko: '꼬리 민감성을 강조하는 가중 검정',
       }),
+      energy: t({
+        en: 'Detects differences in location and scale of distributions',
+        ko: '분포의 위치와 척도 차이 감지',
+      }),
+      mmd: t({
+        en: 'Kernel-based method for high-dimensional data comparison',
+        ko: '고차원 데이터 비교를 위한 커널 기반 방법',
+      }),
+      // Categorical
+      chi2: t({
+        en: 'Statistical test for categorical data independence',
+        ko: '범주형 데이터의 독립성 통계 검정',
+      }),
     },
 
-    // Method best-for hints
+    // Method best-for hints (14 methods in truthound v1.2.9+)
     methodBestFor: {
+      // General purpose
       auto: t({ en: 'General use', ko: '일반 용도' }),
+      js: t({ en: 'Bounded comparison', ko: '범위 제한 비교' }),
+      hellinger: t({ en: 'Bounded metric', ko: '경계 메트릭' }),
+      bhattacharyya: t({ en: 'Classification bounds', ko: '분류 경계' }),
+      tv: t({ en: 'Max probability diff', ko: '최대 확률 차이' }),
+      // Numeric columns
       ks: t({ en: 'Continuous data', ko: '연속형 데이터' }),
       psi: t({ en: 'Model monitoring', ko: '모델 모니터링' }),
-      chi2: t({ en: 'Categorical data', ko: '범주형 데이터' }),
-      js: t({ en: 'Bounded comparison', ko: '범위 제한 비교' }),
       kl: t({ en: 'Information theory', ko: '정보 이론' }),
       wasserstein: t({ en: 'Shape comparison', ko: '형태 비교' }),
       cvm: t({ en: 'Tail analysis', ko: '꼬리 분석' }),
       anderson: t({ en: 'Tail sensitivity', ko: '꼬리 민감도' }),
+      energy: t({ en: 'Location/scale', ko: '위치/척도' }),
+      mmd: t({ en: 'High-dimensional', ko: '고차원' }),
+      // Categorical
+      chi2: t({ en: 'Categorical data', ko: '범주형 데이터' }),
     },
 
     // Configuration labels
