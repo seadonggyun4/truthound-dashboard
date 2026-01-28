@@ -47,7 +47,9 @@ class MaskRequest(BaseSchema):
     Attributes:
         columns: Optional list of columns to mask. If None, auto-detects PII.
         strategy: Masking strategy to use. Defaults to "redact".
-        output_format: Output file format. Defaults to "csv".
+
+    Note: output_format parameter was removed as truthound's th.mask()
+    does not support this parameter. Output format is handled by the dashboard.
     """
 
     columns: list[str] | None = Field(
@@ -57,10 +59,6 @@ class MaskRequest(BaseSchema):
     strategy: MaskingStrategyLiteral = Field(
         default="redact",
         description="Masking strategy: 'redact' (asterisks), 'hash' (SHA256), 'fake' (realistic data)",
-    )
-    output_format: Literal["csv", "parquet", "json"] = Field(
-        default="csv",
-        description="Output file format",
     )
 
 

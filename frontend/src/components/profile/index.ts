@@ -17,3 +17,9 @@ export {
   PatternsSummary,
   type DetectedPattern,
 } from './PatternResultsDisplay'
+export {
+  ProfileAdvancedConfig,
+  DEFAULT_PROFILE_CONFIG,
+  type ProfileAdvancedConfigData,
+  type ProfilePresetKey,
+} from './ProfileAdvancedConfig'

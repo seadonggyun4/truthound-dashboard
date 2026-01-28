@@ -99,16 +99,10 @@ const privacyContent = {
     },
 
     // Configuration
+    // Note: min_confidence, selectColumns, selectRegulations removed as truthound's
+    // th.scan() does not support these parameters.
     config: {
       selectSource: t({ en: 'Select Data Source', ko: '데이터 소스 선택' }),
-      selectColumns: t({ en: 'Select Columns', ko: '컬럼 선택' }),
-      allColumns: t({ en: 'All Columns', ko: '모든 컬럼' }),
-      minConfidence: t({ en: 'Minimum Confidence', ko: '최소 신뢰도' }),
-      minConfidenceDesc: t({
-        en: 'Minimum confidence threshold for PII detection',
-        ko: 'PII 탐지를 위한 최소 신뢰도 임계값',
-      }),
-      selectRegulations: t({ en: 'Select Regulations', ko: '규정 선택' }),
     },
 
     // Results Table

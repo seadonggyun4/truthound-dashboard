@@ -61,7 +61,6 @@ async def run_mask(
             source_id,
             columns=request.columns,
             strategy=request.strategy,
-            output_format=request.output_format,
         )
         return MaskResponse.from_db(mask)
     except ValueError as e:

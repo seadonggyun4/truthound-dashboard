@@ -27,24 +27,27 @@ router = APIRouter()
     "/sources/{source_id}/scan",
     response_model=PIIScanResponse,
     summary="Run PII scan",
-    description="Scan data source for personally identifiable information (PII)",
+    description="""
+Scan data source for personally identifiable information (PII).
+
+Note: truthound's th.scan() does not support configuration parameters.
+The scan runs on all columns with default settings.
+""",
 )
 async def run_pii_scan(
     service: PIIScanServiceDep,
     source_id: Annotated[str, Path(description="Source ID to scan")],
-    request: PIIScanRequest,
+    request: PIIScanRequest | None = None,
 ) -> PIIScanResponse:
     """Run PII scan on a data source.
 
-    Supports all th.scan() parameters for maximum flexibility:
-    - columns: Specific columns to scan
-    - regulations: Privacy regulations to check (gdpr, ccpa, lgpd)
-    - min_confidence: Confidence threshold for PII detection
+    Note: truthound's th.scan() does not support configuration parameters.
+    The scan runs on all columns with default settings.
 
     Args:
         service: Injected PII scan service.
         source_id: Source to scan.
-        request: Scan options.
+        request: Optional request body (not used, kept for API compatibility).
 
     Returns:
         PII scan result with findings and violations.
@@ -53,12 +56,7 @@ async def run_pii_scan(
         HTTPException: 404 if source not found.
     """
     try:
-        scan = await service.run_scan(
-            source_id,
-            columns=request.columns,
-            regulations=request.regulations,
-            min_confidence=request.min_confidence,
-        )
+        scan = await service.run_scan(source_id)
         return PIIScanResponse.from_model(scan)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

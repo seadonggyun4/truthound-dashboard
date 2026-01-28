@@ -1,7 +1,10 @@
 /**
  * PII Scan panel component.
  *
- * Provides interface for configuring and running PII scans.
+ * Provides interface for running PII scans.
+ *
+ * Note: truthound's th.scan() does not support min_confidence, columns,
+ * or regulations parameters. These options have been removed from the UI.
  */
 
 import { useCallback, useState } from 'react'
@@ -9,24 +12,18 @@ import { useIntlayer } from 'react-intlayer'
 import { str } from '@/lib/intlayer-utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Slider } from '@/components/ui/slider'
-import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2, Play, Eye, AlertTriangle, Shield } from 'lucide-react'
 import { PIIFindingsTable } from './PIIFindingsTable'
-import type { PIIScan, PIIScanOptions, Regulation } from '@/api/modules/privacy'
+import type { PIIScan } from '@/api/modules/privacy'
 import { runPIIScan, getPIIScan } from '@/api/modules/privacy'
 
 interface PIIScanPanelProps {
   sourceId: string
-  columns?: string[]
   onScanComplete?: (scan: PIIScan) => void
 }
 
-const REGULATIONS: Regulation[] = ['gdpr', 'ccpa', 'lgpd']
-
-export function PIIScanPanel({ sourceId, columns = [], onScanComplete }: PIIScanPanelProps) {
+export function PIIScanPanel({ sourceId, onScanComplete }: PIIScanPanelProps) {
   const t = useIntlayer('privacy')
   void useIntlayer('common')
   const { toast } = useToast()
@@ -34,40 +31,12 @@ export function PIIScanPanel({ sourceId, columns = [], onScanComplete }: PIIScan
   // State
   const [isScanning, setIsScanning] = useState(false)
   const [currentScan, setCurrentScan] = useState<PIIScan | null>(null)
-  const [minConfidence, setMinConfidence] = useState(0.8)
-  const [selectedRegulations, setSelectedRegulations] = useState<Regulation[]>(['gdpr'])
-  const [selectedColumns, setSelectedColumns] = useState<string[]>([])
-
-  const handleRegulationToggle = (regulation: Regulation) => {
-    setSelectedRegulations((prev) =>
-      prev.includes(regulation)
-        ? prev.filter((r) => r !== regulation)
-        : [...prev, regulation]
-    )
-  }
-
-  const handleColumnToggle = (column: string) => {
-    setSelectedColumns((prev) =>
-      prev.includes(column)
-        ? prev.filter((c) => c !== column)
-        : [...prev, column]
-    )
-  }
 
   const handleRunScan = useCallback(async () => {
     setIsScanning(true)
 
-    const options: PIIScanOptions = {
-      min_confidence: minConfidence,
-      regulations: selectedRegulations,
-    }
-
-    if (selectedColumns.length > 0) {
-      options.columns = selectedColumns
-    }
-
     try {
-      const scan = await runPIIScan(sourceId, options)
+      const scan = await runPIIScan(sourceId)
 
       // Poll for completion
       const pollResult = async () => {
@@ -101,95 +70,10 @@ export function PIIScanPanel({ sourceId, columns = [], onScanComplete }: PIIScan
         variant: 'destructive',
       })
     }
-  }, [sourceId, minConfidence, selectedRegulations, selectedColumns, toast, t, onScanComplete])
+  }, [sourceId, toast, t, onScanComplete])
 
   return (
     <div className="space-y-6">
-      {/* Configuration */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Confidence Threshold */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t.config.minConfidence}</CardTitle>
-            <CardDescription>{t.config.minConfidenceDesc}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <Slider
-                value={[minConfidence]}
-                onValueChange={([value]) => setMinConfidence(value)}
-                min={0.5}
-                max={1}
-                step={0.05}
-                disabled={isScanning}
-              />
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>50%</span>
-                <span className="font-medium text-foreground">{(minConfidence * 100).toFixed(0)}%</span>
-                <span>100%</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Regulations */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t.config.selectRegulations}</CardTitle>
-            <CardDescription>Select applicable privacy regulations</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              {REGULATIONS.map((reg) => (
-                <div key={reg} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={reg}
-                    checked={selectedRegulations.includes(reg)}
-                    onCheckedChange={() => handleRegulationToggle(reg)}
-                    disabled={isScanning}
-                  />
-                  <Label htmlFor={reg} className="text-sm font-normal uppercase">
-                    {reg}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Column Selection */}
-      {columns.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t.config.selectColumns}</CardTitle>
-            <CardDescription>
-              Leave empty to scan all columns, or select specific columns
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {columns.slice(0, 20).map((column) => (
-                <Button
-                  key={column}
-                  variant={selectedColumns.includes(column) ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleColumnToggle(column)}
-                  disabled={isScanning}
-                >
-                  {column}
-                </Button>
-              ))}
-              {columns.length > 20 && (
-                <span className="self-center text-sm text-muted-foreground">
-                  +{columns.length - 20} more
-                </span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Run Button */}
       <div className="flex justify-end">
         <Button onClick={handleRunScan} disabled={isScanning} className="gap-2">

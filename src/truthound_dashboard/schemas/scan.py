@@ -50,32 +50,12 @@ PII_TYPES = [
 class PIIScanRequest(BaseSchema):
     """Request to run PII scan on a data source.
 
-    This schema maps to truthound's th.scan() parameters for maximum flexibility.
-    All optional parameters default to None to use truthound's defaults.
+    Note: truthound's th.scan() does not support any configuration parameters.
+    The scan runs on all columns with default settings.
+    This schema is kept for API compatibility but options are not used.
     """
 
-    # Column filtering
-    columns: list[str] | None = Field(
-        default=None,
-        description="Columns to scan. If None, all columns are scanned.",
-        examples=[["email", "phone", "ssn"]],
-    )
-
-    # Regulation compliance checking
-    regulations: list[RegulationLiteral] | None = Field(
-        default=None,
-        description="Privacy regulations to check compliance: gdpr, ccpa, lgpd",
-        examples=[["gdpr", "ccpa"]],
-    )
-
-    # Confidence threshold
-    min_confidence: float = Field(
-        default=0.8,
-        ge=0.0,
-        le=1.0,
-        description="Minimum confidence threshold for PII detection (0.0-1.0)",
-        examples=[0.8, 0.9],
-    )
+    pass
 
 
 class PIIFinding(BaseSchema):

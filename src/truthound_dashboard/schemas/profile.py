@@ -22,13 +22,75 @@ from .base import BaseSchema
 
 
 class ProfileRequest(BaseSchema):
-    """Request schema for data profiling.
+    """Request schema for basic data profiling.
 
     Note: truthound's th.profile() does not support advanced configuration.
     This schema exists for API compatibility but options are not used.
+    For advanced profiling with configuration, use ProfileAdvancedRequest.
     """
 
     pass
+
+
+class ProfileAdvancedRequest(BaseSchema):
+    """Request schema for advanced data profiling with ProfilerConfig options.
+
+    This schema maps to truthound's ProfilerConfig for fine-grained control
+    over profiling behavior.
+    """
+
+    sample_size: int | None = Field(
+        default=None,
+        ge=100,
+        description="Maximum rows to sample (None for all rows)",
+    )
+    random_seed: int = Field(
+        default=42,
+        ge=0,
+        description="Random seed for reproducible sampling",
+    )
+    include_patterns: bool = Field(
+        default=True,
+        description="Enable pattern detection (email, phone, uuid, etc.)",
+    )
+    include_correlations: bool = Field(
+        default=False,
+        description="Calculate column correlations (can be slow for many columns)",
+    )
+    include_distributions: bool = Field(
+        default=True,
+        description="Include value distribution histograms",
+    )
+    top_n_values: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Number of top values to return per column",
+    )
+    pattern_sample_size: int = Field(
+        default=1000,
+        ge=100,
+        le=10000,
+        description="Sample size for pattern detection",
+    )
+    correlation_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Minimum correlation to report",
+    )
+    min_pattern_match_ratio: float = Field(
+        default=0.8,
+        ge=0.5,
+        le=1.0,
+        description="Minimum match ratio to consider a pattern detected",
+    )
+    n_jobs: int = Field(
+        default=1,
+        ge=1,
+        le=16,
+        description="Number of parallel jobs for profiling",
+    )
 
 
 # =============================================================================

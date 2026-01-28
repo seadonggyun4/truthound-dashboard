@@ -27,9 +27,18 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Slider } from '@/components/ui/slider'
+import { Switch } from '@/components/ui/switch'
 import { getSource, type Source } from '@/api/modules/sources'
-import { learnSchema, type Schema } from '@/api/modules/schemas'
-import { profileSource, type ProfileResult } from '@/api/modules/profile'
+import { learnSchema, type Schema, type LearnSchemaOptions } from '@/api/modules/schemas'
+import {
+  profileSource,
+  profileSourceAdvanced,
+  type ProfileResult,
+  type ProfileAdvancedConfig as APIProfileAdvancedConfig,
+} from '@/api/modules/profile'
 import {
   listSchemaVersions,
   listSchemaChanges,
@@ -72,6 +81,7 @@ import {
   Sparkles,
   TrendingUp,
   Loader2,
+  Settings2,
 } from 'lucide-react'
 
 // Import feature components
@@ -80,6 +90,11 @@ import { RuleSuggestionDialog } from '@/components/rules/RuleSuggestionDialog'
 import { ProfileComparisonTable } from '@/components/profile/ProfileComparisonTable'
 import { ProfileTrendChart } from '@/components/profile/ProfileTrendChart'
 import { ProfileVersionSelector } from '@/components/profile/ProfileVersionSelector'
+import {
+  ProfileAdvancedConfig,
+  DEFAULT_PROFILE_CONFIG,
+  type ProfileAdvancedConfigData,
+} from '@/components/profile/ProfileAdvancedConfig'
 
 // UISuggestedRule removed - using SuggestedRule from API directly
 
@@ -176,6 +191,21 @@ export default function Profile() {
   const [trendData, setTrendData] = useState<ProfileTrendResponse | null>(null)
   const [loadingComparison, setLoadingComparison] = useState(false)
   const [trendGranularity, setTrendGranularity] = useState<'daily' | 'weekly' | 'monthly'>('daily')
+
+  // ============================================================================
+  // Advanced Profile Configuration State
+  // ============================================================================
+  const [advancedConfig, setAdvancedConfig] = useState<ProfileAdvancedConfigData>(DEFAULT_PROFILE_CONFIG)
+
+  // ============================================================================
+  // Schema Learning Configuration State
+  // ============================================================================
+  const [schemaConfigDialogOpen, setSchemaConfigDialogOpen] = useState(false)
+  const [schemaConfig, setSchemaConfig] = useState<LearnSchemaOptions>({
+    infer_constraints: true,
+    categorical_threshold: 20,
+    sample_size: undefined,
+  })
 
   // ============================================================================
   // Load Source Data
@@ -392,8 +422,7 @@ export default function Profile() {
     try {
       setProfiling(true)
 
-      // Note: truthound's th.profile() only accepts (data, source) parameters.
-      // Advanced options like sampling, pattern detection are not supported.
+      // Use basic profile (th.profile with default settings)
       const result = await profileSource(sourceId)
       setProfile(result)
       toast({
@@ -411,13 +440,76 @@ export default function Profile() {
     }
   }, [sourceId, toast])
 
-  // Learn schema
+  // Run profile with advanced configuration
+  const handleProfileAdvanced = useCallback(
+    async (config: ProfileAdvancedConfigData) => {
+      if (!sourceId) return
+
+      try {
+        setProfiling(true)
+
+        // Convert frontend config to API format
+        const apiConfig: APIProfileAdvancedConfig = {
+          sample_size: config.sampleSize,
+          random_seed: config.randomSeed,
+          include_patterns: config.includePatterns,
+          include_correlations: config.includeCorrelations,
+          include_distributions: config.includeDistributions,
+          top_n_values: config.topNValues,
+          pattern_sample_size: config.patternSampleSize,
+          correlation_threshold: config.correlationThreshold,
+          min_pattern_match_ratio: config.minPatternMatchRatio,
+          n_jobs: config.nJobs,
+        }
+
+        const result = await profileSourceAdvanced(sourceId, apiConfig)
+        setProfile(result)
+
+        const features = []
+        if (config.includePatterns) features.push('patterns')
+        if (config.includeCorrelations) features.push('correlations')
+        if (config.includeDistributions) features.push('distributions')
+
+        toast({
+          title: 'Advanced Profile Complete',
+          description: `Analyzed ${result.row_count.toLocaleString()} rows with ${features.join(', ') || 'basic'} analysis`,
+        })
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error'
+        // Check if it's a feature availability error
+        if (errorMsg.includes('not available') || errorMsg.includes('501')) {
+          toast({
+            variant: 'destructive',
+            title: 'Advanced Profiling Not Available',
+            description: 'Please upgrade truthound to the latest version for advanced profiling features.',
+          })
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Profiling Failed',
+            description: errorMsg,
+          })
+        }
+      } finally {
+        setProfiling(false)
+      }
+    },
+    [sourceId, toast]
+  )
+
+  // Open schema config dialog
+  const handleOpenSchemaConfig = useCallback(() => {
+    setSchemaConfigDialogOpen(true)
+  }, [])
+
+  // Learn schema with configuration
   const handleLearnSchema = useCallback(async () => {
     if (!sourceId) return
 
     try {
       setLearningSchema(true)
-      const result = await learnSchema(sourceId, { infer_constraints: true })
+      setSchemaConfigDialogOpen(false)
+      const result = await learnSchema(sourceId, schemaConfig)
       setLearnedSchema(result)
       setSchemaDialogOpen(true)
       toast({
@@ -433,7 +525,7 @@ export default function Profile() {
     } finally {
       setLearningSchema(false)
     }
-  }, [sourceId, toast])
+  }, [sourceId, schemaConfig, toast])
 
   // Copy schema to clipboard
   const handleCopySchema = useCallback(async () => {
@@ -565,7 +657,7 @@ export default function Profile() {
           </Button>
           <Button
             variant="outline"
-            onClick={handleLearnSchema}
+            onClick={handleOpenSchemaConfig}
             disabled={learningSchema || profiling}
           >
             <FileCode className="h-4 w-4 mr-2" />
@@ -608,6 +700,14 @@ export default function Profile() {
         {/* Profile Tab */}
         {/* ================================================================== */}
         <TabsContent value="profile" className="space-y-6">
+          {/* Advanced Configuration */}
+          <ProfileAdvancedConfig
+            config={advancedConfig}
+            onChange={setAdvancedConfig}
+            onRunProfile={handleProfileAdvanced}
+            isLoading={profiling}
+          />
+
           {/* Profile not run yet */}
           {!profile && (
             <Card>
@@ -616,11 +716,26 @@ export default function Profile() {
                 <h3 className="text-lg font-medium mb-2">No Profile Data</h3>
                 <p className="text-muted-foreground text-center mb-4 max-w-md">
                   Run a profile to analyze your data structure, column types, null percentages, and
-                  unique value distributions.
+                  unique value distributions. Use the configuration above for advanced options.
                 </p>
-                <Button onClick={handleProfile} disabled={profiling}>
-                  {profiling ? 'Profiling...' : 'Run Profile'}
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleProfile} disabled={profiling}>
+                    {profiling ? 'Profiling...' : 'Quick Profile'}
+                  </Button>
+                  <Button onClick={() => handleProfileAdvanced(advancedConfig)} disabled={profiling}>
+                    {profiling ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Profiling...
+                      </>
+                    ) : (
+                      <>
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Run with Config
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -958,6 +1073,123 @@ export default function Profile() {
       {/* ================================================================== */}
       {/* Dialogs */}
       {/* ================================================================== */}
+
+      {/* Schema Configuration Dialog */}
+      <Dialog open={schemaConfigDialogOpen} onOpenChange={setSchemaConfigDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              Schema Learning Options
+            </DialogTitle>
+            <DialogDescription>
+              Configure options for auto-generating validation schema from your data.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Infer Constraints */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="infer-constraints">Infer Constraints</Label>
+                <p className="text-xs text-muted-foreground">
+                  Detect min/max values and allowed values from data
+                </p>
+              </div>
+              <Switch
+                id="infer-constraints"
+                checked={schemaConfig.infer_constraints ?? true}
+                onCheckedChange={(checked) =>
+                  setSchemaConfig((prev) => ({ ...prev, infer_constraints: checked }))
+                }
+              />
+            </div>
+
+            {/* Categorical Threshold */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="categorical-threshold">Categorical Threshold</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Max unique values to treat as categorical
+                  </p>
+                </div>
+                <span className="text-sm font-medium">
+                  {schemaConfig.categorical_threshold ?? 20}
+                </span>
+              </div>
+              <Slider
+                id="categorical-threshold"
+                value={[schemaConfig.categorical_threshold ?? 20]}
+                onValueChange={([value]) =>
+                  setSchemaConfig((prev) => ({ ...prev, categorical_threshold: value }))
+                }
+                min={1}
+                max={100}
+                step={1}
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>1</span>
+                <span>100</span>
+              </div>
+            </div>
+
+            {/* Sample Size */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Sample Size</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Rows to sample for large datasets
+                  </p>
+                </div>
+                <Switch
+                  checked={schemaConfig.sample_size !== undefined}
+                  onCheckedChange={(checked) =>
+                    setSchemaConfig((prev) => ({
+                      ...prev,
+                      sample_size: checked ? 100000 : undefined,
+                    }))
+                  }
+                />
+              </div>
+              {schemaConfig.sample_size !== undefined && (
+                <Input
+                  type="number"
+                  value={schemaConfig.sample_size}
+                  onChange={(e) =>
+                    setSchemaConfig((prev) => ({
+                      ...prev,
+                      sample_size: parseInt(e.target.value) || 100000,
+                    }))
+                  }
+                  min={100}
+                  placeholder="100000"
+                />
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSchemaConfigDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleLearnSchema} disabled={learningSchema}>
+              {learningSchema ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <FileCode className="h-4 w-4 mr-2" />
+                  Generate Schema
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Schema Dialog */}
       <Dialog open={schemaDialogOpen} onOpenChange={setSchemaDialogOpen}>

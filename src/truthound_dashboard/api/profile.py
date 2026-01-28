@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException, Path, Query
 
 from truthound_dashboard.schemas import (
     LatestComparisonResponse,
+    ProfileAdvancedRequest,
     ProfileComparisonRequest,
     ProfileComparisonResponse,
     ProfileListResponse,
@@ -65,6 +66,70 @@ async def profile_source(
     try:
         result = await service.profile_source(source_id)
         return ProfileResponse.from_result(result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/sources/{source_id}/profile/advanced",
+    response_model=ProfileResponse,
+    summary="Profile source with advanced configuration",
+    description="Run data profiling with custom ProfilerConfig options",
+)
+async def profile_source_advanced(
+    service: ProfileServiceDep,
+    source_service: SourceServiceDep,
+    source_id: Annotated[str, Path(description="Source ID to profile")],
+    request: ProfileAdvancedRequest,
+) -> ProfileResponse:
+    """Run advanced data profiling with custom configuration.
+
+    Uses truthound's ProfilerConfig for fine-grained control over:
+    - Sampling: sample_size, random_seed
+    - Features: include_patterns, include_correlations, include_distributions
+    - Pattern detection: pattern_sample_size, min_pattern_match_ratio
+    - Output: top_n_values, correlation_threshold
+    - Performance: n_jobs
+
+    Args:
+        service: Injected profile service.
+        source_service: Injected source service.
+        source_id: Source to profile.
+        request: Advanced profiling configuration.
+
+    Returns:
+        Profiling result with column statistics.
+
+    Raises:
+        HTTPException: 404 if source not found, 501 if not supported, 500 on error.
+    """
+    # Verify source exists
+    source = await source_service.get_by_id(source_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    try:
+        # Convert request to config dict
+        config = {
+            "sample_size": request.sample_size,
+            "random_seed": request.random_seed,
+            "include_patterns": request.include_patterns,
+            "include_correlations": request.include_correlations,
+            "include_distributions": request.include_distributions,
+            "top_n_values": request.top_n_values,
+            "pattern_sample_size": request.pattern_sample_size,
+            "correlation_threshold": request.correlation_threshold,
+            "min_pattern_match_ratio": request.min_pattern_match_ratio,
+            "n_jobs": request.n_jobs,
+        }
+        result = await service.profile_source_advanced(source_id, config=config)
+        return ProfileResponse.from_result(result)
+    except ImportError as e:
+        raise HTTPException(
+            status_code=501,
+            detail=f"Advanced profiling not available: {e}. "
+            "Please upgrade truthound to the latest version.",
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
