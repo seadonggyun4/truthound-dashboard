@@ -80,13 +80,9 @@ export default function Privacy() {
       const sourcesWithInfo: SourceWithPrivacyInfo[] = []
 
       for (const source of response.data) {
-        try {
-          const latestScan = await getLatestPIIScan(source.id)
-          const piiColumns = latestScan?.findings?.map((f) => f.column) ?? []
-          sourcesWithInfo.push({ ...source, latestScan, piiColumns })
-        } catch {
-          sourcesWithInfo.push({ ...source, latestScan: null, piiColumns: [] })
-        }
+        const latestScan = await getLatestPIIScan(source.id)
+        const piiColumns = latestScan?.findings?.map((f) => f.column) ?? []
+        sourcesWithInfo.push({ ...source, latestScan, piiColumns })
       }
 
       setSources(sourcesWithInfo)

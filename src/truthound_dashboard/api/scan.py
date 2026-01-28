@@ -134,15 +134,15 @@ async def list_source_pii_scans(
 
 @router.get(
     "/sources/{source_id}/scans/latest",
-    response_model=PIIScanResponse,
+    response_model=PIIScanResponse | None,
     summary="Get latest PII scan",
-    description="Get the most recent PII scan for a source",
+    description="Get the most recent PII scan for a source, or null if no scans exist",
 )
 async def get_latest_pii_scan(
     service: PIIScanServiceDep,
     source_service: SourceServiceDep,
     source_id: Annotated[str, Path(description="Source ID")],
-) -> PIIScanResponse:
+) -> PIIScanResponse | None:
     """Get the most recent PII scan for a source.
 
     Args:
@@ -151,10 +151,10 @@ async def get_latest_pii_scan(
         source_id: Source to get latest scan for.
 
     Returns:
-        Latest PII scan result.
+        Latest PII scan result, or null if no scans exist.
 
     Raises:
-        HTTPException: 404 if source or scan not found.
+        HTTPException: 404 if source not found.
     """
     # Verify source exists
     source = await source_service.get_by_id(source_id)
@@ -163,6 +163,6 @@ async def get_latest_pii_scan(
 
     scan = await service.get_latest_for_source(source_id)
     if scan is None:
-        raise HTTPException(status_code=404, detail="No PII scans found for source")
+        return None
 
     return PIIScanResponse.from_model(scan)

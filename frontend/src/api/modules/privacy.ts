@@ -157,8 +157,8 @@ export async function listSourcePIIScans(
   )
 }
 
-export async function getLatestPIIScan(sourceId: string): Promise<PIIScan> {
-  return request<PIIScan>(`/scans/sources/${sourceId}/scans/latest`)
+export async function getLatestPIIScan(sourceId: string): Promise<PIIScan | null> {
+  return request<PIIScan | null>(`/scans/sources/${sourceId}/scans/latest`)
 }
 
 // ============================================================================
