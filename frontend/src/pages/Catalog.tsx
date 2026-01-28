@@ -232,7 +232,7 @@ export default function Catalog() {
                     </div>
 
                     <div className="flex items-center gap-4 ml-4">
-                      {asset.quality_score !== undefined && (
+                      {asset.quality_score != null && (
                         <div className="text-right">
                           <p className="text-xs text-muted-foreground">{catalog.qualityScore}</p>
                           <p className={`font-semibold ${getQualityScoreColor(asset.quality_score)}`}>

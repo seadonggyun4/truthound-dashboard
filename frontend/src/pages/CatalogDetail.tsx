@@ -184,7 +184,7 @@ export default function CatalogDetail() {
               {selectedAsset.source && (
                 <Badge variant="secondary">{selectedAsset.source.name}</Badge>
               )}
-              {selectedAsset.quality_score !== undefined && (
+              {selectedAsset.quality_score != null && (
                 <Badge
                   variant={
                     selectedAsset.quality_score >= 80
