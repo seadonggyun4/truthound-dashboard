@@ -48,7 +48,6 @@ import { useLineageStore } from '@/stores/lineageStore'
 import {
   createLineageNode,
   deleteLineageNode,
-  autoDiscoverLineage,
   analyzeLineageImpact,
   type LineageNode,
   type ImpactAnalysisResponse,
@@ -73,7 +72,6 @@ export default function Lineage() {
   // Local UI state
   const [selectedNode, setSelectedNode] = useState<LineageNode | null>(null)
   const [impactAnalysis, setImpactAnalysis] = useState<ImpactAnalysisResponse | null>(null)
-  const [isDiscovering, setIsDiscovering] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   // Renderer state - load from localStorage
@@ -182,27 +180,6 @@ export default function Lineage() {
     },
     [removeNode] // eslint-disable-line react-hooks/exhaustive-deps
   )
-
-  // Handle auto-discover
-  const handleAutoDiscover = useCallback(async () => {
-    setIsDiscovering(true)
-    try {
-      // Auto-discover requires a source_id, use empty string to discover all
-      const result = await autoDiscoverLineage({ source_id: '' })
-      toast({
-        title: str(t.discoveryComplete),
-        description: `${result.nodes_created} ${str(t.nodesDiscovered)}, ${result.edges_created} ${str(t.edgesDiscovered)}`,
-      })
-      fetchLineageData(true) // Force refresh
-    } catch (error) {
-      toast({
-        title: str(t.discoveryFailed),
-        variant: 'destructive',
-      })
-    } finally {
-      setIsDiscovering(false)
-    }
-  }, [fetchLineageData]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle impact analysis
   const handleAnalyzeImpact = useCallback(
@@ -332,10 +309,8 @@ export default function Lineage() {
           <p className="text-muted-foreground">{t.noLineageDesc}</p>
           <LineageToolbar
             onAddNode={handleAddNode}
-            onAutoDiscover={handleAutoDiscover}
             onSavePositions={() => {}}
             onRefresh={handleRefresh}
-            isDiscovering={isDiscovering}
             isSaving={false}
           />
         </div>

@@ -50,14 +50,6 @@ export interface ImpactAnalysisResponse {
   depth: number
 }
 
-export interface AutoDiscoverResponse {
-  nodes_created: number
-  edges_created: number
-  nodes: LineageNode[]
-  edges: LineageEdge[]
-  message: string
-}
-
 export interface NodePositionUpdate {
   id: string
   x: number
@@ -293,17 +285,6 @@ export async function analyzeLineageImpact(
   params?: { depth?: number }
 ): Promise<ImpactAnalysisResponse> {
   return request<ImpactAnalysisResponse>(`/lineage/nodes/${nodeId}/impact`, { params })
-}
-
-export async function autoDiscoverLineage(params: {
-  source_id: string
-  include_fk_relations?: boolean
-  max_depth?: number
-}): Promise<AutoDiscoverResponse> {
-  return request<AutoDiscoverResponse>('/lineage/auto-discover', {
-    method: 'POST',
-    body: JSON.stringify(params),
-  })
 }
 
 export async function updateNodePositions(

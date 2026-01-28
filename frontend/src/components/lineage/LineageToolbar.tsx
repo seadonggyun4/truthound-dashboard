@@ -4,7 +4,7 @@
 
 import { useState } from 'react'
 import { useIntlayer } from 'react-intlayer'
-import { Plus, Wand2, Save, RefreshCw } from 'lucide-react'
+import { Plus, Save, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -33,19 +33,15 @@ import type { LineageNodeType } from '@/api/modules/lineage'
 
 interface LineageToolbarProps {
   onAddNode: (name: string, nodeType: LineageNodeType) => void
-  onAutoDiscover: () => void
   onSavePositions: () => void
   onRefresh: () => void
-  isDiscovering?: boolean
   isSaving?: boolean
 }
 
 export function LineageToolbar({
   onAddNode,
-  onAutoDiscover,
   onSavePositions,
   onRefresh,
-  isDiscovering = false,
   isSaving = false,
 }: LineageToolbarProps) {
   const t = useIntlayer('lineage')
@@ -79,16 +75,6 @@ export function LineageToolbar({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onAutoDiscover}
-          disabled={isDiscovering}
-        >
-          <Wand2 className="mr-2 h-4 w-4" />
-          {isDiscovering ? t.discovering : t.autoDiscover}
-        </Button>
 
         <Button
           variant="outline"

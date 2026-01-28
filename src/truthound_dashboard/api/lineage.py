@@ -12,8 +12,6 @@ from fastapi import APIRouter, HTTPException, Path, Query, Body
 from truthound_dashboard.schemas.lineage import (
     AnomalyImpactResponse,
     AnomalyStatus,
-    AutoDiscoverRequest,
-    AutoDiscoverResponse,
     ImpactAnalysisRequest,
     ImpactAnalysisResponse,
     ImpactDirection,
@@ -604,49 +602,6 @@ async def get_anomaly_impact(
                 PropagationEdge(**e)
                 for e in result.get("propagation_path", [])
             ],
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-# =============================================================================
-# Auto-Discovery Endpoints
-# =============================================================================
-
-
-@router.post(
-    "/auto-discover",
-    response_model=AutoDiscoverResponse,
-    summary="Auto-discover lineage",
-    description="Auto-discover lineage from a data source",
-)
-async def auto_discover(
-    service: LineageServiceDep,
-    request: AutoDiscoverRequest,
-) -> AutoDiscoverResponse:
-    """Auto-discover lineage from a source.
-
-    Args:
-        service: Injected lineage service.
-        request: Auto-discovery request.
-
-    Returns:
-        Discovery results.
-
-    Raises:
-        HTTPException: 404 if source not found.
-    """
-    try:
-        result = await service.auto_discover(
-            source_id=request.source_id,
-            include_fk_relations=request.include_fk_relations,
-            max_depth=request.max_depth,
-        )
-        return AutoDiscoverResponse(
-            source_id=result["source_id"],
-            discovered_nodes=result["discovered_nodes"],
-            discovered_edges=result["discovered_edges"],
-            graph=LineageGraphResponse(**result["graph"]),
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

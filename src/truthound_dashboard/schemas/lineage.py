@@ -247,39 +247,6 @@ class ImpactAnalysisResponse(BaseSchema):
 
 
 # =============================================================================
-# Auto-Discovery Schemas
-# =============================================================================
-
-
-class AutoDiscoverRequest(BaseSchema):
-    """Request to auto-discover lineage from a source."""
-
-    source_id: str = Field(..., description="Source ID to discover from")
-    include_fk_relations: bool = Field(
-        default=True,
-        description="Include foreign key relationships (for DB sources)",
-    )
-    max_depth: int = Field(
-        default=3,
-        ge=1,
-        le=10,
-        description="Maximum depth for discovery",
-    )
-
-
-class AutoDiscoverResponse(BaseSchema):
-    """Response from auto-discovery."""
-
-    source_id: str = Field(..., description="Source ID that was analyzed")
-    discovered_nodes: int = Field(default=0, description="Number of nodes discovered")
-    discovered_edges: int = Field(default=0, description="Number of edges discovered")
-    graph: LineageGraphResponse = Field(
-        ...,
-        description="Discovered lineage graph",
-    )
-
-
-# =============================================================================
 # Position Update Schemas
 # =============================================================================
 

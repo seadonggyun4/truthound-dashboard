@@ -21,7 +21,6 @@ const lineageContent = {
     deleteEdge: t({ en: 'Delete Edge', ko: '엣지 삭제' }),
     fitView: t({ en: 'Fit View', ko: '화면 맞춤' }),
     autoLayout: t({ en: 'Auto Layout', ko: '자동 배치' }),
-    autoDiscover: t({ en: 'Auto Discover', ko: '자동 탐색' }),
     savePositions: t({ en: 'Save Positions', ko: '위치 저장' }),
     analyzeImpact: t({ en: 'Analyze Impact', ko: '영향 분석' }),
     refresh: t({ en: 'Refresh', ko: '새로고침' }),
@@ -71,18 +70,11 @@ const lineageContent = {
     affectedDownstream: t({ en: 'Affected Downstream', ko: '영향받는 하위' }),
     analysisDepth: t({ en: 'Analysis Depth', ko: '분석 깊이' }),
 
-    // Auto-discovery
-    discovering: t({ en: 'Discovering...', ko: '탐색 중...' }),
-    discoveryComplete: t({ en: 'Discovery complete', ko: '탐색 완료' }),
-    discoveryFailed: t({ en: 'Discovery failed', ko: '탐색 실패' }),
-    nodesDiscovered: t({ en: 'nodes discovered', ko: '개의 노드 발견' }),
-    edgesDiscovered: t({ en: 'edges discovered', ko: '개의 엣지 발견' }),
-
     // Empty states
     noLineageYet: t({ en: 'No lineage data yet', ko: '계보 데이터 없음' }),
     noLineageDesc: t({
-      en: 'Add nodes manually or use auto-discovery to map your data flow',
-      ko: '노드를 직접 추가하거나 자동 탐색을 사용하여 데이터 흐름을 매핑하세요',
+      en: 'Add nodes manually to map your data flow',
+      ko: '노드를 직접 추가하여 데이터 흐름을 매핑하세요',
     }),
 
     // Confirmations
