@@ -76,7 +76,7 @@ export function CorrelatedAlerts({
       )
       if (!response.ok) throw new Error('Failed to fetch correlations')
       const result = await response.json()
-      setCorrelations(result.data || [])
+      setCorrelations(result.correlations || [])
     } catch (error) {
       toast({
         title: str(common.error),
@@ -224,7 +224,7 @@ export function RelatedAlerts({
       )
       if (!response.ok) throw new Error('Failed to fetch')
       const result = await response.json()
-      setCorrelations(result.data || [])
+      setCorrelations(result.correlations || [])
     } catch {
       setCorrelations([])
     } finally {

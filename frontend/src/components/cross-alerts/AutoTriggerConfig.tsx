@@ -80,19 +80,20 @@ export function AutoTriggerConfig({ open, onOpenChange, sourceId }: AutoTriggerC
       const response = await fetch(url)
       if (!response.ok) throw new Error('Failed to fetch config')
       const result = await response.json()
+      // API returns config directly, not wrapped in { data: ... }
       setConfig({
-        enabled: result.data.enabled ?? true,
-        trigger_drift_on_anomaly: result.data.trigger_drift_on_anomaly ?? true,
-        trigger_anomaly_on_drift: result.data.trigger_anomaly_on_drift ?? true,
-        thresholds: result.data.thresholds ?? {
+        enabled: result.enabled ?? true,
+        trigger_drift_on_anomaly: result.trigger_drift_on_anomaly ?? true,
+        trigger_anomaly_on_drift: result.trigger_anomaly_on_drift ?? true,
+        thresholds: result.thresholds ?? {
           anomaly_rate_threshold: 0.1,
           anomaly_count_threshold: 10,
           drift_percentage_threshold: 10.0,
           drift_columns_threshold: 2,
         },
-        notify_on_correlation: result.data.notify_on_correlation ?? true,
-        notification_channel_ids: result.data.notification_channel_ids ?? null,
-        cooldown_seconds: result.data.cooldown_seconds ?? 300,
+        notify_on_correlation: result.notify_on_correlation ?? true,
+        notification_channel_ids: result.notification_channel_ids ?? null,
+        cooldown_seconds: result.cooldown_seconds ?? 300,
       })
     } catch {
       // Use defaults

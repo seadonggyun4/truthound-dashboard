@@ -83,15 +83,16 @@ interface MetricsResponse {
 async function getMonitoringOverview(): Promise<MonitoringOverview> {
   const response = await fetch(`${API_BASE}/model-monitoring/overview`)
   if (!response.ok) throw new Error('Failed to fetch overview')
-  const result = await response.json()
-  return result.data
+  // API returns overview directly, not wrapped
+  return response.json()
 }
 
 async function listModels(): Promise<{ items: RegisteredModel[]; total: number }> {
   const response = await fetch(`${API_BASE}/model-monitoring/models`)
   if (!response.ok) throw new Error('Failed to fetch models')
   const result = await response.json()
-  return result.data
+  // API returns { data, items, total, ... } - use items for list
+  return { items: result.items || result.data || [], total: result.total || 0 }
 }
 
 async function createModel(data: Partial<RegisteredModel>): Promise<RegisteredModel> {
@@ -101,8 +102,8 @@ async function createModel(data: Partial<RegisteredModel>): Promise<RegisteredMo
     body: JSON.stringify(data),
   })
   if (!response.ok) throw new Error('Failed to create model')
-  const result = await response.json()
-  return result.data
+  // API returns created model directly
+  return response.json()
 }
 
 async function getModelMetrics(modelId: string, hours: number = 24): Promise<MetricsResponse> {
@@ -110,8 +111,8 @@ async function getModelMetrics(modelId: string, hours: number = 24): Promise<Met
     `${API_BASE}/model-monitoring/models/${modelId}/metrics?hours=${hours}`
   )
   if (!response.ok) throw new Error('Failed to fetch metrics')
-  const result = await response.json()
-  return result.data
+  // API returns metrics directly
+  return response.json()
 }
 
 async function deleteModel(id: string): Promise<void> {
@@ -127,7 +128,8 @@ async function listAlerts(params?: {
   const response = await fetch(`${API_BASE}/model-monitoring/alerts?${searchParams}`)
   if (!response.ok) throw new Error('Failed to fetch alerts')
   const result = await response.json()
-  return result.data
+  // API returns { data, items, total, ... } - use items for list
+  return { items: result.items || result.data || [], total: result.total || 0 }
 }
 
 async function acknowledgeAlert(id: string, actor: string): Promise<void> {
@@ -150,7 +152,8 @@ async function listAlertRules(): Promise<{ items: AlertRule[]; total: number }> 
   const response = await fetch(`${API_BASE}/model-monitoring/rules`)
   if (!response.ok) throw new Error('Failed to fetch rules')
   const result = await response.json()
-  return result.data
+  // API returns { data, items, total, ... } - use items for list
+  return { items: result.items || result.data || [], total: result.total || 0 }
 }
 
 async function deleteAlertRule(id: string): Promise<void> {
@@ -171,7 +174,8 @@ async function listAlertHandlers(): Promise<{ items: AlertHandler[]; total: numb
   const response = await fetch(`${API_BASE}/model-monitoring/handlers`)
   if (!response.ok) throw new Error('Failed to fetch handlers')
   const result = await response.json()
-  return result.data
+  // API returns { data, items, total, ... } - use items for list
+  return { items: result.items || result.data || [], total: result.total || 0 }
 }
 
 async function deleteAlertHandler(id: string): Promise<void> {
@@ -193,8 +197,8 @@ async function testAlertHandler(id: string): Promise<{ success: boolean; message
     method: 'POST',
   })
   if (!response.ok) throw new Error('Failed to test handler')
-  const result = await response.json()
-  return result.data
+  // API returns test result directly
+  return response.json()
 }
 
 export default function ModelMonitoring() {
