@@ -89,11 +89,24 @@ class CommentResponse(BaseSchema, IDMixin, TimestampMixin):
     def from_model(cls, comment: any, include_replies: bool = True) -> CommentResponse:
         """Create response from model."""
         replies = []
-        if include_replies and comment.replies:
-            replies = [
-                CommentResponse.from_model(r, include_replies=False)
-                for r in comment.replies
-            ]
+        reply_count = 0
+
+        if include_replies:
+            # Access replies if loaded (include_replies=True means we're a parent)
+            try:
+                loaded_replies = comment.replies
+                replies = [
+                    CommentResponse.from_model(r, include_replies=False)
+                    for r in loaded_replies
+                ]
+                reply_count = len(loaded_replies)
+            except Exception:
+                # If replies not loaded, use 0
+                reply_count = 0
+        else:
+            # For nested replies, avoid lazy loading - just use 0
+            # Nested reply counts aren't typically needed in UI
+            reply_count = 0
 
         return cls(
             id=comment.id,
@@ -103,7 +116,7 @@ class CommentResponse(BaseSchema, IDMixin, TimestampMixin):
             author_id=comment.author_id,
             parent_id=comment.parent_id,
             is_reply=comment.is_reply,
-            reply_count=comment.reply_count,
+            reply_count=reply_count,
             replies=replies,
             created_at=comment.created_at,
             updated_at=comment.updated_at,

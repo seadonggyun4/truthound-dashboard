@@ -218,7 +218,7 @@ class CollaborationService:
 
         comment.content = content
         await self.session.flush()
-        await self.session.refresh(comment)
+        await self.session.refresh(comment, ["replies"])
 
         return comment
 

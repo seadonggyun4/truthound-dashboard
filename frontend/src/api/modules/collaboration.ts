@@ -54,9 +54,10 @@ export async function getComments(
   resourceType: ResourceType,
   resourceId: string
 ): Promise<Comment[]> {
-  return request<Comment[]>('/comments', {
+  const response = await request<{ data: Comment[]; total: number }>('/comments', {
     params: { resource_type: resourceType, resource_id: resourceId },
   })
+  return response.data
 }
 
 export async function createComment(data: CommentCreate): Promise<Comment> {
@@ -87,5 +88,6 @@ export async function getActivities(params?: {
   skip?: number
   limit?: number
 }): Promise<Activity[]> {
-  return request<Activity[]>('/activities', { params })
+  const response = await request<{ data: Activity[]; total: number }>('/activities', { params })
+  return response.data
 }
