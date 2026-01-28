@@ -18,12 +18,8 @@ export { ValidatorTestPanel } from './ValidatorTestPanel'
 export { ReporterConfigForm } from './ReporterConfigForm'
 export { ReporterPreviewPanel } from './ReporterPreviewPanel'
 
-// Advanced Plugin Features
-export { PluginSecurityPanel } from './PluginSecurityPanel'
+// Plugin Visualization
 export { PluginDependencyGraph } from './PluginDependencyGraph'
-export { PluginLifecyclePanel } from './PluginLifecyclePanel'
-export { PluginHooksPanel } from './PluginHooksPanel'
 
-// Settings and Installation
-export { PluginSettingsTab } from './PluginSettingsTab'
+// Installation
 export { PluginInstallProgress } from './PluginInstallProgress'

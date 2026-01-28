@@ -2,8 +2,6 @@
 
 This module provides:
 - State machine for plugin lifecycle
-- Hot reload capability
-- File watching for auto-reload
 - Graceful shutdown and rollback
 """
 
@@ -18,12 +16,6 @@ from .machine import (
     PluginStateMachine,
     create_state_machine,
 )
-from .hot_reload import (
-    HotReloadManager,
-    FileWatcher,
-    ReloadResult,
-    ReloadStrategy,
-)
 
 __all__ = [
     # States
@@ -33,9 +25,4 @@ __all__ = [
     # Machine
     "PluginStateMachine",
     "create_state_machine",
-    # Hot Reload
-    "HotReloadManager",
-    "FileWatcher",
-    "ReloadResult",
-    "ReloadStrategy",
 ]

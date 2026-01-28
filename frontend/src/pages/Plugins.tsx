@@ -87,7 +87,6 @@ import {
   ValidatorEditorDialog,
   ReporterEditorDialog,
   PluginDetailDialog,
-  PluginSettingsTab,
   PluginInstallProgress,
 } from '@/components/plugins'
 
@@ -602,10 +601,6 @@ export function Plugins() {
           <TabsTrigger value="installed">{t.tabs.installed}</TabsTrigger>
           <TabsTrigger value="validators">{t.tabs.validators}</TabsTrigger>
           <TabsTrigger value="reporters">{t.tabs.reporters}</TabsTrigger>
-          <TabsTrigger value="settings" className="gap-1">
-            <Settings className="w-3 h-3" />
-            Settings
-          </TabsTrigger>
         </TabsList>
 
         {/* Marketplace Tab */}
@@ -715,10 +710,6 @@ export function Plugins() {
           )}
         </TabsContent>
 
-        {/* Settings Tab */}
-        <TabsContent value="settings" className="space-y-4">
-          <PluginSettingsTab />
-        </TabsContent>
       </Tabs>
 
       {/* Install Dialog */}
