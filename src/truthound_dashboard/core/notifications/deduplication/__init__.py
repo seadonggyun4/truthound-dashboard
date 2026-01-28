@@ -1,143 +1,109 @@
-"""Notification deduplication system.
+"""Notification deduplication using truthound.checkpoint.deduplication.
 
-This module provides a flexible deduplication system to prevent
-sending duplicate notifications within configurable time windows.
+This module provides deduplication functionality to prevent sending
+duplicate notifications, using truthound's deduplication infrastructure.
 
-Features:
-    - 4 window strategies (sliding, tumbling, session, adaptive)
-    - 6 deduplication policies (none, basic, severity, issue_based, strict, custom)
-    - Pluggable storage backends (in-memory, SQLite, Redis, Redis Streams)
-    - Fingerprint-based duplicate detection
-    - Factory function for easy store creation
+Key Components from truthound.checkpoint.deduplication:
+    - NotificationDeduplicator: Main deduplication service
+    - DeduplicationConfig: Configuration for deduplication
+    - DeduplicationPolicy: Policy types (NONE, BASIC, SEVERITY, ISSUE_BASED, STRICT, CUSTOM)
+    - TimeWindow: Time window configuration
+    - WindowUnit: Time unit enumeration
+
+Window Strategies from truthound:
+    - SlidingWindowStrategy: Fixed time window
+    - TumblingWindowStrategy: Non-overlapping fixed buckets
+    - SessionWindowStrategy: Event-based sessions
+
+Storage Backends from truthound:
+    - InMemoryDeduplicationStore: Single-process storage
+    - RedisStreamsDeduplicationStore: Distributed storage
 
 Example:
-    from truthound_dashboard.core.notifications.deduplication import (
+    from truthound.checkpoint.deduplication import (
         NotificationDeduplicator,
+        DeduplicationConfig,
         InMemoryDeduplicationStore,
-        DeduplicationPolicy,
         TimeWindow,
+        DeduplicationPolicy,
+    )
+
+    # Configure deduplication
+    config = DeduplicationConfig(
+        policy=DeduplicationPolicy.SEVERITY,
+        default_window=TimeWindow(minutes=5),
+        action_windows={
+            "pagerduty": TimeWindow(hours=1),
+            "slack": TimeWindow(minutes=5),
+        },
     )
 
     # Create deduplicator
     deduplicator = NotificationDeduplicator(
         store=InMemoryDeduplicationStore(),
-        default_window=TimeWindow(seconds=300),
-        policy=DeduplicationPolicy.SEVERITY,
+        config=config,
     )
 
-    # Generate fingerprint and check
-    fingerprint = deduplicator.generate_fingerprint(
-        checkpoint_name="daily_check",
-        action_type="slack",
-        severity="high",
-    )
-
-    if not deduplicator.is_duplicate(fingerprint):
-        await send_notification()
-        deduplicator.mark_sent(fingerprint)
-
-Redis Store Example:
-    from truthound_dashboard.core.notifications.deduplication import (
-        RedisDeduplicationStore,
-        REDIS_AVAILABLE,
-    )
-
-    if REDIS_AVAILABLE:
-        store = RedisDeduplicationStore(
-            redis_url="redis://localhost:6379/0",
-            key_prefix="myapp:dedup:",
-            default_ttl=3600,
-        )
-        # Use store with NotificationDeduplicator
-
-Redis Streams Store Example (Production):
-    from truthound_dashboard.core.notifications.deduplication import (
-        RedisStreamsDeduplicationStore,
-        create_deduplication_store,
-        DeduplicationStoreType,
-        REDIS_AVAILABLE,
-    )
-
-    # Using factory function (recommended)
-    store = create_deduplication_store("redis_streams")
-
-    # Or direct instantiation with full configuration
-    if REDIS_AVAILABLE:
-        store = RedisStreamsDeduplicationStore(
-            redis_url="redis://myredis:6379/1",
-            default_ttl=7200,
-            max_connections=20,
-            enable_fallback=True,  # Falls back to InMemory on Redis failure
-        )
-
-        # Health check
-        health = await store.health_check_async()
-        print(f"Healthy: {health['healthy']}, Mode: {health.get('mode')}")
-
-        # Get metrics
-        metrics = store.get_metrics()
-        print(f"Hit rate: {metrics['hit_rate']}%")
-
-Factory Function Example:
-    from truthound_dashboard.core.notifications.deduplication import (
-        create_deduplication_store,
-    )
-
-    # Auto-detect from environment variables
-    store = create_deduplication_store()
-
-    # Explicit type with configuration
-    store = create_deduplication_store(
-        "redis_streams",
-        default_ttl=3600,
-        enable_fallback=True,
-    )
+    # Check for duplicates
+    result = deduplicator.check(checkpoint_result, "slack", severity="high")
+    if result.should_send:
+        await action.execute(checkpoint_result)
+        deduplicator.mark_sent(result.fingerprint)
 """
 
-from .policies import DeduplicationPolicy, FingerprintGenerator
-from .service import NotificationDeduplicator, TimeWindow
-from .stores import (
-    REDIS_AVAILABLE,
-    BaseDeduplicationStore,
-    DeduplicationMetrics,
-    DeduplicationStoreType,
+# Re-export from truthound.checkpoint.deduplication
+from truthound.checkpoint.deduplication import (
+    NotificationDeduplicator,
+    DeduplicationConfig,
     InMemoryDeduplicationStore,
-    RedisDeduplicationStore,
-    RedisStreamsDeduplicationStore,
-    SQLiteDeduplicationStore,
-    create_deduplication_store,
+    TimeWindow,
+    WindowUnit,
+    DeduplicationPolicy,
+    NotificationFingerprint,
+    DeduplicationMiddleware,
+    deduplicated,
 )
-from .strategies import (
-    AdaptiveWindowStrategy,
-    BaseWindowStrategy,
-    SessionWindowStrategy,
+
+# Window strategies
+from truthound.checkpoint.deduplication import (
     SlidingWindowStrategy,
-    StrategyRegistry,
     TumblingWindowStrategy,
+    SessionWindowStrategy,
+)
+
+# Redis store (optional)
+try:
+    from truthound.checkpoint.deduplication import RedisStreamsDeduplicationStore
+    REDIS_AVAILABLE = True
+except ImportError:
+    RedisStreamsDeduplicationStore = None  # type: ignore
+    REDIS_AVAILABLE = False
+
+# Dashboard-specific adapters
+from .service import (
+    DashboardDeduplicationService,
+    create_deduplication_config_from_db,
 )
 
 __all__ = [
-    # Stores
-    "BaseDeduplicationStore",
+    # truthound core
+    "NotificationDeduplicator",
+    "DeduplicationConfig",
     "InMemoryDeduplicationStore",
-    "SQLiteDeduplicationStore",
-    "RedisDeduplicationStore",
-    "RedisStreamsDeduplicationStore",
-    "DeduplicationMetrics",
-    "DeduplicationStoreType",
-    "create_deduplication_store",
-    "REDIS_AVAILABLE",
-    # Strategies
-    "BaseWindowStrategy",
+    "TimeWindow",
+    "WindowUnit",
+    "DeduplicationPolicy",
+    "NotificationFingerprint",
+    "DeduplicationMiddleware",
+    "deduplicated",
+    # Window strategies
     "SlidingWindowStrategy",
     "TumblingWindowStrategy",
     "SessionWindowStrategy",
-    "AdaptiveWindowStrategy",
-    "StrategyRegistry",
-    # Policies
-    "DeduplicationPolicy",
-    "FingerprintGenerator",
-    # Service
-    "NotificationDeduplicator",
-    "TimeWindow",
+    # Redis (optional)
+    "RedisStreamsDeduplicationStore",
+    "REDIS_AVAILABLE",
+    # Dashboard adapters
+    "DashboardDeduplicationService",
+    "create_deduplication_config_from_db",
 ]

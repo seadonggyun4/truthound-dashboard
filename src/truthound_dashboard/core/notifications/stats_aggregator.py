@@ -4,6 +4,9 @@ This module provides efficient stats aggregation using SQLAlchemy
 aggregate queries instead of fetching all records. Includes caching
 layer for frequently accessed statistics.
 
+Now integrates with truthound library to provide runtime statistics
+from truthound's deduplication, throttling, and escalation engines.
+
 The StatsAggregator follows the Repository pattern with caching
 to optimize database queries for stats endpoints.
 
@@ -18,6 +21,9 @@ Example:
 
     # Get deduplication stats with caching (default 30s TTL)
     stats = await aggregator.get_deduplication_stats(use_cache=True)
+
+    # Get truthound runtime stats
+    truthound_stats = await aggregator.get_truthound_stats()
 """
 
 from __future__ import annotations
@@ -28,7 +34,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,6 +46,9 @@ from ...db.models import (
     EscalationStateEnum,
     ThrottlingConfig,
 )
+
+if TYPE_CHECKING:
+    from .truthound_adapter import TruthoundNotificationAdapter, TruthoundStats
 
 logger = logging.getLogger(__name__)
 
@@ -354,6 +363,51 @@ class ThrottlingStatsResult:
     configs_with_per_day: int
     avg_burst_allowance: float
     time_range: TimeRange | None = None
+    cached: bool = False
+    cached_at: datetime | None = None
+
+
+@dataclass
+class TruthoundRuntimeStatsResult:
+    """Truthound runtime statistics result.
+
+    Contains live statistics from truthound library's deduplication,
+    throttling, and escalation engines.
+
+    Attributes:
+        deduplication: Deduplication runtime stats.
+        throttling: Throttling runtime stats.
+        escalation: Escalation runtime stats.
+        routing: Routing runtime stats.
+        cached: Whether result was served from cache.
+        cached_at: When result was cached (if cached).
+    """
+
+    deduplication: dict[str, Any]
+    throttling: dict[str, Any]
+    escalation: dict[str, Any]
+    routing: dict[str, Any]
+    cached: bool = False
+    cached_at: datetime | None = None
+
+
+@dataclass
+class CombinedStatsResult:
+    """Combined dashboard and truthound statistics.
+
+    Provides a unified view of both:
+    - Dashboard config stats (from DB)
+    - Truthound runtime stats (from library)
+
+    Attributes:
+        dashboard: Dashboard config statistics.
+        truthound: Truthound runtime statistics.
+        cached: Whether result was served from cache.
+        cached_at: When result was cached (if cached).
+    """
+
+    dashboard: dict[str, Any]
+    truthound: TruthoundRuntimeStatsResult | None
     cached: bool = False
     cached_at: datetime | None = None
 
@@ -848,3 +902,194 @@ class StatsAggregator:
             Dictionary with cache statistics.
         """
         return await self._cache.get_stats()
+
+    # =========================================================================
+    # Truthound Runtime Stats
+    # =========================================================================
+
+    async def get_truthound_stats(
+        self,
+        use_cache: bool = True,
+        cache_ttl_seconds: int | None = None,
+    ) -> TruthoundRuntimeStatsResult:
+        """Get truthound library runtime statistics.
+
+        Returns live statistics from truthound's deduplication, throttling,
+        and escalation engines. These are different from the DB config stats -
+        they reflect actual runtime behavior.
+
+        Args:
+            use_cache: Whether to use caching.
+            cache_ttl_seconds: Cache TTL override.
+
+        Returns:
+            TruthoundRuntimeStatsResult with live statistics.
+        """
+        cache_key = "truthound_runtime_stats"
+        ttl = cache_ttl_seconds if cache_ttl_seconds is not None else self._cache_ttl
+
+        # Try cache first
+        if use_cache:
+            cached = await self._cache.get(cache_key)
+            if cached is not None:
+                cached.cached = True
+                return cached
+
+        # Get stats from truthound adapter
+        try:
+            from .truthound_adapter import TruthoundNotificationAdapter
+
+            adapter = TruthoundNotificationAdapter(self._session)
+            await adapter.initialize()
+
+            stats = adapter.get_stats()
+
+            result = TruthoundRuntimeStatsResult(
+                deduplication={
+                    "total_evaluated": stats.dedup_total_evaluated,
+                    "suppressed": stats.dedup_suppressed,
+                    "suppression_ratio": (
+                        stats.dedup_suppressed / stats.dedup_total_evaluated
+                        if stats.dedup_total_evaluated > 0
+                        else 0.0
+                    ),
+                    "active_fingerprints": stats.dedup_active_fingerprints,
+                },
+                throttling={
+                    "total_checked": stats.throttle_total_checked,
+                    "total_allowed": stats.throttle_total_allowed,
+                    "total_throttled": stats.throttle_total_throttled,
+                    "throttle_rate": (
+                        stats.throttle_total_throttled / stats.throttle_total_checked
+                        if stats.throttle_total_checked > 0
+                        else 0.0
+                    ),
+                },
+                escalation={
+                    "total_escalations": stats.escalation_total,
+                    "active_escalations": stats.escalation_active,
+                    "acknowledged": stats.escalation_acknowledged,
+                    "acknowledgment_rate": (
+                        stats.escalation_acknowledged / stats.escalation_total
+                        if stats.escalation_total > 0
+                        else 0.0
+                    ),
+                },
+                routing={
+                    "total_routes": stats.routing_total_routes,
+                    "total_matched": stats.routing_total_matched,
+                    "match_rate": (
+                        stats.routing_total_matched / stats.routing_total_routes
+                        if stats.routing_total_routes > 0
+                        else 0.0
+                    ),
+                },
+                cached=False,
+                cached_at=None,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to get truthound stats: {e}")
+            # Return empty stats on error
+            result = TruthoundRuntimeStatsResult(
+                deduplication={
+                    "total_evaluated": 0,
+                    "suppressed": 0,
+                    "suppression_ratio": 0.0,
+                    "active_fingerprints": 0,
+                    "error": str(e),
+                },
+                throttling={
+                    "total_checked": 0,
+                    "total_allowed": 0,
+                    "total_throttled": 0,
+                    "throttle_rate": 0.0,
+                    "error": str(e),
+                },
+                escalation={
+                    "total_escalations": 0,
+                    "active_escalations": 0,
+                    "acknowledged": 0,
+                    "acknowledgment_rate": 0.0,
+                    "error": str(e),
+                },
+                routing={
+                    "total_routes": 0,
+                    "total_matched": 0,
+                    "match_rate": 0.0,
+                    "error": str(e),
+                },
+                cached=False,
+                cached_at=None,
+            )
+
+        # Cache result
+        if use_cache:
+            result.cached_at = datetime.utcnow()
+            await self._cache.set(cache_key, result, ttl)
+
+        return result
+
+    async def get_combined_stats(
+        self,
+        time_range: TimeRange | None = None,
+        use_cache: bool = True,
+        include_truthound: bool = True,
+    ) -> CombinedStatsResult:
+        """Get combined dashboard and truthound statistics.
+
+        Provides a unified view of both configuration-based stats (from DB)
+        and runtime stats (from truthound library).
+
+        Args:
+            time_range: Optional time range filter for dashboard stats.
+            use_cache: Whether to use caching.
+            include_truthound: Whether to include truthound runtime stats.
+
+        Returns:
+            CombinedStatsResult with both dashboard and truthound stats.
+        """
+        cache_key = self._generate_cache_key(
+            "combined_stats",
+            time_range,
+            include_truthound=include_truthound,
+        )
+        ttl = self._cache_ttl
+
+        # Try cache first
+        if use_cache:
+            cached = await self._cache.get(cache_key)
+            if cached is not None:
+                cached.cached = True
+                return cached
+
+        # Get dashboard stats
+        dashboard_stats = await self.get_all_stats(time_range, use_cache=False)
+
+        # Get truthound stats if requested
+        truthound_stats = None
+        if include_truthound:
+            truthound_stats = await self.get_truthound_stats(use_cache=False)
+
+        result = CombinedStatsResult(
+            dashboard=dashboard_stats,
+            truthound=truthound_stats,
+            cached=False,
+            cached_at=None,
+        )
+
+        # Cache result
+        if use_cache:
+            result.cached_at = datetime.utcnow()
+            await self._cache.set(cache_key, result, ttl)
+
+        return result
+
+    async def invalidate_truthound_cache(self) -> int:
+        """Invalidate truthound stats cache entries.
+
+        Returns:
+            Number of entries invalidated.
+        """
+        count = await self._cache.invalidate_pattern("truthound")
+        count += await self._cache.invalidate_pattern("combined_stats")
+        return count

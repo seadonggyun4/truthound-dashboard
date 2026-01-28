@@ -1,311 +1,173 @@
-"""Fluent builder for throttler configuration.
+"""Dashboard-specific throttler builder using truthound.
 
-This module provides a builder pattern for easily configuring
-multi-level rate limiting with a fluent API.
-
-Example:
-    throttler = (
-        ThrottlerBuilder()
-        .with_per_minute_limit(10)
-        .with_per_hour_limit(100)
-        .with_per_day_limit(500)
-        .with_burst_allowance(1.5)
-        .build()
-    )
-
-    result = throttler.allow("channel-1")
+This module provides adapters that integrate truthound's throttling
+system with the Dashboard's database configuration.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
-from .stores import BaseThrottlingStore, InMemoryThrottlingStore
-from .throttlers import (
-    BaseThrottler,
-    CompositeThrottler,
-    FixedWindowThrottler,
+from truthound.checkpoint.throttling import (
+    ThrottlerBuilder,
     NotificationThrottler,
-    TokenBucketThrottler,
+    ThrottlingConfig,
+    RateLimitScope,
+    RateLimit,
 )
 
 if TYPE_CHECKING:
     from typing import Self
 
 
-class ThrottlerBuilder:
-    """Fluent builder for creating throttlers.
+class DashboardThrottlerBuilder:
+    """Dashboard-specific throttler builder.
 
-    Provides a convenient API for configuring multi-level
-    rate limiting with various algorithms.
+    Wraps truthound's ThrottlerBuilder and provides integration
+    with the Dashboard's database configuration.
 
     Example:
-        # Simple per-minute limit
+        builder = DashboardThrottlerBuilder()
         throttler = (
-            ThrottlerBuilder()
-            .with_per_minute_limit(10)
-            .build()
-        )
-
-        # Multi-level limits with burst
-        throttler = (
-            ThrottlerBuilder()
+            builder
             .with_per_minute_limit(10)
             .with_per_hour_limit(100)
-            .with_burst_allowance(1.5)
-            .build()
-        )
-
-        # Token bucket for smooth limiting
-        throttler = (
-            ThrottlerBuilder()
-            .with_token_bucket(capacity=10, refill_rate=1)
+            .with_action_limit("pagerduty", per_minute=5)
             .build()
         )
     """
 
     def __init__(self) -> None:
-        """Initialize builder."""
-        self._per_second: int | None = None
-        self._per_minute: int | None = None
-        self._per_hour: int | None = None
-        self._per_day: int | None = None
-        self._burst_allowance: float = 1.0
-        self._token_bucket_capacity: float | None = None
-        self._token_bucket_rate: float | None = None
-        self._store: BaseThrottlingStore | None = None
-        self._throttlers: list[BaseThrottler] = []
-
-    def with_per_second_limit(self, limit: int) -> "Self":
-        """Set per-second limit.
-
-        Args:
-            limit: Maximum requests per second.
-
-        Returns:
-            Self for chaining.
-        """
-        self._per_second = limit
-        return self
+        """Initialize the builder."""
+        self._builder = ThrottlerBuilder()
 
     def with_per_minute_limit(self, limit: int) -> "Self":
-        """Set per-minute limit.
-
-        Args:
-            limit: Maximum requests per minute.
-
-        Returns:
-            Self for chaining.
-        """
-        self._per_minute = limit
+        """Set per-minute rate limit."""
+        self._builder.with_per_minute_limit(limit)
         return self
 
     def with_per_hour_limit(self, limit: int) -> "Self":
-        """Set per-hour limit.
-
-        Args:
-            limit: Maximum requests per hour.
-
-        Returns:
-            Self for chaining.
-        """
-        self._per_hour = limit
+        """Set per-hour rate limit."""
+        self._builder.with_per_hour_limit(limit)
         return self
 
     def with_per_day_limit(self, limit: int) -> "Self":
-        """Set per-day limit.
-
-        Args:
-            limit: Maximum requests per day.
-
-        Returns:
-            Self for chaining.
-        """
-        self._per_day = limit
+        """Set per-day rate limit."""
+        self._builder.with_per_day_limit(limit)
         return self
 
-    def with_burst_allowance(self, factor: float) -> "Self":
-        """Set burst allowance factor.
-
-        Multiplies the limit to allow temporary bursts.
-        For example, 1.5 allows 150% of normal rate for short periods.
-
-        Args:
-            factor: Burst multiplier (1.0 = no burst allowed).
-
-        Returns:
-            Self for chaining.
-        """
-        self._burst_allowance = max(1.0, factor)
+    def with_burst_allowance(self, multiplier: float) -> "Self":
+        """Set burst allowance multiplier."""
+        self._builder.with_burst_allowance(multiplier)
         return self
 
-    def with_token_bucket(
+    def with_algorithm(self, algorithm: str) -> "Self":
+        """Set throttling algorithm (token_bucket, sliding_window, fixed_window)."""
+        self._builder.with_algorithm(algorithm)
+        return self
+
+    def with_scope(self, scope: str) -> "Self":
+        """Set rate limit scope."""
+        scope_map = {
+            "global": RateLimitScope.GLOBAL,
+            "per_action": RateLimitScope.PER_ACTION,
+            "per_checkpoint": RateLimitScope.PER_CHECKPOINT,
+            "per_action_checkpoint": RateLimitScope.PER_ACTION_CHECKPOINT,
+            "per_severity": RateLimitScope.PER_SEVERITY,
+            "per_data_asset": RateLimitScope.PER_DATA_ASSET,
+        }
+        self._builder.with_scope(scope_map.get(scope.lower(), RateLimitScope.GLOBAL))
+        return self
+
+    def with_priority_bypass(self, threshold: str) -> "Self":
+        """Enable priority bypass for notifications above threshold."""
+        self._builder.with_priority_bypass(threshold)
+        return self
+
+    def with_action_limit(
         self,
-        capacity: float,
-        refill_rate: float,
+        action_type: str,
+        *,
+        per_minute: int | None = None,
+        per_hour: int | None = None,
+        per_day: int | None = None,
     ) -> "Self":
-        """Configure token bucket algorithm.
-
-        Args:
-            capacity: Maximum tokens (burst capacity).
-            refill_rate: Tokens added per second.
-
-        Returns:
-            Self for chaining.
-        """
-        self._token_bucket_capacity = capacity
-        self._token_bucket_rate = refill_rate
+        """Set custom limits for a specific action type."""
+        self._builder.with_action_limit(
+            action_type,
+            per_minute=per_minute,
+            per_hour=per_hour,
+        )
         return self
 
-    def with_store(self, store: BaseThrottlingStore) -> "Self":
-        """Set storage backend.
-
-        Args:
-            store: Storage backend to use.
-
-        Returns:
-            Self for chaining.
-        """
-        self._store = store
-        return self
-
-    def add_throttler(self, throttler: BaseThrottler) -> "Self":
-        """Add a custom throttler to the composite.
-
-        Args:
-            throttler: Custom throttler to add.
-
-        Returns:
-            Self for chaining.
-        """
-        self._throttlers.append(throttler)
-        return self
-
-    def build(self) -> BaseThrottler:
-        """Build the throttler.
-
-        Creates a CompositeThrottler if multiple limits are
-        configured, or a single throttler for simple configs.
-
-        Returns:
-            Configured throttler.
-        """
-        store = self._store or InMemoryThrottlingStore()
-        throttlers: list[BaseThrottler] = list(self._throttlers)
-
-        # Add token bucket if configured
-        if self._token_bucket_capacity and self._token_bucket_rate:
-            throttlers.append(
-                TokenBucketThrottler(
-                    capacity=self._token_bucket_capacity * self._burst_allowance,
-                    refill_rate=self._token_bucket_rate,
-                    store=store,
-                )
-            )
-
-        # Add window-based throttlers
-        if self._per_second:
-            throttlers.append(
-                FixedWindowThrottler(
-                    limit=int(self._per_second * self._burst_allowance),
-                    window_seconds=1,
-                    store=store,
-                )
-            )
-
-        if self._per_minute:
-            throttlers.append(
-                FixedWindowThrottler(
-                    limit=int(self._per_minute * self._burst_allowance),
-                    window_seconds=60,
-                    store=store,
-                )
-            )
-
-        if self._per_hour:
-            throttlers.append(
-                FixedWindowThrottler(
-                    limit=int(self._per_hour * self._burst_allowance),
-                    window_seconds=3600,
-                    store=store,
-                )
-            )
-
-        if self._per_day:
-            throttlers.append(
-                FixedWindowThrottler(
-                    limit=int(self._per_day * self._burst_allowance),
-                    window_seconds=86400,
-                    store=store,
-                )
-            )
-
-        # Return appropriate throttler
-        if not throttlers:
-            # No limits configured - use simple token bucket default
-            return TokenBucketThrottler(
-                capacity=100,
-                refill_rate=10,
-                store=store,
-            )
-
-        if len(throttlers) == 1:
-            return throttlers[0]
-
-        return CompositeThrottler(throttlers=throttlers)
-
-    def build_notification_throttler(
+    def with_severity_limit(
         self,
-        global_limits: bool = True,
-    ) -> NotificationThrottler:
-        """Build a NotificationThrottler service.
+        severity: str,
+        *,
+        per_minute: int | None = None,
+        per_hour: int | None = None,
+    ) -> "Self":
+        """Set custom limits for a severity level."""
+        self._builder.with_severity_limit(
+            severity,
+            per_minute=per_minute,
+            per_hour=per_hour,
+        )
+        return self
 
-        Args:
-            global_limits: Apply limits globally (vs per-channel).
-
-        Returns:
-            Configured NotificationThrottler.
-        """
-        throttler = self.build()
-
-        if global_limits:
-            return NotificationThrottler(
-                global_throttler=throttler,
-            )
-        else:
-            return NotificationThrottler(
-                default_throttler=throttler,
-            )
+    def build(self) -> NotificationThrottler:
+        """Build the throttler."""
+        return self._builder.build()
 
 
-def configure_global_throttling(
-    per_minute: int | None = None,
-    per_hour: int | None = None,
-    per_day: int | None = None,
-    burst_allowance: float = 1.5,
+def create_throttler_from_db_config(
+    db_config: dict[str, Any],
 ) -> NotificationThrottler:
-    """Configure global notification throttling.
-
-    Convenience function for common throttling setup.
+    """Create a NotificationThrottler from database configuration.
 
     Args:
-        per_minute: Max notifications per minute.
-        per_hour: Max notifications per hour.
-        per_day: Max notifications per day.
-        burst_allowance: Burst factor.
+        db_config: Configuration dictionary from database.
 
     Returns:
-        Configured NotificationThrottler.
+        NotificationThrottler instance.
     """
-    builder = ThrottlerBuilder()
+    builder = DashboardThrottlerBuilder()
 
-    if per_minute:
-        builder.with_per_minute_limit(per_minute)
-    if per_hour:
-        builder.with_per_hour_limit(per_hour)
-    if per_day:
-        builder.with_per_day_limit(per_day)
+    if db_config.get("per_minute_limit"):
+        builder.with_per_minute_limit(db_config["per_minute_limit"])
 
-    builder.with_burst_allowance(burst_allowance)
+    if db_config.get("per_hour_limit"):
+        builder.with_per_hour_limit(db_config["per_hour_limit"])
 
-    return builder.build_notification_throttler(global_limits=True)
+    if db_config.get("per_day_limit"):
+        builder.with_per_day_limit(db_config["per_day_limit"])
+
+    if db_config.get("burst_multiplier"):
+        builder.with_burst_allowance(db_config["burst_multiplier"])
+
+    if db_config.get("algorithm"):
+        builder.with_algorithm(db_config["algorithm"])
+
+    if db_config.get("scope"):
+        builder.with_scope(db_config["scope"])
+
+    if db_config.get("priority_bypass") and db_config.get("priority_threshold"):
+        builder.with_priority_bypass(db_config["priority_threshold"])
+
+    # Action-specific limits
+    for action_type, limits in db_config.get("action_limits", {}).items():
+        builder.with_action_limit(
+            action_type,
+            per_minute=limits.get("per_minute"),
+            per_hour=limits.get("per_hour"),
+        )
+
+    # Severity-specific limits
+    for severity, limits in db_config.get("severity_limits", {}).items():
+        builder.with_severity_limit(
+            severity,
+            per_minute=limits.get("per_minute"),
+            per_hour=limits.get("per_hour"),
+        )
+
+    return builder.build()

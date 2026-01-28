@@ -1,83 +1,100 @@
-"""Notification throttling system.
+"""Notification throttling using truthound.checkpoint.throttling.
 
-This module provides rate limiting for notifications to prevent
-overwhelming recipients during incidents or high-frequency events.
+This module provides rate limiting for notifications using truthound's
+throttling infrastructure.
 
-Features:
-    - 5 throttler types (TokenBucket, FixedWindow, SlidingWindow, Composite, NoOp)
-    - Fluent builder API for configuration
-    - Per-channel and global throttling
-    - Burst allowance support
+Key Components from truthound.checkpoint.throttling:
+    - NotificationThrottler: High-level throttling service
+    - ThrottlingConfig: Configuration for throttling
+    - ThrottlerBuilder: Fluent builder API
+    - RateLimit: Rate limit configuration
+    - RateLimitScope: Scope of rate limit application
+    - ThrottleStatus: Throttle result status
+
+Throttler Types from truthound (5 types):
+    - TokenBucketThrottler: Token bucket algorithm (allows bursts)
+    - SlidingWindowThrottler: Sliding window algorithm (more accurate)
+    - FixedWindowThrottler: Fixed window algorithm (simple)
+    - CompositeThrottler: Multi-level rate limits
+    - NoOpThrottler: Pass-through (for testing)
 
 Example:
-    from truthound_dashboard.core.notifications.throttling import (
+    from truthound.checkpoint.throttling import (
         ThrottlerBuilder,
-        TokenBucketThrottler,
+        RateLimitScope,
     )
 
-    # Using builder
+    # Build throttler with fluent API
     throttler = (
         ThrottlerBuilder()
         .with_per_minute_limit(10)
         .with_per_hour_limit(100)
+        .with_per_day_limit(500)
         .with_burst_allowance(1.5)
+        .with_scope(RateLimitScope.PER_ACTION)
+        .with_priority_bypass("critical")
         .build()
     )
 
     # Check if allowed
-    result = throttler.allow("slack-channel")
+    result = throttler.acquire(action_type="slack", checkpoint_name="my_check")
     if result.allowed:
         send_notification()
     else:
-        print(f"Retry after {result.retry_after} seconds")
+        print(f"Retry after {result.retry_after:.1f}s")
 """
 
-from .builder import ThrottlerBuilder
-from .stores import (
-    REDIS_AVAILABLE,
-    BaseThrottlingStore,
-    InMemoryThrottlingStore,
-    RedisThrottlingStore,
-    SQLiteThrottlingStore,
-    ThrottlingEntry,
-    ThrottlingMetrics,
-    ThrottlingStoreType,
-    create_throttling_store,
-)
-from .throttlers import (
-    BaseThrottler,
-    CompositeThrottler,
-    FixedWindowThrottler,
-    NoOpThrottler,
+# Re-export from truthound.checkpoint.throttling
+from truthound.checkpoint.throttling import (
     NotificationThrottler,
-    SlidingWindowThrottler,
+    ThrottlingConfig,
+    ThrottlerBuilder,
+    ThrottlingMiddleware,
+    throttled,
+    RateLimit,
+    RateLimitScope,
+    TimeUnit,
+    ThrottleStatus,
     ThrottleResult,
-    ThrottlerRegistry,
-    TokenBucketThrottler,
+    ThrottlingKey,
 )
 
+# Throttler implementations
+from truthound.checkpoint.throttling import (
+    TokenBucketThrottler,
+    SlidingWindowThrottler,
+    FixedWindowThrottler,
+    CompositeThrottler,
+    NoOpThrottler,
+)
+
+# Storage
+from truthound.checkpoint.throttling import InMemoryThrottlingStore
+
+# Dashboard-specific adapters
+from .builder import DashboardThrottlerBuilder
+
 __all__ = [
-    # Throttlers
-    "BaseThrottler",
+    # truthound core
+    "NotificationThrottler",
+    "ThrottlingConfig",
+    "ThrottlerBuilder",
+    "ThrottlingMiddleware",
+    "throttled",
+    "RateLimit",
+    "RateLimitScope",
+    "TimeUnit",
+    "ThrottleStatus",
+    "ThrottleResult",
+    "ThrottlingKey",
+    # Throttler implementations
     "TokenBucketThrottler",
-    "FixedWindowThrottler",
     "SlidingWindowThrottler",
+    "FixedWindowThrottler",
     "CompositeThrottler",
     "NoOpThrottler",
-    "ThrottlerRegistry",
-    "ThrottleResult",
-    # Service
-    "NotificationThrottler",
-    # Builder
-    "ThrottlerBuilder",
-    # Stores
-    "BaseThrottlingStore",
+    # Storage
     "InMemoryThrottlingStore",
-    "SQLiteThrottlingStore",
-    "RedisThrottlingStore",
-    "ThrottlingEntry",
-    "ThrottlingMetrics",
-    "ThrottlingStoreType",
-    "create_throttling_store",
-    "REDIS_AVAILABLE",
+    # Dashboard adapters
+    "DashboardThrottlerBuilder",
 ]

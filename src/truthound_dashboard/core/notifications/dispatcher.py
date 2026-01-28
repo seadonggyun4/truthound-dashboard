@@ -3,13 +3,19 @@
 The dispatcher coordinates between events, rules, and channels to
 deliver notifications based on configured triggers.
 
-Architecture:
-    Event -> Dispatcher -> Rules -> Channels -> Delivery
+Architecture (with truthound integration):
+    Event -> Dispatcher -> Truthound Adapter (Routing/Dedup/Throttle) -> Channels -> Delivery -> Escalation
+
+The dispatcher now integrates with truthound library for:
+- Routing: ActionRouter with 11+ rule types
+- Deduplication: NotificationDeduplicator with time windows
+- Throttling: NotificationThrottler with rate limits
+- Escalation: EscalationEngine with multi-level policies
 
 Example:
     dispatcher = get_dispatcher()
 
-    # Notify about validation failure
+    # Notify about validation failure (with truthound processing)
     await dispatcher.notify_validation_failed(
         source_id="source-123",
         source_name="My Source",
@@ -24,7 +30,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,6 +56,9 @@ from .events import (
     ValidationFailedEvent,
 )
 
+if TYPE_CHECKING:
+    from .truthound_adapter import TruthoundNotificationAdapter
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,10 +67,12 @@ class NotificationDispatcher:
 
     The dispatcher:
     1. Receives notification events
-    2. Matches events against active rules
-    3. Resolves target channels from matching rules
-    4. Delivers notifications through channels
-    5. Logs delivery results
+    2. Routes through truthound ActionRouter (if enabled)
+    3. Checks deduplication via truthound NotificationDeduplicator
+    4. Checks throttling via truthound NotificationThrottler
+    5. Delivers notifications through channels
+    6. Logs delivery results
+    7. Triggers escalation via truthound EscalationEngine (for critical events)
 
     Usage:
         dispatcher = NotificationDispatcher(session)
@@ -69,17 +80,37 @@ class NotificationDispatcher:
         # Send test notification
         results = await dispatcher.test_channel(channel_id)
 
-        # Notify about events
+        # Notify about events (with truthound processing)
         await dispatcher.notify_validation_failed(...)
+
+        # Disable truthound for direct sending
+        dispatcher = NotificationDispatcher(session, use_truthound=False)
     """
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        use_truthound: bool = True,
+    ) -> None:
         """Initialize the dispatcher.
 
         Args:
             session: Database session for accessing rules and channels.
+            use_truthound: Whether to use truthound library for routing,
+                deduplication, throttling, and escalation. Default True.
         """
         self.session = session
+        self.use_truthound = use_truthound
+        self._truthound_adapter: TruthoundNotificationAdapter | None = None
+
+    async def _get_truthound_adapter(self) -> TruthoundNotificationAdapter:
+        """Get or create the truthound adapter lazily."""
+        if self._truthound_adapter is None:
+            from .truthound_adapter import TruthoundNotificationAdapter
+
+            self._truthound_adapter = TruthoundNotificationAdapter(self.session)
+            await self._truthound_adapter.initialize()
+        return self._truthound_adapter
 
     async def dispatch(
         self,
@@ -91,7 +122,15 @@ class NotificationDispatcher:
         """Dispatch a notification event to matching channels.
 
         If channel_ids is provided, sends directly to those channels.
-        Otherwise, matches event against rules to find target channels.
+        Otherwise, matches event against rules (or truthound routes) to find
+        target channels.
+
+        When truthound is enabled:
+        1. Routes through ActionRouter to get matched channels
+        2. Checks deduplication to suppress duplicate notifications
+        3. Checks throttling to enforce rate limits
+        4. Sends to channels that pass all checks
+        5. Triggers escalation for high severity unacknowledged events
 
         Args:
             event: The notification event to dispatch.
@@ -101,6 +140,18 @@ class NotificationDispatcher:
         Returns:
             List of delivery results for each channel.
         """
+        if self.use_truthound and not channel_ids:
+            return await self._dispatch_via_truthound(event, rule_id)
+
+        return await self._dispatch_legacy(event, channel_ids, rule_id)
+
+    async def _dispatch_legacy(
+        self,
+        event: NotificationEvent,
+        channel_ids: list[str] | None = None,
+        rule_id: str | None = None,
+    ) -> list[NotificationResult]:
+        """Legacy dispatch without truthound integration."""
         # Get target channels
         if channel_ids:
             channels = await self._get_channels_by_ids(channel_ids)
@@ -118,6 +169,146 @@ class NotificationDispatcher:
             results.append(result)
 
         return results
+
+    async def _dispatch_via_truthound(
+        self,
+        event: NotificationEvent,
+        rule_id: str | None = None,
+    ) -> list[NotificationResult]:
+        """Dispatch using truthound library for routing, dedup, throttle, escalation.
+
+        This method integrates with truthound's checkpoint modules:
+        - ActionRouter: Matches events to channels via configurable rules
+        - NotificationDeduplicator: Suppresses duplicate notifications
+        - NotificationThrottler: Enforces rate limits per channel
+        - EscalationEngine: Escalates unacknowledged critical events
+        """
+        adapter = await self._get_truthound_adapter()
+
+        # Step 1: Route event to channels via truthound ActionRouter
+        matched_channel_ids = await adapter.match_routes(event)
+
+        # Fall back to legacy rule matching if no routes configured
+        if not matched_channel_ids:
+            channels = await self._get_channels_for_event(event)
+            matched_channel_ids = [ch.id for ch in channels]
+
+        if not matched_channel_ids:
+            logger.debug(f"No channels matched for event: {event.event_type}")
+            return []
+
+        # Get channel models
+        channels = await self._get_channels_by_ids(matched_channel_ids)
+        if not channels:
+            return []
+
+        results: list[NotificationResult] = []
+
+        for channel_model in channels:
+            channel_id = channel_model.id
+
+            # Step 2: Check deduplication via truthound NotificationDeduplicator
+            if await adapter.is_duplicate(event, channel_id):
+                logger.debug(
+                    f"Notification deduplicated for channel {channel_id}: {event.event_type}"
+                )
+                results.append(
+                    NotificationResult(
+                        success=True,
+                        channel_id=channel_id,
+                        channel_type=channel_model.type,
+                        message="",
+                        error=None,
+                        suppressed=True,
+                        suppression_reason="duplicate",
+                    )
+                )
+                continue
+
+            # Step 3: Check throttling via truthound NotificationThrottler
+            if await adapter.is_throttled(channel_id):
+                logger.debug(
+                    f"Notification throttled for channel {channel_id}: {event.event_type}"
+                )
+                results.append(
+                    NotificationResult(
+                        success=True,
+                        channel_id=channel_id,
+                        channel_type=channel_model.type,
+                        message="",
+                        error=None,
+                        suppressed=True,
+                        suppression_reason="throttled",
+                    )
+                )
+                continue
+
+            # Step 4: Send notification
+            result = await self._send_to_channel(channel_model, event, rule_id)
+            results.append(result)
+
+            # Step 5: Mark as sent for deduplication tracking
+            if result.success:
+                await adapter.mark_notification_sent(event, channel_id)
+
+        # Step 6: Check escalation for high severity events
+        await self._check_escalation(event, adapter)
+
+        return results
+
+    async def _check_escalation(
+        self,
+        event: NotificationEvent,
+        adapter: TruthoundNotificationAdapter,
+    ) -> None:
+        """Check and trigger escalation for high severity events.
+
+        Escalation is triggered for:
+        - Critical validation failures
+        - High severity drift detection
+        - Schedule failures
+
+        The escalation engine will notify secondary/tertiary channels
+        if the primary notification is not acknowledged within timeout.
+        """
+        severity = self._get_event_severity(event)
+
+        if severity in ("critical", "high"):
+            try:
+                escalation_id = await adapter.trigger_escalation(
+                    event,
+                    policy_name=f"{severity}_alert",
+                )
+                if escalation_id:
+                    logger.info(
+                        f"Escalation triggered for {event.event_type}: {escalation_id}"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to trigger escalation: {e}")
+
+    def _get_event_severity(self, event: NotificationEvent) -> str:
+        """Determine severity level of an event."""
+        if isinstance(event, ValidationFailedEvent):
+            if event.has_critical:
+                return "critical"
+            if event.has_high:
+                return "high"
+            return "medium"
+
+        if isinstance(event, DriftDetectedEvent):
+            if event.has_high_drift:
+                return "high"
+            return "medium"
+
+        if isinstance(event, ScheduleFailedEvent):
+            return "high"
+
+        if isinstance(event, SchemaChangedEvent):
+            if event.has_breaking_changes:
+                return "high"
+            return "low"
+
+        return "low"
 
     async def _get_channels_by_ids(
         self, channel_ids: list[str]

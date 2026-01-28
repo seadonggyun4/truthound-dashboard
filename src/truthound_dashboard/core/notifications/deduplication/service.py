@@ -1,319 +1,131 @@
-"""Main deduplication service.
+"""Dashboard-specific deduplication service using truthound.
 
-This module provides the NotificationDeduplicator service that
-combines storage, strategies, and policies for complete
-deduplication functionality.
-
-Example:
-    # Create deduplicator
-    deduplicator = NotificationDeduplicator(
-        store=InMemoryDeduplicationStore(),
-        default_window=TimeWindow(minutes=5),
-        policy=DeduplicationPolicy.SEVERITY,
-    )
-
-    # Check and record
-    fingerprint = deduplicator.generate_fingerprint(
-        checkpoint_name="daily_check",
-        action_type="slack",
-        severity="high",
-    )
-
-    if not deduplicator.is_duplicate(fingerprint):
-        await send_notification()
-        deduplicator.mark_sent(fingerprint)
+This module provides adapters that integrate truthound's deduplication
+system with the Dashboard's database configuration.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime
 from typing import Any
 
-from ...validation_limits import (
-    ValidationLimitError,
-    get_time_window_limits,
+from truthound.checkpoint.deduplication import (
+    NotificationDeduplicator,
+    DeduplicationConfig,
+    InMemoryDeduplicationStore,
+    TimeWindow,
+    DeduplicationPolicy,
 )
-from .policies import DeduplicationPolicy, FingerprintConfig, FingerprintGenerator
-from .stores import BaseDeduplicationStore, InMemoryDeduplicationStore
-from .strategies import BaseWindowStrategy, SlidingWindowStrategy
 
 
-@dataclass
-class TimeWindow:
-    """Time window configuration with validation.
+class DashboardDeduplicationService:
+    """Dashboard-specific deduplication service.
 
-    Provides a convenient way to specify window durations with built-in
-    validation to prevent DoS attacks from excessive window sizes.
-
-    Validation Limits (configurable via environment variables):
-        - Total seconds: 1 to 604800 (7 days)
-        - Individual components must be non-negative
-
-    Environment Variables:
-        - TRUTHOUND_TIMEWINDOW_MIN: Minimum total duration (default: 1)
-        - TRUTHOUND_TIMEWINDOW_MAX: Maximum total duration (default: 604800)
-
-    Attributes:
-        seconds: Additional seconds (default: 0).
-        minutes: Additional minutes (default: 0).
-        hours: Additional hours (default: 0).
-        days: Additional days (default: 0).
-
-    Raises:
-        ValidationLimitError: If total duration exceeds limits.
-        ValueError: If any component is negative.
-    """
-
-    seconds: int = 0
-    minutes: int = 0
-    hours: int = 0
-    days: int = 0
-
-    def __post_init__(self) -> None:
-        """Validate window configuration after initialization.
-
-        Raises:
-            ValueError: If any component is negative.
-            ValidationLimitError: If total duration exceeds limits.
-        """
-        # Validate non-negative values
-        if self.seconds < 0:
-            raise ValueError(f"seconds must be non-negative, got {self.seconds}")
-        if self.minutes < 0:
-            raise ValueError(f"minutes must be non-negative, got {self.minutes}")
-        if self.hours < 0:
-            raise ValueError(f"hours must be non-negative, got {self.hours}")
-        if self.days < 0:
-            raise ValueError(f"days must be non-negative, got {self.days}")
-
-        # Validate total duration against limits
-        total = self.total_seconds
-        limits = get_time_window_limits()
-        valid, error = limits.validate_total_seconds(total)
-        if not valid:
-            raise ValidationLimitError(
-                error or f"Invalid total duration: {total}",
-                parameter="total_seconds",
-                value=total,
-            )
-
-    @property
-    def total_seconds(self) -> int:
-        """Get total duration in seconds."""
-        return (
-            self.seconds
-            + self.minutes * 60
-            + self.hours * 3600
-            + self.days * 86400
-        )
-
-    @classmethod
-    def from_seconds(cls, seconds: int) -> "TimeWindow":
-        """Create from seconds with validation.
-
-        Args:
-            seconds: Total duration in seconds.
-
-        Returns:
-            TimeWindow instance.
-
-        Raises:
-            ValidationLimitError: If seconds exceeds limits.
-            ValueError: If seconds is negative.
-        """
-        if seconds < 0:
-            raise ValueError(f"seconds must be non-negative, got {seconds}")
-
-        # Validate against limits before creating
-        limits = get_time_window_limits()
-        valid, error = limits.validate_total_seconds(seconds)
-        if not valid:
-            raise ValidationLimitError(
-                error or f"Invalid duration: {seconds}",
-                parameter="seconds",
-                value=seconds,
-            )
-
-        return cls(seconds=seconds)
-
-    def __repr__(self) -> str:
-        parts = []
-        if self.days:
-            parts.append(f"{self.days}d")
-        if self.hours:
-            parts.append(f"{self.hours}h")
-        if self.minutes:
-            parts.append(f"{self.minutes}m")
-        if self.seconds:
-            parts.append(f"{self.seconds}s")
-        return f"TimeWindow({' '.join(parts) or '0s'})"
-
-
-class NotificationDeduplicator:
-    """Main deduplication service.
-
-    Provides complete deduplication functionality by combining:
-    - Storage backend for tracking sent notifications
-    - Window strategy for calculating deduplication windows
-    - Fingerprint policy for generating unique identifiers
-
-    Thread-safe for concurrent use.
+    Wraps truthound's NotificationDeduplicator and provides integration
+    with the Dashboard's database configuration.
 
     Example:
-        deduplicator = NotificationDeduplicator(
-            store=SQLiteDeduplicationStore("dedup.db"),
-            default_window=TimeWindow(minutes=5),
-            policy=DeduplicationPolicy.SEVERITY,
-            strategy=AdaptiveWindowStrategy(),
-        )
+        service = DashboardDeduplicationService()
+        await service.initialize_from_db(session)
 
-        # Generate fingerprint
-        fp = deduplicator.generate_fingerprint(
-            checkpoint_name="check1",
-            action_type="slack",
-            severity="high",
-        )
-
-        # Check if duplicate
-        if not deduplicator.is_duplicate(fp):
-            send_notification()
-            deduplicator.mark_sent(fp)
+        if not service.is_duplicate(checkpoint_result, "slack"):
+            await send_notification()
     """
 
-    def __init__(
+    def __init__(self) -> None:
+        """Initialize the service with default configuration."""
+        self._deduplicator: NotificationDeduplicator | None = None
+        self._config: DeduplicationConfig | None = None
+
+    @property
+    def deduplicator(self) -> NotificationDeduplicator:
+        """Get the underlying truthound deduplicator."""
+        if self._deduplicator is None:
+            # Create with default config
+            self._config = DeduplicationConfig(
+                enabled=True,
+                policy=DeduplicationPolicy.SEVERITY,
+                default_window=TimeWindow(minutes=5),
+            )
+            self._deduplicator = NotificationDeduplicator(
+                store=InMemoryDeduplicationStore(),
+                config=self._config,
+            )
+        return self._deduplicator
+
+    def configure(
         self,
-        store: BaseDeduplicationStore | None = None,
-        default_window: TimeWindow | None = None,
-        policy: DeduplicationPolicy = DeduplicationPolicy.BASIC,
-        strategy: BaseWindowStrategy | None = None,
-        fingerprint_config: FingerprintConfig | None = None,
+        *,
+        enabled: bool = True,
+        policy: str = "severity",
+        default_window_seconds: int = 300,
+        action_windows: dict[str, int] | None = None,
+        severity_windows: dict[str, int] | None = None,
     ) -> None:
-        """Initialize deduplicator.
+        """Configure the deduplication service.
 
         Args:
-            store: Storage backend (default: InMemoryDeduplicationStore).
-            default_window: Default deduplication window.
-            policy: Fingerprint policy.
-            strategy: Window strategy (default: SlidingWindowStrategy).
-            fingerprint_config: Custom fingerprint config.
+            enabled: Whether deduplication is enabled.
+            policy: Policy name (none, basic, severity, issue_based, strict).
+            default_window_seconds: Default window in seconds.
+            action_windows: Per-action windows in seconds.
+            severity_windows: Per-severity windows in seconds.
         """
-        self.store = store or InMemoryDeduplicationStore()
-        self.default_window = default_window or TimeWindow(minutes=5)
-        self.policy = policy
-        self.strategy = strategy or SlidingWindowStrategy(
-            window_seconds=self.default_window.total_seconds
+        # Map policy string to enum
+        policy_map = {
+            "none": DeduplicationPolicy.NONE,
+            "basic": DeduplicationPolicy.BASIC,
+            "severity": DeduplicationPolicy.SEVERITY,
+            "issue_based": DeduplicationPolicy.ISSUE_BASED,
+            "strict": DeduplicationPolicy.STRICT,
+        }
+        policy_enum = policy_map.get(policy.lower(), DeduplicationPolicy.SEVERITY)
+
+        # Convert action windows
+        action_window_map = {}
+        if action_windows:
+            for action_type, seconds in action_windows.items():
+                action_window_map[action_type] = TimeWindow(seconds=seconds)
+
+        # Convert severity windows
+        severity_window_map = {}
+        if severity_windows:
+            for severity, seconds in severity_windows.items():
+                severity_window_map[severity] = TimeWindow(seconds=seconds)
+
+        self._config = DeduplicationConfig(
+            enabled=enabled,
+            policy=policy_enum,
+            default_window=TimeWindow(seconds=default_window_seconds),
+            action_windows=action_window_map,
+            severity_windows=severity_window_map,
         )
-        self.fingerprint_generator = FingerprintGenerator(
-            policy=policy,
-            config=fingerprint_config,
-        )
 
-    def generate_fingerprint(
-        self,
-        checkpoint_name: str | None = None,
-        action_type: str | None = None,
-        severity: str | None = None,
-        issues: list[dict[str, Any]] | None = None,
-        timestamp: datetime | None = None,
-        **custom_fields: Any,
-    ) -> str:
-        """Generate a deduplication fingerprint.
-
-        Args:
-            checkpoint_name: Name of checkpoint/source.
-            action_type: Type of notification channel.
-            severity: Severity level.
-            issues: List of issues.
-            timestamp: Event timestamp.
-            **custom_fields: Additional fields.
-
-        Returns:
-            Generated fingerprint string.
-        """
-        return self.fingerprint_generator.generate(
-            checkpoint_name=checkpoint_name,
-            action_type=action_type,
-            severity=severity,
-            issues=issues,
-            timestamp=timestamp,
-            **custom_fields,
+        self._deduplicator = NotificationDeduplicator(
+            store=InMemoryDeduplicationStore(),
+            config=self._config,
         )
 
     def is_duplicate(
         self,
-        fingerprint: str,
-        window: TimeWindow | None = None,
-        context: dict[str, Any] | None = None,
+        checkpoint_result: Any,
+        action_type: str,
+        severity: str | None = None,
     ) -> bool:
-        """Check if a fingerprint is a duplicate.
+        """Check if a notification would be a duplicate.
 
         Args:
-            fingerprint: The fingerprint to check.
-            window: Optional window override.
-            context: Optional context for strategy.
+            checkpoint_result: The checkpoint result object.
+            action_type: The action type (slack, email, etc.).
+            severity: Optional severity level.
 
         Returns:
-            True if this is a duplicate notification.
+            True if this would be a duplicate notification.
         """
-        # Get window duration from strategy
-        window_seconds = self.strategy.get_window_seconds(fingerprint, context)
-
-        # Override with explicit window if provided
-        if window is not None:
-            window_seconds = window.total_seconds
-
-        # Use default if strategy returns 0
-        if window_seconds <= 0:
-            window_seconds = self.default_window.total_seconds
-
-        # Get window-aligned key
-        window_key = self.strategy.get_window_key(fingerprint)
-
-        # Check store
-        return self.store.exists(window_key, window_seconds)
-
-    def mark_sent(
-        self,
-        fingerprint: str,
-        metadata: dict[str, Any] | None = None,
-    ) -> None:
-        """Mark a fingerprint as sent.
-
-        Args:
-            fingerprint: The fingerprint to record.
-            metadata: Optional metadata to store.
-        """
-        # Get window-aligned key
-        window_key = self.strategy.get_window_key(fingerprint)
-
-        # Record in store
-        self.store.record(window_key, metadata)
-
-    def check_and_mark(
-        self,
-        fingerprint: str,
-        window: TimeWindow | None = None,
-        context: dict[str, Any] | None = None,
-        metadata: dict[str, Any] | None = None,
-    ) -> bool:
-        """Atomically check if duplicate and mark as sent if not.
-
-        Args:
-            fingerprint: The fingerprint to check.
-            window: Optional window override.
-            context: Optional context for strategy.
-            metadata: Optional metadata to store.
-
-        Returns:
-            True if this is NOT a duplicate (notification should be sent).
-            False if this IS a duplicate (notification should be skipped).
-        """
-        if self.is_duplicate(fingerprint, window, context):
-            return False
-
-        self.mark_sent(fingerprint, metadata)
-        return True
+        return self.deduplicator.is_duplicate(
+            checkpoint_result,
+            action_type,
+            severity=severity,
+        )
 
     def get_stats(self) -> dict[str, Any]:
         """Get deduplication statistics.
@@ -321,80 +133,51 @@ class NotificationDeduplicator:
         Returns:
             Dictionary with statistics.
         """
+        stats = self.deduplicator.get_stats()
         return {
-            "total_entries": self.store.count(),
-            "policy": self.policy.value,
-            "default_window_seconds": self.default_window.total_seconds,
-            "strategy_type": getattr(self.strategy, "strategy_type", "unknown"),
+            "total_evaluated": stats.total_evaluated,
+            "suppressed": stats.suppressed,
+            "suppression_ratio": stats.suppression_ratio,
+            "active_fingerprints": stats.active_fingerprints,
         }
 
-    def cleanup(self, max_age: TimeWindow | None = None) -> int:
-        """Remove expired entries.
 
-        Args:
-            max_age: Maximum age of entries to keep.
-
-        Returns:
-            Number of entries removed.
-        """
-        if max_age is None:
-            # Default to 24 hours
-            max_age = TimeWindow(hours=24)
-
-        return self.store.cleanup(max_age.total_seconds)
-
-    def clear(self) -> None:
-        """Clear all deduplication state."""
-        self.store.clear()
-
-
-def deduplicated(
-    policy: DeduplicationPolicy = DeduplicationPolicy.BASIC,
-    window: TimeWindow | None = None,
-):
-    """Decorator for deduplicating async functions.
-
-    Creates a deduplicator and checks for duplicates before
-    executing the decorated function.
+def create_deduplication_config_from_db(
+    db_config: dict[str, Any],
+) -> DeduplicationConfig:
+    """Create a DeduplicationConfig from database configuration.
 
     Args:
-        policy: Deduplication policy.
-        window: Deduplication window.
+        db_config: Configuration dictionary from database.
 
-    Example:
-        @deduplicated(
-            policy=DeduplicationPolicy.SEVERITY,
-            window=TimeWindow(minutes=10),
-        )
-        async def send_slack_notification(
-            checkpoint_name: str,
-            severity: str,
-            message: str,
-        ):
-            await slack.post(message)
+    Returns:
+        DeduplicationConfig for truthound's deduplicator.
     """
-    import functools
+    policy_map = {
+        "none": DeduplicationPolicy.NONE,
+        "basic": DeduplicationPolicy.BASIC,
+        "severity": DeduplicationPolicy.SEVERITY,
+        "issue_based": DeduplicationPolicy.ISSUE_BASED,
+        "strict": DeduplicationPolicy.STRICT,
+    }
 
-    # Create shared deduplicator
-    deduplicator = NotificationDeduplicator(
-        policy=policy,
-        default_window=window or TimeWindow(minutes=5),
+    policy = db_config.get("policy", "severity")
+    policy_enum = policy_map.get(policy.lower(), DeduplicationPolicy.SEVERITY)
+
+    # Build action windows
+    action_windows = {}
+    for action_type, seconds in db_config.get("action_windows", {}).items():
+        action_windows[action_type] = TimeWindow(seconds=seconds)
+
+    # Build severity windows
+    severity_windows = {}
+    for severity, seconds in db_config.get("severity_windows", {}).items():
+        severity_windows[severity] = TimeWindow(seconds=seconds)
+
+    return DeduplicationConfig(
+        enabled=db_config.get("enabled", True),
+        policy=policy_enum,
+        default_window=TimeWindow(seconds=db_config.get("window_seconds", 300)),
+        action_windows=action_windows,
+        severity_windows=severity_windows,
     )
-
-    def decorator(func):
-        @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
-            # Generate fingerprint from kwargs
-            fingerprint = deduplicator.generate_fingerprint(**kwargs)
-
-            # Check and mark
-            if not deduplicator.check_and_mark(fingerprint):
-                # Duplicate - skip execution
-                return None
-
-            # Execute function
-            return await func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator

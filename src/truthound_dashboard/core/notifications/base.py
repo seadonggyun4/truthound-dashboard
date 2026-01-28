@@ -49,6 +49,8 @@ class NotificationResult:
         error: Error message if delivery failed.
         sent_at: Timestamp of the delivery attempt.
         metadata: Additional metadata about the delivery.
+        suppressed: Whether the notification was suppressed (dedup/throttle).
+        suppression_reason: Reason for suppression if suppressed.
     """
 
     success: bool
@@ -58,6 +60,8 @@ class NotificationResult:
     error: str | None = None
     sent_at: datetime = field(default_factory=datetime.utcnow)
     metadata: dict[str, Any] = field(default_factory=dict)
+    suppressed: bool = False
+    suppression_reason: str | None = None
 
 
 @dataclass
