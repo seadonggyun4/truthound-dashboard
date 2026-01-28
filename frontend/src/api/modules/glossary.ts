@@ -96,6 +96,13 @@ export interface RelationshipCreate {
 // Terms API
 // ============================================================================
 
+export interface TermListResponse {
+  data: GlossaryTerm[]
+  total: number
+  offset: number
+  limit: number
+}
+
 export async function getTerms(params?: {
   search?: string
   category_id?: string
@@ -103,7 +110,8 @@ export async function getTerms(params?: {
   skip?: number
   limit?: number
 }): Promise<GlossaryTerm[]> {
-  return request<GlossaryTerm[]>('/glossary/terms', { params })
+  const response = await request<TermListResponse>('/glossary/terms', { params })
+  return response.data
 }
 
 export async function getTerm(id: string): Promise<GlossaryTerm> {
@@ -128,20 +136,38 @@ export async function deleteTerm(id: string): Promise<OkResponse> {
   return request<OkResponse>(`/glossary/terms/${id}`, { method: 'DELETE' })
 }
 
+export interface TermHistoryListResponse {
+  data: TermHistory[]
+  total: number
+}
+
 export async function getTermHistory(id: string): Promise<TermHistory[]> {
-  return request<TermHistory[]>(`/glossary/terms/${id}/history`)
+  const response = await request<TermHistoryListResponse>(`/glossary/terms/${id}/history`)
+  return response.data
+}
+
+export interface RelationshipListResponse {
+  data: TermRelationship[]
+  total: number
 }
 
 export async function getTermRelationships(id: string): Promise<TermRelationship[]> {
-  return request<TermRelationship[]>(`/glossary/terms/${id}/relationships`)
+  const response = await request<RelationshipListResponse>(`/glossary/terms/${id}/relationships`)
+  return response.data
 }
 
 // ============================================================================
 // Categories API
 // ============================================================================
 
+export interface CategoryListResponse {
+  data: GlossaryCategory[]
+  total: number
+}
+
 export async function getCategories(): Promise<GlossaryCategory[]> {
-  return request<GlossaryCategory[]>('/glossary/categories')
+  const response = await request<CategoryListResponse>('/glossary/categories')
+  return response.data
 }
 
 export async function createCategory(data: CategoryCreate): Promise<GlossaryCategory> {

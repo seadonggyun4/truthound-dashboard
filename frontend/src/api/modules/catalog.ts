@@ -111,6 +111,13 @@ export interface TagCreate {
 // Assets API
 // ============================================================================
 
+export interface AssetListResponse {
+  data: AssetListItem[]
+  total: number
+  offset: number
+  limit: number
+}
+
 export async function getAssets(params?: {
   search?: string
   asset_type?: string
@@ -118,7 +125,8 @@ export async function getAssets(params?: {
   skip?: number
   limit?: number
 }): Promise<AssetListItem[]> {
-  return request<AssetListItem[]>('/catalog/assets', { params })
+  const response = await request<AssetListResponse>('/catalog/assets', { params })
+  return response.data
 }
 
 export async function getAsset(id: string): Promise<CatalogAsset> {
@@ -147,8 +155,14 @@ export async function deleteAsset(id: string): Promise<OkResponse> {
 // Columns API
 // ============================================================================
 
+export interface ColumnListResponse {
+  data: AssetColumn[]
+  total: number
+}
+
 export async function getAssetColumns(assetId: string): Promise<AssetColumn[]> {
-  return request<AssetColumn[]>(`/catalog/assets/${assetId}/columns`)
+  const response = await request<ColumnListResponse>(`/catalog/assets/${assetId}/columns`)
+  return response.data
 }
 
 export async function createColumn(assetId: string, data: ColumnCreate): Promise<AssetColumn> {
