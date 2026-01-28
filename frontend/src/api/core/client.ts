@@ -1,11 +1,25 @@
 /**
  * Core API client - base request function and error handling.
+ *
+ * Features:
+ * - Request deduplication (optional)
+ * - Throttling support (optional)
+ * - Global rate limiting (prevents 429 errors)
+ * - Standard error handling with ApiError
  */
+
+import { deduplicatedRequest, throttleAsync, globalRateLimiter } from '@/lib/request-utils'
 
 const API_BASE = '/api/v1'
 
 export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>
+  /**
+   * Enable request deduplication. If a request with the same key is already
+   * in-flight, the existing promise will be returned instead of making a new request.
+   * Set to a unique string key to enable deduplication.
+   */
+  dedupe?: string
 }
 
 /**
@@ -50,16 +64,15 @@ export class ApiError extends Error {
 }
 
 /**
- * Make an API request.
- *
- * @param endpoint - API endpoint (e.g., '/sources')
- * @param options - Request options including params
- * @returns Parsed JSON response
+ * Internal fetch implementation with rate limiting.
  */
-export async function request<T>(
+async function doRequest<T>(
   endpoint: string,
-  options: RequestOptions = {}
+  options: Omit<RequestOptions, 'dedupe'>
 ): Promise<T> {
+  // Apply global rate limiting
+  await globalRateLimiter.acquire()
+
   const { params, ...init } = options
 
   // Build URL with query params
@@ -105,6 +118,56 @@ export async function request<T>(
   }
 
   return response.json()
+}
+
+/**
+ * Make an API request.
+ *
+ * @param endpoint - API endpoint (e.g., '/sources')
+ * @param options - Request options including params and dedupe key
+ * @returns Parsed JSON response
+ *
+ * @example
+ * // Basic request
+ * const sources = await request<Source[]>('/sources')
+ *
+ * @example
+ * // With deduplication (concurrent calls reuse the same request)
+ * const sources = await request<Source[]>('/sources', { dedupe: 'sources-list' })
+ */
+export async function request<T>(
+  endpoint: string,
+  options: RequestOptions = {}
+): Promise<T> {
+  const { dedupe, ...requestOptions } = options
+
+  // If dedupe key is provided, use deduplication
+  if (dedupe) {
+    return deduplicatedRequest(dedupe, () => doRequest<T>(endpoint, requestOptions))
+  }
+
+  return doRequest<T>(endpoint, requestOptions)
+}
+
+/**
+ * Create a throttled version of an API fetcher function.
+ * Useful for navigation-triggered requests.
+ *
+ * @param fetcher - The API fetcher function to throttle
+ * @param wait - Minimum time between calls in milliseconds
+ * @returns Throttled version of the fetcher
+ *
+ * @example
+ * const throttledFetch = createThrottledFetcher(getLineageGraph, 500)
+ * // Rapid calls will return cached promise
+ * await throttledFetch()
+ * await throttledFetch() // Returns same promise if within 500ms
+ */
+export function createThrottledFetcher<T extends (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>>>(
+  fetcher: T,
+  wait: number
+): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
+  return throttleAsync(fetcher, wait)
 }
 
 /**
