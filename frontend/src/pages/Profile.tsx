@@ -1060,8 +1060,8 @@ export default function Profile() {
 
       {/* Schema Dialog */}
       <Dialog open={schemaDialogOpen} onOpenChange={setSchemaDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Generated Schema</DialogTitle>
             <DialogDescription>
               Auto-generated schema from {source.name}. You can copy this YAML to use with
@@ -1070,9 +1070,9 @@ export default function Profile() {
           </DialogHeader>
 
           {learnedSchema && (
-            <div className="space-y-4">
+            <div className="space-y-4 flex-1 min-h-0 overflow-hidden">
               {/* Schema stats */}
-              <div className="flex gap-4 text-sm">
+              <div className="flex gap-4 text-sm flex-shrink-0">
                 <div>
                   <span className="text-muted-foreground">Columns:</span>{' '}
                   <span className="font-medium">{learnedSchema.column_count}</span>
@@ -1086,15 +1086,15 @@ export default function Profile() {
               </div>
 
               {/* Schema YAML */}
-              <div className="relative">
-                <pre className="bg-muted p-4 rounded-lg text-sm overflow-auto max-h-[400px] font-mono">
+              <div className="relative flex-1 min-h-0 overflow-hidden">
+                <pre className="bg-muted p-4 rounded-lg text-sm overflow-auto h-full max-h-[50vh] font-mono">
                   {learnedSchema.schema_yaml}
                 </pre>
               </div>
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0">
             <Button variant="outline" onClick={() => setSchemaDialogOpen(false)}>
               Close
             </Button>
