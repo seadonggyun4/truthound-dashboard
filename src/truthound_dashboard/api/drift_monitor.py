@@ -496,11 +496,21 @@ async def cancel_job(
 
 def _monitor_to_dict(monitor) -> dict:
     """Convert monitor model to dictionary."""
+    # Get source names from relationships if available
+    baseline_source_name = None
+    current_source_name = None
+    if hasattr(monitor, "baseline_source") and monitor.baseline_source:
+        baseline_source_name = monitor.baseline_source.name
+    if hasattr(monitor, "current_source") and monitor.current_source:
+        current_source_name = monitor.current_source.name
+
     return {
         "id": monitor.id,
         "name": monitor.name,
         "baseline_source_id": monitor.baseline_source_id,
         "current_source_id": monitor.current_source_id,
+        "baseline_source_name": baseline_source_name,
+        "current_source_name": current_source_name,
         "cron_expression": monitor.cron_expression,
         "method": monitor.method,
         "threshold": monitor.threshold,
@@ -525,10 +535,10 @@ def _alert_to_dict(alert) -> dict:
     return {
         "id": alert.id,
         "monitor_id": alert.monitor_id,
-        "comparison_id": alert.comparison_id,
+        "comparison_id": alert.run_id,  # Map run_id to comparison_id for frontend compatibility
         "severity": alert.severity,
-        "drift_percentage": alert.drift_percentage,
-        "drifted_columns": alert.drifted_columns_json or [],
+        "drift_percentage": alert.drift_score,  # Map drift_score to drift_percentage
+        "drifted_columns": alert.affected_columns or [],  # Map affected_columns to drifted_columns
         "message": alert.message,
         "status": alert.status,
         "acknowledged_at": alert.acknowledged_at,

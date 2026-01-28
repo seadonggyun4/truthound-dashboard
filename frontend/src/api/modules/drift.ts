@@ -130,3 +130,251 @@ export async function getDriftComparison(
 ): Promise<DriftComparison> {
   return request<DriftComparison>(`/drift/comparisons/${id}`)
 }
+
+// ============================================================================
+// Drift Monitor Types
+// ============================================================================
+
+export interface DriftMonitor {
+  id: string
+  name: string
+  baseline_source_id: string
+  current_source_id: string
+  baseline_source_name?: string
+  current_source_name?: string
+  cron_expression?: string
+  method: string
+  threshold: number
+  columns?: string[]
+  alert_on_drift?: boolean
+  alert_threshold_critical?: number
+  alert_threshold_high?: number
+  notification_channel_ids?: string[]
+  status: 'active' | 'paused' | 'error'
+  last_run_at?: string | null
+  last_drift_detected?: boolean | null
+  total_runs: number
+  drift_detected_count: number
+  consecutive_drift_count: number
+  created_at: string
+  updated_at?: string
+}
+
+export interface DriftMonitorCreate {
+  name: string
+  baseline_source_id: string
+  current_source_id: string
+  cron_expression?: string
+  method?: DriftMethod | string
+  threshold?: number
+  columns?: string[]
+  alert_on_drift?: boolean
+  alert_threshold_critical?: number
+  alert_threshold_high?: number
+  notification_channel_ids?: string[]
+  // Large dataset optimization (from form)
+  sampling_enabled?: boolean
+  sampling_config?: unknown
+  // Allow additional form properties
+  [key: string]: unknown
+}
+
+export interface DriftMonitorUpdate {
+  name?: string
+  baseline_source_id?: string
+  current_source_id?: string
+  cron_expression?: string
+  method?: DriftMethod | string
+  threshold?: number
+  columns?: string[]
+  alert_on_drift?: boolean
+  alert_threshold_critical?: number
+  alert_threshold_high?: number
+  notification_channel_ids?: string[]
+  status?: 'active' | 'paused'
+  // Large dataset optimization (from form)
+  sampling_enabled?: boolean
+  sampling_config?: unknown
+  // Allow additional form properties
+  [key: string]: unknown
+}
+
+export interface DriftMonitorSummary {
+  total_monitors: number
+  active_monitors: number
+  paused_monitors: number
+  monitors_with_drift: number
+  total_open_alerts: number
+  critical_alerts: number
+  high_alerts: number
+}
+
+export interface DriftAlert {
+  id: string
+  monitor_id: string
+  comparison_id: string
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'info'
+  drift_percentage: number
+  drifted_columns: string[]
+  message: string
+  status: 'open' | 'acknowledged' | 'resolved' | 'ignored'
+  acknowledged_at: string | null
+  acknowledged_by?: string
+  resolved_at: string | null
+  notes: string | null
+  created_at: string
+  updated_at?: string
+}
+
+export interface DriftTrendData {
+  dates: string[]
+  drift_percentages: number[]
+  drifted_column_counts: number[]
+  has_drift_flags: boolean[]
+}
+
+export interface MonitorRunResult {
+  comparison_id?: string
+  has_drift: boolean
+  drift_percentage: number
+  drifted_columns?: string[]
+}
+
+export type DriftMonitorListResponse = PaginatedResponse<DriftMonitor>
+export type DriftAlertListResponse = PaginatedResponse<DriftAlert>
+
+// ============================================================================
+// Drift Monitor API Functions
+// ============================================================================
+
+export async function listDriftMonitors(params?: {
+  status?: string
+  limit?: number
+  offset?: number
+}): Promise<DriftMonitorListResponse> {
+  return request<DriftMonitorListResponse>('/drift/monitors', { params })
+}
+
+export async function getDriftMonitorsSummary(): Promise<DriftMonitorSummary> {
+  return request<DriftMonitorSummary>('/drift/monitors/summary')
+}
+
+export async function createDriftMonitor(
+  data: DriftMonitorCreate
+): Promise<DriftMonitor> {
+  return request<DriftMonitor>('/drift/monitors', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function getDriftMonitor(id: string): Promise<DriftMonitor> {
+  return request<DriftMonitor>(`/drift/monitors/${id}`)
+}
+
+export async function updateDriftMonitor(
+  id: string,
+  data: DriftMonitorUpdate
+): Promise<DriftMonitor> {
+  return request<DriftMonitor>(`/drift/monitors/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteDriftMonitor(id: string): Promise<void> {
+  await request(`/drift/monitors/${id}`, { method: 'DELETE' })
+}
+
+export async function runDriftMonitor(id: string): Promise<MonitorRunResult> {
+  return request<MonitorRunResult>(`/drift/monitors/${id}/run`, {
+    method: 'POST',
+  })
+}
+
+export async function getDriftMonitorTrend(
+  id: string,
+  days: number = 30
+): Promise<DriftTrendData> {
+  return request<DriftTrendData>(`/drift/monitors/${id}/trend`, {
+    params: { days },
+  })
+}
+
+export async function getDriftMonitorLatestRun(
+  id: string
+): Promise<DriftResult | null> {
+  try {
+    return await request<DriftResult>(`/drift/monitors/${id}/latest-run`)
+  } catch {
+    return null
+  }
+}
+
+export async function getDriftRootCauseAnalysis(
+  monitorId: string,
+  runId: string
+): Promise<unknown> {
+  try {
+    return await request(`/drift/monitors/${monitorId}/runs/${runId}/root-cause`)
+  } catch {
+    return null
+  }
+}
+
+// ============================================================================
+// Drift Alert API Functions
+// ============================================================================
+
+export async function listDriftAlerts(params?: {
+  monitor_id?: string
+  status?: string
+  severity?: string
+  limit?: number
+  offset?: number
+}): Promise<DriftAlertListResponse> {
+  return request<DriftAlertListResponse>('/drift/alerts', { params })
+}
+
+export async function getDriftAlert(id: string): Promise<DriftAlert> {
+  return request<DriftAlert>(`/drift/alerts/${id}`)
+}
+
+export async function updateDriftAlert(
+  id: string,
+  data: { status?: string; notes?: string }
+): Promise<DriftAlert> {
+  return request<DriftAlert>(`/drift/alerts/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+// ============================================================================
+// Drift Preview API Functions
+// ============================================================================
+
+export interface DriftPreviewRequest {
+  baseline_source_id: string
+  current_source_id: string
+  columns?: string[]
+  method?: DriftMethod
+  threshold?: number
+}
+
+export interface DriftPreviewData {
+  has_drift: boolean
+  drift_percentage: number
+  total_columns: number
+  drifted_columns: string[]
+  columns: ColumnDriftResult[]
+}
+
+export async function previewDrift(
+  data: DriftPreviewRequest
+): Promise<DriftPreviewData> {
+  return request<DriftPreviewData>('/drift/preview', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}

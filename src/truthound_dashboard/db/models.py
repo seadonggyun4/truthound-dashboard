@@ -3740,12 +3740,17 @@ class DriftMonitor(Base, UUIDMixin, TimestampMixin):
         current_source_id: Reference to current Source.
         status: Monitor status.
         method: Drift detection method.
-        threshold_critical: Critical drift threshold.
-        threshold_high: High drift threshold.
-        columns: Columns to monitor (None = all).
-        schedule_cron: Optional cron expression for scheduling.
+        threshold: Drift threshold for detection.
+        alert_threshold_critical: Critical drift threshold for alerts.
+        alert_threshold_high: High drift threshold for alerts.
+        columns_json: Columns to monitor (None = all).
+        cron_expression: Optional cron expression for scheduling.
+        alert_on_drift: Whether to create alerts on drift.
+        notification_channel_ids_json: IDs of notification channels.
         last_run_at: Last run timestamp.
-        next_run_at: Next scheduled run.
+        total_runs: Total number of runs.
+        drift_detected_count: Number of runs with drift detected.
+        consecutive_drift_count: Consecutive runs with drift.
         config: Additional configuration.
     """
 
@@ -3777,12 +3782,17 @@ class DriftMonitor(Base, UUIDMixin, TimestampMixin):
         index=True,
     )
     method: Mapped[str] = mapped_column(String(30), nullable=False, default="auto")
-    threshold_critical: Mapped[float] = mapped_column(Float, default=0.3, nullable=False)
-    threshold_high: Mapped[float] = mapped_column(Float, default=0.1, nullable=False)
-    columns: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
-    schedule_cron: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    threshold: Mapped[float] = mapped_column(Float, default=0.05, nullable=False)
+    alert_threshold_critical: Mapped[float] = mapped_column(Float, default=0.3, nullable=False)
+    alert_threshold_high: Mapped[float] = mapped_column(Float, default=0.2, nullable=False)
+    columns_json: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    cron_expression: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    alert_on_drift: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    notification_channel_ids_json: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    next_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    total_runs: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    drift_detected_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    consecutive_drift_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     config: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     # Relationships
@@ -3820,6 +3830,13 @@ class DriftMonitor(Base, UUIDMixin, TimestampMixin):
         """Get the most recent run."""
         return self.runs[0] if self.runs else None
 
+    @property
+    def last_drift_detected(self) -> bool | None:
+        """Check if drift was detected in the most recent run."""
+        if self.latest_run is None:
+            return None
+        return self.latest_run.has_drift
+
     def pause(self) -> None:
         """Pause this monitor."""
         self.status = DriftMonitorStatus.PAUSED.value
@@ -3828,10 +3845,10 @@ class DriftMonitor(Base, UUIDMixin, TimestampMixin):
         """Resume this monitor."""
         self.status = DriftMonitorStatus.ACTIVE.value
 
-    def mark_run(self, next_run: datetime | None = None) -> None:
-        """Mark as run and update next run time."""
+    def mark_run(self) -> None:
+        """Mark as run and update counters."""
         self.last_run_at = datetime.utcnow()
-        self.next_run_at = next_run
+        self.total_runs += 1
 
 
 class DriftMonitorRun(Base, UUIDMixin):
@@ -3993,11 +4010,15 @@ class DriftAlert(Base, UUIDMixin):
     drift_score: Mapped[float] = mapped_column(Float, nullable=False)
     affected_columns: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     message: Mapped[str] = mapped_column(Text, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     acknowledged_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime, onupdate=datetime.utcnow, nullable=True
     )
 
     # Relationships

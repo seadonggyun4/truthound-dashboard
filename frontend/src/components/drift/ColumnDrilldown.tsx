@@ -62,6 +62,10 @@ export function ColumnDrilldown({
 
   // Filter and sort columns
   const filteredAndSortedColumns = useMemo(() => {
+    // Defensive check: ensure result.columns exists and is an array
+    if (!result?.columns || !Array.isArray(result.columns)) {
+      return []
+    }
     let columns = [...result.columns]
 
     // Apply search filter
@@ -117,13 +121,15 @@ export function ColumnDrilldown({
     })
 
     return columns
-  }, [result.columns, searchQuery, filterOption, sortOption, sortDirection])
+  }, [result?.columns, searchQuery, filterOption, sortOption, sortDirection])
 
-  // Summary stats
-  const driftedCount = result.columns.filter(c => c.drifted).length
-  const highCount = result.columns.filter(c => c.level === 'high').length
-  const mediumCount = result.columns.filter(c => c.level === 'medium').length
-  const driftPercentage = (driftedCount / result.total_columns) * 100
+  // Summary stats - with defensive checks
+  const columns = result?.columns ?? []
+  const totalColumns = result?.total_columns ?? columns.length ?? 1
+  const driftedCount = columns.filter(c => c.drifted).length
+  const highCount = columns.filter(c => c.level === 'high').length
+  const mediumCount = columns.filter(c => c.level === 'medium').length
+  const driftPercentage = totalColumns > 0 ? (driftedCount / totalColumns) * 100 : 0
 
   const toggleSort = () => {
     setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
@@ -161,7 +167,7 @@ export function ColumnDrilldown({
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline" className="bg-background">
               <Columns className="h-3 w-3 mr-1" />
-              {result.total_columns} {t.columnDrilldown?.totalColumns ?? 'columns'}
+              {totalColumns} {t.columnDrilldown?.totalColumns ?? 'columns'}
             </Badge>
             <Badge
               variant="outline"

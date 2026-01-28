@@ -80,7 +80,7 @@ class DriftMonitorService:
         Raises:
             ValueError: If source not found.
         """
-        from truthound_dashboard.core.drift import DriftService
+        from truthound_dashboard.core.services import DriftService
         from truthound_dashboard.db.models import Source
 
         # Get source details for display
@@ -341,7 +341,7 @@ class DriftMonitorService:
         Returns:
             Drift comparison result or None on error.
         """
-        from truthound_dashboard.core.drift import DriftService
+        from truthound_dashboard.core.services import DriftService
 
         monitor = await self.get_monitor(monitor_id)
         if not monitor or monitor.status != "active":
@@ -361,7 +361,7 @@ class DriftMonitorService:
             # Update monitor stats
             monitor.last_run_at = datetime.utcnow()
             monitor.total_runs += 1
-            monitor.last_drift_detected = comparison.has_drift
+            # last_drift_detected is computed from latest_run, no need to set
 
             if comparison.has_drift:
                 monitor.drift_detected_count += 1
@@ -426,12 +426,12 @@ class DriftMonitorService:
         alert = DriftAlert(
             id=str(uuid.uuid4()),
             monitor_id=monitor.id,
-            comparison_id=comparison.id,
+            run_id=None,  # No DriftMonitorRun is created in current implementation
             severity=severity,
-            drift_percentage=drift_pct,
-            drifted_columns_json=drifted_columns,
+            drift_score=drift_pct,
+            affected_columns=drifted_columns,
             message=f"Drift detected: {drift_pct:.1f}% of columns drifted ({len(drifted_columns)} columns)",
-            status="open",
+            status="active",
         )
 
         self.session.add(alert)
@@ -1153,7 +1153,7 @@ class DriftMonitorService:
 
             # Run the comparison with sampling
             # In a real implementation, this would call truthound.compare with sampling
-            from truthound_dashboard.core.drift import DriftService
+            from truthound_dashboard.core.services import DriftService
 
             drift_service = DriftService(self.session)
 
@@ -1228,7 +1228,7 @@ class DriftMonitorService:
             monitor.total_runs += 1
 
             has_drift = len(all_drifted_columns) > 0
-            monitor.last_drift_detected = has_drift
+            # last_drift_detected is computed from latest_run, no need to set
 
             if has_drift:
                 monitor.drift_detected_count += 1

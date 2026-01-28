@@ -112,6 +112,14 @@ class DriftMonitorUpdate(BaseSchema):
 class DriftMonitorResponse(DriftMonitorBase, IDMixin, TimestampMixin):
     """Schema for drift monitor response."""
 
+    baseline_source_name: str | None = Field(
+        default=None,
+        description="Baseline source name",
+    )
+    current_source_name: str | None = Field(
+        default=None,
+        description="Current source name",
+    )
     status: DriftMonitorStatus = Field(
         default="active",
         description="Monitor status",

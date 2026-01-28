@@ -27,21 +27,9 @@ import {
   Loader2,
   Bell,
 } from 'lucide-react'
+import { type DriftAlert } from '@/api/modules/drift'
 
-export interface DriftAlert {
-  id: string
-  monitor_id: string
-  comparison_id: string
-  severity: 'critical' | 'high' | 'medium' | 'low' | 'info'
-  drift_percentage: number
-  drifted_columns: string[]
-  message: string
-  status: 'open' | 'acknowledged' | 'resolved' | 'ignored'
-  acknowledged_at: string | null
-  resolved_at: string | null
-  notes: string | null
-  created_at: string
-}
+export type { DriftAlert }
 
 interface DriftAlertListProps {
   alerts: DriftAlert[]

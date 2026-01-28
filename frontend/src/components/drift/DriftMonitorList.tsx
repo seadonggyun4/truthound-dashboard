@@ -36,25 +36,9 @@ import {
   Activity,
   Columns,
 } from 'lucide-react'
+import { type DriftMonitor } from '@/api/modules/drift'
 
-export interface DriftMonitor {
-  id: string
-  name: string
-  baseline_source_id: string
-  current_source_id: string
-  baseline_source_name?: string
-  current_source_name?: string
-  cron_expression: string
-  method: string
-  threshold: number
-  status: 'active' | 'paused' | 'error'
-  last_run_at: string | null
-  last_drift_detected: boolean | null
-  total_runs: number
-  drift_detected_count: number
-  consecutive_drift_count: number
-  created_at: string
-}
+export type { DriftMonitor }
 
 interface DriftMonitorListProps {
   monitors: DriftMonitor[]

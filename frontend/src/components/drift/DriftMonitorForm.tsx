@@ -54,23 +54,8 @@ async function previewDrift(data: {
     const error = await response.json().catch(() => ({ detail: 'Preview failed' }))
     throw new Error(error.detail || 'Preview failed')
   }
-  const result = await response.json()
-  return result.data
-}
-
-interface DriftMonitorFormData {
-  name: string
-  baseline_source_id: string
-  current_source_id: string
-  cron_expression: string
-  method: string
-  threshold: number
-  alert_on_drift: boolean
-  alert_threshold_critical: number
-  alert_threshold_high: number
-  // Large dataset optimization
-  sampling_enabled?: boolean
-  sampling_config?: SamplingConfigData
+  // API returns preview data directly, not wrapped in { data: ... }
+  return response.json()
 }
 
 interface DriftMonitorFormProps {
@@ -91,6 +76,20 @@ const SCHEDULE_PRESETS = [
 
 import { DriftMethodSelector } from './DriftMethodSelector'
 import type { DriftMethod } from '@/api/modules/drift'
+
+export interface DriftMonitorFormData {
+  name: string
+  baseline_source_id: string
+  current_source_id: string
+  cron_expression: string
+  method: string
+  threshold: number
+  alert_on_drift: boolean
+  alert_threshold_critical: number
+  alert_threshold_high: number
+  sampling_enabled?: boolean
+  sampling_config?: SamplingConfigData
+}
 
 type FormStep = 'configure' | 'preview'
 

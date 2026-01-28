@@ -12,6 +12,7 @@ export type { DriftConfig, DriftConfigPanelProps } from './DriftConfigPanel'
 
 export { DriftMonitorList } from './DriftMonitorList'
 export { DriftMonitorForm } from './DriftMonitorForm'
+export type { DriftMonitorFormData } from './DriftMonitorForm'
 export { DriftAlertList } from './DriftAlertList'
 export { DriftTrendChart } from './DriftTrendChart'
 export { DriftMonitorStats } from './DriftMonitorStats'

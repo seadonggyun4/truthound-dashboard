@@ -108,8 +108,8 @@ async function previewDrift(data: {
     const error = await response.json().catch(() => ({ detail: 'Preview failed' }))
     throw new Error(error.detail || 'Preview failed')
   }
-  const result = await response.json()
-  return result.data
+  // API returns data directly, not wrapped in { data: ... }
+  return await response.json()
 }
 
 export function DriftPreview({

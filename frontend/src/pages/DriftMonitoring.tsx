@@ -38,119 +38,27 @@ import {
   RootCauseAnalysis,
   RemediationPanel,
 } from '@/components/drift'
-import type { RootCauseAnalysisData, RemediationSuggestion } from '@/components/drift'
 import { RelatedAlerts, AutoTriggerConfigPanel } from '@/components/cross-alerts'
-import type { DriftMonitor } from '@/components/drift/DriftMonitorList'
-import type { DriftAlert } from '@/components/drift/DriftAlertList'
 import { listSources, type Source } from '@/api/modules/sources'
-import type { DriftResult } from '@/api/modules/drift'
-
-// API functions for drift monitoring
-const API_BASE = '/api/v1'
-
-async function listDriftMonitors(): Promise<{ data: DriftMonitor[]; total: number }> {
-  const response = await fetch(`${API_BASE}/drift/monitors`)
-  if (!response.ok) throw new Error('Failed to fetch monitors')
-  const result = await response.json()
-  return result
-}
-
-async function getDriftMonitorsSummary(): Promise<{
-  total_monitors: number
-  active_monitors: number
-  paused_monitors: number
-  monitors_with_drift: number
-  total_open_alerts: number
-  critical_alerts: number
-  high_alerts: number
-}> {
-  const response = await fetch(`${API_BASE}/drift/monitors/summary`)
-  if (!response.ok) throw new Error('Failed to fetch summary')
-  const result = await response.json()
-  return result.data
-}
-
-async function createDriftMonitor(data: object): Promise<DriftMonitor> {
-  const response = await fetch(`${API_BASE}/drift/monitors`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) throw new Error('Failed to create monitor')
-  const result = await response.json()
-  return result.data
-}
-
-async function updateDriftMonitor(id: string, data: object): Promise<DriftMonitor> {
-  const response = await fetch(`${API_BASE}/drift/monitors/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) throw new Error('Failed to update monitor')
-  const result = await response.json()
-  return result.data
-}
-
-async function deleteDriftMonitor(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/drift/monitors/${id}`, { method: 'DELETE' })
-  if (!response.ok) throw new Error('Failed to delete monitor')
-}
-
-async function runDriftMonitor(id: string): Promise<{ has_drift: boolean; drift_percentage: number }> {
-  const response = await fetch(`${API_BASE}/drift/monitors/${id}/run`, { method: 'POST' })
-  if (!response.ok) throw new Error('Failed to run monitor')
-  const result = await response.json()
-  return result.data
-}
-
-async function getDriftMonitorTrend(id: string, days: number = 30): Promise<object> {
-  const response = await fetch(`${API_BASE}/drift/monitors/${id}/trend?days=${days}`)
-  if (!response.ok) throw new Error('Failed to fetch trend')
-  const result = await response.json()
-  return result.data
-}
-
-async function getDriftMonitorLatestRun(id: string): Promise<DriftResult | null> {
-  const response = await fetch(`${API_BASE}/drift/monitors/${id}/latest-run`)
-  if (!response.ok) return null
-  const result = await response.json()
-  return result.data
-}
-
-async function listDriftAlerts(params?: {
-  status?: string
-  severity?: string
-}): Promise<{ data: DriftAlert[]; total: number }> {
-  const searchParams = new URLSearchParams()
-  if (params?.status) searchParams.append('status', params.status)
-  if (params?.severity) searchParams.append('severity', params.severity)
-  const response = await fetch(`${API_BASE}/drift/alerts?${searchParams}`)
-  if (!response.ok) throw new Error('Failed to fetch alerts')
-  const result = await response.json()
-  return result
-}
-
-async function updateDriftAlert(id: string, data: { status?: string; notes?: string }): Promise<DriftAlert> {
-  const response = await fetch(`${API_BASE}/drift/alerts/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) throw new Error('Failed to update alert')
-  const result = await response.json()
-  return result.data
-}
-
-async function getDriftRootCauseAnalysis(
-  monitorId: string,
-  runId: string
-): Promise<RootCauseAnalysisData | null> {
-  const response = await fetch(`${API_BASE}/drift/monitors/${monitorId}/runs/${runId}/root-cause`)
-  if (!response.ok) return null
-  const result = await response.json()
-  return result.data
-}
+import type { RemediationSuggestion, RootCauseAnalysisData, DriftMonitorFormData } from '@/components/drift'
+import {
+  listDriftMonitors,
+  getDriftMonitorsSummary,
+  createDriftMonitor as apiCreateDriftMonitor,
+  updateDriftMonitor as apiUpdateDriftMonitor,
+  deleteDriftMonitor as apiDeleteDriftMonitor,
+  runDriftMonitor as apiRunDriftMonitor,
+  getDriftMonitorTrend,
+  getDriftMonitorLatestRun,
+  listDriftAlerts,
+  updateDriftAlert as apiUpdateDriftAlert,
+  getDriftRootCauseAnalysis,
+  type DriftMonitor,
+  type DriftAlert,
+  type DriftResult,
+  type DriftMonitorSummary,
+  type DriftTrendData,
+} from '@/api/modules/drift'
 
 export default function DriftMonitoring() {
   const t = useSafeIntlayer('driftMonitor')
@@ -227,6 +135,30 @@ export default function DriftMonitoring() {
     loadData()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset all UI state and reload data
+  const handleRefresh = useCallback(() => {
+    // Reset form states
+    setShowCreateForm(false)
+    setEditingMonitor(null)
+    setShowPreview(false)
+
+    // Reset drilldown states
+    setShowColumnDrilldown(false)
+    setSelectedMonitorForDrilldown(null)
+    setLatestRunResult(null)
+
+    // Reset root cause states
+    setShowRootCause(false)
+    setRootCauseData(null)
+
+    // Reset trend selection
+    setSelectedMonitorId('')
+    setTrendData(null)
+
+    // Reload data
+    loadData()
+  }, [loadData])
+
   // Load trend when monitor changes
   useEffect(() => {
     if (!selectedMonitorId) return
@@ -248,9 +180,9 @@ export default function DriftMonitoring() {
 
   // Handlers
   const handleCreateMonitor = useCallback(
-    async (data: object) => {
+    async (data: DriftMonitorFormData) => {
       try {
-        await createDriftMonitor(data)
+        await apiCreateDriftMonitor(data as unknown as Parameters<typeof apiCreateDriftMonitor>[0])
         toast({ title: str(t.messages.monitorCreated) })
         loadData()
       } catch (error) {
@@ -270,10 +202,10 @@ export default function DriftMonitoring() {
   }, [])
 
   const handleUpdateMonitor = useCallback(
-    async (data: object) => {
+    async (data: DriftMonitorFormData) => {
       if (!editingMonitor) return
       try {
-        await updateDriftMonitor(editingMonitor.id, data)
+        await apiUpdateDriftMonitor(editingMonitor.id, data as unknown as Parameters<typeof apiUpdateDriftMonitor>[1])
         toast({ title: str(t.messages.monitorUpdated) })
         setEditingMonitor(null)
         loadData()
@@ -300,7 +232,7 @@ export default function DriftMonitoring() {
       })
       if (!confirmed) return
       try {
-        await deleteDriftMonitor(monitor.id)
+        await apiDeleteDriftMonitor(monitor.id)
         toast({ title: str(t.messages.monitorDeleted) })
         loadData()
       } catch (error) {
@@ -318,7 +250,7 @@ export default function DriftMonitoring() {
     async (monitor: DriftMonitor) => {
       try {
         toast({ title: str(t.messages.monitorRunStarted) })
-        const result = await runDriftMonitor(monitor.id)
+        const result = await apiRunDriftMonitor(monitor.id)
         if (result.has_drift) {
           toast({
             title: str(t.messages.driftDetected),
@@ -343,7 +275,7 @@ export default function DriftMonitoring() {
   const handlePauseMonitor = useCallback(
     async (monitor: DriftMonitor) => {
       try {
-        await updateDriftMonitor(monitor.id, { status: 'paused' })
+        await apiUpdateDriftMonitor(monitor.id, { status: 'paused' })
         toast({ title: str(t.messages.monitorUpdated) })
         loadData()
       } catch (error) {
@@ -359,7 +291,7 @@ export default function DriftMonitoring() {
   const handleResumeMonitor = useCallback(
     async (monitor: DriftMonitor) => {
       try {
-        await updateDriftMonitor(monitor.id, { status: 'active' })
+        await apiUpdateDriftMonitor(monitor.id, { status: 'active' })
         toast({ title: str(t.messages.monitorUpdated) })
         loadData()
       } catch (error) {
@@ -375,7 +307,7 @@ export default function DriftMonitoring() {
   const handleAcknowledgeAlert = useCallback(
     async (alert: DriftAlert) => {
       try {
-        await updateDriftAlert(alert.id, { status: 'acknowledged' })
+        await apiUpdateDriftAlert(alert.id, { status: 'acknowledged' })
         toast({ title: str(t.messages.alertAcknowledged) })
         loadData()
       } catch (error) {
@@ -391,7 +323,7 @@ export default function DriftMonitoring() {
   const handleResolveAlert = useCallback(
     async (alert: DriftAlert) => {
       try {
-        await updateDriftAlert(alert.id, { status: 'resolved' })
+        await apiUpdateDriftAlert(alert.id, { status: 'resolved' })
         toast({ title: str(t.messages.alertResolved) })
         loadData()
       } catch (error) {
@@ -407,7 +339,7 @@ export default function DriftMonitoring() {
   const handleIgnoreAlert = useCallback(
     async (alert: DriftAlert) => {
       try {
-        await updateDriftAlert(alert.id, { status: 'ignored' })
+        await apiUpdateDriftAlert(alert.id, { status: 'ignored' })
         loadData()
       } catch (error) {
         toast({
@@ -453,7 +385,7 @@ export default function DriftMonitoring() {
       setShowRootCause(true)
       try {
         const data = await getDriftRootCauseAnalysis(monitor.id, runId)
-        setRootCauseData(data)
+        setRootCauseData(data as RootCauseAnalysisData | null)
       } catch {
         setRootCauseData(null)
         toast({
@@ -490,7 +422,7 @@ export default function DriftMonitoring() {
         </div>
         <div className="flex gap-2">
           <AutoTriggerConfigPanel />
-          <Button variant="outline" onClick={loadData} disabled={isLoading}>
+          <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             {common.refresh}
           </Button>
