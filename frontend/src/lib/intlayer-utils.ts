@@ -23,7 +23,7 @@ type IntlayerNodeLike<T = string> = ReactNode & { value?: T }
  * @param node - IntlayerNode or string value
  * @returns The underlying string value
  */
-export function str(node: IntlayerNodeLike<string> | string | undefined): string {
+export function str(node: IntlayerNodeLike<string> | string | undefined | unknown): string {
   if (node === undefined || node === null) {
     return ''
   }

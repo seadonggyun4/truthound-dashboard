@@ -9,7 +9,8 @@
  */
 
 import { useCallback, useMemo } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
+import { str } from '@/lib/intlayer-utils'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
@@ -82,17 +83,6 @@ export interface DriftMethodSelectorProps {
   allowedMethods?: DriftMethod[]
 }
 
-/**
- * Helper to safely extract string from Intlayer node.
- */
-function getIntlayerString(node: unknown): string {
-  if (typeof node === 'string') return node
-  if (node && typeof node === 'object' && 'value' in node) {
-    const val = (node as { value: unknown }).value
-    return typeof val === 'string' ? val : String(val)
-  }
-  return String(node ?? '')
-}
 
 /**
  * Compact dropdown selector for drift methods.
@@ -104,7 +94,7 @@ function CompactSelector({
   disabled,
   allowedMethods,
 }: Pick<DriftMethodSelectorProps, 'value' | 'onChange' | 'showThresholdHints' | 'disabled' | 'allowedMethods'>) {
-  const t = useIntlayer('drift')
+  const t = useSafeIntlayer('drift')
 
   const methods = useMemo(() => {
     return DRIFT_METHODS.filter(
@@ -114,7 +104,7 @@ function CompactSelector({
 
   const getMethodLabel = (method: DriftMethod): string => {
     const methodLabels = t.methods as Record<string, unknown>
-    return getIntlayerString(methodLabels[method])
+    return str(methodLabels[method])
   }
 
   return (
@@ -122,7 +112,7 @@ function CompactSelector({
       <SelectTrigger>
         <SelectValue />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent position="popper" className="max-h-80">
         {methods.map((method) => {
           const Icon = METHOD_ICONS[method.value]
           return (
@@ -132,7 +122,7 @@ function CompactSelector({
                 <span>{getMethodLabel(method.value)}</span>
                 {method.value === 'auto' && (
                   <Badge variant="secondary" className="ml-1 text-xs">
-                    {getIntlayerString((t.methodSelector as Record<string, unknown>).recommended)}
+                    {str(t.methodSelector.recommended)}
                   </Badge>
                 )}
                 {showThresholdHints && (
@@ -160,7 +150,7 @@ function DetailedSelector({
   disabled,
   allowedMethods,
 }: Pick<DriftMethodSelectorProps, 'value' | 'onChange' | 'showThresholdHints' | 'showDescriptions' | 'disabled' | 'allowedMethods'>) {
-  const t = useIntlayer('drift')
+  const t = useSafeIntlayer('drift')
 
   const methods = useMemo(() => {
     return DRIFT_METHODS.filter(
@@ -170,20 +160,18 @@ function DetailedSelector({
 
   const getMethodLabel = (method: DriftMethod): string => {
     const methodLabels = t.methods as Record<string, unknown>
-    return getIntlayerString(methodLabels[method])
+    return str(methodLabels[method])
   }
 
   const getMethodDescription = (method: DriftMethod): string => {
     const descriptions = t.methodDescriptions as Record<string, unknown>
-    return getIntlayerString(descriptions[method])
+    return str(descriptions[method])
   }
 
   const getMethodBestFor = (method: DriftMethod): string => {
     const bestFor = t.methodBestFor as Record<string, unknown>
-    return getIntlayerString(bestFor[method])
+    return str(bestFor[method])
   }
-
-  const methodSelector = t.methodSelector as Record<string, unknown>
 
   return (
     <RadioGroup
@@ -218,7 +206,7 @@ function DetailedSelector({
                 </Label>
                 {method.value === 'auto' && (
                   <Badge variant="default" className="text-xs">
-                    {getIntlayerString(methodSelector.recommended)}
+                    {str(t.methodSelector.recommended)}
                   </Badge>
                 )}
               </div>
@@ -229,11 +217,11 @@ function DetailedSelector({
               )}
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <span>
-                  {getIntlayerString(methodSelector.bestFor)}: {getMethodBestFor(method.value)}
+                  {str(t.methodSelector.bestFor)}: {getMethodBestFor(method.value)}
                 </span>
                 {showThresholdHints && (
                   <span>
-                    {getIntlayerString(methodSelector.defaultThreshold)}: {DEFAULT_THRESHOLDS[method.value]}
+                    {str(t.methodSelector.defaultThreshold)}: {DEFAULT_THRESHOLDS[method.value]}
                   </span>
                 )}
               </div>
@@ -255,7 +243,7 @@ function CardsSelector({
   disabled,
   allowedMethods,
 }: Pick<DriftMethodSelectorProps, 'value' | 'onChange' | 'showThresholdHints' | 'disabled' | 'allowedMethods'>) {
-  const t = useIntlayer('drift')
+  const t = useSafeIntlayer('drift')
 
   const methods = useMemo(() => {
     return DRIFT_METHODS.filter(
@@ -265,12 +253,12 @@ function CardsSelector({
 
   const getMethodLabel = (method: DriftMethod): string => {
     const methodLabels = t.methods as Record<string, unknown>
-    return getIntlayerString(methodLabels[method])
+    return str(methodLabels[method])
   }
 
   const getMethodDescription = (method: DriftMethod): string => {
     const descriptions = t.methodDescriptions as Record<string, unknown>
-    return getIntlayerString(descriptions[method])
+    return str(descriptions[method])
   }
 
   // Group methods by category
@@ -366,7 +354,7 @@ export function DriftMethodSelector({
   disabled = false,
   allowedMethods,
 }: DriftMethodSelectorProps) {
-  const t = useIntlayer('drift')
+  const t = useSafeIntlayer('drift')
 
   const handleChange = useCallback(
     (method: DriftMethod) => {
@@ -386,20 +374,18 @@ export function DriftMethodSelector({
     allowedMethods,
   }
 
-  const methodSelector = t.methodSelector as Record<string, unknown>
-
   return (
     <div className={cn('space-y-2', className)}>
       {variant === 'detailed' && (
         <div className="flex items-center gap-2 mb-2">
-          <Label className="text-sm font-medium">{getIntlayerString(methodSelector.title)}</Label>
+          <Label className="text-sm font-medium">{str(t.methodSelector.title)}</Label>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger>
                 <Info className="h-4 w-4 text-muted-foreground" />
               </TooltipTrigger>
               <TooltipContent>
-                <p>{getIntlayerString(methodSelector.subtitle)}</p>
+                <p>{str(t.methodSelector.subtitle)}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
