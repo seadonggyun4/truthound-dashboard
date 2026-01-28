@@ -62,41 +62,8 @@ class CSVReporter(Reporter):
         output = io.StringIO()
         writer = csv.writer(output, delimiter=self._delimiter)
 
-        # Write metadata section
-        writer.writerow(["# Validation Report"])
-        writer.writerow(["# Source", metadata.source_name or validation.source_id])
-        writer.writerow(["# Validation ID", validation.id])
-        writer.writerow(["# Generated At", metadata.generated_at.isoformat()])
-        writer.writerow(
-            [
-                "# Status",
-                "PASSED" if validation.passed else "FAILED",
-            ]
-        )
-        writer.writerow([])  # Empty row separator
-
-        # Write statistics section if requested
-        if include_statistics:
-            writer.writerow(["# Statistics"])
-            writer.writerow(["Metric", "Value"])
-            writer.writerow(["Row Count", validation.row_count or "N/A"])
-            writer.writerow(["Column Count", validation.column_count or "N/A"])
-            writer.writerow(["Total Issues", validation.total_issues or 0])
-            writer.writerow(["Critical Issues", validation.critical_issues or 0])
-            writer.writerow(["High Issues", validation.high_issues or 0])
-            writer.writerow(["Medium Issues", validation.medium_issues or 0])
-            writer.writerow(["Low Issues", validation.low_issues or 0])
-            writer.writerow(
-                [
-                    "Duration (ms)",
-                    validation.duration_ms if validation.duration_ms else "N/A",
-                ]
-            )
-            writer.writerow([])  # Empty row separator
-
-        # Write issues section
+        # Write issues section (main data)
         issues = self._extract_issues(validation)
-        writer.writerow(["# Issues"])
 
         # Define headers based on options
         headers = ["Column", "Issue Type", "Severity", "Count", "Details"]
@@ -116,7 +83,7 @@ class CSVReporter(Reporter):
                 issue.get("details", "") or "",
             ]
             if include_samples:
-                samples = issue.get("sample_values", [])
+                samples = issue.get("sample_values") or []
                 samples_str = "; ".join(str(v)[:50] for v in samples[:5])
                 row.append(samples_str)
 
