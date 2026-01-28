@@ -1061,7 +1061,6 @@ class TruthoundAdapter:
         columns: list[str] | None = None,
         method: str = "auto",
         threshold: float | None = None,
-        correction: str | None = None,
         sample_size: int | None = None,
     ) -> CompareResult:
         """Compare two datasets for drift detection.
@@ -1082,12 +1081,6 @@ class TruthoundAdapter:
                 - "anderson": Anderson-Darling (tail-weighted)
             threshold: Optional custom threshold for drift detection.
                 Defaults vary by method: KS/chi2/cvm/anderson=0.05, PSI/JS/KL/wasserstein=0.1
-            correction: Multiple testing correction method:
-                - None: Use truthound default (bh for multiple columns)
-                - "none": No correction
-                - "bonferroni": Conservative, independent tests
-                - "holm": Sequential adjustment
-                - "bh": Benjamini-Hochberg FDR control
             sample_size: Optional sample size for large datasets.
 
         Returns:
@@ -1095,17 +1088,13 @@ class TruthoundAdapter:
         """
         import truthound as th
 
-        # Build kwargs dynamically to avoid passing None for optional params
         kwargs: dict[str, Any] = {
             "columns": columns,
             "method": method,
         }
 
-        # Only add optional params if explicitly set
         if threshold is not None:
             kwargs["threshold"] = threshold
-        if correction is not None:
-            kwargs["correction"] = correction
         if sample_size is not None:
             kwargs["sample_size"] = sample_size
 

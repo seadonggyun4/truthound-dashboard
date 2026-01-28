@@ -276,7 +276,6 @@ class MockBackend(BaseDataQualityBackend):
         columns: list[str] | None = None,
         method: str = "auto",
         threshold: float | None = None,
-        correction: str | None = None,
         sample_size: int | None = None,
     ) -> CompareResult:
         """Mock drift comparison.

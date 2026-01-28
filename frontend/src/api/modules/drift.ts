@@ -23,11 +23,6 @@ export type DriftMethod =
   | 'anderson'
 
 /**
- * Multiple testing correction methods.
- */
-export type CorrectionMethod = 'none' | 'bonferroni' | 'holm' | 'bh'
-
-/**
  * All drift methods for UI selection.
  */
 export const DRIFT_METHODS: { value: DriftMethod; label: string; description: string }[] = [
@@ -40,17 +35,6 @@ export const DRIFT_METHODS: { value: DriftMethod; label: string; description: st
   { value: 'wasserstein', label: 'Wasserstein', description: "Earth Mover's Distance" },
   { value: 'cvm', label: 'Cramér-von Mises', description: 'More sensitive to tails than KS' },
   { value: 'anderson', label: 'Anderson-Darling', description: 'Tail-weighted sensitivity' },
-]
-
-/**
- * Correction methods for UI selection.
- */
-export const CORRECTION_METHODS: { value: CorrectionMethod | ''; label: string; description: string }[] = [
-  { value: '', label: 'Default (BH)', description: 'Benjamini-Hochberg FDR control for multiple columns' },
-  { value: 'none', label: 'None', description: 'No correction (use with caution)' },
-  { value: 'bonferroni', label: 'Bonferroni', description: 'Conservative, independent tests' },
-  { value: 'holm', label: 'Holm', description: 'Sequential adjustment, less conservative' },
-  { value: 'bh', label: 'Benjamini-Hochberg', description: 'FDR control' },
 ]
 
 /**
@@ -74,7 +58,6 @@ export interface DriftCompareRequest {
   columns?: string[]
   method?: DriftMethod
   threshold?: number
-  correction?: CorrectionMethod
   sample_size?: number
 }
 

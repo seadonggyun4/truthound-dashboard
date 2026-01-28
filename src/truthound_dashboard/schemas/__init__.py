@@ -20,8 +20,6 @@ from .base import (
 )
 from .drift import (
     ColumnDriftResult,
-    CorrectionMethod,
-    CorrectionMethodLiteral,
     DEFAULT_THRESHOLDS,
     DriftCompareRequest,
     DriftComparisonListItem,
@@ -466,8 +464,6 @@ __all__ = [
     # Drift
     "DriftMethod",
     "DriftMethodLiteral",
-    "CorrectionMethod",
-    "CorrectionMethodLiteral",
     "DEFAULT_THRESHOLDS",
     "get_default_threshold",
     "DriftCompareRequest",

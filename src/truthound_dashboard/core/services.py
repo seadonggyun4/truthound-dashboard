@@ -1941,7 +1941,6 @@ class DriftService:
         columns: list[str] | None = None,
         method: str = "auto",
         threshold: float | None = None,
-        correction: str | None = None,
         sample_size: int | None = None,
         save: bool = True,
     ) -> DriftComparison:
@@ -1957,7 +1956,6 @@ class DriftService:
             method: Detection method. Supported:
                 auto, ks, psi, chi2, js, kl, wasserstein, cvm, anderson
             threshold: Optional custom threshold.
-            correction: Multiple testing correction (none, bonferroni, holm, bh).
             sample_size: Optional sample size.
             save: Whether to save comparison to database.
 
@@ -1992,7 +1990,6 @@ class DriftService:
             columns=columns,
             method=method,
             threshold=threshold,
-            correction=correction,
             sample_size=sample_size,
         )
 
@@ -2000,7 +1997,6 @@ class DriftService:
             "columns": columns,
             "method": method,
             "threshold": threshold,
-            "correction": correction,
             "sample_size": sample_size,
         }
 

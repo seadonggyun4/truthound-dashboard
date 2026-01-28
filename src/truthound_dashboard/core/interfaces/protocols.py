@@ -581,7 +581,6 @@ class IDataQualityBackend(Protocol):
         columns: list[str] | None = None,
         method: str = "auto",
         threshold: float | None = None,
-        correction: str | None = None,
         sample_size: int | None = None,
     ) -> ICompareResult:
         """Compare datasets for drift detection.
@@ -592,7 +591,6 @@ class IDataQualityBackend(Protocol):
             columns: Columns to compare.
             method: Detection method.
             threshold: Drift threshold.
-            correction: Multiple testing correction.
             sample_size: Sample size for large datasets.
 
         Returns:

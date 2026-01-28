@@ -23,11 +23,6 @@ Numeric columns only:
 
 Categorical columns:
 - chi2: Chi-Square test
-
-Multiple Testing Correction:
-- bonferroni: Conservative, independent tests
-- holm: Sequential adjustment, less conservative
-- bh: Benjamini-Hochberg (FDR control, default for multiple columns)
 """
 
 from __future__ import annotations
@@ -83,23 +78,6 @@ class DriftMethod(str, Enum):
     MMD = "mmd"
 
 
-class CorrectionMethod(str, Enum):
-    """Multiple testing correction methods.
-
-    When comparing multiple columns, correction adjusts p-values to control
-    false discovery rate:
-    - none: No correction (use with caution)
-    - bonferroni: Conservative, suitable for independent tests
-    - holm: Sequential adjustment, less conservative than Bonferroni
-    - bh: Benjamini-Hochberg (FDR control), default for multiple columns
-    """
-
-    NONE = "none"
-    BONFERRONI = "bonferroni"
-    HOLM = "holm"
-    BH = "bh"
-
-
 # Default thresholds for each detection method
 DEFAULT_THRESHOLDS: dict[DriftMethod, float] = {
     DriftMethod.AUTO: 0.05,
@@ -142,7 +120,6 @@ DriftMethodLiteral = Literal[
     "auto", "ks", "psi", "chi2", "js", "kl", "wasserstein", "cvm", "anderson",
     "hellinger", "bhattacharyya", "tv", "energy", "mmd"
 ]
-CorrectionMethodLiteral = Literal["none", "bonferroni", "holm", "bh"]
 
 
 class DriftCompareRequest(BaseModel):
@@ -166,13 +143,6 @@ class DriftCompareRequest(BaseModel):
         ge=0,
         le=1,
         description="Custom threshold (default varies by method: KS/chi2/cvm/anderson=0.05, PSI/JS/KL/wasserstein=0.1)",
-    )
-    correction: CorrectionMethodLiteral | None = Field(
-        None,
-        description=(
-            "Multiple testing correction: none, bonferroni (conservative), "
-            "holm (sequential), bh (Benjamini-Hochberg FDR, default for multiple columns)"
-        ),
     )
     sample_size: int | None = Field(
         None, ge=100, description="Sample size for large datasets"

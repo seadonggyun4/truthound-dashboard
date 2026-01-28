@@ -183,7 +183,6 @@ class BaseDataQualityBackend(ABC):
         columns: list[str] | None = None,
         method: str = "auto",
         threshold: float | None = None,
-        correction: str | None = None,
         sample_size: int | None = None,
     ) -> CompareResult:
         """Compare datasets for drift detection.
@@ -194,7 +193,6 @@ class BaseDataQualityBackend(ABC):
             columns: Columns to compare.
             method: Detection method.
             threshold: Drift threshold.
-            correction: Multiple testing correction.
             sample_size: Sample size for large datasets.
 
         Returns:

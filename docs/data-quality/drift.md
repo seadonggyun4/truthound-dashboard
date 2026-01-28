@@ -49,17 +49,6 @@ Configure the sensitivity of drift detection:
 - Higher thresholds decrease sensitivity (only significant drift detected)
 - Default threshold varies by method
 
-#### Statistical Correction
-
-Apply multiple testing correction to control false positive rate:
-
-| Correction | Description |
-|------------|-------------|
-| **none** | No correction applied |
-| **bonferroni** | Conservative correction, controls family-wise error rate |
-| **holm** | Step-down procedure, less conservative than Bonferroni |
-| **bh** | Benjamini-Hochberg procedure, controls false discovery rate |
-
 #### Column Selection
 
 Optionally restrict comparison to specific columns:

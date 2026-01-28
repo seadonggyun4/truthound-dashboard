@@ -78,7 +78,6 @@ async def compare_datasets(
             columns=request.columns,
             method=request.method,
             threshold=request.threshold,
-            correction=request.correction,
             sample_size=request.sample_size,
         )
         return _comparison_to_response(comparison)

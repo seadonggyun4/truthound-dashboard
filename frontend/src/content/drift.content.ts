@@ -159,44 +159,12 @@ const driftContent = {
       anderson: t({ en: 'Tail sensitivity', ko: '꼬리 민감도' }),
     },
 
-    // Correction methods
-    correctionMethods: {
-      none: t({ en: 'None', ko: '없음' }),
-      bonferroni: t({ en: 'Bonferroni', ko: '본페로니' }),
-      holm: t({ en: 'Holm', ko: '홀름' }),
-      bh: t({ en: 'Benjamini-Hochberg', ko: '벤자미니-호흐베르그' }),
-    },
-
-    correctionDescriptions: {
-      none: t({
-        en: 'No correction - use with caution for multiple columns',
-        ko: '보정 없음 - 다중 컬럼 시 주의 필요',
-      }),
-      bonferroni: t({
-        en: 'Conservative correction for independent tests',
-        ko: '독립 검정을 위한 보수적 보정',
-      }),
-      holm: t({
-        en: 'Sequential adjustment, less conservative than Bonferroni',
-        ko: '순차적 조정, 본페로니보다 덜 보수적',
-      }),
-      bh: t({
-        en: 'False Discovery Rate control (recommended for multiple columns)',
-        ko: '위양성 발견율 제어 (다중 컬럼에 권장)',
-      }),
-    },
-
     // Configuration labels
     config: {
       threshold: t({ en: 'Threshold', ko: '임계값' }),
       thresholdDescription: t({
         en: 'Statistical significance level for drift detection',
         ko: '드리프트 감지를 위한 통계적 유의 수준',
-      }),
-      correctionMethod: t({ en: 'Correction Method', ko: '보정 방법' }),
-      correctionDescription: t({
-        en: 'Multiple testing correction for comparing multiple columns',
-        ko: '다중 컬럼 비교 시 다중 검정 보정',
       }),
       defaultThreshold: t({ en: 'Default for this method', ko: '이 방법의 기본값' }),
       columns: t({ en: 'Columns', ko: '컬럼' }),

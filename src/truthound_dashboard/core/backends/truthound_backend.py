@@ -336,7 +336,6 @@ class TruthoundBackend(BaseDataQualityBackend):
         columns: list[str] | None = None,
         method: str = "auto",
         threshold: float | None = None,
-        correction: str | None = None,
         sample_size: int | None = None,
     ) -> CompareResult:
         """Compare datasets for drift detection using truthound.
@@ -347,7 +346,6 @@ class TruthoundBackend(BaseDataQualityBackend):
             columns: Columns to compare.
             method: Detection method.
             threshold: Drift threshold.
-            correction: Multiple testing correction.
             sample_size: Sample size for large datasets.
 
         Returns:
@@ -366,8 +364,6 @@ class TruthoundBackend(BaseDataQualityBackend):
 
         if threshold is not None:
             kwargs["threshold"] = threshold
-        if correction is not None:
-            kwargs["correction"] = correction
         if sample_size is not None:
             kwargs["sample_size"] = sample_size
 

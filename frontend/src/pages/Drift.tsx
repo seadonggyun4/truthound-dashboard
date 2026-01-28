@@ -57,7 +57,6 @@ export default function Drift() {
   const [driftConfig, setDriftConfig] = useState<DriftConfig>({
     method: 'auto',
     threshold: null,
-    correction: null,
     columns: null,
   })
   const [availableColumns, setAvailableColumns] = useState<string[]>([])
@@ -122,7 +121,6 @@ export default function Drift() {
       setDriftConfig({
         method: 'auto',
         threshold: null,
-        correction: null,
         columns: null,
       })
       setAvailableColumns([])
@@ -155,7 +153,6 @@ export default function Drift() {
         current_source_id: currentId,
         method: driftConfig.method,
         ...(driftConfig.threshold !== null && { threshold: driftConfig.threshold }),
-        ...(driftConfig.correction !== null && { correction: driftConfig.correction }),
         ...(driftConfig.columns !== null && { columns: driftConfig.columns }),
       })
 
@@ -208,7 +205,7 @@ export default function Drift() {
               {drift_t.newComparison}
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="overflow-visible">
             <DialogHeader>
               <DialogTitle>{drift_t.compareDatasets}</DialogTitle>
               <DialogDescription>
@@ -216,7 +213,7 @@ export default function Drift() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto overflow-x-visible">
               {/* Source Selection */}
               <div className="space-y-2">
                 <Label>{drift_t.baselineSource}</Label>
@@ -224,7 +221,7 @@ export default function Drift() {
                   <SelectTrigger>
                     <SelectValue placeholder={drift_t.selectBaseline} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" className="max-h-60">
                     {sources.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
@@ -240,7 +237,7 @@ export default function Drift() {
                   <SelectTrigger>
                     <SelectValue placeholder={drift_t.selectCurrent} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" className="max-h-60">
                     {sources.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
@@ -264,7 +261,7 @@ export default function Drift() {
               </div>
 
               {/* Current Config Summary */}
-              {(driftConfig.method !== 'auto' || driftConfig.threshold !== null || driftConfig.correction !== null || driftConfig.columns !== null) && (
+              {(driftConfig.method !== 'auto' || driftConfig.threshold !== null || driftConfig.columns !== null) && (
                 <div className="p-3 bg-muted/50 rounded-lg space-y-1 text-sm">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Settings2 className="h-4 w-4" />
@@ -278,12 +275,6 @@ export default function Drift() {
                       {driftConfig.threshold ?? DEFAULT_THRESHOLDS[driftConfig.method]} (
                       {driftConfig.threshold === null ? 'default' : 'custom'})
                     </span>
-                    {driftConfig.correction && (
-                      <>
-                        <span className="text-muted-foreground">Correction:</span>
-                        <span className="font-mono">{driftConfig.correction}</span>
-                      </>
-                    )}
                     {driftConfig.columns && (
                       <>
                         <span className="text-muted-foreground">Columns:</span>
@@ -395,14 +386,6 @@ export default function Drift() {
                                 {String((c.config as Record<string, unknown>)?.threshold ?? 'default')}
                               </span>
                             </div>
-                            {Boolean((c.config as Record<string, unknown>)?.correction) && (
-                              <div>
-                                <span className="text-muted-foreground">Correction: </span>
-                                <span className="font-mono">
-                                  {String((c.config as Record<string, unknown>)?.correction)}
-                                </span>
-                              </div>
-                            )}
                           </div>
                         </TooltipContent>
                       </Tooltip>

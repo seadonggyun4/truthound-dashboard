@@ -295,19 +295,18 @@ Extends `th.mask()` with output format selection.
 
 ### Drift Detection (`/drift/compare`)
 
-Extends `th.compare()` with statistical correction methods.
+Wraps `th.compare()` for distribution comparison between datasets.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `baseline_source_id` | `str` | Required | Baseline source ID |
 | `current_source_id` | `str` | Required | Current source ID |
 | `columns` | `list[str]` | `null` | Columns to compare |
-| `method` | `str` | `"auto"` | Detection method (auto/ks/psi/chi2/js/wasserstein/cvm/anderson) |
+| `method` | `str` | `"auto"` | Detection method (auto/ks/psi/chi2/js/kl/wasserstein/cvm/anderson/hellinger/bhattacharyya/tv/energy/mmd) |
 | `threshold` | `float` | `null` | Custom drift threshold |
-| `correction` | `str` | `null` | P-value correction (none/bonferroni/holm/bh) |
 | `sample_size` | `int` | `null` | Sample size for large datasets |
 
-**Extended Detection Methods:**
+**Detection Methods:**
 
 | Method | Description | Best For |
 |--------|-------------|----------|
@@ -316,9 +315,15 @@ Extends `th.compare()` with statistical correction methods.
 | `psi` | Population Stability Index | ML monitoring |
 | `chi2` | Chi-squared test | Categorical |
 | `js` | Jensen-Shannon divergence | Any distribution |
+| `kl` | Kullback-Leibler divergence | Information-theoretic |
 | `wasserstein` | Wasserstein distance | Distribution shape |
 | `cvm` | Cramér-von Mises test | Continuous distributions |
 | `anderson` | Anderson-Darling test | Tail-sensitive detection |
+| `hellinger` | Hellinger distance | Bounded metric |
+| `bhattacharyya` | Bhattacharyya distance | Classification bounds |
+| `tv` | Total Variation distance | Maximum difference |
+| `energy` | Energy distance | Location/scale |
+| `mmd` | Maximum Mean Discrepancy | High-dimensional |
 
 **Example Request:**
 ```json
@@ -327,6 +332,5 @@ Extends `th.compare()` with statistical correction methods.
   "current_source_id": "def-456",
   "columns": ["age", "income", "score"],
   "method": "psi",
-  "correction": "bonferroni",
   "sample_size": 10000
 }
