@@ -1,6 +1,9 @@
 # truthound-dashboard
 
-> **⚠️ UNDER ACTIVE DEVELOPMENT**: This project is currently in active development. APIs and features may change without notice. Not recommended for production use yet.
+> **UNDER ACTIVE DEVELOPMENT**: This project is currently in active development. APIs and features may change without notice. Not recommended for production use yet.
+
+## Overview
+<img width="300" height="300" alt="Truthound_icon" src="https://github.com/user-attachments/assets/90d9e806-8895-45ec-97dc-f8300da4d997" />
 
 [![PyPI version](https://img.shields.io/pypi/v/truthound-dashboard.svg)](https://pypi.org/project/truthound-dashboard/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
@@ -10,16 +13,9 @@
 
 A web-based data quality monitoring dashboard for [truthound](https://github.com/seadonggyun4/truthound).
 
-[Documentation](https://truthound.netlify.app) | [PyPI](https://pypi.org/project/truthound-dashboard/) | [Live Demo](https://truthound-dashborad.vercel.app/)
-
-> **Try the Live Demo**: Experience the full dashboard interface with mock data at [truthound-dashborad.vercel.app](https://truthound-dashborad.vercel.app/). No installation required!
->
-> **Note**: The demo page displays in English only. Language selection is not available in the demo due to Intlayer's runtime requirements. When you install and run truthound-dashboard locally, full multi-language support (English, Korean, and AI-translated languages) works as expected.
-
-## Overview
-<img width="300" height="300" alt="Truthound_icon" src="https://github.com/user-attachments/assets/90d9e806-8895-45ec-97dc-f8300da4d997" />
-
 truthound-dashboard provides a graphical interface for managing data sources, executing validations, tracking historical results, scheduling automated checks, and configuring notifications. It serves as an alternative to commercial data quality platforms.
+
+[Documentation](https://truthound.netlify.app) | [PyPI](https://pypi.org/project/truthound-dashboard/)
 
 ## Feature Comparison with GX Cloud
 
@@ -386,58 +382,6 @@ Execute `truthound translate --list-languages` to view the complete list with la
 - shadcn/ui
 - Zustand
 - [Intlayer](https://intlayer.org) (internationalization)
-
-## Development Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/seadonggyun4/truthound-dashboard
-cd truthound-dashboard
-
-# Install backend dependencies
-pip install -e ".[dev]"
-
-# Start the backend server
-truthound serve --reload
-
-# In a separate terminal, install frontend dependencies
-cd frontend
-npm install
-
-# Start the frontend development server
-npm run dev
-
-# Alternative: run with mock API (backend not required)
-npm run dev:mock
-```
-
-## Preview with Mock Data
-
-To explore the dashboard interface without configuring a backend or data sources, the repository includes a mock mode that simulates API responses using [Mock Service Worker (MSW)](https://mswjs.io/).
-
-```bash
-# Clone the repository
-git clone https://github.com/seadonggyun4/truthound-dashboard
-cd truthound-dashboard/frontend
-
-# Install dependencies
-npm install
-
-# Start the development server with mock data
-npm run dev:mock
-```
-
-The mock server provides realistic sample data for all dashboard features, enabling evaluation of the user interface and workflow without external dependencies.
-
-## Testing
-
-```bash
-# Run tests
-pytest
-
-# Run tests with coverage report
-pytest --cov=truthound_dashboard
-```
 
 ## Documentation
 
