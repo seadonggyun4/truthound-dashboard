@@ -9,6 +9,32 @@ export interface RequestOptions extends RequestInit {
 }
 
 /**
+ * Extract error message from API response data.
+ */
+function extractErrorMessage(data: unknown, fallback: string): string {
+  if (!data || typeof data !== 'object') return fallback
+
+  const obj = data as Record<string, unknown>
+
+  // Format: { error: { message: "..." } } or { error: "..." }
+  if (obj.error) {
+    if (typeof obj.error === 'string') return obj.error
+    if (typeof obj.error === 'object' && obj.error !== null) {
+      const errorObj = obj.error as Record<string, unknown>
+      if (typeof errorObj.message === 'string') return errorObj.message
+    }
+  }
+
+  // Format: { message: "..." }
+  if (typeof obj.message === 'string') return obj.message
+
+  // Format: { detail: "..." } (FastAPI default)
+  if (typeof obj.detail === 'string') return obj.detail
+
+  return fallback
+}
+
+/**
  * API Error with status and response data.
  */
 export class ApiError extends Error {
@@ -17,7 +43,8 @@ export class ApiError extends Error {
     public statusText: string,
     public data?: unknown
   ) {
-    super(`API Error: ${status} ${statusText}`)
+    const fallbackMessage = `API Error: ${status} ${statusText}`
+    super(extractErrorMessage(data, fallbackMessage))
     this.name = 'ApiError'
   }
 }
