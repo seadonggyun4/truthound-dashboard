@@ -1,7 +1,7 @@
 """Reporter interfaces for validation result reporting.
 
 Reporters generate formatted reports from validation results.
-They support multiple output formats (HTML, PDF, CSV, JSON, Excel, Markdown)
+They support multiple output formats (HTML, CSV, JSON)
 and can be customized for different use cases.
 
 This module defines abstract interfaces for reporters that are loosely
@@ -33,7 +33,6 @@ class ReportFormat(str, Enum):
     HTML = "html"
     CSV = "csv"
     JSON = "json"
-    MARKDOWN = "markdown"
     SLACK = "slack"  # Slack-formatted blocks
     TEXT = "text"
 
