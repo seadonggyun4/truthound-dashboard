@@ -98,10 +98,8 @@ class TruthoundReporterAdapter(BaseReporter[ReporterConfig]):
     FORMAT_MAPPING: dict[str, ReportFormatType] = {
         "json": ReportFormatType.JSON,
         "html": ReportFormatType.HTML,
-        "markdown": ReportFormatType.MARKDOWN,
         "csv": ReportFormatType.CSV,
         "yaml": ReportFormatType.YAML,
-        "junit": ReportFormatType.JUNIT,
         "ndjson": ReportFormatType.NDJSON,
         "console": ReportFormatType.CONSOLE,
     }
@@ -110,10 +108,8 @@ class TruthoundReporterAdapter(BaseReporter[ReporterConfig]):
     CONTENT_TYPE_MAPPING: dict[ReportFormatType, str] = {
         ReportFormatType.JSON: "application/json; charset=utf-8",
         ReportFormatType.HTML: "text/html; charset=utf-8",
-        ReportFormatType.MARKDOWN: "text/markdown; charset=utf-8",
         ReportFormatType.CSV: "text/csv; charset=utf-8",
         ReportFormatType.YAML: "application/x-yaml; charset=utf-8",
-        ReportFormatType.JUNIT: "application/xml; charset=utf-8",
         ReportFormatType.NDJSON: "application/x-ndjson; charset=utf-8",
         ReportFormatType.CONSOLE: "text/plain; charset=utf-8",
     }
@@ -122,10 +118,8 @@ class TruthoundReporterAdapter(BaseReporter[ReporterConfig]):
     EXTENSION_MAPPING: dict[ReportFormatType, str] = {
         ReportFormatType.JSON: ".json",
         ReportFormatType.HTML: ".html",
-        ReportFormatType.MARKDOWN: ".md",
         ReportFormatType.CSV: ".csv",
         ReportFormatType.YAML: ".yaml",
-        ReportFormatType.JUNIT: ".xml",
         ReportFormatType.NDJSON: ".ndjson",
         ReportFormatType.CONSOLE: ".txt",
     }

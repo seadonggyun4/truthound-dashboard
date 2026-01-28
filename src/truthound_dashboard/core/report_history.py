@@ -338,8 +338,6 @@ class ReportHistoryService:
             ReportFormatType.HTML: ".html",
             ReportFormatType.CSV: ".csv",
             ReportFormatType.JSON: ".json",
-            ReportFormatType.MARKDOWN: ".md",
-            ReportFormatType.JUNIT: ".xml",
             ReportFormatType.EXCEL: ".xlsx",
             ReportFormatType.CUSTOM: ".txt",
         }
@@ -423,8 +421,6 @@ class ReportHistoryService:
             ReportFormatType.HTML: "text/html",
             ReportFormatType.CSV: "text/csv",
             ReportFormatType.JSON: "application/json",
-            ReportFormatType.MARKDOWN: "text/markdown",
-            ReportFormatType.JUNIT: "application/xml",
             ReportFormatType.EXCEL: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             ReportFormatType.CUSTOM: "text/plain",
         }

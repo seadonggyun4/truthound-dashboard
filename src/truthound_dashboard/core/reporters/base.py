@@ -22,8 +22,6 @@ class ReportFormat(str, Enum):
     HTML = "html"
     CSV = "csv"
     JSON = "json"
-    MARKDOWN = "markdown"
-    JUNIT = "junit"  # JUnit XML for CI/CD integration
 
     @classmethod
     def from_string(cls, value: str) -> ReportFormat:

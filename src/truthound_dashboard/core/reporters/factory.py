@@ -298,20 +298,10 @@ class ReporterFactory:
 
                 return BuiltinHTMLReporter(locale=locale)
 
-            elif format_type == ReportFormatType.MARKDOWN:
-                from .builtin.markdown_reporter import BuiltinMarkdownReporter
-
-                return BuiltinMarkdownReporter(locale=locale)
-
             elif format_type == ReportFormatType.CSV:
                 from .builtin.csv_reporter import BuiltinCSVReporter
 
                 return BuiltinCSVReporter()
-
-            elif format_type == ReportFormatType.JUNIT:
-                from .builtin.junit_reporter import BuiltinJUnitReporter
-
-                return BuiltinJUnitReporter()
 
         except ImportError as e:
             logger.warning(f"Built-in reporter for {format_type.value} not available: {e}")
@@ -341,7 +331,7 @@ class ReporterFactory:
             formats.update(get_truthound_formats())
 
         # Add built-in formats
-        builtin_formats = ["json", "html", "markdown", "csv", "junit"]
+        builtin_formats = ["json", "html", "csv"]
         formats.update(builtin_formats)
 
         return sorted(formats)

@@ -81,7 +81,6 @@ class ReporterOutputFormat(str, Enum):
     HTML = "html"
     JSON = "json"
     CSV = "csv"
-    MARKDOWN = "markdown"
     CUSTOM = "custom"
 
 

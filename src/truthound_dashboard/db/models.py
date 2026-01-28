@@ -4373,8 +4373,6 @@ class ReportFormatType(str, Enum):
     HTML = "html"
     CSV = "csv"
     JSON = "json"
-    MARKDOWN = "markdown"
-    JUNIT = "junit"
     CUSTOM = "custom"
 
 

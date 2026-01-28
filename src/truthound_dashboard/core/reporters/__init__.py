@@ -1,7 +1,7 @@
 """Report generation system with multiple format support.
 
 This module provides an extensible reporter system for generating
-validation reports in various formats (HTML, CSV, Markdown, JSON, JUnit).
+validation reports in various formats (HTML, CSV, JSON).
 
 ## Architecture
 
@@ -132,7 +132,6 @@ from .base import (
 from .csv_reporter import CSVReporter
 from .html_reporter import HTMLReporter
 from .json_reporter import JSONReporter
-from .markdown_reporter import MarkdownReporter
 from .registry import (
     ReporterRegistry,
     generate_report,
@@ -149,8 +148,6 @@ from .builtin import (
     BuiltinCSVReporter,
     BuiltinHTMLReporter,
     BuiltinJSONReporter,
-    BuiltinJUnitReporter,
-    BuiltinMarkdownReporter,
 )
 
 __all__ = [
@@ -199,8 +196,6 @@ __all__ = [
     "BuiltinCSVReporter",
     "BuiltinHTMLReporter",
     "BuiltinJSONReporter",
-    "BuiltinJUnitReporter",
-    "BuiltinMarkdownReporter",
     # =========================================================================
     # Legacy API (v1) - Backward Compatibility
     # =========================================================================
@@ -214,7 +209,6 @@ __all__ = [
     "CSVReporter",
     "HTMLReporter",
     "JSONReporter",
-    "MarkdownReporter",
     # Legacy Registry
     "ReporterRegistry",
     "generate_report",

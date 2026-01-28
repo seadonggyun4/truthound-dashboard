@@ -206,7 +206,6 @@ async def generate_validation_report(
                 "text/html": {},
                 "text/csv": {},
                 "application/json": {},
-                "text/markdown": {},
             },
         },
         404: {"description": "Validation not found"},
@@ -236,7 +235,7 @@ async def download_validation_report(
     Args:
         service: Injected validation service.
         validation_id: Validation to generate report for.
-        format: Report format (html, csv, json, markdown).
+        format: Report format (html, csv, json).
         theme: Visual theme for the report.
         locale: Report language code.
         include_samples: Include sample problematic values.
@@ -294,7 +293,6 @@ async def download_validation_report(
                 "text/html": {},
                 "text/csv": {},
                 "application/json": {},
-                "text/markdown": {},
             },
         },
         404: {"description": "Validation not found"},
@@ -319,7 +317,7 @@ async def preview_validation_report(
     Args:
         service: Injected validation service.
         validation_id: Validation to generate report for.
-        format: Report format (html, csv, json, markdown).
+        format: Report format (html, csv, json).
         theme: Visual theme for the report.
         locale: Report language code.
 
@@ -392,7 +390,7 @@ async def list_report_history(
         source_id: Filter by source ID.
         validation_id: Filter by validation ID.
         reporter_id: Filter by reporter ID.
-        format: Filter by format (html, csv, json, markdown, junit).
+        format: Filter by format (html, csv, json).
         status: Filter by status (pending, generating, completed, failed, expired).
         include_expired: Include expired reports (default: false).
         search: Search by report name.
@@ -601,7 +599,6 @@ async def delete_report_record(
                 "text/html": {},
                 "text/csv": {},
                 "application/json": {},
-                "text/markdown": {},
             },
         },
         404: {"description": "Report not found or file missing"},
@@ -645,8 +642,6 @@ async def download_saved_report(
         "html": ".html",
         "csv": ".csv",
         "json": ".json",
-        "markdown": ".md",
-        "junit": ".xml",
     }
     fmt = report.format.value if hasattr(report.format, "value") else report.format
     ext = ext_map.get(fmt, ".html")

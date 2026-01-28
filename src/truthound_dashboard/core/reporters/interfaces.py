@@ -52,8 +52,6 @@ class ReportFormatType(str, Enum):
     HTML = "html"
     CSV = "csv"
     JSON = "json"
-    MARKDOWN = "markdown"
-    JUNIT = "junit"
     YAML = "yaml"
     NDJSON = "ndjson"
     CONSOLE = "console"
