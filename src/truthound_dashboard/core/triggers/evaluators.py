@@ -1,12 +1,20 @@
 """Trigger evaluator implementations.
 
-Provides concrete implementations for all trigger types:
+Provides concrete implementations for all trigger types using truthound.checkpoint.triggers
+when available, with fallback to APScheduler-based implementation:
 - CronTrigger: Cron expression based scheduling
 - IntervalTrigger: Fixed time interval scheduling
-- DataChangeTrigger: Profile-based change detection
+- DataChangeTrigger: Profile-based change detection (FileWatchTrigger in truthound)
 - CompositeTrigger: Combine multiple triggers
 - EventTrigger: Respond to system events
 - ManualTrigger: API-only execution
+- WebhookTrigger: External webhook triggers
+
+truthound.checkpoint.triggers provides:
+- ScheduleTrigger: Time-based scheduling
+- CronTrigger: Cron expression scheduling
+- EventTrigger: Event-driven triggers
+- FileWatchTrigger: File/data change monitoring
 """
 
 from __future__ import annotations
@@ -27,10 +35,27 @@ from .base import (
 
 logger = logging.getLogger(__name__)
 
+# Try to import truthound triggers
+_TRUTHOUND_TRIGGERS_AVAILABLE = False
+try:
+    from truthound.checkpoint.triggers import (
+        ScheduleTrigger as TruthoundScheduleTrigger,
+        CronTrigger as TruthoundCronTrigger,
+        EventTrigger as TruthoundEventTrigger,
+        FileWatchTrigger as TruthoundFileWatchTrigger,
+    )
+    _TRUTHOUND_TRIGGERS_AVAILABLE = True
+    logger.info("truthound.checkpoint.triggers available")
+except ImportError:
+    logger.debug("truthound.checkpoint.triggers not available, using APScheduler fallback")
+
 
 @TriggerRegistry.register("cron")
 class CronTrigger(BaseTrigger):
     """Cron expression based trigger.
+
+    Uses truthound.checkpoint.triggers.CronTrigger when available,
+    falls back to APScheduler's CronTrigger.
 
     Uses standard cron format: minute hour day month weekday
 
@@ -39,13 +64,35 @@ class CronTrigger(BaseTrigger):
         timezone: Optional timezone (default: UTC)
     """
 
+    def __init__(self, config: dict[str, Any]) -> None:
+        """Initialize cron trigger."""
+        super().__init__(config)
+        self._truthound_trigger = None
+        self._init_truthound_trigger()
+
+    def _init_truthound_trigger(self) -> None:
+        """Initialize truthound trigger if available."""
+        if _TRUTHOUND_TRIGGERS_AVAILABLE:
+            try:
+                expression = self.config.get("expression", "0 * * * *")
+                self._truthound_trigger = TruthoundCronTrigger(expression=expression)
+                logger.debug(f"Using truthound CronTrigger: {expression}")
+            except Exception as e:
+                logger.warning(f"Failed to create truthound CronTrigger: {e}")
+                self._truthound_trigger = None
+
     def _validate_config(self) -> None:
         """Validate cron configuration."""
         expression = self.config.get("expression")
         if not expression:
             raise ValueError("Cron trigger requires 'expression' field")
 
-        # Validate by attempting to parse
+        # Validate using truthound or APScheduler
+        if self._truthound_trigger is not None:
+            # truthound already validated in _init_truthound_trigger
+            return
+
+        # Fallback validation with APScheduler
         try:
             APCronTrigger.from_crontab(expression)
         except Exception as e:
@@ -54,10 +101,37 @@ class CronTrigger(BaseTrigger):
     async def evaluate(self, context: TriggerContext) -> TriggerEvaluation:
         """Evaluate if cron trigger should fire.
 
-        For cron triggers, we check if we're past the scheduled time
-        since the last run.
+        Uses truthound trigger evaluation when available.
         """
         expression = self.config.get("expression")
+
+        # Try truthound evaluation first
+        if self._truthound_trigger is not None:
+            try:
+                should_fire = self._truthound_trigger.should_fire(
+                    current_time=context.current_time,
+                    last_run_at=context.last_run_at,
+                )
+                next_fire = self._truthound_trigger.get_next_fire_time(context.current_time)
+
+                return TriggerEvaluation(
+                    should_trigger=should_fire,
+                    reason=(
+                        f"Scheduled time reached (truthound)"
+                        if should_fire
+                        else f"Waiting for scheduled time ({next_fire.isoformat() if next_fire else 'unknown'})"
+                    ),
+                    next_evaluation_at=next_fire if not should_fire else None,
+                    details={
+                        "expression": expression,
+                        "next_fire_time": next_fire.isoformat() if next_fire else None,
+                        "provider": "truthound",
+                    },
+                )
+            except Exception as e:
+                logger.warning(f"truthound CronTrigger evaluation failed: {e}")
+
+        # Fallback to APScheduler
         trigger = APCronTrigger.from_crontab(expression)
 
         # Get next fire time from last run (or from epoch if never run)
@@ -83,6 +157,7 @@ class CronTrigger(BaseTrigger):
             details={
                 "expression": expression,
                 "next_fire_time": next_fire.isoformat(),
+                "provider": "apscheduler",
             },
         )
 
@@ -90,6 +165,14 @@ class CronTrigger(BaseTrigger):
         self, context: TriggerContext
     ) -> datetime | None:
         """Get next cron fire time."""
+        # Try truthound first
+        if self._truthound_trigger is not None:
+            try:
+                return self._truthound_trigger.get_next_fire_time(context.current_time)
+            except Exception:
+                pass
+
+        # Fallback to APScheduler
         expression = self.config.get("expression")
         try:
             trigger = APCronTrigger.from_crontab(expression)
@@ -189,6 +272,9 @@ class IntervalTrigger(BaseTrigger):
 class DataChangeTrigger(BaseTrigger):
     """Data change detection trigger.
 
+    Uses truthound.checkpoint.triggers.FileWatchTrigger when available
+    for enhanced file/data monitoring with change detection.
+
     Triggers when profile metrics change by more than a threshold.
 
     Config:
@@ -199,6 +285,25 @@ class DataChangeTrigger(BaseTrigger):
 
     DEFAULT_METRICS = ["row_count", "null_percentage", "distinct_count"]
 
+    def __init__(self, config: dict[str, Any]) -> None:
+        """Initialize data change trigger."""
+        super().__init__(config)
+        self._truthound_trigger = None
+        self._init_truthound_trigger()
+
+    def _init_truthound_trigger(self) -> None:
+        """Initialize truthound FileWatchTrigger if available."""
+        if _TRUTHOUND_TRIGGERS_AVAILABLE:
+            try:
+                self._truthound_trigger = TruthoundFileWatchTrigger(
+                    change_threshold=self.config.get("change_threshold", 0.05),
+                    metrics=self.config.get("metrics", self.DEFAULT_METRICS),
+                )
+                logger.debug("Using truthound FileWatchTrigger for data change detection")
+            except Exception as e:
+                logger.warning(f"Failed to create truthound FileWatchTrigger: {e}")
+                self._truthound_trigger = None
+
     def _validate_config(self) -> None:
         """Validate data change configuration."""
         threshold = self.config.get("change_threshold", 0.05)
@@ -208,12 +313,34 @@ class DataChangeTrigger(BaseTrigger):
     async def evaluate(self, context: TriggerContext) -> TriggerEvaluation:
         """Evaluate if data has changed enough to trigger.
 
+        Uses truthound FileWatchTrigger when available for enhanced detection.
         Compares current profile against baseline and checks if
         any monitored metrics have changed beyond the threshold.
         """
         threshold = self.config.get("change_threshold", 0.05)
         metrics = self.config.get("metrics", self.DEFAULT_METRICS)
 
+        # Try truthound evaluation first
+        if self._truthound_trigger is not None and context.profile_data and context.baseline_profile:
+            try:
+                result = self._truthound_trigger.evaluate_change(
+                    current_profile=context.profile_data,
+                    baseline_profile=context.baseline_profile,
+                )
+
+                return TriggerEvaluation(
+                    should_trigger=result.should_trigger,
+                    reason=result.reason,
+                    details={
+                        **result.details,
+                        "provider": "truthound",
+                    },
+                    confidence=result.confidence,
+                )
+            except Exception as e:
+                logger.warning(f"truthound FileWatchTrigger evaluation failed: {e}")
+
+        # Fallback to manual implementation
         # Need both profiles to compare
         if context.profile_data is None:
             return TriggerEvaluation(
@@ -272,6 +399,7 @@ class DataChangeTrigger(BaseTrigger):
                 "max_change": max_change,
                 "changes": changes,
                 "triggered_metrics": triggered_metrics,
+                "provider": "manual",
             },
             confidence=max_change if should_trigger else 1.0 - max_change,
         )
@@ -384,6 +512,9 @@ class CompositeTrigger(BaseTrigger):
 class EventTrigger(BaseTrigger):
     """Event-based trigger.
 
+    Uses truthound.checkpoint.triggers.EventTrigger when available
+    for enhanced event matching and filtering.
+
     Triggers in response to specific system events.
 
     Config:
@@ -401,6 +532,25 @@ class EventTrigger(BaseTrigger):
         "source_updated",
     }
 
+    def __init__(self, config: dict[str, Any]) -> None:
+        """Initialize event trigger."""
+        super().__init__(config)
+        self._truthound_trigger = None
+        self._init_truthound_trigger()
+
+    def _init_truthound_trigger(self) -> None:
+        """Initialize truthound EventTrigger if available."""
+        if _TRUTHOUND_TRIGGERS_AVAILABLE:
+            try:
+                self._truthound_trigger = TruthoundEventTrigger(
+                    event_types=self.config.get("event_types", []),
+                    source_filter=self.config.get("source_filter"),
+                )
+                logger.debug("Using truthound EventTrigger")
+            except Exception as e:
+                logger.warning(f"Failed to create truthound EventTrigger: {e}")
+                self._truthound_trigger = None
+
     def _validate_config(self) -> None:
         """Validate event configuration."""
         event_types = self.config.get("event_types", [])
@@ -412,7 +562,10 @@ class EventTrigger(BaseTrigger):
             raise ValueError(f"Invalid event types: {invalid_events}")
 
     async def evaluate(self, context: TriggerContext) -> TriggerEvaluation:
-        """Evaluate if event matches configured types."""
+        """Evaluate if event matches configured types.
+
+        Uses truthound EventTrigger when available.
+        """
         event_types = set(self.config.get("event_types", []))
         source_filter = self.config.get("source_filter")
 
@@ -423,6 +576,22 @@ class EventTrigger(BaseTrigger):
                 reason="No event data in context",
             )
 
+        # Try truthound evaluation first
+        if self._truthound_trigger is not None:
+            try:
+                result = self._truthound_trigger.evaluate(context.event_data)
+                return TriggerEvaluation(
+                    should_trigger=result.should_trigger,
+                    reason=result.reason,
+                    details={
+                        **result.details,
+                        "provider": "truthound",
+                    },
+                )
+            except Exception as e:
+                logger.warning(f"truthound EventTrigger evaluation failed: {e}")
+
+        # Fallback to manual implementation
         event_type = context.event_data.get("type")
         event_source = context.event_data.get("source_id")
 
@@ -431,7 +600,7 @@ class EventTrigger(BaseTrigger):
             return TriggerEvaluation(
                 should_trigger=False,
                 reason=f"Event type '{event_type}' not in configured types",
-                details={"event_type": event_type, "configured_types": list(event_types)},
+                details={"event_type": event_type, "configured_types": list(event_types), "provider": "manual"},
             )
 
         # Check source filter if configured
@@ -439,7 +608,7 @@ class EventTrigger(BaseTrigger):
             return TriggerEvaluation(
                 should_trigger=False,
                 reason=f"Event source '{event_source}' not in filter",
-                details={"event_source": event_source, "filter": source_filter},
+                details={"event_source": event_source, "filter": source_filter, "provider": "manual"},
             )
 
         return TriggerEvaluation(
@@ -449,6 +618,7 @@ class EventTrigger(BaseTrigger):
                 "event_type": event_type,
                 "event_source": event_source,
                 "event_data": context.event_data,
+                "provider": "manual",
             },
         )
 

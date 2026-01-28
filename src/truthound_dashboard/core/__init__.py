@@ -217,6 +217,32 @@ from .phase5 import (
     CollaborationService,
     GlossaryService,
 )
+# Quality Reporter
+from .quality_reporter import (
+    QualityFilter,
+    QualityLevel,
+    QualityMetrics,
+    QualityReportConfig,
+    QualityReportFormat,
+    QualityReportResult,
+    QualityReportStatus,
+    QualityReporterService,
+    QualityScore,
+    QualityScoreResult,
+    QualityStatistics,
+    QualityThresholds,
+)
+# Storage Tiering
+from .tiering import (
+    TieringAdapter,
+    TieringService,
+    TierInfo,
+    MigrationItem,
+    MigrationResult,
+    TieringExecutionResult,
+    get_tiering_adapter,
+    process_tiering_policies,
+)
 
 __all__ = [
     # Backend abstraction (loose coupling with truthound)
@@ -386,4 +412,26 @@ __all__ = [
     "clear_limits_cache",
     "validate_positive_int",
     "validate_positive_float",
+    # Quality Reporter
+    "QualityReporterService",
+    "QualityScore",
+    "QualityScoreResult",
+    "QualityMetrics",
+    "QualityStatistics",
+    "QualityFilter",
+    "QualityReportConfig",
+    "QualityReportResult",
+    "QualityReportFormat",
+    "QualityReportStatus",
+    "QualityLevel",
+    "QualityThresholds",
+    # Storage Tiering
+    "TieringAdapter",
+    "TieringService",
+    "TierInfo",
+    "MigrationItem",
+    "MigrationResult",
+    "TieringExecutionResult",
+    "get_tiering_adapter",
+    "process_tiering_policies",
 ]

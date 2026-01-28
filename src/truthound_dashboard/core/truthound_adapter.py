@@ -545,9 +545,7 @@ class TruthoundAdapter:
         validator_config: dict[str, dict[str, Any]] | None = None,
         schema: str | None = None,
         auto_schema: bool = False,
-        columns: list[str] | None = None,
         min_severity: str | None = None,
-        strict: bool = False,
         parallel: bool = False,
         max_workers: int | None = None,
         pushdown: bool | None = None,
@@ -568,9 +566,7 @@ class TruthoundAdapter:
                 Note: In truthound 2.x, columns should be tuples, not lists.
             schema: Optional path to schema YAML file.
             auto_schema: If True, auto-learns schema for validation.
-            columns: Columns to validate. If None, validates all columns.
             min_severity: Minimum severity to report ("low", "medium", "high", "critical").
-            strict: If True, raises exception on validation failures.
             parallel: If True, uses DAG-based parallel execution.
             max_workers: Max threads for parallel execution.
             pushdown: Enable query pushdown for SQL sources. None uses auto-detection.
@@ -581,7 +577,6 @@ class TruthoundAdapter:
         Raises:
             ImportError: If truthound is not installed.
             FileNotFoundError: If data file doesn't exist.
-            ValidationError: If strict=True and validation fails.
         """
         import truthound as th
 
@@ -606,12 +601,8 @@ class TruthoundAdapter:
             kwargs["validator_config"] = validator_config
 
         # Only add optional params if explicitly set
-        if columns is not None:
-            kwargs["columns"] = columns
         if min_severity is not None:
             kwargs["min_severity"] = min_severity
-        if strict:
-            kwargs["strict"] = strict
         if max_workers is not None:
             kwargs["max_workers"] = max_workers
         if pushdown is not None:
@@ -966,31 +957,21 @@ class TruthoundAdapter:
             json_content=json_content,
         )
 
-    async def scan(
-        self,
-        data: DataInput,
-        *,
-        columns: list[str] | None = None,
-        regulations: list[str] | None = None,
-        min_confidence: float = 0.8,
-    ) -> ScanResult:
+    async def scan(self, data: DataInput) -> ScanResult:
         """Run PII scan on data asynchronously.
 
-        Uses truthound's th.scan() to detect personally identifiable information
-        and check compliance with privacy regulations.
+        Uses truthound's th.scan() to detect personally identifiable information.
+
+        Note: truthound's th.scan() does not support any configuration parameters.
+        The scan runs on all columns with default settings.
 
         Args:
             data: Data source - can be:
                 - File path string (CSV, Parquet, etc.)
                 - DataSource object
-            columns: Optional list of columns to scan. If None, scans all columns.
-            regulations: Optional list of regulations to check compliance.
-                Supported: "gdpr", "ccpa", "lgpd"
-            min_confidence: Minimum confidence threshold for PII detection (0.0-1.0).
-                Default is 0.8.
 
         Returns:
-            ScanResult with PII findings and regulation violations.
+            ScanResult with PII findings.
 
         Raises:
             ImportError: If truthound is not installed.
@@ -998,21 +979,12 @@ class TruthoundAdapter:
         """
         import truthound as th
 
-        # Note: truthound's th.scan() does not support min_confidence, columns,
-        # or regulations parameters. We filter results after scanning.
-        # See: .truthound_docs/python-api/core-functions.md
-
         func = partial(th.scan, data)
 
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(self._executor, func)
 
-        return self._convert_scan_result(
-            result,
-            min_confidence=min_confidence,
-            columns=columns,
-            regulations=regulations,
-        )
+        return self._convert_scan_result(result)
 
     async def compare(
         self,
@@ -1704,15 +1676,8 @@ class TruthoundAdapter:
             size_bytes=getattr(result, "size_bytes", 0),
         )
 
-    def _convert_scan_result(
-        self,
-        result: Any,
-        *,
-        min_confidence: float = 0.8,
-        columns: list[str] | None = None,
-        regulations: list[str] | None = None,
-    ) -> ScanResult:
-        """Convert truthound PIIReport to ScanResult with optional filtering.
+    def _convert_scan_result(self, result: Any) -> ScanResult:
+        """Convert truthound PIIReport to ScanResult.
 
         The truthound PIIReport contains:
         - source: str
@@ -1738,12 +1703,9 @@ class TruthoundAdapter:
 
         Args:
             result: truthound PIIReport object.
-            min_confidence: Filter findings by minimum confidence (0.0-1.0).
-            columns: Filter findings to specific columns only.
-            regulations: Filter findings by regulation types.
 
         Returns:
-            ScanResult with filtered PII findings.
+            ScanResult with PII findings.
         """
         # Convert findings to dictionaries
         findings = []
@@ -1763,14 +1725,6 @@ class TruthoundAdapter:
                 sample_count = getattr(finding, "sample_count", getattr(finding, "count", 0))
                 sample_values = getattr(finding, "sample_values", None)
 
-            # Apply min_confidence filter (confidence is 0-100 in findings)
-            if confidence < min_confidence * 100:
-                continue
-
-            # Apply columns filter
-            if columns and column not in columns:
-                continue
-
             columns_with_pii.add(column)
             # Normalize confidence to 0-1 range if it's in 0-100 range
             normalized_confidence = confidence / 100.0 if confidence > 1 else confidence
@@ -1787,10 +1741,6 @@ class TruthoundAdapter:
         # Convert violations to dictionaries
         violations = []
         for violation in getattr(result, "violations", []):
-            # Apply regulations filter
-            if regulations and violation.regulation not in regulations:
-                continue
-
             violations.append(
                 {
                     "regulation": violation.regulation,
@@ -2215,3 +2165,1316 @@ def reset_adapter() -> None:
     if _adapter is not None:
         _adapter.shutdown()
         _adapter = None
+
+
+# =============================================================================
+# Schema Evolution API (truthound.profiler.evolution)
+# =============================================================================
+
+
+@dataclass
+class SchemaChangeResult:
+    """Schema change detection result.
+
+    Represents a single detected change between schema versions.
+
+    Attributes:
+        change_type: Type of change (column_added, column_removed, type_changed, etc.)
+        column_name: Name of the affected column.
+        old_value: Previous value (type, nullable, etc.)
+        new_value: New value.
+        severity: Change severity (info, warning, critical).
+        breaking: Whether this is a breaking change.
+        description: Human-readable description.
+        migration_hint: Suggestion for handling the change.
+    """
+
+    change_type: str
+    column_name: str
+    old_value: Any
+    new_value: Any
+    severity: str
+    breaking: bool
+    description: str
+    migration_hint: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "change_type": self.change_type,
+            "column_name": self.column_name,
+            "old_value": self.old_value,
+            "new_value": self.new_value,
+            "severity": self.severity,
+            "breaking": self.breaking,
+            "description": self.description,
+            "migration_hint": self.migration_hint,
+        }
+
+
+@dataclass
+class SchemaDetectionResult:
+    """Schema evolution detection result.
+
+    Result from comparing two schemas.
+
+    Attributes:
+        total_changes: Total number of changes detected.
+        breaking_changes: Number of breaking changes.
+        compatibility_level: Compatibility assessment (compatible, minor, breaking).
+        changes: List of individual changes.
+    """
+
+    total_changes: int
+    breaking_changes: int
+    compatibility_level: str
+    changes: list[SchemaChangeResult]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "total_changes": self.total_changes,
+            "breaking_changes": self.breaking_changes,
+            "compatibility_level": self.compatibility_level,
+            "changes": [c.to_dict() for c in self.changes],
+        }
+
+
+@dataclass
+class RenameDetectionResult:
+    """Column rename detection result.
+
+    Attributes:
+        old_name: Original column name.
+        new_name: New column name.
+        similarity: Similarity score (0.0-1.0).
+        confidence: Confidence level (high, medium, low).
+        reasons: Reasons for the rename detection.
+    """
+
+    old_name: str
+    new_name: str
+    similarity: float
+    confidence: str
+    reasons: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "old_name": self.old_name,
+            "new_name": self.new_name,
+            "similarity": self.similarity,
+            "confidence": self.confidence,
+            "reasons": self.reasons,
+        }
+
+
+@dataclass
+class RenameDetectionSummary:
+    """Summary of rename detection results.
+
+    Attributes:
+        confirmed_renames: High-confidence confirmed renames.
+        possible_renames: Lower-confidence possible renames.
+        unmatched_added: Columns added without rename match.
+        unmatched_removed: Columns removed without rename match.
+    """
+
+    confirmed_renames: list[RenameDetectionResult]
+    possible_renames: list[RenameDetectionResult]
+    unmatched_added: list[str]
+    unmatched_removed: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "confirmed_renames": [r.to_dict() for r in self.confirmed_renames],
+            "possible_renames": [r.to_dict() for r in self.possible_renames],
+            "unmatched_added": self.unmatched_added,
+            "unmatched_removed": self.unmatched_removed,
+        }
+
+
+@dataclass
+class SchemaVersionResult:
+    """Schema version information.
+
+    Attributes:
+        id: Version identifier (hash or version string).
+        version: Version string (e.g., "1.0.0", "20260129.143000").
+        schema: Schema dictionary.
+        metadata: Optional metadata.
+        created_at: Creation timestamp.
+        has_breaking_changes: Whether this version has breaking changes from parent.
+        changes_from_parent: List of changes from parent version.
+    """
+
+    id: str
+    version: str
+    schema: dict[str, Any]
+    metadata: dict[str, Any] | None
+    created_at: str | None
+    has_breaking_changes: bool = False
+    changes_from_parent: list[SchemaChangeResult] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "version": self.version,
+            "schema": self.schema,
+            "metadata": self.metadata,
+            "created_at": self.created_at,
+            "has_breaking_changes": self.has_breaking_changes,
+            "changes_from_parent": (
+                [c.to_dict() for c in self.changes_from_parent]
+                if self.changes_from_parent
+                else None
+            ),
+        }
+
+
+@dataclass
+class SchemaDiffResult:
+    """Schema diff between two versions.
+
+    Attributes:
+        from_version: Source version string.
+        to_version: Target version string.
+        changes: List of changes.
+        text_diff: Human-readable text diff.
+    """
+
+    from_version: str
+    to_version: str
+    changes: list[SchemaChangeResult]
+    text_diff: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "from_version": self.from_version,
+            "to_version": self.to_version,
+            "changes": [c.to_dict() for c in self.changes],
+            "text_diff": self.text_diff,
+        }
+
+
+@dataclass
+class SchemaWatcherEvent:
+    """Schema watcher change event.
+
+    Attributes:
+        source: Source name that changed.
+        has_breaking_changes: Whether breaking changes were detected.
+        total_changes: Total number of changes.
+        changes: List of changes.
+        timestamp: Event timestamp.
+    """
+
+    source: str
+    has_breaking_changes: bool
+    total_changes: int
+    changes: list[SchemaChangeResult]
+    timestamp: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "source": self.source,
+            "has_breaking_changes": self.has_breaking_changes,
+            "total_changes": self.total_changes,
+            "changes": [c.to_dict() for c in self.changes],
+            "timestamp": self.timestamp,
+        }
+
+
+@dataclass
+class BreakingChangeAlert:
+    """Breaking change alert with impact analysis.
+
+    Attributes:
+        alert_id: Unique alert identifier.
+        title: Alert title.
+        source: Source name.
+        changes: List of breaking changes.
+        impact_scope: Impact scope (local, downstream, system).
+        affected_consumers: List of affected consumers.
+        data_risk_level: Risk level (1-5).
+        recommendations: List of recommendations.
+        status: Alert status (open, acknowledged, resolved).
+        created_at: Creation timestamp.
+        acknowledged_at: Acknowledgment timestamp.
+        resolved_at: Resolution timestamp.
+    """
+
+    alert_id: str
+    title: str
+    source: str
+    changes: list[SchemaChangeResult]
+    impact_scope: str
+    affected_consumers: list[str]
+    data_risk_level: int
+    recommendations: list[str]
+    status: str
+    created_at: str
+    acknowledged_at: str | None = None
+    resolved_at: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "alert_id": self.alert_id,
+            "title": self.title,
+            "source": self.source,
+            "changes": [c.to_dict() for c in self.changes],
+            "impact_scope": self.impact_scope,
+            "affected_consumers": self.affected_consumers,
+            "data_risk_level": self.data_risk_level,
+            "recommendations": self.recommendations,
+            "status": self.status,
+            "created_at": self.created_at,
+            "acknowledged_at": self.acknowledged_at,
+            "resolved_at": self.resolved_at,
+        }
+
+
+class SchemaEvolutionAdapter:
+    """Async wrapper for truthound schema evolution functions.
+
+    This adapter provides an async interface to truthound's schema evolution
+    module (truthound.profiler.evolution), including:
+    - SchemaEvolutionDetector for change detection
+    - SchemaHistory for version management
+    - SchemaWatcher for continuous monitoring
+    - ColumnRenameDetector for rename detection
+    - BreakingChangeAlertManager for alert management
+    - ImpactAnalyzer for impact analysis
+
+    All operations run in a thread pool to avoid blocking the event loop.
+    """
+
+    def __init__(self, max_workers: int = 4) -> None:
+        """Initialize adapter.
+
+        Args:
+            max_workers: Maximum worker threads for concurrent operations.
+        """
+        self._executor = ThreadPoolExecutor(max_workers=max_workers)
+        self._watchers: dict[str, Any] = {}  # watcher_id -> SchemaWatcher
+        self._histories: dict[str, Any] = {}  # history_id -> SchemaHistory
+        self._alert_manager: Any = None
+        self._impact_analyzer: Any = None
+
+    async def detect_changes(
+        self,
+        current_schema: dict[str, Any],
+        baseline_schema: dict[str, Any],
+        *,
+        detect_renames: bool = True,
+        rename_similarity_threshold: float = 0.8,
+    ) -> SchemaDetectionResult:
+        """Detect schema changes between two schemas.
+
+        Uses truthound's SchemaEvolutionDetector for comprehensive change
+        detection including column additions, removals, type changes, and renames.
+
+        Args:
+            current_schema: Current schema dictionary ({"column": "Type"}).
+            baseline_schema: Baseline schema dictionary.
+            detect_renames: Enable rename detection.
+            rename_similarity_threshold: Threshold for considering a rename (0.0-1.0).
+
+        Returns:
+            SchemaDetectionResult with all detected changes.
+        """
+        from truthound.profiler.evolution import SchemaEvolutionDetector
+
+        def _detect():
+            detector = SchemaEvolutionDetector(
+                detect_renames=detect_renames,
+                rename_similarity_threshold=rename_similarity_threshold,
+            )
+            changes = detector.detect_changes(current_schema, baseline_schema)
+            summary = detector.get_change_summary(changes)
+            return changes, summary
+
+        loop = asyncio.get_event_loop()
+        changes, summary = await loop.run_in_executor(self._executor, _detect)
+
+        return self._convert_detection_result(changes, summary)
+
+    async def detect_renames(
+        self,
+        added_columns: dict[str, str],
+        removed_columns: dict[str, str],
+        *,
+        similarity_threshold: float = 0.8,
+        require_type_match: bool = True,
+        allow_compatible_types: bool = True,
+        algorithm: str = "composite",
+    ) -> RenameDetectionSummary:
+        """Detect column renames between added and removed columns.
+
+        Uses truthound's ColumnRenameDetector with configurable similarity
+        algorithms for accurate rename detection.
+
+        Args:
+            added_columns: Dict of added columns {"name": "Type"}.
+            removed_columns: Dict of removed columns {"name": "Type"}.
+            similarity_threshold: Threshold for considering a rename (0.0-1.0).
+            require_type_match: Require matching types for rename.
+            allow_compatible_types: Allow compatible type changes (e.g., Int32->Int64).
+            algorithm: Similarity algorithm:
+                - "composite": Weighted combination (default)
+                - "levenshtein": Edit distance
+                - "jaro_winkler": Short strings, prefixes
+                - "ngram": Partial matches
+                - "token": snake_case/camelCase names
+
+        Returns:
+            RenameDetectionSummary with confirmed and possible renames.
+        """
+        from truthound.profiler.evolution import ColumnRenameDetector
+
+        def _detect():
+            detector = ColumnRenameDetector(
+                similarity_threshold=similarity_threshold,
+                require_type_match=require_type_match,
+                allow_compatible_types=allow_compatible_types,
+            )
+            return detector.detect(
+                added_columns=added_columns,
+                removed_columns=removed_columns,
+            )
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(self._executor, _detect)
+
+        return self._convert_rename_result(result)
+
+    async def create_history(
+        self,
+        history_id: str,
+        storage_path: str,
+        *,
+        version_strategy: str = "semantic",
+        max_versions: int = 100,
+        compress: bool = True,
+    ) -> str:
+        """Create a new schema history storage.
+
+        Uses truthound's SchemaHistory for version management with support
+        for semantic, incremental, timestamp, and git versioning strategies.
+
+        Args:
+            history_id: Unique identifier for this history instance.
+            storage_path: Path for file-based storage.
+            version_strategy: Version numbering strategy:
+                - "semantic": 1.2.3 format, auto-bumps based on change type
+                - "incremental": 1, 2, 3 simple numbers
+                - "timestamp": 20260128.143052 time-based
+                - "git": a1b2c3d4 git-like hashes
+            max_versions: Maximum versions to keep.
+            compress: Compress stored files.
+
+        Returns:
+            History ID for future operations.
+        """
+        from truthound.profiler.evolution import SchemaHistory
+
+        def _create():
+            return SchemaHistory.create(
+                storage_type="file",
+                path=storage_path,
+                version_strategy=version_strategy,
+                max_versions=max_versions,
+                compress=compress,
+            )
+
+        loop = asyncio.get_event_loop()
+        history = await loop.run_in_executor(self._executor, _create)
+
+        self._histories[history_id] = history
+        return history_id
+
+    async def save_schema_version(
+        self,
+        history_id: str,
+        schema: dict[str, Any],
+        *,
+        version: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> SchemaVersionResult:
+        """Save a schema version to history.
+
+        Args:
+            history_id: History instance ID.
+            schema: Schema dictionary to save.
+            version: Optional explicit version string.
+            metadata: Optional metadata (author, message, etc.).
+
+        Returns:
+            SchemaVersionResult with version info.
+
+        Raises:
+            ValueError: If history_id not found.
+        """
+        if history_id not in self._histories:
+            raise ValueError(f"History '{history_id}' not found")
+
+        history = self._histories[history_id]
+
+        def _save():
+            kwargs: dict[str, Any] = {}
+            if version:
+                kwargs["version"] = version
+            if metadata:
+                kwargs["metadata"] = metadata
+            return history.save(schema, **kwargs)
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(self._executor, _save)
+
+        return self._convert_version_result(result)
+
+    async def get_schema_version(
+        self,
+        history_id: str,
+        version: str,
+    ) -> SchemaVersionResult | None:
+        """Get a specific schema version.
+
+        Args:
+            history_id: History instance ID.
+            version: Version string or ID.
+
+        Returns:
+            SchemaVersionResult or None if not found.
+        """
+        if history_id not in self._histories:
+            raise ValueError(f"History '{history_id}' not found")
+
+        history = self._histories[history_id]
+
+        def _get():
+            try:
+                return history.get_by_version(version)
+            except Exception:
+                return history.get(version)
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(self._executor, _get)
+
+        if result is None:
+            return None
+        return self._convert_version_result(result)
+
+    async def list_schema_versions(
+        self,
+        history_id: str,
+        *,
+        limit: int = 50,
+        since: str | None = None,
+    ) -> list[SchemaVersionResult]:
+        """List schema versions in history.
+
+        Args:
+            history_id: History instance ID.
+            limit: Maximum versions to return.
+            since: Filter versions since this datetime (ISO format).
+
+        Returns:
+            List of SchemaVersionResult.
+        """
+        from datetime import datetime, timedelta
+
+        if history_id not in self._histories:
+            raise ValueError(f"History '{history_id}' not found")
+
+        history = self._histories[history_id]
+
+        def _list():
+            kwargs: dict[str, Any] = {"limit": limit}
+            if since:
+                kwargs["since"] = datetime.fromisoformat(since)
+            return history.list(**kwargs)
+
+        loop = asyncio.get_event_loop()
+        versions = await loop.run_in_executor(self._executor, _list)
+
+        return [self._convert_version_result(v) for v in versions]
+
+    async def get_latest_version(
+        self,
+        history_id: str,
+    ) -> SchemaVersionResult | None:
+        """Get the latest schema version.
+
+        Args:
+            history_id: History instance ID.
+
+        Returns:
+            Latest SchemaVersionResult or None.
+        """
+        if history_id not in self._histories:
+            raise ValueError(f"History '{history_id}' not found")
+
+        history = self._histories[history_id]
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            self._executor, lambda: history.latest
+        )
+
+        if result is None:
+            return None
+        return self._convert_version_result(result)
+
+    async def diff_versions(
+        self,
+        history_id: str,
+        from_version: str,
+        to_version: str | None = None,
+    ) -> SchemaDiffResult:
+        """Get diff between two schema versions.
+
+        Args:
+            history_id: History instance ID.
+            from_version: Source version string.
+            to_version: Target version string (None = latest).
+
+        Returns:
+            SchemaDiffResult with changes and text diff.
+        """
+        if history_id not in self._histories:
+            raise ValueError(f"History '{history_id}' not found")
+
+        history = self._histories[history_id]
+
+        def _diff():
+            if to_version:
+                return history.diff(from_version, to_version)
+            else:
+                return history.diff(from_version)
+
+        loop = asyncio.get_event_loop()
+        diff = await loop.run_in_executor(self._executor, _diff)
+
+        return self._convert_diff_result(diff, from_version, to_version or "latest")
+
+    async def has_breaking_changes_since(
+        self,
+        history_id: str,
+        version: str,
+    ) -> bool:
+        """Check if there are breaking changes since a version.
+
+        Args:
+            history_id: History instance ID.
+            version: Version to check from.
+
+        Returns:
+            True if breaking changes exist.
+        """
+        if history_id not in self._histories:
+            raise ValueError(f"History '{history_id}' not found")
+
+        history = self._histories[history_id]
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            self._executor, lambda: history.has_breaking_changes_since(version)
+        )
+
+    async def rollback_version(
+        self,
+        history_id: str,
+        to_version: str,
+        *,
+        reason: str | None = None,
+    ) -> SchemaVersionResult:
+        """Rollback to a previous version.
+
+        Creates a new version that matches the specified version.
+
+        Args:
+            history_id: History instance ID.
+            to_version: Version to rollback to.
+            reason: Reason for rollback.
+
+        Returns:
+            New SchemaVersionResult after rollback.
+        """
+        if history_id not in self._histories:
+            raise ValueError(f"History '{history_id}' not found")
+
+        history = self._histories[history_id]
+
+        def _rollback():
+            kwargs: dict[str, Any] = {}
+            if reason:
+                kwargs["reason"] = reason
+            return history.rollback(to_version, **kwargs)
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(self._executor, _rollback)
+
+        return self._convert_version_result(result)
+
+    async def create_watcher(
+        self,
+        watcher_id: str,
+        sources: list[dict[str, Any]],
+        *,
+        poll_interval: int = 60,
+        only_breaking: bool = False,
+        enable_history: bool = True,
+        history_path: str | None = None,
+    ) -> str:
+        """Create a new schema watcher.
+
+        Uses truthound's SchemaWatcher for continuous monitoring with
+        configurable sources, handlers, and polling.
+
+        Args:
+            watcher_id: Unique identifier for this watcher.
+            sources: List of source configurations, each with:
+                - type: "file", "dict", or "polars"
+                - path: For file sources
+                - schema: For dict sources
+                - name: Source name
+            poll_interval: Polling interval in seconds.
+            only_breaking: Only alert on breaking changes.
+            enable_history: Enable history tracking.
+            history_path: Path for history storage.
+
+        Returns:
+            Watcher ID for future operations.
+        """
+        from truthound.profiler.evolution import (
+            SchemaWatcher,
+            FileSchemaSource,
+            DictSchemaSource,
+            LoggingEventHandler,
+            HistoryEventHandler,
+            SchemaHistory,
+        )
+
+        def _create():
+            watcher = SchemaWatcher()
+
+            # Add sources
+            for src in sources:
+                src_type = src.get("type", "file")
+                if src_type == "file":
+                    watcher.add_source(FileSchemaSource(src["path"]))
+                elif src_type == "dict":
+                    watcher.add_source(
+                        DictSchemaSource(src["schema"], src.get("name", "dict"))
+                    )
+
+            # Add logging handler
+            watcher.add_handler(LoggingEventHandler())
+
+            # Add history handler if enabled
+            if enable_history and history_path:
+                history = SchemaHistory.create(
+                    storage_type="file",
+                    path=history_path,
+                )
+                watcher.add_handler(HistoryEventHandler(history))
+
+            return watcher
+
+        loop = asyncio.get_event_loop()
+        watcher = await loop.run_in_executor(self._executor, _create)
+
+        self._watchers[watcher_id] = {
+            "watcher": watcher,
+            "poll_interval": poll_interval,
+            "only_breaking": only_breaking,
+            "status": "created",
+        }
+        return watcher_id
+
+    async def start_watcher(
+        self,
+        watcher_id: str,
+        *,
+        daemon: bool = True,
+    ) -> None:
+        """Start a schema watcher.
+
+        Args:
+            watcher_id: Watcher ID to start.
+            daemon: Run as daemon thread.
+
+        Raises:
+            ValueError: If watcher_id not found.
+        """
+        if watcher_id not in self._watchers:
+            raise ValueError(f"Watcher '{watcher_id}' not found")
+
+        watcher_data = self._watchers[watcher_id]
+        watcher = watcher_data["watcher"]
+        poll_interval = watcher_data["poll_interval"]
+
+        def _start():
+            watcher.start(poll_interval=poll_interval, daemon=daemon)
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(self._executor, _start)
+
+        watcher_data["status"] = "running"
+
+    async def stop_watcher(self, watcher_id: str) -> None:
+        """Stop a schema watcher.
+
+        Args:
+            watcher_id: Watcher ID to stop.
+        """
+        if watcher_id not in self._watchers:
+            raise ValueError(f"Watcher '{watcher_id}' not found")
+
+        watcher_data = self._watchers[watcher_id]
+        watcher = watcher_data["watcher"]
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(self._executor, watcher.stop)
+
+        watcher_data["status"] = "stopped"
+
+    async def pause_watcher(self, watcher_id: str) -> None:
+        """Pause a schema watcher.
+
+        Args:
+            watcher_id: Watcher ID to pause.
+        """
+        if watcher_id not in self._watchers:
+            raise ValueError(f"Watcher '{watcher_id}' not found")
+
+        watcher_data = self._watchers[watcher_id]
+        watcher = watcher_data["watcher"]
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(self._executor, watcher.pause)
+
+        watcher_data["status"] = "paused"
+
+    async def resume_watcher(self, watcher_id: str) -> None:
+        """Resume a paused schema watcher.
+
+        Args:
+            watcher_id: Watcher ID to resume.
+        """
+        if watcher_id not in self._watchers:
+            raise ValueError(f"Watcher '{watcher_id}' not found")
+
+        watcher_data = self._watchers[watcher_id]
+        watcher = watcher_data["watcher"]
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(self._executor, watcher.resume)
+
+        watcher_data["status"] = "running"
+
+    async def check_watcher_now(
+        self,
+        watcher_id: str,
+    ) -> list[SchemaWatcherEvent]:
+        """Execute immediate check for a watcher.
+
+        Args:
+            watcher_id: Watcher ID to check.
+
+        Returns:
+            List of SchemaWatcherEvent for any detected changes.
+        """
+        if watcher_id not in self._watchers:
+            raise ValueError(f"Watcher '{watcher_id}' not found")
+
+        watcher_data = self._watchers[watcher_id]
+        watcher = watcher_data["watcher"]
+
+        loop = asyncio.get_event_loop()
+        events = await loop.run_in_executor(self._executor, watcher.check_now)
+
+        return [self._convert_watcher_event(e) for e in events]
+
+    async def get_watcher_status(self, watcher_id: str) -> dict[str, Any]:
+        """Get watcher status.
+
+        Args:
+            watcher_id: Watcher ID.
+
+        Returns:
+            Status dictionary with status, poll_interval, only_breaking.
+        """
+        if watcher_id not in self._watchers:
+            raise ValueError(f"Watcher '{watcher_id}' not found")
+
+        watcher_data = self._watchers[watcher_id]
+        return {
+            "watcher_id": watcher_id,
+            "status": watcher_data["status"],
+            "poll_interval": watcher_data["poll_interval"],
+            "only_breaking": watcher_data["only_breaking"],
+        }
+
+    async def delete_watcher(self, watcher_id: str) -> None:
+        """Delete a watcher.
+
+        Stops the watcher if running and removes it.
+
+        Args:
+            watcher_id: Watcher ID to delete.
+        """
+        if watcher_id not in self._watchers:
+            raise ValueError(f"Watcher '{watcher_id}' not found")
+
+        watcher_data = self._watchers[watcher_id]
+        if watcher_data["status"] == "running":
+            await self.stop_watcher(watcher_id)
+
+        del self._watchers[watcher_id]
+
+    async def setup_impact_analyzer(
+        self,
+        consumers: dict[str, list[str]] | None = None,
+        queries: dict[str, list[str]] | None = None,
+    ) -> None:
+        """Setup impact analyzer with consumer mappings.
+
+        Args:
+            consumers: Dict of consumer name -> list of sources it depends on.
+            queries: Dict of source name -> list of queries using it.
+        """
+        from truthound.profiler.evolution import ImpactAnalyzer
+
+        def _setup():
+            analyzer = ImpactAnalyzer()
+            if consumers:
+                for consumer, sources in consumers.items():
+                    analyzer.register_consumer(consumer, sources)
+            if queries:
+                for source, query_list in queries.items():
+                    for query in query_list:
+                        analyzer.register_query(source, query)
+            return analyzer
+
+        loop = asyncio.get_event_loop()
+        self._impact_analyzer = await loop.run_in_executor(self._executor, _setup)
+
+    async def setup_alert_manager(
+        self,
+        alert_storage_path: str,
+    ) -> None:
+        """Setup breaking change alert manager.
+
+        Args:
+            alert_storage_path: Path for alert storage.
+        """
+        from truthound.profiler.evolution import BreakingChangeAlertManager
+
+        def _setup():
+            return BreakingChangeAlertManager(
+                impact_analyzer=self._impact_analyzer,
+                alert_storage_path=alert_storage_path,
+            )
+
+        loop = asyncio.get_event_loop()
+        self._alert_manager = await loop.run_in_executor(self._executor, _setup)
+
+    async def create_alert(
+        self,
+        changes: list[dict[str, Any]],
+        source: str,
+    ) -> BreakingChangeAlert:
+        """Create a breaking change alert.
+
+        Args:
+            changes: List of change dictionaries from detect_changes.
+            source: Source name.
+
+        Returns:
+            BreakingChangeAlert with impact analysis.
+
+        Raises:
+            ValueError: If alert manager not setup.
+        """
+        if self._alert_manager is None:
+            raise ValueError("Alert manager not setup. Call setup_alert_manager first.")
+
+        def _create():
+            return self._alert_manager.create_alert(changes, source=source)
+
+        loop = asyncio.get_event_loop()
+        alert = await loop.run_in_executor(self._executor, _create)
+
+        return self._convert_alert_result(alert)
+
+    async def acknowledge_alert(self, alert_id: str) -> None:
+        """Acknowledge an alert.
+
+        Args:
+            alert_id: Alert ID to acknowledge.
+        """
+        if self._alert_manager is None:
+            raise ValueError("Alert manager not setup.")
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            self._executor, lambda: self._alert_manager.acknowledge_alert(alert_id)
+        )
+
+    async def resolve_alert(self, alert_id: str) -> None:
+        """Resolve an alert.
+
+        Args:
+            alert_id: Alert ID to resolve.
+        """
+        if self._alert_manager is None:
+            raise ValueError("Alert manager not setup.")
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            self._executor, lambda: self._alert_manager.resolve_alert(alert_id)
+        )
+
+    async def get_alert_history(
+        self,
+        *,
+        status: str | None = None,
+    ) -> list[BreakingChangeAlert]:
+        """Get alert history.
+
+        Args:
+            status: Filter by status (open, acknowledged, resolved).
+
+        Returns:
+            List of BreakingChangeAlert.
+        """
+        if self._alert_manager is None:
+            raise ValueError("Alert manager not setup.")
+
+        def _get():
+            kwargs: dict[str, Any] = {}
+            if status:
+                kwargs["status"] = status
+            return self._alert_manager.get_alert_history(**kwargs)
+
+        loop = asyncio.get_event_loop()
+        alerts = await loop.run_in_executor(self._executor, _get)
+
+        return [self._convert_alert_result(a) for a in alerts]
+
+    async def get_alert_stats(self) -> dict[str, int]:
+        """Get alert statistics.
+
+        Returns:
+            Dict with total, open, acknowledged, resolved counts.
+        """
+        if self._alert_manager is None:
+            raise ValueError("Alert manager not setup.")
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            self._executor, self._alert_manager.get_stats
+        )
+
+    # =========================================================================
+    # Result Conversion Methods
+    # =========================================================================
+
+    def _convert_detection_result(
+        self,
+        changes: list[Any],
+        summary: Any,
+    ) -> SchemaDetectionResult:
+        """Convert truthound detection result."""
+        converted_changes = []
+        for c in changes:
+            converted_changes.append(
+                SchemaChangeResult(
+                    change_type=c.change_type.value if hasattr(c.change_type, "value") else str(c.change_type),
+                    column_name=getattr(c, "column", getattr(c, "column_name", "")),
+                    old_value=getattr(c, "old_value", None),
+                    new_value=getattr(c, "new_value", None),
+                    severity=c.severity.value if hasattr(c.severity, "value") else str(c.severity),
+                    breaking=getattr(c, "breaking", False),
+                    description=getattr(c, "description", ""),
+                    migration_hint=getattr(c, "migration_hint", None),
+                )
+            )
+
+        compatibility = "compatible"
+        if hasattr(summary, "compatibility_level"):
+            compatibility = (
+                summary.compatibility_level.value
+                if hasattr(summary.compatibility_level, "value")
+                else str(summary.compatibility_level)
+            )
+
+        return SchemaDetectionResult(
+            total_changes=getattr(summary, "total_changes", len(changes)),
+            breaking_changes=getattr(summary, "breaking_changes", 0),
+            compatibility_level=compatibility,
+            changes=converted_changes,
+        )
+
+    def _convert_rename_result(self, result: Any) -> RenameDetectionSummary:
+        """Convert truthound rename detection result."""
+        confirmed = []
+        for r in getattr(result, "confirmed_renames", []):
+            confirmed.append(
+                RenameDetectionResult(
+                    old_name=r.old_name,
+                    new_name=r.new_name,
+                    similarity=r.similarity,
+                    confidence=r.confidence.value if hasattr(r.confidence, "value") else str(r.confidence),
+                    reasons=list(getattr(r, "reasons", [])),
+                )
+            )
+
+        possible = []
+        for r in getattr(result, "possible_renames", []):
+            possible.append(
+                RenameDetectionResult(
+                    old_name=r.old_name,
+                    new_name=r.new_name,
+                    similarity=r.similarity,
+                    confidence=r.confidence.value if hasattr(r.confidence, "value") else str(r.confidence),
+                    reasons=list(getattr(r, "reasons", [])),
+                )
+            )
+
+        return RenameDetectionSummary(
+            confirmed_renames=confirmed,
+            possible_renames=possible,
+            unmatched_added=list(getattr(result, "unmatched_added", [])),
+            unmatched_removed=list(getattr(result, "unmatched_removed", [])),
+        )
+
+    def _convert_version_result(self, result: Any) -> SchemaVersionResult:
+        """Convert truthound version result."""
+        from datetime import datetime
+
+        created_at = None
+        if hasattr(result, "created_at") and result.created_at:
+            created_at = (
+                result.created_at.isoformat()
+                if isinstance(result.created_at, datetime)
+                else str(result.created_at)
+            )
+
+        changes = None
+        if hasattr(result, "changes_from_parent") and result.changes_from_parent:
+            changes = [
+                SchemaChangeResult(
+                    change_type=c.change_type.value if hasattr(c.change_type, "value") else str(c.change_type),
+                    column_name=getattr(c, "column", getattr(c, "column_name", "")),
+                    old_value=getattr(c, "old_value", None),
+                    new_value=getattr(c, "new_value", None),
+                    severity=c.severity.value if hasattr(c.severity, "value") else str(c.severity),
+                    breaking=getattr(c, "breaking", False),
+                    description=getattr(c, "description", ""),
+                    migration_hint=getattr(c, "migration_hint", None),
+                )
+                for c in result.changes_from_parent
+            ]
+
+        # Get schema as dict
+        schema = {}
+        if hasattr(result, "schema"):
+            schema = result.schema if isinstance(result.schema, dict) else {}
+        elif hasattr(result, "to_dict"):
+            schema = result.to_dict().get("schema", {})
+
+        return SchemaVersionResult(
+            id=getattr(result, "id", getattr(result, "version_id", "")),
+            version=str(getattr(result, "version", "")),
+            schema=schema,
+            metadata=getattr(result, "metadata", None),
+            created_at=created_at,
+            has_breaking_changes=getattr(result, "has_breaking_changes", False),
+            changes_from_parent=changes,
+        )
+
+    def _convert_diff_result(
+        self,
+        diff: Any,
+        from_version: str,
+        to_version: str,
+    ) -> SchemaDiffResult:
+        """Convert truthound diff result."""
+        changes = []
+        for c in getattr(diff, "changes", []):
+            changes.append(
+                SchemaChangeResult(
+                    change_type=c.change_type.value if hasattr(c.change_type, "value") else str(c.change_type),
+                    column_name=getattr(c, "column", getattr(c, "column_name", "")),
+                    old_value=getattr(c, "old_value", None),
+                    new_value=getattr(c, "new_value", None),
+                    severity=c.severity.value if hasattr(c.severity, "value") else str(c.severity),
+                    breaking=getattr(c, "breaking", False),
+                    description=getattr(c, "description", ""),
+                    migration_hint=getattr(c, "migration_hint", None),
+                )
+            )
+
+        text_diff = ""
+        if hasattr(diff, "format_text"):
+            text_diff = diff.format_text()
+
+        return SchemaDiffResult(
+            from_version=from_version,
+            to_version=to_version,
+            changes=changes,
+            text_diff=text_diff,
+        )
+
+    def _convert_watcher_event(self, event: Any) -> SchemaWatcherEvent:
+        """Convert truthound watcher event."""
+        from datetime import datetime
+
+        changes = []
+        for c in getattr(event, "changes", []):
+            changes.append(
+                SchemaChangeResult(
+                    change_type=c.change_type.value if hasattr(c.change_type, "value") else str(c.change_type),
+                    column_name=getattr(c, "column", getattr(c, "column_name", "")),
+                    old_value=getattr(c, "old_value", None),
+                    new_value=getattr(c, "new_value", None),
+                    severity=c.severity.value if hasattr(c.severity, "value") else str(c.severity),
+                    breaking=getattr(c, "breaking", False),
+                    description=getattr(c, "description", ""),
+                    migration_hint=getattr(c, "migration_hint", None),
+                )
+            )
+
+        timestamp = datetime.utcnow().isoformat()
+        if hasattr(event, "timestamp"):
+            timestamp = (
+                event.timestamp.isoformat()
+                if isinstance(event.timestamp, datetime)
+                else str(event.timestamp)
+            )
+
+        return SchemaWatcherEvent(
+            source=getattr(event, "source", ""),
+            has_breaking_changes=event.has_breaking_changes() if callable(getattr(event, "has_breaking_changes", None)) else getattr(event, "has_breaking_changes", False),
+            total_changes=len(changes),
+            changes=changes,
+            timestamp=timestamp,
+        )
+
+    def _convert_alert_result(self, alert: Any) -> BreakingChangeAlert:
+        """Convert truthound alert result."""
+        from datetime import datetime
+
+        changes = []
+        for c in getattr(alert, "changes", []):
+            if isinstance(c, dict):
+                changes.append(
+                    SchemaChangeResult(
+                        change_type=c.get("change_type", "unknown"),
+                        column_name=c.get("column_name", c.get("column", "")),
+                        old_value=c.get("old_value"),
+                        new_value=c.get("new_value"),
+                        severity=c.get("severity", "info"),
+                        breaking=c.get("breaking", False),
+                        description=c.get("description", ""),
+                        migration_hint=c.get("migration_hint"),
+                    )
+                )
+            else:
+                changes.append(
+                    SchemaChangeResult(
+                        change_type=c.change_type.value if hasattr(c.change_type, "value") else str(c.change_type),
+                        column_name=getattr(c, "column", getattr(c, "column_name", "")),
+                        old_value=getattr(c, "old_value", None),
+                        new_value=getattr(c, "new_value", None),
+                        severity=c.severity.value if hasattr(c.severity, "value") else str(c.severity),
+                        breaking=getattr(c, "breaking", False),
+                        description=getattr(c, "description", ""),
+                        migration_hint=getattr(c, "migration_hint", None),
+                    )
+                )
+
+        # Extract impact info
+        impact = getattr(alert, "impact", None)
+        impact_scope = "local"
+        affected_consumers: list[str] = []
+        data_risk_level = 1
+        recommendations: list[str] = []
+
+        if impact:
+            impact_scope = impact.scope.value if hasattr(impact.scope, "value") else str(impact.scope)
+            affected_consumers = list(getattr(impact, "affected_consumers", []))
+            data_risk_level = getattr(impact, "data_risk_level", 1)
+            recommendations = list(getattr(impact, "recommendations", []))
+
+        # Extract timestamps
+        def _format_dt(dt: Any) -> str | None:
+            if dt is None:
+                return None
+            if isinstance(dt, datetime):
+                return dt.isoformat()
+            return str(dt)
+
+        return BreakingChangeAlert(
+            alert_id=getattr(alert, "alert_id", ""),
+            title=getattr(alert, "title", ""),
+            source=getattr(alert, "source", ""),
+            changes=changes,
+            impact_scope=impact_scope,
+            affected_consumers=affected_consumers,
+            data_risk_level=data_risk_level,
+            recommendations=recommendations,
+            status=getattr(alert, "status", "open"),
+            created_at=_format_dt(getattr(alert, "created_at", None)) or datetime.utcnow().isoformat(),
+            acknowledged_at=_format_dt(getattr(alert, "acknowledged_at", None)),
+            resolved_at=_format_dt(getattr(alert, "resolved_at", None)),
+        )
+
+    def shutdown(self) -> None:
+        """Shutdown the executor and stop all watchers."""
+        # Stop all watchers
+        for watcher_id in list(self._watchers.keys()):
+            watcher_data = self._watchers[watcher_id]
+            if watcher_data["status"] == "running":
+                watcher_data["watcher"].stop()
+
+        self._watchers.clear()
+        self._histories.clear()
+        self._executor.shutdown(wait=False)
+
+
+# Singleton instance for schema evolution
+_schema_evolution_adapter: SchemaEvolutionAdapter | None = None
+
+
+def get_schema_evolution_adapter() -> SchemaEvolutionAdapter:
+    """Get singleton schema evolution adapter instance.
+
+    Returns:
+        SchemaEvolutionAdapter singleton.
+    """
+    global _schema_evolution_adapter
+    if _schema_evolution_adapter is None:
+        from truthound_dashboard.config import get_settings
+
+        settings = get_settings()
+        _schema_evolution_adapter = SchemaEvolutionAdapter(
+            max_workers=settings.max_workers
+        )
+    return _schema_evolution_adapter
+
+
+def reset_schema_evolution_adapter() -> None:
+    """Reset schema evolution adapter singleton (for testing)."""
+    global _schema_evolution_adapter
+    if _schema_evolution_adapter is not None:
+        _schema_evolution_adapter.shutdown()
+        _schema_evolution_adapter = None

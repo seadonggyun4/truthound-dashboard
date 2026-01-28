@@ -68,6 +68,10 @@ from .models import (
     # Scheduler Job Models
     SchedulerJob,
     SchedulerJobState,
+    # Cross-Alert Models
+    CrossAlertConfig,
+    CrossAlertCorrelation,
+    CrossAlertTriggerEvent,
 )
 from .repository import BaseRepository
 
@@ -135,6 +139,10 @@ __all__ = [
     # Scheduler Job Models
     "SchedulerJob",
     "SchedulerJobState",
+    # Cross-Alert Models
+    "CrossAlertConfig",
+    "CrossAlertCorrelation",
+    "CrossAlertTriggerEvent",
     # Repository
     "BaseRepository",
 ]

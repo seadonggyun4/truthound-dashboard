@@ -76,11 +76,9 @@ export interface PIIScanListResponse {
   limit: number
 }
 
-export interface PIIScanOptions {
-  columns?: string[]
-  regulations?: Regulation[]
-  min_confidence?: number
-}
+// Note: truthound's th.scan() does not support any configuration parameters.
+// The scan runs on all columns with default settings.
+// PIIScanOptions interface removed as it was unused.
 
 // ============================================================================
 // Data Masking Types
@@ -126,20 +124,18 @@ export interface DataMaskListResponse {
 export interface MaskOptions {
   columns?: string[]
   strategy?: MaskingStrategy
-  output_format?: 'csv' | 'parquet' | 'json'
+  // Note: output_format removed - truthound's th.mask() does not support this parameter.
+  // Output format is determined by the dashboard layer, not by truthound.
 }
 
 // ============================================================================
 // PII Scan API Functions
 // ============================================================================
 
-export async function runPIIScan(
-  sourceId: string,
-  options?: PIIScanOptions
-): Promise<PIIScan> {
+export async function runPIIScan(sourceId: string): Promise<PIIScan> {
   return request<PIIScan>(`/scans/sources/${sourceId}/scan`, {
     method: 'POST',
-    body: JSON.stringify(options || {}),
+    body: JSON.stringify({}),
   })
 }
 

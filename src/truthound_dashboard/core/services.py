@@ -537,9 +537,7 @@ class ValidationService:
         custom_validators: list[dict[str, Any]] | None = None,
         schema_path: str | None = None,
         auto_schema: bool = False,
-        columns: list[str] | None = None,
         min_severity: str | None = None,
-        strict: bool = False,
         parallel: bool = False,
         max_workers: int | None = None,
         pushdown: bool | None = None,
@@ -565,9 +563,7 @@ class ValidationService:
                 Format: [{"validator_id": "...", "column": "...", "params": {...}}]
             schema_path: Optional schema file path.
             auto_schema: Auto-learn schema if True.
-            columns: Columns to validate. If None, validates all columns.
             min_severity: Minimum severity to report ("low", "medium", "high", "critical").
-            strict: If True, raises exception on validation failures.
             parallel: If True, uses DAG-based parallel execution.
             max_workers: Max threads for parallel execution (requires parallel=True).
             pushdown: Enable query pushdown for SQL sources. None uses auto-detection.
@@ -605,9 +601,7 @@ class ValidationService:
                 validator_config=validator_config,
                 schema=schema_path,
                 auto_schema=auto_schema,
-                columns=columns,
                 min_severity=min_severity,
-                strict=strict,
                 parallel=parallel,
                 max_workers=max_workers,
                 pushdown=pushdown,
@@ -2305,28 +2299,17 @@ class PIIScanService:
         self.scan_repo = PIIScanRepository(session)
         self.adapter = get_adapter()
 
-    async def run_scan(
-        self,
-        source_id: str,
-        *,
-        columns: list[str] | None = None,
-        regulations: list[str] | None = None,
-        min_confidence: float = 0.8,
-    ) -> PIIScan:
+    async def run_scan(self, source_id: str) -> PIIScan:
         """Run PII scan on a source.
 
-        This method provides access to truthound's th.scan() parameters,
-        allowing detection of personally identifiable information and
-        checking compliance with privacy regulations.
+        Note: truthound's th.scan() does not support configuration parameters.
+        The scan runs on all columns with default settings.
 
         Supports all data source types including files, SQL databases,
         cloud data warehouses, and async sources.
 
         Args:
             source_id: Source ID to scan.
-            columns: Optional columns to scan. If None, scans all columns.
-            regulations: Optional regulations to check (gdpr, ccpa, lgpd).
-            min_confidence: Minimum confidence threshold (0.0-1.0). Default 0.8.
 
         Returns:
             PIIScan record with results.
@@ -2343,8 +2326,6 @@ class PIIScanService:
         scan = await self.scan_repo.create(
             source_id=source_id,
             status="running",
-            min_confidence=min_confidence,
-            regulations_checked=regulations,
             started_at=datetime.utcnow(),
         )
 
@@ -2355,13 +2336,8 @@ class PIIScanService:
             else:
                 data_input = get_data_input_from_source(source)
 
-            # Run scan
-            result = await self.adapter.scan(
-                data_input,
-                columns=columns,
-                regulations=regulations,
-                min_confidence=min_confidence,
-            )
+            # Run scan - truthound's th.scan() does not support parameters
+            result = await self.adapter.scan(data_input)
 
             # Update scan with results
             await self._update_scan_success(scan, result)
@@ -2512,7 +2488,6 @@ class MaskService:
         *,
         columns: list[str] | None = None,
         strategy: str = "redact",
-        output_format: str = "csv",
     ) -> DataMask:
         """Run data masking on a source.
 
@@ -2522,11 +2497,13 @@ class MaskService:
         Supports all data source types including files, SQL databases,
         cloud data warehouses, and async sources.
 
+        Note: output_format parameter was removed as truthound's th.mask()
+        does not support this parameter. Output is always CSV format.
+
         Args:
             source_id: Source ID to mask.
             columns: Optional columns to mask. If None, auto-detects PII.
             strategy: Masking strategy (redact, hash, fake). Default is redact.
-            output_format: Output file format (csv, parquet, json). Default is csv.
 
         Returns:
             DataMask record with results.
@@ -2560,7 +2537,8 @@ class MaskService:
             output_dir = Path(tempfile.gettempdir()) / "truthound_masked"
 
         output_dir.mkdir(exist_ok=True)
-        output_filename = f"{source.name}_masked_{strategy}.{output_format}"
+        # Output format is always CSV as truthound's th.mask() does not support format selection
+        output_filename = f"{source.name}_masked_{strategy}.csv"
         output_path = str(output_dir / output_filename)
 
         # Create mask record

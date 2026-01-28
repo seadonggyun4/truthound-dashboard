@@ -70,6 +70,26 @@ class ReportSortOrder(str, Enum):
     NAME_DESC = "name_desc"
 
 
+class QualityDisplayMode(str, Enum):
+    """Display mode for quality reports."""
+
+    SUMMARY = "summary"
+    DETAILED = "detailed"
+    COMPARISON = "comparison"
+    TREND = "trend"
+
+
+class ChartType(str, Enum):
+    """Chart types for quality visualizations."""
+
+    BAR = "bar"
+    LINE = "line"
+    PIE = "pie"
+    RADAR = "radar"
+    HEATMAP = "heatmap"
+    SCATTER = "scatter"
+
+
 # =============================================================================
 # Confusion Matrix
 # =============================================================================

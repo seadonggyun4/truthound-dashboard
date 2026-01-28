@@ -4,6 +4,9 @@ This module provides services for cross-feature integration between
 Anomaly Detection and Drift Monitoring alerts.
 
 When anomaly rates spike, it automatically checks for drift and vice versa.
+
+NOTE: This module has been updated to use persistent DB storage instead of
+in-memory storage for configurations, correlations, and trigger events.
 """
 
 from __future__ import annotations
@@ -13,12 +16,15 @@ import uuid
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 if TYPE_CHECKING:
     from truthound_dashboard.db.models import (
         AnomalyDetection,
+        CrossAlertConfig,
+        CrossAlertCorrelation,
+        CrossAlertTriggerEvent,
         DriftAlert,
         DriftComparison,
         Source,
@@ -27,31 +33,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-# In-memory config storage (would be DB in production)
-_global_config: dict[str, Any] = {
-    "id": "global",
-    "created_at": datetime.now(),
-    "updated_at": datetime.now(),
-    "source_id": None,
-    "enabled": True,
-    "trigger_drift_on_anomaly": True,
-    "trigger_anomaly_on_drift": True,
-    "thresholds": {
-        "anomaly_rate_threshold": 0.1,
-        "anomaly_count_threshold": 10,
-        "drift_percentage_threshold": 10.0,
-        "drift_columns_threshold": 2,
-    },
-    "notify_on_correlation": True,
-    "notification_channel_ids": None,
-    "cooldown_seconds": 300,
-    "last_anomaly_trigger_at": None,
-    "last_drift_trigger_at": None,
+# Default thresholds for new configs
+DEFAULT_THRESHOLDS = {
+    "anomaly_rate_threshold": 0.1,
+    "anomaly_count_threshold": 10,
+    "drift_percentage_threshold": 10.0,
+    "drift_columns_threshold": 2,
 }
-
-_source_configs: dict[str, dict[str, Any]] = {}
-_correlations: list[dict[str, Any]] = []
-_auto_trigger_events: list[dict[str, Any]] = []
 
 
 class CrossAlertService:
@@ -62,6 +50,9 @@ class CrossAlertService:
     - Auto-triggering drift checks when anomalies spike
     - Auto-triggering anomaly checks when drift is detected
     - Managing auto-trigger configuration
+
+    All data is persisted to database using CrossAlertConfig,
+    CrossAlertCorrelation, and CrossAlertTriggerEvent models.
     """
 
     def __init__(self, session: AsyncSession) -> None:
@@ -73,6 +64,171 @@ class CrossAlertService:
         self.session = session
 
     # =========================================================================
+    # Configuration Management (DB-backed)
+    # =========================================================================
+
+    async def get_config(self, source_id: str | None = None) -> dict[str, Any]:
+        """Get auto-trigger configuration from database.
+
+        Args:
+            source_id: Source ID for source-specific config, None for global.
+
+        Returns:
+            Configuration dictionary.
+        """
+        from truthound_dashboard.db.models import CrossAlertConfig
+
+        # Try to get source-specific config
+        if source_id:
+            result = await self.session.execute(
+                select(CrossAlertConfig).where(
+                    CrossAlertConfig.source_id == source_id
+                )
+            )
+            config = result.scalar_one_or_none()
+            if config:
+                return self._config_to_dict(config)
+
+        # Fall back to global config (source_id is None)
+        result = await self.session.execute(
+            select(CrossAlertConfig).where(CrossAlertConfig.source_id.is_(None))
+        )
+        config = result.scalar_one_or_none()
+
+        if config:
+            return self._config_to_dict(config)
+
+        # Return defaults if no config exists
+        return {
+            "id": None,
+            "source_id": source_id,
+            "enabled": True,
+            "trigger_drift_on_anomaly": True,
+            "trigger_anomaly_on_drift": True,
+            "thresholds": DEFAULT_THRESHOLDS.copy(),
+            "notify_on_correlation": True,
+            "notification_channel_ids": None,
+            "cooldown_seconds": 300,
+            "last_anomaly_trigger_at": None,
+            "last_drift_trigger_at": None,
+            "created_at": None,
+            "updated_at": None,
+        }
+
+    def _config_to_dict(self, config: "CrossAlertConfig") -> dict[str, Any]:
+        """Convert CrossAlertConfig model to dictionary."""
+        return {
+            "id": config.id,
+            "source_id": config.source_id,
+            "enabled": config.enabled,
+            "trigger_drift_on_anomaly": config.trigger_drift_on_anomaly,
+            "trigger_anomaly_on_drift": config.trigger_anomaly_on_drift,
+            "thresholds": config.thresholds or DEFAULT_THRESHOLDS.copy(),
+            "notify_on_correlation": config.notify_on_correlation,
+            "notification_channel_ids": config.notification_channel_ids,
+            "cooldown_seconds": config.cooldown_seconds,
+            "last_anomaly_trigger_at": (
+                config.last_anomaly_trigger_at.isoformat()
+                if config.last_anomaly_trigger_at
+                else None
+            ),
+            "last_drift_trigger_at": (
+                config.last_drift_trigger_at.isoformat()
+                if config.last_drift_trigger_at
+                else None
+            ),
+            "created_at": config.created_at.isoformat() if config.created_at else None,
+            "updated_at": config.updated_at.isoformat() if config.updated_at else None,
+        }
+
+    async def update_config(
+        self,
+        source_id: str | None = None,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """Update auto-trigger configuration in database.
+
+        Args:
+            source_id: Source ID for source-specific config, None for global.
+            **kwargs: Configuration fields to update.
+
+        Returns:
+            Updated configuration dictionary.
+        """
+        from truthound_dashboard.db.models import CrossAlertConfig
+
+        # Try to find existing config
+        if source_id:
+            result = await self.session.execute(
+                select(CrossAlertConfig).where(
+                    CrossAlertConfig.source_id == source_id
+                )
+            )
+        else:
+            result = await self.session.execute(
+                select(CrossAlertConfig).where(CrossAlertConfig.source_id.is_(None))
+            )
+        config = result.scalar_one_or_none()
+
+        if config:
+            # Update existing config
+            for key, value in kwargs.items():
+                if value is not None and hasattr(config, key):
+                    setattr(config, key, value)
+            config.updated_at = datetime.utcnow()
+        else:
+            # Create new config
+            config = CrossAlertConfig(
+                source_id=source_id,
+                enabled=kwargs.get("enabled", True),
+                trigger_drift_on_anomaly=kwargs.get("trigger_drift_on_anomaly", True),
+                trigger_anomaly_on_drift=kwargs.get("trigger_anomaly_on_drift", True),
+                thresholds=kwargs.get("thresholds", DEFAULT_THRESHOLDS.copy()),
+                notify_on_correlation=kwargs.get("notify_on_correlation", True),
+                notification_channel_ids=kwargs.get("notification_channel_ids"),
+                cooldown_seconds=kwargs.get("cooldown_seconds", 300),
+            )
+            self.session.add(config)
+
+        await self.session.flush()
+        return self._config_to_dict(config)
+
+    async def _update_last_trigger_time(
+        self,
+        source_id: str,
+        trigger_type: str,
+    ) -> None:
+        """Update the last trigger time for a source.
+
+        Args:
+            source_id: Source ID.
+            trigger_type: Either 'anomaly' or 'drift'.
+        """
+        from truthound_dashboard.db.models import CrossAlertConfig
+
+        result = await self.session.execute(
+            select(CrossAlertConfig).where(
+                CrossAlertConfig.source_id == source_id
+            )
+        )
+        config = result.scalar_one_or_none()
+
+        if not config:
+            # Create source-specific config with just the trigger time
+            config = CrossAlertConfig(
+                source_id=source_id,
+                thresholds=DEFAULT_THRESHOLDS.copy(),
+            )
+            self.session.add(config)
+
+        if trigger_type == "anomaly":
+            config.last_anomaly_trigger_at = datetime.utcnow()
+        else:
+            config.last_drift_trigger_at = datetime.utcnow()
+
+        await self.session.flush()
+
+    # =========================================================================
     # Correlation Analysis
     # =========================================================================
 
@@ -82,6 +238,7 @@ class CrossAlertService:
         *,
         time_window_hours: int = 24,
         limit: int = 50,
+        save_correlations: bool = True,
     ) -> list[dict[str, Any]]:
         """Find correlated anomaly and drift alerts for a source.
 
@@ -89,12 +246,14 @@ class CrossAlertService:
             source_id: Data source ID.
             time_window_hours: Time window to look for correlations.
             limit: Maximum correlations to return.
+            save_correlations: Whether to save found correlations to DB.
 
         Returns:
             List of correlation dictionaries.
         """
         from truthound_dashboard.db.models import (
             AnomalyDetection,
+            CrossAlertCorrelation,
             DriftAlert,
             DriftComparison,
             Source,
@@ -128,11 +287,7 @@ class CrossAlertService:
         # Get recent drift alerts for this source
         drift_result = await self.session.execute(
             select(DriftAlert)
-            .where(
-                and_(
-                    DriftAlert.created_at >= since,
-                )
-            )
+            .where(DriftAlert.created_at >= since)
             .order_by(DriftAlert.created_at.desc())
             .limit(100)
         )
@@ -181,48 +336,72 @@ class CrossAlertService:
                 drift_cols = alert.drifted_columns_json or []
                 common_cols = list(set(anomaly_cols) & set(drift_cols))
 
+                correlation_id = str(uuid.uuid4())
+                confidence = self._calculate_confidence(
+                    detection, alert, common_cols, time_delta
+                )
+
+                anomaly_data = {
+                    "alert_id": detection.id,
+                    "alert_type": "anomaly",
+                    "source_id": source_id,
+                    "source_name": source_name,
+                    "severity": self._anomaly_severity(detection.anomaly_rate),
+                    "message": f"Detected {detection.anomaly_count} anomalies ({detection.anomaly_rate * 100:.1f}% rate)",
+                    "created_at": detection.created_at.isoformat(),
+                    "anomaly_rate": detection.anomaly_rate,
+                    "anomaly_count": detection.anomaly_count,
+                }
+
+                drift_data = {
+                    "alert_id": alert.id,
+                    "alert_type": "drift",
+                    "source_id": source_id,
+                    "source_name": source_name,
+                    "severity": alert.severity,
+                    "message": alert.message,
+                    "created_at": alert.created_at.isoformat(),
+                    "drift_percentage": alert.drift_percentage,
+                    "drifted_columns": alert.drifted_columns_json,
+                }
+
                 correlation = {
-                    "id": str(uuid.uuid4()),
+                    "id": correlation_id,
                     "source_id": source_id,
                     "source_name": source_name,
                     "correlation_strength": strength,
-                    "confidence_score": self._calculate_confidence(
-                        detection, alert, common_cols, time_delta
-                    ),
+                    "confidence_score": confidence,
                     "time_delta_seconds": int(time_delta),
-                    "anomaly_alert": {
-                        "alert_id": detection.id,
-                        "alert_type": "anomaly",
-                        "source_id": source_id,
-                        "source_name": source_name,
-                        "severity": self._anomaly_severity(detection.anomaly_rate),
-                        "message": f"Detected {detection.anomaly_count} anomalies ({detection.anomaly_rate * 100:.1f}% rate)",
-                        "created_at": detection.created_at.isoformat(),
-                        "anomaly_rate": detection.anomaly_rate,
-                        "anomaly_count": detection.anomaly_count,
-                        "drift_percentage": None,
-                        "drifted_columns": None,
-                    },
-                    "drift_alert": {
-                        "alert_id": alert.id,
-                        "alert_type": "drift",
-                        "source_id": source_id,
-                        "source_name": source_name,
-                        "severity": alert.severity,
-                        "message": alert.message,
-                        "created_at": alert.created_at.isoformat(),
-                        "anomaly_rate": None,
-                        "anomaly_count": None,
-                        "drift_percentage": alert.drift_percentage,
-                        "drifted_columns": alert.drifted_columns_json,
-                    },
+                    "anomaly_alert": anomaly_data,
+                    "drift_alert": drift_data,
                     "common_columns": common_cols,
                     "suggested_action": self._suggest_action(strength, common_cols),
                     "notes": None,
                     "created_at": datetime.utcnow().isoformat(),
                     "updated_at": datetime.utcnow().isoformat(),
                 }
+
+                # Save to database
+                if save_correlations:
+                    db_correlation = CrossAlertCorrelation(
+                        id=correlation_id,
+                        source_id=source_id,
+                        correlation_strength=strength,
+                        confidence_score=confidence,
+                        time_delta_seconds=int(time_delta),
+                        anomaly_alert_id=detection.id,
+                        drift_alert_id=alert.id,
+                        anomaly_data=anomaly_data,
+                        drift_data=drift_data,
+                        common_columns=common_cols,
+                        suggested_action=self._suggest_action(strength, common_cols),
+                    )
+                    self.session.add(db_correlation)
+
                 correlations.append(correlation)
+
+        if save_correlations and correlations:
+            await self.session.flush()
 
         # Sort by confidence score and limit
         correlations.sort(key=lambda x: x["confidence_score"], reverse=True)
@@ -234,16 +413,7 @@ class CrossAlertService:
         alert: "DriftAlert",
         time_delta: float,
     ) -> str:
-        """Calculate correlation strength between anomaly and drift.
-
-        Args:
-            detection: Anomaly detection result.
-            alert: Drift alert.
-            time_delta: Time difference in seconds.
-
-        Returns:
-            Correlation strength: strong, moderate, weak, or none.
-        """
+        """Calculate correlation strength between anomaly and drift."""
         score = 0
 
         # Time proximity (closer = stronger)
@@ -294,17 +464,7 @@ class CrossAlertService:
         common_cols: list[str],
         time_delta: float,
     ) -> float:
-        """Calculate confidence score for correlation.
-
-        Args:
-            detection: Anomaly detection result.
-            alert: Drift alert.
-            common_cols: Columns affected by both.
-            time_delta: Time difference in seconds.
-
-        Returns:
-            Confidence score between 0 and 1.
-        """
+        """Calculate confidence score for correlation."""
         confidence = 0.5  # Base confidence
 
         # Time proximity bonus
@@ -339,15 +499,7 @@ class CrossAlertService:
         return "low"
 
     def _suggest_action(self, strength: str, common_cols: list[str]) -> str:
-        """Suggest action based on correlation.
-
-        Args:
-            strength: Correlation strength.
-            common_cols: Common affected columns.
-
-        Returns:
-            Suggested action string.
-        """
+        """Suggest action based on correlation."""
         if strength == "strong":
             if common_cols:
                 cols = ", ".join(common_cols[:3])
@@ -366,15 +518,12 @@ class CrossAlertService:
         self,
         detection_id: str,
     ) -> dict[str, Any] | None:
-        """Auto-trigger drift check when anomaly detection shows high rate.
-
-        Args:
-            detection_id: Anomaly detection ID.
-
-        Returns:
-            Trigger event result or None if skipped.
-        """
-        from truthound_dashboard.db.models import AnomalyDetection, DriftMonitor
+        """Auto-trigger drift check when anomaly detection shows high rate."""
+        from truthound_dashboard.db.models import (
+            AnomalyDetection,
+            CrossAlertTriggerEvent,
+            DriftMonitor,
+        )
         from truthound_dashboard.core.drift_monitor import DriftMonitorService
 
         # Get detection
@@ -387,9 +536,9 @@ class CrossAlertService:
             return None
 
         # Get config
-        config = self.get_config(detection.source_id)
+        config = await self.get_config(detection.source_id)
         if not config.get("enabled") or not config.get("trigger_drift_on_anomaly"):
-            return self._create_skip_event(
+            return await self._create_skip_event(
                 detection.source_id,
                 "anomaly_to_drift",
                 detection_id,
@@ -406,7 +555,7 @@ class CrossAlertService:
         count = detection.anomaly_count or 0
 
         if rate < rate_threshold and count < count_threshold:
-            return self._create_skip_event(
+            return await self._create_skip_event(
                 detection.source_id,
                 "anomaly_to_drift",
                 detection_id,
@@ -416,13 +565,12 @@ class CrossAlertService:
 
         # Check cooldown
         cooldown = config.get("cooldown_seconds", 300)
-        last_trigger = config.get("last_anomaly_trigger_at")
-        if last_trigger:
-            if isinstance(last_trigger, str):
-                last_trigger = datetime.fromisoformat(last_trigger)
+        last_trigger_str = config.get("last_anomaly_trigger_at")
+        if last_trigger_str:
+            last_trigger = datetime.fromisoformat(last_trigger_str)
             elapsed = (datetime.utcnow() - last_trigger).total_seconds()
             if elapsed < cooldown:
-                return self._create_skip_event(
+                return await self._create_skip_event(
                     detection.source_id,
                     "anomaly_to_drift",
                     detection_id,
@@ -443,37 +591,35 @@ class CrossAlertService:
         )
         monitor = monitor_result.scalar_one_or_none()
 
-        event = {
-            "id": str(uuid.uuid4()),
-            "source_id": detection.source_id,
-            "trigger_type": "anomaly_to_drift",
-            "trigger_alert_id": detection_id,
-            "trigger_alert_type": "anomaly",
-            "result_id": None,
-            "correlation_found": False,
-            "correlation_id": None,
-            "status": "pending",
-            "error_message": None,
-            "skipped_reason": None,
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat(),
-        }
+        # Create event record
+        event_id = str(uuid.uuid4())
+        event = CrossAlertTriggerEvent(
+            id=event_id,
+            source_id=detection.source_id,
+            trigger_type="anomaly_to_drift",
+            trigger_alert_id=detection_id,
+            trigger_alert_type="anomaly",
+            status="pending",
+        )
+        self.session.add(event)
 
         if not monitor:
-            event["status"] = "skipped"
-            event["skipped_reason"] = "No drift monitor configured for this source"
-            _auto_trigger_events.append(event)
-            return event
+            event.status = "skipped"
+            event.skipped_reason = "No drift monitor configured for this source"
+            await self.session.flush()
+            return self._event_to_dict(event)
 
         try:
             # Run the drift monitor
-            event["status"] = "running"
+            event.status = "running"
+            await self.session.flush()
+
             drift_service = DriftMonitorService(self.session)
             comparison = await drift_service.run_monitor(monitor.id)
 
             if comparison:
-                event["status"] = "completed"
-                event["result_id"] = comparison.id
+                event.status = "completed"
+                event.result_id = comparison.id
 
                 # Check for correlation
                 if comparison.has_drift:
@@ -481,39 +627,33 @@ class CrossAlertService:
                         detection.source_id, time_window_hours=1
                     )
                     if correlations:
-                        event["correlation_found"] = True
-                        event["correlation_id"] = correlations[0]["id"]
+                        event.correlation_found = True
+                        event.correlation_id = correlations[0]["id"]
             else:
-                event["status"] = "failed"
-                event["error_message"] = "Drift monitor run failed"
+                event.status = "failed"
+                event.error_message = "Drift monitor run failed"
 
         except Exception as e:
-            event["status"] = "failed"
-            event["error_message"] = str(e)
+            event.status = "failed"
+            event.error_message = str(e)
             logger.error(f"Auto-trigger drift check failed: {e}")
 
         # Update last trigger time
-        self._update_config(
-            detection.source_id,
-            {"last_anomaly_trigger_at": datetime.utcnow().isoformat()},
-        )
+        await self._update_last_trigger_time(detection.source_id, "anomaly")
+        await self.session.flush()
 
-        _auto_trigger_events.append(event)
-        return event
+        return self._event_to_dict(event)
 
     async def auto_trigger_anomaly_on_drift(
         self,
         monitor_id: str,
     ) -> dict[str, Any] | None:
-        """Auto-trigger anomaly check when drift is detected.
-
-        Args:
-            monitor_id: Drift monitor ID.
-
-        Returns:
-            Trigger event result or None if skipped.
-        """
-        from truthound_dashboard.db.models import DriftMonitor, DriftAlert
+        """Auto-trigger anomaly check when drift is detected."""
+        from truthound_dashboard.db.models import (
+            CrossAlertTriggerEvent,
+            DriftAlert,
+            DriftMonitor,
+        )
         from truthound_dashboard.core.anomaly import AnomalyDetectionService
 
         # Get monitor
@@ -540,9 +680,9 @@ class CrossAlertService:
             return None
 
         # Get config
-        config = self.get_config(source_id)
+        config = await self.get_config(source_id)
         if not config.get("enabled") or not config.get("trigger_anomaly_on_drift"):
-            return self._create_skip_event(
+            return await self._create_skip_event(
                 source_id,
                 "drift_to_anomaly",
                 alert.id,
@@ -559,7 +699,7 @@ class CrossAlertService:
         cols_count = len(alert.drifted_columns_json or [])
 
         if drift_pct < drift_threshold and cols_count < cols_threshold:
-            return self._create_skip_event(
+            return await self._create_skip_event(
                 source_id,
                 "drift_to_anomaly",
                 alert.id,
@@ -569,13 +709,12 @@ class CrossAlertService:
 
         # Check cooldown
         cooldown = config.get("cooldown_seconds", 300)
-        last_trigger = config.get("last_drift_trigger_at")
-        if last_trigger:
-            if isinstance(last_trigger, str):
-                last_trigger = datetime.fromisoformat(last_trigger)
+        last_trigger_str = config.get("last_drift_trigger_at")
+        if last_trigger_str:
+            last_trigger = datetime.fromisoformat(last_trigger_str)
             elapsed = (datetime.utcnow() - last_trigger).total_seconds()
             if elapsed < cooldown:
-                return self._create_skip_event(
+                return await self._create_skip_event(
                     source_id,
                     "drift_to_anomaly",
                     alert.id,
@@ -583,25 +722,23 @@ class CrossAlertService:
                     f"Cooldown active ({int(cooldown - elapsed)}s remaining)",
                 )
 
-        event = {
-            "id": str(uuid.uuid4()),
-            "source_id": source_id,
-            "trigger_type": "drift_to_anomaly",
-            "trigger_alert_id": alert.id,
-            "trigger_alert_type": "drift",
-            "result_id": None,
-            "correlation_found": False,
-            "correlation_id": None,
-            "status": "pending",
-            "error_message": None,
-            "skipped_reason": None,
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat(),
-        }
+        # Create event record
+        event_id = str(uuid.uuid4())
+        event = CrossAlertTriggerEvent(
+            id=event_id,
+            source_id=source_id,
+            trigger_type="drift_to_anomaly",
+            trigger_alert_id=alert.id,
+            trigger_alert_type="drift",
+            status="pending",
+        )
+        self.session.add(event)
 
         try:
             # Run anomaly detection
-            event["status"] = "running"
+            event.status = "running"
+            await self.session.flush()
+
             anomaly_service = AnomalyDetectionService(self.session)
 
             detection = await anomaly_service.create_detection(
@@ -611,8 +748,8 @@ class CrossAlertService:
             )
             detection = await anomaly_service.run_detection(detection.id)
 
-            event["status"] = "completed"
-            event["result_id"] = detection.id
+            event.status = "completed"
+            event.result_id = detection.id
 
             # Check for correlation
             if detection.anomaly_count and detection.anomaly_count > 0:
@@ -620,24 +757,21 @@ class CrossAlertService:
                     source_id, time_window_hours=1
                 )
                 if correlations:
-                    event["correlation_found"] = True
-                    event["correlation_id"] = correlations[0]["id"]
+                    event.correlation_found = True
+                    event.correlation_id = correlations[0]["id"]
 
         except Exception as e:
-            event["status"] = "failed"
-            event["error_message"] = str(e)
+            event.status = "failed"
+            event.error_message = str(e)
             logger.error(f"Auto-trigger anomaly check failed: {e}")
 
         # Update last trigger time
-        self._update_config(
-            source_id,
-            {"last_drift_trigger_at": datetime.utcnow().isoformat()},
-        )
+        await self._update_last_trigger_time(source_id, "drift")
+        await self.session.flush()
 
-        _auto_trigger_events.append(event)
-        return event
+        return self._event_to_dict(event)
 
-    def _create_skip_event(
+    async def _create_skip_event(
         self,
         source_id: str,
         trigger_type: str,
@@ -645,82 +779,41 @@ class CrossAlertService:
         alert_type: str,
         reason: str,
     ) -> dict[str, Any]:
-        """Create a skipped trigger event."""
-        event = {
-            "id": str(uuid.uuid4()),
-            "source_id": source_id,
-            "trigger_type": trigger_type,
-            "trigger_alert_id": alert_id,
-            "trigger_alert_type": alert_type,
-            "result_id": None,
-            "correlation_found": False,
-            "correlation_id": None,
-            "status": "skipped",
-            "error_message": None,
-            "skipped_reason": reason,
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat(),
+        """Create a skipped trigger event and save to DB."""
+        from truthound_dashboard.db.models import CrossAlertTriggerEvent
+
+        event = CrossAlertTriggerEvent(
+            source_id=source_id,
+            trigger_type=trigger_type,
+            trigger_alert_id=alert_id,
+            trigger_alert_type=alert_type,
+            status="skipped",
+            skipped_reason=reason,
+        )
+        self.session.add(event)
+        await self.session.flush()
+
+        return self._event_to_dict(event)
+
+    def _event_to_dict(self, event: "CrossAlertTriggerEvent") -> dict[str, Any]:
+        """Convert CrossAlertTriggerEvent model to dictionary."""
+        return {
+            "id": event.id,
+            "source_id": event.source_id,
+            "trigger_type": event.trigger_type,
+            "trigger_alert_id": event.trigger_alert_id,
+            "trigger_alert_type": event.trigger_alert_type,
+            "result_id": event.result_id,
+            "correlation_found": event.correlation_found,
+            "correlation_id": event.correlation_id,
+            "status": event.status,
+            "error_message": event.error_message,
+            "skipped_reason": event.skipped_reason,
+            "created_at": event.created_at.isoformat() if event.created_at else None,
         }
-        _auto_trigger_events.append(event)
-        return event
 
     # =========================================================================
-    # Configuration Management
-    # =========================================================================
-
-    def get_config(self, source_id: str | None = None) -> dict[str, Any]:
-        """Get auto-trigger configuration.
-
-        Args:
-            source_id: Source ID for source-specific config, None for global.
-
-        Returns:
-            Configuration dictionary.
-        """
-        if source_id and source_id in _source_configs:
-            # Merge source config with global defaults
-            config = _global_config.copy()
-            config.update(_source_configs[source_id])
-            return config
-        return _global_config.copy()
-
-    def update_config(
-        self,
-        source_id: str | None = None,
-        **kwargs,
-    ) -> dict[str, Any]:
-        """Update auto-trigger configuration.
-
-        Args:
-            source_id: Source ID for source-specific config, None for global.
-            **kwargs: Configuration fields to update.
-
-        Returns:
-            Updated configuration.
-        """
-        return self._update_config(source_id, kwargs)
-
-    def _update_config(
-        self,
-        source_id: str | None,
-        updates: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Internal method to update config."""
-        if source_id:
-            if source_id not in _source_configs:
-                _source_configs[source_id] = {}
-            for key, value in updates.items():
-                if value is not None:
-                    _source_configs[source_id][key] = value
-            return self.get_config(source_id)
-        else:
-            for key, value in updates.items():
-                if value is not None:
-                    _global_config[key] = value
-            return _global_config.copy()
-
-    # =========================================================================
-    # Query Operations
+    # Query Operations (DB-backed)
     # =========================================================================
 
     async def get_correlations(
@@ -730,7 +823,7 @@ class CrossAlertService:
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[dict[str, Any]], int]:
-        """Get correlation records.
+        """Get correlation records from database.
 
         Args:
             source_id: Filter by source ID.
@@ -740,14 +833,63 @@ class CrossAlertService:
         Returns:
             Tuple of (correlations, total_count).
         """
-        if source_id:
-            filtered = [c for c in _correlations if c.get("source_id") == source_id]
-        else:
-            filtered = _correlations.copy()
+        from truthound_dashboard.db.models import CrossAlertCorrelation, Source
 
-        total = len(filtered)
-        paginated = filtered[offset : offset + limit]
-        return paginated, total
+        # Build query
+        query = select(CrossAlertCorrelation)
+        count_query = select(func.count(CrossAlertCorrelation.id))
+
+        if source_id:
+            query = query.where(CrossAlertCorrelation.source_id == source_id)
+            count_query = count_query.where(
+                CrossAlertCorrelation.source_id == source_id
+            )
+
+        # Get total count
+        count_result = await self.session.execute(count_query)
+        total = count_result.scalar() or 0
+
+        # Get paginated results
+        query = (
+            query.order_by(CrossAlertCorrelation.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await self.session.execute(query)
+        correlations = result.scalars().all()
+
+        # Convert to dicts with source names
+        items = []
+        for corr in correlations:
+            # Get source name
+            source_result = await self.session.execute(
+                select(Source).where(Source.id == corr.source_id)
+            )
+            source = source_result.scalar_one_or_none()
+            source_name = source.name if source else None
+
+            items.append({
+                "id": corr.id,
+                "source_id": corr.source_id,
+                "source_name": source_name,
+                "correlation_strength": corr.correlation_strength,
+                "confidence_score": corr.confidence_score,
+                "time_delta_seconds": corr.time_delta_seconds,
+                "anomaly_alert": corr.anomaly_data or {
+                    "alert_id": corr.anomaly_alert_id,
+                    "alert_type": "anomaly",
+                },
+                "drift_alert": corr.drift_data or {
+                    "alert_id": corr.drift_alert_id,
+                    "alert_type": "drift",
+                },
+                "common_columns": corr.common_columns,
+                "suggested_action": corr.suggested_action,
+                "notes": corr.notes,
+                "created_at": corr.created_at.isoformat() if corr.created_at else None,
+            })
+
+        return items, total
 
     async def get_auto_trigger_events(
         self,
@@ -756,7 +898,7 @@ class CrossAlertService:
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[dict[str, Any]], int]:
-        """Get auto-trigger event records.
+        """Get auto-trigger event records from database.
 
         Args:
             source_id: Filter by source ID.
@@ -766,76 +908,140 @@ class CrossAlertService:
         Returns:
             Tuple of (events, total_count).
         """
+        from truthound_dashboard.db.models import CrossAlertTriggerEvent
+
+        # Build query
+        query = select(CrossAlertTriggerEvent)
+        count_query = select(func.count(CrossAlertTriggerEvent.id))
+
         if source_id:
-            filtered = [
-                e for e in _auto_trigger_events if e.get("source_id") == source_id
-            ]
-        else:
-            filtered = _auto_trigger_events.copy()
+            query = query.where(CrossAlertTriggerEvent.source_id == source_id)
+            count_query = count_query.where(
+                CrossAlertTriggerEvent.source_id == source_id
+            )
 
-        # Sort by created_at desc
-        filtered.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        # Get total count
+        count_result = await self.session.execute(count_query)
+        total = count_result.scalar() or 0
 
-        total = len(filtered)
-        paginated = filtered[offset : offset + limit]
-        return paginated, total
+        # Get paginated results
+        query = (
+            query.order_by(CrossAlertTriggerEvent.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await self.session.execute(query)
+        events = result.scalars().all()
+
+        items = [self._event_to_dict(event) for event in events]
+        return items, total
 
     async def get_summary(self) -> dict[str, Any]:
-        """Get cross-alert summary statistics.
+        """Get cross-alert summary statistics from database.
 
         Returns:
             Summary dictionary.
         """
+        from truthound_dashboard.db.models import (
+            CrossAlertConfig,
+            CrossAlertCorrelation,
+            CrossAlertTriggerEvent,
+            Source,
+        )
+
         now = datetime.utcnow()
         last_24h = now - timedelta(hours=24)
 
         # Count correlations by strength
-        strong = sum(1 for c in _correlations if c.get("correlation_strength") == "strong")
-        moderate = sum(1 for c in _correlations if c.get("correlation_strength") == "moderate")
-        weak = sum(1 for c in _correlations if c.get("correlation_strength") == "weak")
+        strong_result = await self.session.execute(
+            select(func.count(CrossAlertCorrelation.id)).where(
+                CrossAlertCorrelation.correlation_strength == "strong"
+            )
+        )
+        strong = strong_result.scalar() or 0
+
+        moderate_result = await self.session.execute(
+            select(func.count(CrossAlertCorrelation.id)).where(
+                CrossAlertCorrelation.correlation_strength == "moderate"
+            )
+        )
+        moderate = moderate_result.scalar() or 0
+
+        weak_result = await self.session.execute(
+            select(func.count(CrossAlertCorrelation.id)).where(
+                CrossAlertCorrelation.correlation_strength == "weak"
+            )
+        )
+        weak = weak_result.scalar() or 0
+
+        total_correlations = strong + moderate + weak
 
         # Recent activity
-        recent_correlations = sum(
-            1 for c in _correlations
-            if c.get("created_at") and datetime.fromisoformat(c["created_at"]) >= last_24h
+        recent_corr_result = await self.session.execute(
+            select(func.count(CrossAlertCorrelation.id)).where(
+                CrossAlertCorrelation.created_at >= last_24h
+            )
         )
-        recent_triggers = sum(
-            1 for e in _auto_trigger_events
-            if e.get("created_at") and datetime.fromisoformat(e["created_at"]) >= last_24h
+        recent_correlations = recent_corr_result.scalar() or 0
+
+        recent_trigger_result = await self.session.execute(
+            select(func.count(CrossAlertTriggerEvent.id)).where(
+                CrossAlertTriggerEvent.created_at >= last_24h
+            )
         )
+        recent_triggers = recent_trigger_result.scalar() or 0
 
         # Trigger counts by type
-        anomaly_to_drift = sum(
-            1 for e in _auto_trigger_events
-            if e.get("trigger_type") == "anomaly_to_drift"
+        anomaly_to_drift_result = await self.session.execute(
+            select(func.count(CrossAlertTriggerEvent.id)).where(
+                CrossAlertTriggerEvent.trigger_type == "anomaly_to_drift"
+            )
         )
-        drift_to_anomaly = sum(
-            1 for e in _auto_trigger_events
-            if e.get("trigger_type") == "drift_to_anomaly"
+        anomaly_to_drift = anomaly_to_drift_result.scalar() or 0
+
+        drift_to_anomaly_result = await self.session.execute(
+            select(func.count(CrossAlertTriggerEvent.id)).where(
+                CrossAlertTriggerEvent.trigger_type == "drift_to_anomaly"
+            )
         )
+        drift_to_anomaly = drift_to_anomaly_result.scalar() or 0
 
         # Top affected sources
-        source_counts: dict[str, int] = {}
-        for c in _correlations:
-            sid = c.get("source_id")
-            if sid:
-                source_counts[sid] = source_counts.get(sid, 0) + 1
+        top_sources_result = await self.session.execute(
+            select(
+                CrossAlertCorrelation.source_id,
+                func.count(CrossAlertCorrelation.id).label("count"),
+            )
+            .group_by(CrossAlertCorrelation.source_id)
+            .order_by(func.count(CrossAlertCorrelation.id).desc())
+            .limit(5)
+        )
+        top_sources_raw = top_sources_result.all()
 
-        top_sources = [
-            {"source_id": sid, "source_name": c.get("source_name"), "count": cnt}
-            for sid, cnt in sorted(source_counts.items(), key=lambda x: x[1], reverse=True)[:5]
-            for c in _correlations if c.get("source_id") == sid
-        ][:5]
+        top_sources = []
+        for source_id, count in top_sources_raw:
+            source_result = await self.session.execute(
+                select(Source).where(Source.id == source_id)
+            )
+            source = source_result.scalar_one_or_none()
+            top_sources.append({
+                "source_id": source_id,
+                "source_name": source.name if source else None,
+                "count": count,
+            })
+
+        # Get global config for enabled status
+        global_config = await self.get_config(None)
 
         return {
-            "total_correlations": len(_correlations),
+            "total_correlations": total_correlations,
             "strong_correlations": strong,
             "moderate_correlations": moderate,
             "weak_correlations": weak,
             "recent_correlations_24h": recent_correlations,
             "recent_auto_triggers_24h": recent_triggers,
             "top_affected_sources": top_sources,
-            "auto_trigger_enabled": _global_config.get("enabled", True),
+            "auto_trigger_enabled": global_config.get("enabled", True),
             "anomaly_to_drift_triggers": anomaly_to_drift,
             "drift_to_anomaly_triggers": drift_to_anomaly,
         }

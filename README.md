@@ -17,6 +17,13 @@ truthound-dashboard provides a graphical interface for managing data sources, ex
 
 [Documentation](https://truthound.netlify.app) | [PyPI](https://pypi.org/project/truthound-dashboard/)
 
+## Design Principles
+
+- **Zero-Config**: Works out of the box with sensible defaults
+- **Single Process**: No Redis, Celery, or PostgreSQL required
+- **Local First**: Full functionality without cloud dependencies
+- **GX Cloud Parity**: Match paid features for free
+
 ## Feature Comparison with GX Cloud
 
 | Feature | GX Cloud (Paid) | truthound-dashboard |

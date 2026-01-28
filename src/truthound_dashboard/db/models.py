@@ -5105,3 +5105,861 @@ class PluginHook(Base, UUIDMixin, TimestampMixin):
         self.total_execution_ms += execution_ms
         if error:
             self.last_error = error
+
+
+# =============================================================================
+# Storage Tiering Models (truthound 1.2.10+)
+# =============================================================================
+
+
+class TierType(str, Enum):
+    """Storage tier types."""
+
+    HOT = "hot"
+    WARM = "warm"
+    COLD = "cold"
+    ARCHIVE = "archive"
+
+
+class MigrationDirection(str, Enum):
+    """Migration direction for tier policies."""
+
+    DEMOTE = "demote"
+    PROMOTE = "promote"
+
+
+class TierPolicyType(str, Enum):
+    """Types of tier policies."""
+
+    AGE_BASED = "age_based"
+    ACCESS_BASED = "access_based"
+    SIZE_BASED = "size_based"
+    SCHEDULED = "scheduled"
+    COMPOSITE = "composite"
+    CUSTOM = "custom"
+
+
+class StorageTierModel(Base, UUIDMixin, TimestampMixin):
+    """Storage tier definition model.
+
+    Represents a storage tier with its backend configuration.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        name: Unique tier name (hot, warm, cold, archive, or custom).
+        tier_type: Type classification (HOT, WARM, COLD, ARCHIVE).
+        store_type: Backend store type (filesystem, s3, gcs, etc.).
+        store_config: JSON configuration for the store backend.
+        priority: Read order priority (lower = higher priority).
+        cost_per_gb: Cost per GB for cost analysis.
+        retrieval_time_ms: Expected retrieval latency in milliseconds.
+        tier_metadata: Additional tier metadata.
+        is_active: Whether the tier is active.
+    """
+
+    __tablename__ = "storage_tiers"
+
+    __table_args__ = (
+        Index("idx_storage_tiers_name", "name", unique=True),
+        Index("idx_storage_tiers_type", "tier_type"),
+        Index("idx_storage_tiers_priority", "priority"),
+    )
+
+    name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    tier_type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=TierType.HOT.value,
+    )
+    store_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    store_config: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False, default=dict
+    )
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    cost_per_gb: Mapped[float | None] = mapped_column(Float, nullable=True)
+    retrieval_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tier_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    # Relationships
+    policies_from: Mapped[list["TierPolicyModel"]] = relationship(
+        "TierPolicyModel",
+        foreign_keys="TierPolicyModel.from_tier_id",
+        back_populates="from_tier",
+        lazy="selectin",
+    )
+    policies_to: Mapped[list["TierPolicyModel"]] = relationship(
+        "TierPolicyModel",
+        foreign_keys="TierPolicyModel.to_tier_id",
+        back_populates="to_tier",
+        lazy="selectin",
+    )
+
+
+class TierPolicyModel(Base, UUIDMixin, TimestampMixin):
+    """Tier migration policy model.
+
+    Stores tier migration policy configuration including composite policies.
+    Supports AgeBasedTierPolicy, AccessBasedTierPolicy, SizeBasedTierPolicy,
+    ScheduledTierPolicy, CompositeTierPolicy, and CustomTierPolicy.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        name: Policy name.
+        description: Policy description.
+        policy_type: Type of policy (age_based, access_based, etc.).
+        from_tier_id: Source tier ID.
+        to_tier_id: Destination tier ID.
+        direction: Migration direction (demote/promote).
+        config: JSON configuration specific to policy type.
+        is_active: Whether policy is active.
+        priority: Execution priority (lower = runs first).
+        parent_id: Parent composite policy ID (for nested policies).
+    """
+
+    __tablename__ = "tier_policies"
+
+    __table_args__ = (
+        Index("idx_tier_policies_name", "name"),
+        Index("idx_tier_policies_type", "policy_type"),
+        Index("idx_tier_policies_from_tier", "from_tier_id"),
+        Index("idx_tier_policies_to_tier", "to_tier_id"),
+        Index("idx_tier_policies_parent", "parent_id"),
+        Index("idx_tier_policies_active", "is_active"),
+    )
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    policy_type: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default=TierPolicyType.AGE_BASED.value,
+    )
+    from_tier_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("storage_tiers.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    to_tier_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("storage_tiers.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    direction: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=MigrationDirection.DEMOTE.value,
+    )
+    config: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    parent_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("tier_policies.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+
+    # Relationships
+    from_tier: Mapped["StorageTierModel"] = relationship(
+        "StorageTierModel",
+        foreign_keys=[from_tier_id],
+        back_populates="policies_from",
+        lazy="selectin",
+    )
+    to_tier: Mapped["StorageTierModel"] = relationship(
+        "StorageTierModel",
+        foreign_keys=[to_tier_id],
+        back_populates="policies_to",
+        lazy="selectin",
+    )
+    parent: Mapped["TierPolicyModel | None"] = relationship(
+        "TierPolicyModel",
+        remote_side="TierPolicyModel.id",
+        back_populates="children",
+        foreign_keys=[parent_id],
+    )
+    children: Mapped[list["TierPolicyModel"]] = relationship(
+        "TierPolicyModel",
+        back_populates="parent",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    @property
+    def is_composite(self) -> bool:
+        """Check if this is a composite policy."""
+        return self.policy_type == TierPolicyType.COMPOSITE.value
+
+    @property
+    def child_count(self) -> int:
+        """Get number of child policies."""
+        return len(self.children) if self.children else 0
+
+
+class TieringConfigModel(Base, UUIDMixin, TimestampMixin):
+    """Tiering configuration model.
+
+    Stores the main tiering configuration including default tier,
+    promotion settings, and batch processing options.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        name: Configuration name.
+        default_tier_id: Default tier for new items.
+        enable_promotion: Whether to auto-promote on frequent access.
+        promotion_threshold: Access count to trigger promotion.
+        check_interval_hours: Hours between auto-checks.
+        batch_size: Items per migration batch.
+        enable_parallel_migration: Whether to enable parallel migration.
+        max_parallel_migrations: Maximum concurrent migrations.
+        is_active: Whether configuration is active.
+    """
+
+    __tablename__ = "tiering_configs"
+
+    __table_args__ = (
+        Index("idx_tiering_configs_name", "name", unique=True),
+        Index("idx_tiering_configs_active", "is_active"),
+    )
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    default_tier_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("storage_tiers.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    enable_promotion: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    promotion_threshold: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    check_interval_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=24)
+    batch_size: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
+    enable_parallel_migration: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    max_parallel_migrations: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=4
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    # Relationships
+    default_tier: Mapped["StorageTierModel | None"] = relationship(
+        "StorageTierModel",
+        foreign_keys=[default_tier_id],
+        lazy="selectin",
+    )
+
+
+class TierMigrationHistoryModel(Base, UUIDMixin):
+    """Tier migration history model.
+
+    Tracks migration operations for auditing and analysis.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        policy_id: Reference to the policy that triggered migration.
+        item_id: ID of the migrated item.
+        from_tier_id: Source tier ID.
+        to_tier_id: Destination tier ID.
+        size_bytes: Size of migrated item.
+        started_at: When migration started.
+        completed_at: When migration completed.
+        status: Migration status (pending, in_progress, completed, failed).
+        error_message: Error message if failed.
+    """
+
+    __tablename__ = "tier_migration_history"
+
+    __table_args__ = (
+        Index("idx_tier_migration_policy", "policy_id"),
+        Index("idx_tier_migration_item", "item_id"),
+        Index("idx_tier_migration_status", "status"),
+        Index("idx_tier_migration_started", "started_at"),
+    )
+
+    policy_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("tier_policies.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    item_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    from_tier_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    to_tier_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending"
+    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    @property
+    def duration_ms(self) -> float | None:
+        """Calculate migration duration in milliseconds."""
+        if self.started_at and self.completed_at:
+            return (self.completed_at - self.started_at).total_seconds() * 1000
+        return None
+
+
+# =============================================================================
+# Schema Watcher Models (truthound 1.2.10+)
+# =============================================================================
+
+
+class SchemaWatcherStatus(str, Enum):
+    """Status of a schema watcher."""
+
+    ACTIVE = "active"
+    PAUSED = "paused"
+    STOPPED = "stopped"
+    ERROR = "error"
+
+
+class SchemaWatcherAlertStatus(str, Enum):
+    """Status of a schema watcher alert."""
+
+    OPEN = "open"
+    ACKNOWLEDGED = "acknowledged"
+    RESOLVED = "resolved"
+    SUPPRESSED = "suppressed"
+
+
+class SchemaWatcherAlertSeverity(str, Enum):
+    """Severity of schema watcher alert."""
+
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+    INFO = "info"
+
+
+class SchemaWatcherRunStatus(str, Enum):
+    """Status of a schema watcher run."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class SchemaWatcherModel(Base, UUIDMixin, TimestampMixin):
+    """Schema Watcher for continuous schema monitoring.
+
+    Implements truthound's SchemaWatcher functionality for continuous
+    monitoring of schema changes with configurable polling intervals,
+    alert thresholds, and notification integration.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        name: Human-readable name for the watcher.
+        source_id: Reference to the Source being watched.
+        status: Current watcher status (active, paused, stopped, error).
+        poll_interval_seconds: How often to check for schema changes.
+        only_breaking: Only alert on breaking changes.
+        enable_rename_detection: Enable column rename detection.
+        rename_similarity_threshold: Threshold for rename detection (0.0-1.0).
+        version_strategy: Version numbering strategy (semantic, incremental, timestamp, git).
+        notify_on_change: Send notifications when changes detected.
+        track_history: Track changes in schema history.
+        last_check_at: When the watcher last checked for changes.
+        last_change_at: When the last change was detected.
+        next_check_at: When the next check is scheduled.
+        check_count: Total number of checks performed.
+        change_count: Total number of changes detected.
+        error_count: Number of consecutive errors.
+        last_error: Last error message if any.
+        config: Additional configuration as JSON.
+    """
+
+    __tablename__ = "schema_watchers"
+
+    __table_args__ = (
+        Index("idx_schema_watcher_source", "source_id"),
+        Index("idx_schema_watcher_status", "status"),
+        Index("idx_schema_watcher_next_check", "next_check_at"),
+    )
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("sources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=SchemaWatcherStatus.ACTIVE.value,
+    )
+    poll_interval_seconds: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=60,  # Default 60 seconds
+    )
+    only_breaking: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    enable_rename_detection: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
+    rename_similarity_threshold: Mapped[float] = mapped_column(
+        Float, default=0.8, nullable=False
+    )
+    version_strategy: Mapped[str] = mapped_column(
+        String(20),
+        default="semantic",
+        nullable=False,
+    )
+    notify_on_change: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    track_history: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Monitoring state
+    last_check_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_change_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    next_check_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    check_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    change_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    error_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Additional configuration
+    watcher_config: Mapped[dict[str, Any] | None] = mapped_column(
+        "config", JSON, nullable=True
+    )
+
+    # Relationships
+    source: Mapped[Source] = relationship("Source", lazy="selectin")
+    alerts: Mapped[list[SchemaWatcherAlertModel]] = relationship(
+        "SchemaWatcherAlertModel",
+        back_populates="watcher",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="desc(SchemaWatcherAlertModel.created_at)",
+    )
+    runs: Mapped[list[SchemaWatcherRunModel]] = relationship(
+        "SchemaWatcherRunModel",
+        back_populates="watcher",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="desc(SchemaWatcherRunModel.started_at)",
+    )
+
+    @property
+    def is_active(self) -> bool:
+        """Check if watcher is actively running."""
+        return self.status == SchemaWatcherStatus.ACTIVE.value
+
+    @property
+    def is_healthy(self) -> bool:
+        """Check if watcher is healthy (no errors)."""
+        return self.error_count == 0 and self.status != SchemaWatcherStatus.ERROR.value
+
+    @property
+    def detection_rate(self) -> float:
+        """Calculate change detection rate."""
+        if self.check_count == 0:
+            return 0.0
+        return self.change_count / self.check_count
+
+
+class SchemaWatcherAlertModel(Base, UUIDMixin, TimestampMixin):
+    """Schema Watcher Alert for tracking schema change notifications.
+
+    Records alerts generated by the SchemaWatcher when schema changes
+    are detected, with support for acknowledgment and resolution.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        watcher_id: Reference to the SchemaWatcher.
+        source_id: Reference to the Source.
+        from_version_id: Previous schema version ID.
+        to_version_id: New schema version ID.
+        title: Alert title.
+        severity: Alert severity level.
+        status: Alert status (open, acknowledged, resolved, suppressed).
+        total_changes: Total number of changes in this alert.
+        breaking_changes: Number of breaking changes.
+        changes_summary: JSON summary of changes.
+        impact_scope: Scope of impact (local, downstream, system).
+        affected_consumers: List of affected downstream consumers.
+        recommendations: List of recommended actions.
+        acknowledged_at: When alert was acknowledged.
+        acknowledged_by: Who acknowledged the alert.
+        resolved_at: When alert was resolved.
+        resolved_by: Who resolved the alert.
+        resolution_notes: Notes about resolution.
+    """
+
+    __tablename__ = "schema_watcher_alerts"
+
+    __table_args__ = (
+        Index("idx_watcher_alert_watcher", "watcher_id"),
+        Index("idx_watcher_alert_source", "source_id"),
+        Index("idx_watcher_alert_status", "status"),
+        Index("idx_watcher_alert_severity", "severity"),
+        Index("idx_watcher_alert_created", "created_at"),
+    )
+
+    watcher_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("schema_watchers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    source_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("sources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    from_version_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("schema_versions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    to_version_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("schema_versions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    severity: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=SchemaWatcherAlertSeverity.MEDIUM.value,
+    )
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=SchemaWatcherAlertStatus.OPEN.value,
+    )
+    total_changes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    breaking_changes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    changes_summary: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    impact_scope: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    affected_consumers: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    recommendations: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+
+    # Acknowledgment tracking
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    acknowledged_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Resolution tracking
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    resolved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    resolution_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Relationships
+    watcher: Mapped[SchemaWatcherModel] = relationship(
+        "SchemaWatcherModel",
+        back_populates="alerts",
+        lazy="selectin",
+    )
+    source: Mapped[Source] = relationship("Source", lazy="selectin")
+    from_version: Mapped[SchemaVersion | None] = relationship(
+        "SchemaVersion",
+        foreign_keys=[from_version_id],
+        lazy="selectin",
+    )
+    to_version: Mapped[SchemaVersion] = relationship(
+        "SchemaVersion",
+        foreign_keys=[to_version_id],
+        lazy="selectin",
+    )
+
+    @property
+    def is_open(self) -> bool:
+        """Check if alert is still open."""
+        return self.status == SchemaWatcherAlertStatus.OPEN.value
+
+    @property
+    def is_resolved(self) -> bool:
+        """Check if alert has been resolved."""
+        return self.status == SchemaWatcherAlertStatus.RESOLVED.value
+
+    @property
+    def has_breaking_changes(self) -> bool:
+        """Check if alert contains breaking changes."""
+        return self.breaking_changes > 0
+
+    @property
+    def time_to_acknowledge(self) -> float | None:
+        """Calculate time to acknowledge in seconds."""
+        if self.created_at and self.acknowledged_at:
+            return (self.acknowledged_at - self.created_at).total_seconds()
+        return None
+
+    @property
+    def time_to_resolve(self) -> float | None:
+        """Calculate time to resolve in seconds."""
+        if self.created_at and self.resolved_at:
+            return (self.resolved_at - self.created_at).total_seconds()
+        return None
+
+
+class SchemaWatcherRunModel(Base, UUIDMixin):
+    """Schema Watcher Run history for tracking check executions.
+
+    Records each execution of the schema watcher check operation
+    for auditing and performance analysis.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        watcher_id: Reference to the SchemaWatcher.
+        source_id: Reference to the Source.
+        started_at: When the check started.
+        completed_at: When the check completed.
+        status: Run status (pending, running, completed, failed).
+        changes_detected: Number of changes detected.
+        breaking_detected: Number of breaking changes detected.
+        version_created_id: ID of new schema version if created.
+        alert_created_id: ID of alert if created.
+        duration_ms: Duration of the check in milliseconds.
+        error_message: Error message if failed.
+        run_metadata: Additional metadata as JSON.
+    """
+
+    __tablename__ = "schema_watcher_runs"
+
+    __table_args__ = (
+        Index("idx_watcher_run_watcher", "watcher_id"),
+        Index("idx_watcher_run_source", "source_id"),
+        Index("idx_watcher_run_status", "status"),
+        Index("idx_watcher_run_started", "started_at"),
+    )
+
+    watcher_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("schema_watchers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    source_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("sources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending"
+    )
+    changes_detected: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    breaking_detected: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    version_created_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    alert_created_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    duration_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    run_metadata: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata", JSON, nullable=True
+    )
+
+    # Relationships
+    watcher: Mapped[SchemaWatcherModel] = relationship(
+        "SchemaWatcherModel",
+        back_populates="runs",
+        lazy="selectin",
+    )
+    source: Mapped[Source] = relationship("Source", lazy="selectin")
+
+    @property
+    def is_successful(self) -> bool:
+        """Check if run completed successfully."""
+        return self.status == "completed" and not self.error_message
+
+    @property
+    def has_changes(self) -> bool:
+        """Check if changes were detected in this run."""
+        return self.changes_detected > 0
+
+
+# =============================================================================
+# Cross-Alert Models (Persistent Storage)
+# =============================================================================
+
+
+class CrossAlertConfig(Base, UUIDMixin, TimestampMixin):
+    """Cross-alert configuration model.
+
+    Stores configuration for cross-feature alert correlation between
+    anomaly detection and drift monitoring. Replaces in-memory storage.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        source_id: Optional source ID for source-specific config, None for global.
+        enabled: Whether cross-alert is enabled.
+        trigger_drift_on_anomaly: Auto-trigger drift check when anomaly spikes.
+        trigger_anomaly_on_drift: Auto-trigger anomaly check when drift detected.
+        thresholds: JSON dict with threshold values.
+        notify_on_correlation: Send notification when correlation found.
+        notification_channel_ids: Channel IDs for notifications.
+        cooldown_seconds: Cooldown period between auto-triggers.
+        last_anomaly_trigger_at: Last time anomaly triggered drift check.
+        last_drift_trigger_at: Last time drift triggered anomaly check.
+    """
+
+    __tablename__ = "cross_alert_configs"
+
+    __table_args__ = (
+        Index("idx_cross_alert_config_source", "source_id"),
+        Index("idx_cross_alert_config_enabled", "enabled"),
+    )
+
+    source_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("sources.id", ondelete="CASCADE"),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    trigger_drift_on_anomaly: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
+    trigger_anomaly_on_drift: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
+    thresholds: Mapped[dict[str, Any]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=lambda: {
+            "anomaly_rate_threshold": 0.1,
+            "anomaly_count_threshold": 10,
+            "drift_percentage_threshold": 10.0,
+            "drift_columns_threshold": 2,
+        },
+    )
+    notify_on_correlation: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
+    notification_channel_ids: Mapped[list[str] | None] = mapped_column(
+        JSON, nullable=True
+    )
+    cooldown_seconds: Mapped[int] = mapped_column(Integer, default=300, nullable=False)
+    last_anomaly_trigger_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
+    )
+    last_drift_trigger_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
+    )
+
+    # Relationships
+    source: Mapped[Source | None] = relationship("Source", lazy="selectin")
+
+
+class CrossAlertCorrelation(Base, UUIDMixin):
+    """Cross-alert correlation record model.
+
+    Stores detected correlations between anomaly and drift alerts.
+    Replaces in-memory _correlations list.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        source_id: Reference to the data source.
+        correlation_strength: Strength level (strong, moderate, weak).
+        confidence_score: Confidence score between 0 and 1.
+        time_delta_seconds: Time difference between alerts.
+        anomaly_alert_id: ID of the anomaly detection record.
+        drift_alert_id: ID of the drift alert record.
+        anomaly_data: JSON with anomaly alert details.
+        drift_data: JSON with drift alert details.
+        common_columns: List of columns affected by both.
+        suggested_action: Suggested action for this correlation.
+        notes: Optional notes.
+        created_at: When the correlation was detected.
+    """
+
+    __tablename__ = "cross_alert_correlations"
+
+    __table_args__ = (
+        Index("idx_cross_correlation_source", "source_id"),
+        Index("idx_cross_correlation_strength", "correlation_strength"),
+        Index("idx_cross_correlation_created", "created_at"),
+    )
+
+    source_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("sources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    correlation_strength: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # strong, moderate, weak
+    confidence_score: Mapped[float] = mapped_column(Float, nullable=False)
+    time_delta_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    anomaly_alert_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    drift_alert_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    anomaly_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    drift_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    common_columns: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    suggested_action: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    # Relationships
+    source: Mapped[Source] = relationship("Source", lazy="selectin")
+
+
+class CrossAlertTriggerEvent(Base, UUIDMixin):
+    """Cross-alert auto-trigger event record model.
+
+    Stores records of auto-triggered checks between anomaly and drift.
+    Replaces in-memory _auto_trigger_events list.
+
+    Attributes:
+        id: Unique identifier (UUID).
+        source_id: Reference to the data source.
+        trigger_type: Type of trigger (anomaly_to_drift, drift_to_anomaly).
+        trigger_alert_id: ID of the alert that triggered this.
+        trigger_alert_type: Type of triggering alert (anomaly, drift).
+        result_id: ID of the resulting check (drift comparison or anomaly detection).
+        correlation_found: Whether a correlation was found.
+        correlation_id: ID of the correlation if found.
+        status: Status (pending, running, completed, failed, skipped).
+        error_message: Error message if failed.
+        skipped_reason: Reason if skipped.
+        created_at: When the event was created.
+    """
+
+    __tablename__ = "cross_alert_trigger_events"
+
+    __table_args__ = (
+        Index("idx_cross_trigger_source", "source_id"),
+        Index("idx_cross_trigger_type", "trigger_type"),
+        Index("idx_cross_trigger_status", "status"),
+        Index("idx_cross_trigger_created", "created_at"),
+    )
+
+    source_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("sources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    trigger_type: Mapped[str] = mapped_column(
+        String(30), nullable=False
+    )  # anomaly_to_drift, drift_to_anomaly
+    trigger_alert_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    trigger_alert_type: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # anomaly, drift
+    result_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    correlation_found: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    correlation_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending"
+    )  # pending, running, completed, failed, skipped
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    skipped_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    # Relationships
+    source: Mapped[Source] = relationship("Source", lazy="selectin")

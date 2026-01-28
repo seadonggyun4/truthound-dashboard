@@ -313,7 +313,9 @@ class AnomalyDetectionService:
         sample_size: int | None,
         params: dict[str, Any],
     ) -> dict[str, Any]:
-        """Run the specified anomaly detection algorithm.
+        """Run the specified anomaly detection algorithm using truthound.ml.
+
+        Uses truthound.ml.anomaly_models when available, falls back to sklearn.
 
         Args:
             df: DataFrame to analyze.
@@ -362,6 +364,8 @@ class AnomalyDetectionService:
             result = self._run_statistical(df_analyze, params)
         elif algorithm == "autoencoder":
             result = self._run_autoencoder(df_analyze, params)
+        elif algorithm == "ensemble":
+            result = self._run_ensemble(df_analyze, params)
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}")
 
@@ -414,32 +418,67 @@ class AnomalyDetectionService:
         df: Any,
         params: dict[str, Any],
     ) -> dict[str, Any]:
-        """Run Isolation Forest algorithm."""
-        from sklearn.ensemble import IsolationForest
+        """Run Isolation Forest algorithm using truthound.ml."""
         import numpy as np
 
         # Get parameters with defaults
         n_estimators = params.get("n_estimators", 100)
         contamination = params.get("contamination", 0.1)
-        max_samples = params.get("max_samples", "auto")
+        max_samples = params.get("max_samples", 256)
         random_state = params.get("random_state", 42)
 
         # Handle NaN values
         df_clean = df.fillna(df.mean())
 
-        clf = IsolationForest(
-            n_estimators=n_estimators,
-            contamination=contamination,
-            max_samples=max_samples,
-            random_state=random_state,
-        )
-        predictions = clf.fit_predict(df_clean)
-        scores = -clf.score_samples(df_clean)  # Higher = more anomalous
+        try:
+            from truthound.ml.anomaly_models.isolation_forest import (
+                IsolationForestDetector,
+                IsolationForestConfig,
+            )
+            import polars as pl
 
-        return {
-            "is_anomaly": predictions == -1,
-            "scores": scores,
-        }
+            # Create truthound detector
+            config = IsolationForestConfig(
+                n_estimators=n_estimators,
+                max_samples=max_samples if isinstance(max_samples, int) else 256,
+                columns=list(df_clean.columns),
+            )
+
+            detector = IsolationForestDetector(config)
+
+            # Convert to Polars for truthound
+            pl_df = pl.from_pandas(df_clean).lazy()
+            detector.fit(pl_df)
+
+            # Get predictions
+            result = detector.predict(pl_df)
+
+            # Extract scores and anomaly flags
+            is_anomaly = np.array([score.is_anomaly for score in result])
+            scores = np.array([score.score for score in result])
+
+            return {
+                "is_anomaly": is_anomaly,
+                "scores": scores,
+            }
+
+        except ImportError:
+            # Fallback to sklearn
+            from sklearn.ensemble import IsolationForest
+
+            clf = IsolationForest(
+                n_estimators=n_estimators,
+                contamination=contamination,
+                max_samples=max_samples,
+                random_state=random_state,
+            )
+            predictions = clf.fit_predict(df_clean)
+            scores = -clf.score_samples(df_clean)  # Higher = more anomalous
+
+            return {
+                "is_anomaly": predictions == -1,
+                "scores": scores,
+            }
 
     def _run_lof(
         self,
@@ -448,6 +487,7 @@ class AnomalyDetectionService:
     ) -> dict[str, Any]:
         """Run Local Outlier Factor algorithm."""
         from sklearn.neighbors import LocalOutlierFactor
+        from sklearn.preprocessing import StandardScaler
         import numpy as np
 
         n_neighbors = params.get("n_neighbors", 20)
@@ -455,7 +495,6 @@ class AnomalyDetectionService:
         algorithm = params.get("algorithm", "auto")
 
         # Handle NaN values and scale
-        from sklearn.preprocessing import StandardScaler
         df_clean = df.fillna(df.mean())
         scaler = StandardScaler()
         df_scaled = scaler.fit_transform(df_clean)
@@ -514,6 +553,7 @@ class AnomalyDetectionService:
         """Run DBSCAN algorithm."""
         from sklearn.cluster import DBSCAN
         from sklearn.preprocessing import StandardScaler
+        from sklearn.metrics import pairwise_distances
         import numpy as np
 
         eps = params.get("eps", 0.5)
@@ -536,15 +576,14 @@ class AnomalyDetectionService:
         is_anomaly = labels == -1
 
         # Calculate distance-based scores (distance to nearest cluster centroid)
-        from sklearn.metrics import pairwise_distances
         scores = np.zeros(len(df_scaled))
         if not is_anomaly.all():
             # Get centroids of each cluster
             unique_labels = set(labels) - {-1}
             if unique_labels:
                 centroids = np.array([
-                    df_scaled[labels == l].mean(axis=0)
-                    for l in unique_labels
+                    df_scaled[labels == label].mean(axis=0)
+                    for label in unique_labels
                 ])
                 distances = pairwise_distances(df_scaled, centroids, metric=metric)
                 scores = distances.min(axis=1)
@@ -559,7 +598,7 @@ class AnomalyDetectionService:
         df: Any,
         params: dict[str, Any],
     ) -> dict[str, Any]:
-        """Run statistical anomaly detection."""
+        """Run statistical anomaly detection using truthound.ml."""
         import numpy as np
 
         method = params.get("method", "zscore")
@@ -568,49 +607,201 @@ class AnomalyDetectionService:
         # Handle NaN values
         df_clean = df.fillna(df.mean())
 
-        if method == "zscore":
-            mean = df_clean.mean()
-            std = df_clean.std()
-            z_scores = np.abs((df_clean - mean) / std)
-            # Take max z-score across all columns for each row
-            max_z = z_scores.max(axis=1)
-            is_anomaly = max_z > threshold
-            scores = max_z.values
+        try:
+            from truthound.ml.anomaly_models.statistical import (
+                StatisticalAnomalyDetector,
+                StatisticalConfig,
+            )
+            import polars as pl
 
-        elif method == "iqr":
-            q1 = df_clean.quantile(0.25)
-            q3 = df_clean.quantile(0.75)
-            iqr = q3 - q1
-            lower = q1 - threshold * iqr
-            upper = q3 + threshold * iqr
-            is_outlier = ((df_clean < lower) | (df_clean > upper)).any(axis=1)
-            is_anomaly = is_outlier.values
-            # Score based on distance from bounds
-            scores = np.zeros(len(df_clean))
-            for col in df_clean.columns:
-                col_scores = np.maximum(
-                    (lower[col] - df_clean[col]) / iqr[col],
-                    (df_clean[col] - upper[col]) / iqr[col],
-                )
-                col_scores = np.maximum(col_scores, 0)
-                scores = np.maximum(scores, col_scores.values)
+            # Create truthound detector
+            config = StatisticalConfig(
+                z_threshold=threshold,
+                iqr_multiplier=threshold if method == "iqr" else 1.5,
+                use_robust_stats=(method == "mad"),
+                per_column=True,
+                columns=list(df_clean.columns),
+            )
 
-        elif method == "mad":
-            median = df_clean.median()
-            mad = np.abs(df_clean - median).median()
-            # Modified z-score using MAD
-            modified_z = 0.6745 * (df_clean - median) / mad
-            max_z = np.abs(modified_z).max(axis=1)
-            is_anomaly = max_z > threshold
-            scores = max_z.values
+            detector = StatisticalAnomalyDetector(config)
 
-        else:
-            raise ValueError(f"Unknown statistical method: {method}")
+            # Convert to Polars for truthound
+            pl_df = pl.from_pandas(df_clean).lazy()
+            detector.fit(pl_df)
 
-        return {
-            "is_anomaly": np.array(is_anomaly),
-            "scores": np.array(scores),
-        }
+            # Get predictions
+            result = detector.predict(pl_df)
+
+            # Extract scores and anomaly flags
+            is_anomaly = np.array([score.is_anomaly for score in result])
+            scores = np.array([score.score for score in result])
+
+            return {
+                "is_anomaly": is_anomaly,
+                "scores": scores,
+            }
+
+        except ImportError:
+            # Fallback to manual implementation
+            if method == "zscore":
+                mean = df_clean.mean()
+                std = df_clean.std()
+                z_scores = np.abs((df_clean - mean) / std)
+                # Take max z-score across all columns for each row
+                max_z = z_scores.max(axis=1)
+                is_anomaly = max_z > threshold
+                scores = max_z.values
+
+            elif method == "iqr":
+                q1 = df_clean.quantile(0.25)
+                q3 = df_clean.quantile(0.75)
+                iqr = q3 - q1
+                lower = q1 - threshold * iqr
+                upper = q3 + threshold * iqr
+                is_outlier = ((df_clean < lower) | (df_clean > upper)).any(axis=1)
+                is_anomaly = is_outlier.values
+                # Score based on distance from bounds
+                scores = np.zeros(len(df_clean))
+                for col in df_clean.columns:
+                    col_scores = np.maximum(
+                        (lower[col] - df_clean[col]) / iqr[col],
+                        (df_clean[col] - upper[col]) / iqr[col],
+                    )
+                    col_scores = np.maximum(col_scores, 0)
+                    scores = np.maximum(scores, col_scores.values)
+
+            elif method == "mad":
+                median = df_clean.median()
+                mad = np.abs(df_clean - median).median()
+                # Modified z-score using MAD
+                modified_z = 0.6745 * (df_clean - median) / mad
+                max_z = np.abs(modified_z).max(axis=1)
+                is_anomaly = max_z > threshold
+                scores = max_z.values
+
+            else:
+                raise ValueError(f"Unknown statistical method: {method}")
+
+            return {
+                "is_anomaly": np.array(is_anomaly),
+                "scores": np.array(scores),
+            }
+
+    def _run_ensemble(
+        self,
+        df: Any,
+        params: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Run ensemble anomaly detection using truthound.ml."""
+        import numpy as np
+
+        strategy = params.get("strategy", "weighted_average")
+        weights = params.get("weights", [0.3, 0.3, 0.4])
+        vote_threshold = params.get("vote_threshold", 0.5)
+
+        # Handle NaN values
+        df_clean = df.fillna(df.mean())
+
+        try:
+            from truthound.ml.anomaly_models.ensemble import (
+                EnsembleAnomalyDetector,
+                EnsembleConfig,
+                EnsembleStrategy,
+            )
+            from truthound.ml.anomaly_models.statistical import (
+                StatisticalAnomalyDetector,
+                StatisticalConfig,
+            )
+            from truthound.ml.anomaly_models.isolation_forest import (
+                IsolationForestDetector,
+                IsolationForestConfig,
+            )
+            import polars as pl
+
+            # Map strategy string to enum
+            strategy_map = {
+                "average": EnsembleStrategy.AVERAGE,
+                "weighted_average": EnsembleStrategy.WEIGHTED_AVERAGE,
+                "max": EnsembleStrategy.MAX,
+                "min": EnsembleStrategy.MIN,
+                "vote": EnsembleStrategy.VOTE,
+                "unanimous": EnsembleStrategy.UNANIMOUS,
+            }
+
+            # Create ensemble config
+            config = EnsembleConfig(
+                strategy=strategy_map.get(strategy, EnsembleStrategy.WEIGHTED_AVERAGE),
+                weights=weights,
+                vote_threshold=vote_threshold,
+            )
+
+            ensemble = EnsembleAnomalyDetector(config)
+
+            # Add detectors
+            columns = list(df_clean.columns)
+
+            # Z-Score detector
+            zscore_config = StatisticalConfig(z_threshold=3.0, columns=columns)
+            ensemble.add_detector(StatisticalAnomalyDetector(zscore_config), weight=weights[0] if len(weights) > 0 else 0.33)
+
+            # IQR detector
+            iqr_config = StatisticalConfig(iqr_multiplier=1.5, columns=columns)
+            ensemble.add_detector(StatisticalAnomalyDetector(iqr_config), weight=weights[1] if len(weights) > 1 else 0.33)
+
+            # Isolation Forest detector
+            if_config = IsolationForestConfig(n_estimators=100, columns=columns)
+            ensemble.add_detector(IsolationForestDetector(if_config), weight=weights[2] if len(weights) > 2 else 0.34)
+
+            # Convert to Polars for truthound
+            pl_df = pl.from_pandas(df_clean).lazy()
+            ensemble.fit(pl_df)
+
+            # Get predictions
+            result = ensemble.predict(pl_df)
+
+            # Extract scores and anomaly flags
+            is_anomaly = np.array([score.is_anomaly for score in result])
+            scores = np.array([score.score for score in result])
+
+            return {
+                "is_anomaly": is_anomaly,
+                "scores": scores,
+            }
+
+        except ImportError:
+            # Fallback: run individual algorithms and combine
+            results = []
+
+            # Run zscore
+            zscore_result = self._run_statistical(df, {"method": "zscore", "threshold": 3.0})
+            results.append(zscore_result)
+
+            # Run IQR
+            iqr_result = self._run_statistical(df, {"method": "iqr", "threshold": 1.5})
+            results.append(iqr_result)
+
+            # Run isolation forest
+            if_result = self._run_isolation_forest(df, {"n_estimators": 100})
+            results.append(if_result)
+
+            # Combine using weighted average
+            combined_scores = np.zeros(len(df_clean))
+            for i, result in enumerate(results):
+                weight = weights[i] if i < len(weights) else 1.0 / len(results)
+                combined_scores += weight * result["scores"]
+
+            # Normalize scores
+            if combined_scores.max() > 0:
+                combined_scores = combined_scores / combined_scores.max()
+
+            # Determine anomalies based on threshold (mean + 2*std)
+            threshold = combined_scores.mean() + 2 * combined_scores.std()
+            is_anomaly = combined_scores > threshold
+
+            return {
+                "is_anomaly": is_anomaly,
+                "scores": combined_scores,
+            }
 
     def _run_autoencoder(
         self,
