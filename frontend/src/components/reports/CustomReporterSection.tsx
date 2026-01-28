@@ -183,7 +183,7 @@ function CustomReporterConfigDialog({
 
       // Generate filename
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-      const ext = selectedFormat === 'markdown' ? 'md' : selectedFormat
+      const ext = selectedFormat
       const filename = `custom_report_${reporter.name}_${timestamp}.${ext}`
 
       onSuccess(blob, filename)

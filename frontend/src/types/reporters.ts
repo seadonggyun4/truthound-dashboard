@@ -5,7 +5,7 @@
  * enabling type-safe configuration and generation of validation reports.
  *
  * Based on truthound reporters documentation:
- * - Multiple formats: JSON, Console, Markdown, HTML, YAML, CSV, JUnit XML, NDJSON
+ * - Multiple formats: HTML, CSV, JSON
  * - Unified interface: BaseReporter with render(), write() methods
  * - ValidationReporter for validation-specific reports
  * - CI Platform reporters: GitHub Actions, GitLab CI, Azure DevOps, Jenkins
@@ -29,8 +29,6 @@ export type ReportFormatType =
   | 'html'
   | 'csv'
   | 'json'
-  | 'markdown'
-  | 'junit'
   | 'yaml'
   | 'ndjson'
   | 'console'
@@ -134,46 +132,6 @@ export const REPORT_FORMATS: ReportFormatInfo[] = [
     icon: 'file-spreadsheet',
     extension: '.csv',
     contentType: 'text/csv',
-    supportsTheme: false,
-    supportsI18n: false,
-  },
-  {
-    value: 'markdown',
-    label: 'Markdown',
-    description: 'Documentation-friendly format for GitHub/GitLab',
-    icon: 'file-text',
-    extension: '.md',
-    contentType: 'text/markdown',
-    supportsTheme: false,
-    supportsI18n: true,
-  },
-  {
-    value: 'junit',
-    label: 'JUnit XML',
-    description: 'CI/CD integration format',
-    icon: 'test-tube',
-    extension: '.xml',
-    contentType: 'application/xml',
-    supportsTheme: false,
-    supportsI18n: false,
-  },
-  {
-    value: 'yaml',
-    label: 'YAML',
-    description: 'Human-readable structured data',
-    icon: 'file-json',
-    extension: '.yaml',
-    contentType: 'text/yaml',
-    supportsTheme: false,
-    supportsI18n: false,
-  },
-  {
-    value: 'ndjson',
-    label: 'NDJSON',
-    description: 'Newline-delimited JSON for streaming/logs',
-    icon: 'file-json-2',
-    extension: '.ndjson',
-    contentType: 'application/x-ndjson',
     supportsTheme: false,
     supportsI18n: false,
   },

@@ -26,8 +26,6 @@ const reportsContent = {
     formatHtml: t({ en: 'HTML', ko: 'HTML' }),
     formatCsv: t({ en: 'CSV', ko: 'CSV' }),
     formatJson: t({ en: 'JSON', ko: 'JSON' }),
-    formatMarkdown: t({ en: 'Markdown', ko: 'Markdown' }),
-    formatJunit: t({ en: 'JUnit XML (CI/CD)', ko: 'JUnit XML (CI/CD)' }),
 
     // Themes
     themeLight: t({ en: 'Light', ko: '라이트' }),
@@ -222,14 +220,6 @@ const reportsContent = {
       en: 'Tabular data for spreadsheet analysis',
       ko: '스프레드시트 분석을 위한 표 형식 데이터',
     }),
-    formatMarkdownDescription: t({
-      en: 'Documentation-friendly format for GitHub/GitLab',
-      ko: 'GitHub/GitLab용 문서화 친화적 형식',
-    }),
-    formatJunitDescription: t({
-      en: 'CI/CD integration format',
-      ko: 'CI/CD 통합 형식',
-    }),
 
     // Theme descriptions
     themeLightDescription: t({
@@ -293,24 +283,6 @@ const reportsContent = {
     includeHeaderDescription: t({
       en: 'Add column headers as first row',
       ko: '첫 번째 행에 컬럼 헤더 추가',
-    }),
-    markdownOptions: t({ en: 'Markdown Options', ko: 'Markdown 옵션' }),
-    includeToc: t({ en: 'Table of Contents', ko: '목차' }),
-    includeTocDescription: t({
-      en: 'Generate TOC at the beginning',
-      ko: '시작 부분에 목차 생성',
-    }),
-    includeBadges: t({ en: 'Status Badges', ko: '상태 배지' }),
-    includeBadgesDescription: t({
-      en: 'Add markdown badges for status',
-      ko: '상태용 마크다운 배지 추가',
-    }),
-    junitOptions: t({ en: 'JUnit XML Options', ko: 'JUnit XML 옵션' }),
-    suiteName: t({ en: 'Test Suite Name', ko: '테스트 스위트 이름' }),
-    includePassedTests: t({ en: 'Include Passed Tests', ko: '통과한 테스트 포함' }),
-    includePassedTestsDescription: t({
-      en: 'Include passing validations as test cases',
-      ko: '통과한 검증을 테스트 케이스로 포함',
     }),
 
     // Feature badges

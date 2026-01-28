@@ -2,13 +2,13 @@
  * Report Download Button component
  *
  * Provides a dropdown button for downloading validation reports
- * in multiple formats (HTML, CSV, JSON, Markdown) with theme selection.
+ * in multiple formats (HTML, CSV, JSON) with theme selection.
  * Supports 15 languages for report content (per truthound documentation).
  * Also supports custom reporters from the plugin system.
  */
 
 import { useState, useEffect } from 'react'
-import { Download, FileText, FileSpreadsheet, FileJson, FileCode, ChevronDown, Loader2, File, TestTube2, Globe } from 'lucide-react'
+import { Download, FileText, FileSpreadsheet, FileJson, ChevronDown, Loader2, Globe } from 'lucide-react'
 import { useIntlayer } from '@/providers'
 import { Button } from '@/components/ui/button'
 import {
@@ -44,16 +44,12 @@ const FORMAT_ICONS: Record<ReportFormat, typeof FileText> = {
   html: FileText,
   csv: FileSpreadsheet,
   json: FileJson,
-  markdown: FileCode,
-  junit: TestTube2,
 }
 
 const FORMAT_LABELS: Record<ReportFormat, string> = {
   html: 'HTML',
   csv: 'CSV',
   json: 'JSON',
-  markdown: 'Markdown',
-  junit: 'JUnit XML (CI/CD)',
 }
 
 const THEME_LABELS: Record<ReportTheme, string> = {
@@ -64,7 +60,7 @@ const THEME_LABELS: Record<ReportTheme, string> = {
   high_contrast: 'High Contrast',
 }
 
-const FORMATS: ReportFormat[] = ['html', 'csv', 'json', 'markdown', 'junit']
+const FORMATS: ReportFormat[] = ['html', 'csv', 'json']
 const THEMES: ReportTheme[] = ['professional', 'light', 'dark', 'minimal', 'high_contrast']
 
 // Default locales in case API call fails
@@ -121,7 +117,7 @@ export function ReportDownloadButton({
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      const ext = format === 'markdown' ? 'md' : format === 'junit' ? 'xml' : format
+      const ext = format
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
       a.download = `validation_report_${timestamp}.${ext}`
       document.body.appendChild(a)

@@ -13,7 +13,7 @@ export type PluginStatus = 'available' | 'installed' | 'enabled' | 'disabled' | 
 export type PluginSource = 'official' | 'community' | 'local' | 'private'
 export type SecurityLevel = 'trusted' | 'verified' | 'unverified' | 'sandboxed'
 export type ValidatorParamType = 'string' | 'integer' | 'float' | 'boolean' | 'column' | 'column_list' | 'select' | 'multi_select' | 'regex' | 'json'
-export type ReporterOutputFormat = 'html' | 'json' | 'csv' | 'markdown' | 'custom'
+export type ReporterOutputFormat = 'html' | 'json' | 'csv' | 'custom'
 
 export interface PluginAuthor {
   name: string

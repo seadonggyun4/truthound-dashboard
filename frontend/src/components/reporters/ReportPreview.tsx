@@ -3,8 +3,7 @@
  *
  * Displays report content inline with format-specific rendering:
  * - HTML: iframe rendering
- * - Markdown: converted to HTML
- * - JSON/YAML: syntax highlighted code
+ * - JSON: syntax highlighted code
  * - CSV: table view
  */
 
@@ -79,7 +78,7 @@ export function ReportPreview({
     setError(null)
 
     try {
-      const result = await previewValidationReport(validationId, format as 'html' | 'csv' | 'json' | 'markdown' | 'junit', theme as 'light' | 'dark' | 'professional' | 'minimal' | 'high_contrast', locale as 'en' | 'ko' | 'ja' | 'zh' | 'de' | 'fr' | 'es' | 'pt' | 'it' | 'ru' | 'ar' | 'th' | 'vi' | 'id' | 'tr')
+      const result = await previewValidationReport(validationId, format as 'html' | 'csv' | 'json', theme as 'light' | 'dark' | 'professional' | 'minimal' | 'high_contrast', locale as 'en' | 'ko' | 'ja' | 'zh' | 'de' | 'fr' | 'es' | 'pt' | 'it' | 'ru' | 'ar' | 'th' | 'vi' | 'id' | 'tr')
       setContent(result)
       onLoad?.(result)
     } catch (err) {
@@ -229,19 +228,6 @@ export function ReportPreview({
                   ))}
                 </tbody>
               </table>
-            </div>
-          </ScrollArea>
-        )
-
-      case 'markdown':
-        return (
-          <ScrollArea
-            style={{
-              height: isFullscreen ? '100vh' : maxHeight,
-            }}
-          >
-            <div className="p-4 prose prose-sm dark:prose-invert max-w-none">
-              <pre className="whitespace-pre-wrap font-sans">{content}</pre>
             </div>
           </ScrollArea>
         )
