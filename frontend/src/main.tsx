@@ -10,7 +10,12 @@ import './index.css'
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <IntlayerProviderWrapper>
-      <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <ThemeProvider defaultTheme="dark" storageKey="truthound-theme">
           <App />
           <Toaster />

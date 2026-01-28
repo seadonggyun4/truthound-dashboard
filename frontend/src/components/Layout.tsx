@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   LayoutDashboard,
@@ -24,13 +24,14 @@ import {
   Puzzle,
   ChevronDown,
   ChevronRight,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useTheme } from '@/components/theme-provider'
 import { LanguageSelector } from '@/components/common'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import logoImg from '@/assets/logo.png'
 import { request } from '@/api/core'
 import {
@@ -38,6 +39,9 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+
+// Navigation throttle delay (ms) - must wait this long between navigations
+const NAV_THROTTLE_MS = 800
 
 type NavKey = 'dashboard' | 'sources' | 'catalog' | 'glossary' | 'drift' | 'lineage' | 'schedules' | 'activity' | 'notifications' | 'maintenance' | 'anomaly' | 'privacy' | 'driftMonitoring' | 'modelMonitoring' | 'notificationsAdvanced' | 'alerts' | 'reports' | 'plugins'
 
@@ -76,12 +80,18 @@ const navigation: NavItem[] = [
 
 export default function Layout() {
   const location = useLocation()
+  const navigate = useNavigate()
   const nav = useSafeIntlayer('nav')
   const { theme, setTheme } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [alertCount, setAlertCount] = useState(0)
   const [localIP, setLocalIP] = useState<string>('')
-  
+
+  // Navigation loading state
+  const [isNavigating, setIsNavigating] = useState(false)
+  const lastNavTime = useRef(0)
+  const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Collapsible section states
   const [dataOpen, setDataOpen] = useState(true)
   const [qualityOpen, setQualityOpen] = useState(true)
@@ -96,6 +106,50 @@ export default function Layout() {
     }
     return location.pathname === path || location.pathname.startsWith(`${path}/`)
   }
+
+  // Throttled navigation handler
+  const handleNavClick = useCallback((e: React.MouseEvent, href: string) => {
+    e.preventDefault()
+
+    const now = Date.now()
+
+    // Skip if already navigating or within throttle window
+    if (isNavigating || now - lastNavTime.current < NAV_THROTTLE_MS) {
+      return
+    }
+
+    // Skip if already on this page
+    if (isRouteActive(href)) {
+      setSidebarOpen(false)
+      return
+    }
+
+    lastNavTime.current = now
+    setIsNavigating(true)
+    setSidebarOpen(false)
+
+    // Navigate immediately
+    navigate(href)
+  }, [isNavigating, navigate, isRouteActive])
+
+  // Clear loading state after navigation completes + minimum display time
+  useEffect(() => {
+    // Keep loading overlay visible for at least 500ms after navigation
+    const timer = setTimeout(() => {
+      setIsNavigating(false)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [location.pathname])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (navTimeoutRef.current) {
+        clearTimeout(navTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Get hostname and port from browser
   useEffect(() => {
@@ -160,20 +214,21 @@ export default function Layout() {
               {navigation.filter(item => item.section === 'data').map((item) => {
                 const isActive = isRouteActive(item.href)
                 return (
-                  <Link
+                  <a
                     key={item.key}
-                    to={item.href}
-                    onClick={() => setSidebarOpen(false)}
+                    href={item.href}
+                    onClick={(e) => handleNavClick(e, item.href)}
                     className={cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ml-6',
                       isActive
                         ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                      isNavigating && 'pointer-events-none opacity-50'
                     )}
                   >
                     <item.icon className="h-4 w-4" />
                     <span className="flex-1">{nav[item.key]}</span>
-                  </Link>
+                  </a>
                 )
               })}
             </CollapsibleContent>
@@ -189,20 +244,21 @@ export default function Layout() {
               {navigation.filter(item => item.section === 'quality').map((item) => {
                 const isActive = isRouteActive(item.href)
                 return (
-                  <Link
+                  <a
                     key={item.key}
-                    to={item.href}
-                    onClick={() => setSidebarOpen(false)}
+                    href={item.href}
+                    onClick={(e) => handleNavClick(e, item.href)}
                     className={cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ml-6',
                       isActive
                         ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                      isNavigating && 'pointer-events-none opacity-50'
                     )}
                   >
                     <item.icon className="h-4 w-4" />
                     <span className="flex-1">{nav[item.key]}</span>
-                  </Link>
+                  </a>
                 )
               })}
             </CollapsibleContent>
@@ -218,20 +274,21 @@ export default function Layout() {
               {navigation.filter(item => item.section === 'ml').map((item) => {
                 const isActive = isRouteActive(item.href)
                 return (
-                  <Link
+                  <a
                     key={item.key}
-                    to={item.href}
-                    onClick={() => setSidebarOpen(false)}
+                    href={item.href}
+                    onClick={(e) => handleNavClick(e, item.href)}
                     className={cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ml-6',
                       isActive
                         ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                      isNavigating && 'pointer-events-none opacity-50'
                     )}
                   >
                     <item.icon className="h-4 w-4" />
                     <span className="flex-1">{nav[item.key]}</span>
-                  </Link>
+                  </a>
                 )
               })}
             </CollapsibleContent>
@@ -247,15 +304,16 @@ export default function Layout() {
               {navigation.filter(item => item.section === 'system').map((item) => {
                 const isActive = isRouteActive(item.href)
                 return (
-                  <Link
+                  <a
                     key={item.key}
-                    to={item.href}
-                    onClick={() => setSidebarOpen(false)}
+                    href={item.href}
+                    onClick={(e) => handleNavClick(e, item.href)}
                     className={cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ml-6',
                       isActive
                         ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                      isNavigating && 'pointer-events-none opacity-50'
                     )}
                   >
                     <item.icon className="h-4 w-4" />
@@ -268,7 +326,7 @@ export default function Layout() {
                         {alertCount > 99 ? '99+' : alertCount}
                       </Badge>
                     )}
-                  </Link>
+                  </a>
                 )
               })}
             </CollapsibleContent>
@@ -320,6 +378,16 @@ export default function Layout() {
         <main className="p-6">
           <Outlet />
         </main>
+
+        {/* Navigation loading overlay */}
+        {isNavigating && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">Loading...</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

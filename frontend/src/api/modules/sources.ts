@@ -235,11 +235,13 @@ export async function listSources(params?: {
   limit?: number
   active_only?: boolean
 }): Promise<SourceListResponse> {
-  return request<SourceListResponse>('/sources', { params })
+  // Build dedupe key from params for consistent caching
+  const dedupeKey = `sources-list-${JSON.stringify(params ?? {})}`
+  return request<SourceListResponse>('/sources', { params, dedupe: dedupeKey })
 }
 
 export async function getSource(id: string): Promise<Source> {
-  return request<Source>(`/sources/${id}`)
+  return request<Source>(`/sources/${id}`, { dedupe: `source-${id}` })
 }
 
 export async function createSource(data: {
@@ -295,7 +297,8 @@ export async function testSourceConnection(
 }
 
 export async function getSupportedSourceTypes(): Promise<SourceTypesResponse> {
-  return request<SourceTypesResponse>('/sources/types/supported')
+  // Source types rarely change - always dedupe
+  return request<SourceTypesResponse>('/sources/types/supported', { dedupe: 'source-types' })
 }
 
 export async function testConnectionConfig(

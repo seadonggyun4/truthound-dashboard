@@ -955,8 +955,9 @@ def setup_middleware(app: Any) -> None:
     app.add_middleware(RequestLoggingMiddleware)
 
     # Rate limiting (general)
+    # 600 requests/minute = 10/second - reasonable for dashboard navigation
     rate_limit_config = RateLimitConfig(
-        requests_per_minute=120,
+        requests_per_minute=600,
         exclude_paths=["/health", "/docs", "/redoc", "/openapi.json", "/api/openapi.json"],
     )
     app.add_middleware(RateLimitMiddleware, config=rate_limit_config)

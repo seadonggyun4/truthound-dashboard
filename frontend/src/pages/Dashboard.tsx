@@ -1,6 +1,7 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
+import { useThrottledFetch } from '@/hooks/useThrottledFetch'
 import {
   Database,
   CheckCircle2,
@@ -11,7 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { listSources, type Source } from '@/api/modules/sources'
+import { listSources, type SourceListResponse } from '@/api/modules/sources'
 import { formatDate } from '@/lib/utils'
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { GlassCard } from '@/components/GlassCard'
@@ -21,9 +22,20 @@ export default function Dashboard() {
   const dashboard = useSafeIntlayer('dashboard')
   const common = useSafeIntlayer('common')
   const validation = useSafeIntlayer('validation')
-  const [sources, setSources] = useState<Source[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+
+  // Throttled fetch with 500ms throttle and 30s cache
+  const {
+    data: sourcesResponse,
+    isLoading: loading,
+    error,
+    refetch: loadSources,
+  } = useThrottledFetch<SourceListResponse>(
+    'dashboard-sources',
+    () => listSources({ limit: 10 }),
+    { throttleMs: 500, cacheTtlMs: 30000 }
+  )
+
+  const sources = sourcesResponse?.data ?? []
 
   // Create a helper to get validation status labels
   const getValidationLabel = useMemo(() => {
@@ -40,22 +52,6 @@ export default function Dashboard() {
       }
     }
   }, [validation])
-
-  useEffect(() => {
-    loadSources()
-  }, [])
-
-  async function loadSources() {
-    try {
-      setLoading(true)
-      const response = await listSources({ limit: 10 })
-      setSources(response.data)
-    } catch (err) {
-      setError(err as Error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   // Calculate stats
   // Backend validation status values: 'success' | 'failed' | 'error' | 'pending' | 'running' | null
@@ -83,7 +79,7 @@ export default function Dashboard() {
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <XCircle className="h-12 w-12 text-destructive" />
         <p className="text-muted-foreground">{dashboard.loadError}</p>
-        <Button onClick={loadSources}>{common.retry}</Button>
+        <Button onClick={() => loadSources(true)}>{common.retry}</Button>
       </div>
     )
   }
