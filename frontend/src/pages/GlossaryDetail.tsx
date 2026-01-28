@@ -18,6 +18,7 @@ import { getTermHistory, getTermRelationships, type TermHistory, type TermRelati
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { Comments } from '@/components/collaboration/Comments'
+import { TermFormDialog } from '@/components/glossary/TermFormDialog'
 
 export default function GlossaryDetail() {
   const { id } = useParams<{ id: string }>()
@@ -29,12 +30,14 @@ export default function GlossaryDetail() {
     fetchTerm,
     fetchCategories,
     clearSelectedTerm,
+    categories,
   } = useGlossaryStore()
   const { toast } = useToast()
 
   const [history, setHistory] = useState<TermHistory[]>([])
   const [relationships, setRelationships] = useState<TermRelationship[]>([])
   const [, setLoadingExtra] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -132,11 +135,9 @@ export default function GlossaryDetail() {
           </div>
         </div>
 
-        <Button variant="outline" asChild>
-          <Link to={`/glossary/${id}/edit`}>
-            <Edit className="mr-2 h-4 w-4" />
-            {common.edit}
-          </Link>
+        <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
+          <Edit className="mr-2 h-4 w-4" />
+          {common.edit}
         </Button>
       </div>
 
@@ -351,6 +352,18 @@ export default function GlossaryDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Term Dialog */}
+      <TermFormDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        termId={id}
+        categories={categories}
+        onSuccess={() => {
+          fetchTerm(id!)
+          setEditDialogOpen(false)
+        }}
+      />
     </div>
   )
 }

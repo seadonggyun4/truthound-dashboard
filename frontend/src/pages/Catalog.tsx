@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
@@ -28,6 +28,8 @@ import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { AssetFormDialog } from '@/components/catalog/AssetFormDialog'
+import { useClientFilter } from '@/hooks/useClientFilter'
+import type { AssetListItem } from '@/api/modules/catalog'
 
 export default function Catalog() {
   const nav = useSafeIntlayer('nav')
@@ -43,25 +45,34 @@ export default function Catalog() {
   const { confirm, ConfirmDialog } = useConfirm()
 
   const [sources, setSources] = useState<Source[]>([])
-  const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState<string>('')
-  const [sourceFilter, setSourceFilter] = useState<string>('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingAsset, setEditingAsset] = useState<string | null>(null)
 
-  const loadData = useCallback(async () => {
-    await fetchAssets({
-      search: search || undefined,
-      asset_type: typeFilter || undefined,
-      source_id: sourceFilter || undefined,
-    })
-  }, [fetchAssets, search, typeFilter, sourceFilter])
+  // Client-side filtering
+  const {
+    filtered: filteredAssets,
+    search,
+    setSearch,
+    filterValues,
+    setFilter,
+  } = useClientFilter<AssetListItem>(assets, {
+    searchFn: (item, query) => item.name.toLowerCase().includes(query),
+    filters: {
+      type: (item, value) => item.asset_type === value,
+      source: (item, value) => item.source_id === value,
+    },
+  })
 
+  const loadData = async () => {
+    await fetchAssets()
+  }
+
+  // Load data once on mount
   useEffect(() => {
     loadData()
-    // Load sources for filter
     listSources().then((res) => setSources(res.data))
-  }, [loadData])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleDelete = async (id: string) => {
     const confirmed = await confirm({
@@ -151,7 +162,7 @@ export default function Catalog() {
             className="pl-10"
           />
         </div>
-        <Select value={typeFilter || 'all'} onValueChange={(v) => setTypeFilter(v === 'all' ? '' : v)}>
+        <Select value={filterValues.type || 'all'} onValueChange={(v) => setFilter('type', v === 'all' ? '' : v)}>
           <SelectTrigger className="w-[160px]">
             <Filter className="mr-2 h-4 w-4" />
             <SelectValue placeholder={str(catalog.filterByType)} />
@@ -163,7 +174,7 @@ export default function Catalog() {
             <SelectItem value="api">{catalog.assetTypes.api}</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={sourceFilter || 'all'} onValueChange={(v) => setSourceFilter(v === 'all' ? '' : v)}>
+        <Select value={filterValues.source || 'all'} onValueChange={(v) => setFilter('source', v === 'all' ? '' : v)}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder={str(catalog.filterBySource)} />
           </SelectTrigger>
@@ -179,7 +190,7 @@ export default function Catalog() {
       </div>
 
       {/* Assets List */}
-      {assets.length === 0 ? (
+      {filteredAssets.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Database className="h-16 w-16 text-muted-foreground/50 mb-4" />
@@ -195,7 +206,7 @@ export default function Catalog() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {assets.map((asset) => {
+          {filteredAssets.map((asset) => {
             const Icon = getAssetIcon(asset.asset_type)
             return (
               <Card key={asset.id}>

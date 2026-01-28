@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
@@ -25,6 +25,8 @@ import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { TermFormDialog } from '@/components/glossary/TermFormDialog'
+import { useClientFilter } from '@/hooks/useClientFilter'
+import type { GlossaryTerm } from '@/api/modules/glossary'
 
 export default function Glossary() {
   const nav = useSafeIntlayer('nav')
@@ -41,26 +43,34 @@ export default function Glossary() {
   const { toast } = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
 
-  const [search, setSearch] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState<string>('')
-  const [statusFilter, setStatusFilter] = useState<string>('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingTerm, setEditingTerm] = useState<string | null>(null)
 
-  const loadData = useCallback(async () => {
-    await Promise.all([
-      fetchTerms({
-        search: search || undefined,
-        category_id: categoryFilter || undefined,
-        status: statusFilter || undefined,
-      }),
-      fetchCategories(),
-    ])
-  }, [fetchTerms, fetchCategories, search, categoryFilter, statusFilter])
+  // Client-side filtering
+  const {
+    filtered: filteredTerms,
+    search,
+    setSearch,
+    filterValues,
+    setFilter,
+  } = useClientFilter<GlossaryTerm>(terms, {
+    searchFn: (item, query) =>
+      item.name.toLowerCase().includes(query) ||
+      item.definition.toLowerCase().includes(query),
+    filters: {
+      category: (item, value) => item.category_id === value,
+      status: (item, value) => item.status === value,
+    },
+  })
+
+  const loadData = async () => {
+    await Promise.all([fetchTerms(), fetchCategories()])
+  }
 
   useEffect(() => {
     loadData()
-  }, [loadData])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleDelete = async (id: string) => {
     const confirmed = await confirm({
@@ -141,7 +151,7 @@ export default function Glossary() {
             className="pl-10"
           />
         </div>
-        <Select value={categoryFilter || 'all'} onValueChange={(v) => setCategoryFilter(v === 'all' ? '' : v)}>
+        <Select value={filterValues.category || 'all'} onValueChange={(v) => setFilter('category', v === 'all' ? '' : v)}>
           <SelectTrigger className="w-[200px]">
             <Filter className="mr-2 h-4 w-4" />
             <SelectValue placeholder={str(glossary.filterByCategory)} />
@@ -155,7 +165,7 @@ export default function Glossary() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
+        <Select value={filterValues.status || 'all'} onValueChange={(v) => setFilter('status', v === 'all' ? '' : v)}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder={str(glossary.filterByStatus)} />
           </SelectTrigger>
@@ -169,7 +179,7 @@ export default function Glossary() {
       </div>
 
       {/* Terms List */}
-      {terms.length === 0 ? (
+      {filteredTerms.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <BookOpen className="h-16 w-16 text-muted-foreground/50 mb-4" />
@@ -185,7 +195,7 @@ export default function Glossary() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {terms.map((term) => (
+          {filteredTerms.map((term) => (
             <Card key={term.id}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">

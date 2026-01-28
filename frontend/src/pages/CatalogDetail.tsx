@@ -22,6 +22,8 @@ import { useToast } from '@/hooks/use-toast'
 import { str } from '@/lib/intlayer-utils'
 import { Comments } from '@/components/collaboration/Comments'
 import { ColumnMappingDialog } from '@/components/catalog/ColumnMappingDialog'
+import { AssetFormDialog } from '@/components/catalog/AssetFormDialog'
+import { listSources, type Source } from '@/api/modules/sources'
 
 export default function CatalogDetail() {
   const { id } = useParams<{ id: string }>()
@@ -40,6 +42,8 @@ export default function CatalogDetail() {
 
   const [mappingDialogOpen, setMappingDialogOpen] = useState(false)
   const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [sources, setSources] = useState<Source[]>([])
 
   useEffect(() => {
     if (!id) return
@@ -47,6 +51,8 @@ export default function CatalogDetail() {
     const loadData = async () => {
       try {
         await Promise.all([fetchAsset(id), fetchTerms()])
+        const sourcesRes = await listSources()
+        setSources(sourcesRes.data)
       } catch {
         toast({
           title: 'Error',
@@ -201,7 +207,7 @@ export default function CatalogDetail() {
           </div>
         </div>
 
-        <Button variant="outline">
+        <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
           <Edit className="mr-2 h-4 w-4" />
           {common.edit}
         </Button>
@@ -398,6 +404,18 @@ export default function CatalogDetail() {
         columnId={selectedColumnId}
         terms={terms}
         onMap={handleMapColumn}
+      />
+
+      {/* Edit Asset Dialog */}
+      <AssetFormDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        assetId={id}
+        sources={sources}
+        onSuccess={() => {
+          fetchAsset(id!)
+          setEditDialogOpen(false)
+        }}
       />
     </div>
   )
