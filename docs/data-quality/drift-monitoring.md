@@ -198,6 +198,21 @@ Configure automated actions when drift is detected:
 
 ## Monitor Configuration Reference
 
+### Alert Threshold Configuration (Dashboard Feature)
+
+> **Note**: The following alert threshold settings are **dashboard-specific features**, not truthound library parameters. These settings control how the dashboard generates and categorizes alerts based on drift detection results from `th.compare()`.
+
+| Parameter | Description | Default | Range |
+|-----------|-------------|---------|-------|
+| **Alert on Drift** | Enable/disable alert generation when drift is detected | Enabled | On/Off |
+| **Critical Threshold** | Drift percentage threshold for critical severity alerts | 0.5 (50%) | 0.0-1.0 |
+| **High Threshold** | Drift percentage threshold for high severity alerts | 0.3 (30%) | 0.0-1.0 |
+
+These thresholds determine alert severity based on the drift percentage returned by truthound:
+- **Critical**: Drift percentage ≥ Critical Threshold
+- **High**: Drift percentage ≥ High Threshold (but < Critical)
+- **Medium**: Drift detected but below High Threshold
+
 ### Schedule Configuration
 
 Monitors support multiple scheduling approaches:
@@ -210,14 +225,17 @@ Monitors support multiple scheduling approaches:
 
 ### Detection Method Selection
 
-Choose detection method based on data characteristics:
+Choose detection method based on data characteristics (14 methods available in truthound v1.2.9+):
 
 | Data Type | Recommended Methods |
 |-----------|-------------------|
-| Continuous numerical | ks, wasserstein, cvm |
-| Categorical | chi2, psi |
+| Continuous numerical | ks, psi, wasserstein, cvm, anderson, energy |
+| Categorical | chi2, js, hellinger, bhattacharyya, tv |
 | Mixed | auto (automatic selection) |
-| High-dimensional | js, kl |
+| High-dimensional | mmd, js, kl |
+| Bounded metric needed | hellinger, tv (both 0-1 range) |
+
+> **Note**: See [Drift Detection](drift.md) for detailed descriptions of all 14 statistical methods.
 
 ## API Reference
 

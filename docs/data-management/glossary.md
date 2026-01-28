@@ -41,6 +41,25 @@ Filter by organizational category to narrow the term list.
 #### Status Filter
 Filter by lifecycle status (draft, approved, deprecated).
 
+### Category Hierarchy Breadcrumb
+
+When terms are assigned to categories with parent-child relationships, the term listing displays a breadcrumb showing the full category path:
+
+```
+Root Category > Parent Category > Current Category
+```
+
+This hierarchical display helps users understand the term's organizational context at a glance.
+
+## Tabs Navigation
+
+The Glossary page provides two main tabs:
+
+| Tab | Description |
+|-----|-------------|
+| **Terms** | List and manage business terms |
+| **Categories** | Manage category hierarchy with tree visualization |
+
 ## Term Creation
 
 ### Adding a New Term
@@ -82,7 +101,46 @@ Displays fundamental term information:
 
 ### Relationships Tab
 
-Manages semantic relationships between terms:
+The Relationships tab provides a comprehensive interface for managing all types of semantic relationships between terms. Relationships are grouped by type and displayed in a 2x2 grid layout.
+
+#### Relationship Types
+
+| Type | Icon | Description |
+|------|------|-------------|
+| **Parent** | ↑ | Broader/higher-level terms that encompass this term |
+| **Child** | ↓ | Narrower/more specific terms under this term |
+| **Synonym** | ⇆ | Alternative names for the same concept |
+| **Related** | ↔ | Conceptually connected but not hierarchical |
+
+#### Adding Relationships
+
+1. Click the **Add Relationship** button
+2. Select the relationship type (Parent, Child, Synonym, or Related)
+3. Choose the target term from the dropdown
+4. Preview the relationship before saving
+5. Click **Save** to create the relationship
+
+#### Relationship Validation
+
+The system prevents:
+- **Self-reference**: A term cannot have a relationship with itself
+- **Duplicates**: The same relationship cannot be created twice
+
+#### Managing Relationships
+
+Each relationship card displays:
+- Relationship type badge with color coding
+- Target term name (clickable link to navigate)
+- Delete button to remove the relationship
+
+#### Parent/Child Hierarchy
+
+Parent and Child relationships enable building term hierarchies:
+
+- **Parent terms**: Broader concepts (e.g., "Financial Metric" is parent of "Revenue")
+- **Child terms**: More specific concepts (e.g., "Monthly Revenue" is child of "Revenue")
+
+This hierarchy complements the category system by providing semantic relationships between terms themselves.
 
 #### Synonyms
 Terms that represent the same concept with different names:
@@ -176,6 +234,84 @@ Related terms represent conceptual connections:
 - **Navigation**: Click any related term to view its detail page
 - **Use Case**: "Order" may be related to "Customer" and "Product"
 
+## Category Management
+
+The Categories tab provides a dedicated interface for managing the category hierarchy.
+
+### Category Tree Visualization
+
+Categories are displayed in an expandable tree structure:
+
+- **Folder icons** indicate category nodes
+- **Expand/Collapse buttons** control visibility of child categories
+- **Term count badges** show how many terms belong to each category
+- **Subcategory count badges** show the number of child categories
+
+### Tree Controls
+
+| Control | Action |
+|---------|--------|
+| **Expand** | Show all categories at once |
+| **Collapse** | Hide all nested categories |
+| **Add Category** | Create a new category (root or child) |
+
+### Category Operations
+
+#### Creating Categories
+
+1. Click **Add Category** button
+2. Enter the category name (required)
+3. Add an optional description
+4. Select a parent category (or leave as "No parent" for root level)
+5. Click **Save**
+
+#### Editing Categories
+
+1. Hover over a category row to reveal the action menu
+2. Click the menu icon (⋮)
+3. Select **Edit Category**
+4. Modify name, description, or parent
+5. Click **Save**
+
+Note: The system prevents circular references when changing parent categories.
+
+#### Deleting Categories
+
+1. Access the action menu for a category
+2. Select **Delete Category**
+3. Confirm in the dialog
+
+**Warning**: Deleting a category will set all terms in that category to uncategorized. Child categories will also need to be handled separately.
+
+#### Creating Subcategories
+
+To add a category as a child of an existing category:
+
+1. Hover over the parent category
+2. Click the action menu (⋮)
+3. Select **Add Category**
+4. The parent is automatically pre-selected
+5. Enter the subcategory details and save
+
+### Hierarchical Organization
+
+Categories support unlimited nesting depth:
+
+```
+Business Terms
+├── Financial Metrics
+│   ├── Revenue Metrics
+│   └── Cost Metrics
+├── Customer Terms
+│   ├── Demographics
+│   └── Behavior
+└── Product Terms
+    ├── Catalog
+    └── Pricing
+```
+
+Each level in the hierarchy helps organize terms into logical groupings that reflect your organization's taxonomy.
+
 ## Integration with Data Catalog
 
 The Business Glossary integrates with the Data Catalog through column-term mappings:
@@ -216,8 +352,9 @@ When term definitions require modification:
 | `/glossary/terms/{id}` | PUT | Update term metadata |
 | `/glossary/terms/{id}` | DELETE | Delete a term |
 | `/glossary/terms/{id}/history` | GET | Retrieve term modification history |
-| `/glossary/terms/{id}/relationships` | POST | Add term relationship |
-| `/glossary/terms/{id}/relationships/{rel_id}` | DELETE | Remove term relationship |
+| `/glossary/terms/{id}/relationships` | GET | List term relationships |
+| `/glossary/relationships` | POST | Create term relationship |
+| `/glossary/relationships/{id}` | DELETE | Remove term relationship |
 | `/glossary/categories` | GET | List available categories |
 | `/glossary/categories` | POST | Create a new category |
 | `/glossary/categories/{id}` | GET | Retrieve category details |
@@ -267,3 +404,22 @@ Categories support parent-child relationships for hierarchical organization:
 ```
 
 The `full_path` field in category responses shows the complete hierarchy path (e.g., "Business Metrics > Financial Metrics").
+
+### Relationship Creation Request
+
+```json
+{
+  "source_term_id": "term-uuid-1",
+  "target_term_id": "term-uuid-2",
+  "relationship_type": "parent"
+}
+```
+
+### Relationship Types
+
+| Type | Description |
+|------|-------------|
+| `synonym` | Terms represent the same concept |
+| `related` | Terms are conceptually connected |
+| `parent` | Target term is a broader concept |
+| `child` | Target term is a narrower concept |

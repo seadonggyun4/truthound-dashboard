@@ -66,6 +66,7 @@ Truthound Dashboard is engineered as a single-process application that consolida
 | **Security** | Fernet | Symmetric encryption for connection credentials | `core/encryption.py` |
 | **Schemas** | Pydantic 2.x | Request and response validation | `schemas/` |
 | **Translation** | AI Providers | Multi-language translation CLI | `translate/` |
+| **Enterprise Sampling** | truthound 1.2.10+ | Large-scale sampling strategies (Block, Multi-Stage, Column-Aware, Progressive) | `core/enterprise_sampling.py` |
 
 ### Frontend Components
 
@@ -112,6 +113,8 @@ truthound-dashboard/
 │   │   ├── maintenance.py       # Data retention and cleanup
 │   │   ├── plugins.py           # Plugin marketplace
 │   │   ├── triggers.py          # Event trigger system
+│   │   ├── quality_reporter.py  # Quality scoring and reporting
+│   │   ├── enterprise_sampling.py  # Enterprise-scale sampling API
 │   │   └── health.py            # Health check endpoint
 │   │
 │   ├── core/                    # Business logic layer
@@ -133,6 +136,8 @@ truthound-dashboard/
 │   │   │   ├── markdown_reporter.py
 │   │   │   ├── pdf_reporter.py
 │   │   │   └── junit_reporter.py
+│   │   ├── quality_reporter.py  # Quality scoring service
+│   │   ├── enterprise_sampling.py  # Enterprise-scale sampling strategies
 │   │   └── phase5/              # Glossary and catalog services
 │   │
 │   ├── db/                      # Database layer
@@ -146,6 +151,7 @@ truthound-dashboard/
 │   │   ├── drift.py
 │   │   ├── glossary.py
 │   │   ├── catalog.py
+│   │   ├── enterprise_sampling.py  # Enterprise sampling request/response models
 │   │   └── validators/          # 150+ validator definitions
 │   │
 │   ├── translate/               # AI translation subsystem
@@ -249,6 +255,8 @@ GET/POST /catalog/assets        Data catalog
 GET/POST /reports               Report generation
 GET/POST /model-monitoring      ML model monitoring
 GET/POST /plugins               Plugin management
+GET/POST /quality/*             Quality scoring and reporting
+GET/POST /sampling/*            Enterprise sampling operations
 ```
 
 ## Design Principles

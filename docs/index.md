@@ -74,8 +74,11 @@ Translate the UI to any language using OpenAI, Anthropic, Ollama, or Mistral wit
 ### Data Quality
 - [Drift Detection](./data-quality/drift.md) - Distribution comparison
 - [Drift Monitoring](./data-quality/drift-monitoring.md) - Continuous drift monitoring
+- [Schema Watcher](./data-quality/schema-watcher.md) - Continuous schema monitoring
 - [Privacy & PII](./data-quality/privacy.md) - PII detection and masking
 - [Data Lineage](./data-quality/lineage.md) - Data flow visualization
+- [Quality Reporter](./data-quality/quality-reporter.md) - Quality scoring and reporting
+- [Enterprise Sampling](./data-quality/enterprise-sampling.md) - Large-scale sampling (100M+ rows)
 
 ### ML & Monitoring
 - [Anomaly Detection](./ml-monitoring/anomaly.md) - ML-based outlier detection
@@ -89,6 +92,8 @@ Translate the UI to any language using OpenAI, Anthropic, Ollama, or Mistral wit
 - [Advanced Notifications](./system/notifications-advanced.md) - Routing, deduplication, escalation
 - [Reports](./system/reports.md) - Multi-format report generation
 - [Plugins](./system/plugins.md) - Extensibility and custom extensions
+- [Storage Tiering](./system/storage-tiering.md) - Data lifecycle management with composite policies
+- [Observability](./system/observability.md) - Audit logging, metrics, and distributed tracing
 - [Maintenance](./system/maintenance.md) - System maintenance and cleanup
 
 ## Live Demo

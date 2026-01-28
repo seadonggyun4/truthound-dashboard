@@ -123,22 +123,6 @@ Filter nodes by anomaly status to focus on:
 3. Confirm deletion
 4. Node and all associated edges are removed
 
-### Auto-Discovery
-
-The system can automatically discover lineage relationships:
-
-1. Click the **Auto-Discover** button
-2. System analyzes data sources and catalogs
-3. Discovered relationships are added to the graph
-4. Review and validate auto-discovered lineage
-
-Auto-discovery analyzes:
-
-- Column name similarities
-- Data type compatibility
-- Value distributions
-- Foreign key relationships
-
 ## Impact Analysis
 
 ### Initiating Impact Analysis
@@ -229,6 +213,61 @@ Clicking an edge displays:
 - Impact analysis considers drift propagation
 - Root cause analysis incorporates lineage context
 
+## Truthound Integration
+
+The Data Lineage module leverages truthound's native lineage tracking capabilities from `truthound.lineage`:
+
+### Core Components
+
+| Component | Module | Purpose |
+|-----------|--------|---------|
+| LineageTracker | `truthound.lineage.LineageTracker` | Automatic lineage capture and tracking |
+| ImpactAnalyzer | `truthound.lineage.ImpactAnalyzer` | Impact analysis with propagation |
+| OpenLineage | `truthound.lineage.OpenLineageEmitter` | OpenLineage standard event emission |
+
+### LineageTracker
+
+The `LineageTracker` provides automatic lineage capture for data operations:
+
+| Feature | Description |
+|---------|-------------|
+| Auto-tracking | Automatically captures read/write operations |
+| Schema tracking | Records schema changes with lineage events |
+| Operation context | Captures transformation metadata |
+| Graph building | Constructs complete lineage graphs |
+
+Configuration options:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| enable_auto_tracking | Enable automatic operation tracking | true |
+| track_schema_changes | Record schema evolution | true |
+| track_row_counts | Capture row count metrics | true |
+| storage_backend | Persistence backend | "sqlite" |
+
+### ImpactAnalyzer
+
+The `ImpactAnalyzer` provides sophisticated impact analysis capabilities:
+
+| Analysis Type | Description |
+|---------------|-------------|
+| Downstream Impact | What entities are affected by changes |
+| Upstream Lineage | What sources feed an entity |
+| Change Propagation | How changes cascade through the graph |
+| Risk Assessment | Severity scoring for impacted entities |
+
+### OpenLineage Support
+
+The module supports the OpenLineage standard for lineage interoperability:
+
+| Event Type | Description |
+|------------|-------------|
+| RunEvent | Job execution start/complete/fail |
+| DatasetEvent | Dataset read/write operations |
+| JobEvent | Job metadata and facets |
+
+This enables integration with external lineage systems like Marquez, Datahub, and Apache Atlas.
+
 ## Best Practices
 
 ### Lineage Documentation
@@ -254,7 +293,6 @@ Clicking an edge displays:
 | `/lineage/graph` | GET | Retrieve lineage graph |
 | `/lineage/nodes` | POST | Create a new node |
 | `/lineage/nodes/{id}` | DELETE | Delete a node |
-| `/lineage/auto-discover` | POST | Execute auto-discovery |
 | `/lineage/nodes/{id}/impact-analysis` | POST | Execute impact analysis |
 | `/lineage/nodes/{id}/columns` | GET | Retrieve column lineage |
 | `/lineage/edges/{id}/column-mappings` | GET | Retrieve column mappings |

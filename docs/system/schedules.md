@@ -256,6 +256,80 @@ Access execution history for a schedule:
 | **Issues Found** | Count of issues identified |
 | **Triggered By** | Automatic or manual |
 
+## Truthound Integration
+
+The Schedules module leverages truthound's native trigger system from `truthound.checkpoint.triggers`:
+
+### Core Trigger Types
+
+| Trigger Type | Truthound Module | Description |
+|--------------|------------------|-------------|
+| Schedule | `truthound.checkpoint.triggers.ScheduleTrigger` | Time interval-based execution |
+| Cron | `truthound.checkpoint.triggers.CronTrigger` | Cron expression scheduling |
+| Event | `truthound.checkpoint.triggers.EventTrigger` | External event-driven execution |
+| FileWatch | `truthound.checkpoint.triggers.FileWatchTrigger` | File system change detection |
+
+### ScheduleTrigger
+
+The `ScheduleTrigger` provides flexible interval-based scheduling:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| interval_seconds | Execution interval in seconds | 0 |
+| interval_minutes | Execution interval in minutes | 0 |
+| interval_hours | Execution interval in hours | 0 |
+| start_time | First execution time | None (immediate) |
+| end_time | Last execution time | None (unlimited) |
+| run_on_weekdays | Days to run (0=Mon, 6=Sun) | None (all days) |
+| timezone | Timezone for scheduling | None (system default) |
+
+### CronTrigger
+
+The `CronTrigger` supports standard cron expressions with optional seconds field:
+
+| Format | Fields | Example |
+|--------|--------|---------|
+| 5-field | minute hour day month weekday | `0 9 * * *` |
+| 6-field | second minute hour day month weekday | `30 0 9 * * *` |
+
+### EventTrigger
+
+The `EventTrigger` enables event-driven execution with filtering and batching:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| event_type | Event type filter | "" |
+| event_filter | Filter conditions dictionary | {} |
+| debounce_seconds | Minimum time between executions | 0 |
+| batch_events | Enable event batching | false |
+| batch_window_seconds | Batch collection window | 30 |
+
+### FileWatchTrigger
+
+The `FileWatchTrigger` monitors file system changes:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| paths | Directories to monitor | [] |
+| patterns | File glob patterns | ["*"] |
+| recursive | Include subdirectories | true |
+| events | Event types (modified, created, deleted) | ["modified"] |
+| ignore_patterns | Patterns to exclude | [] |
+| hash_check | Content-based change detection | true |
+| poll_interval_seconds | Polling frequency | 5 |
+
+### Trigger Configuration
+
+Common configuration options for all triggers:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| enabled | Trigger activation state | true |
+| max_runs | Maximum execution count (0=unlimited) | 0 |
+| run_immediately | Execute on trigger start | false |
+| catch_up | Execute missed runs | false |
+| max_concurrent | Maximum parallel executions | 1 |
+
 ## Best Practices
 
 ### Schedule Design

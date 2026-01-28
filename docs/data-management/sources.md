@@ -199,7 +199,8 @@ Sensitive configuration fields are masked in the user interface by default. User
 | `/validations/sources/{id}/validate` | POST | Execute validation |
 | `/sources/{id}/learn` | POST | Generate schema automatically |
 | `/sources/{id}/schema` | GET | Retrieve current schema |
-| `/sources/{id}/profile` | POST | Generate data profile |
+| `/sources/{id}/profile` | POST | Generate basic data profile |
+| `/sources/{id}/profile/advanced` | POST | Generate data profile with advanced configuration |
 | `/scans/sources/{id}/scan` | POST | Scan for PII |
 | `/masks/sources/{id}/mask` | POST | Mask sensitive data |
 | `/drift/compare` | POST | Compare two sources for drift |
@@ -227,18 +228,17 @@ Wraps `th.learn()` for automatic schema generation.
 
 ### Validation (`/validations/sources/{id}/validate`)
 
-Extends `th.check()` with column filtering and custom validators.
+Wraps `th.check()` for data validation with configurable parameters.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `validators` | `list[str]` | `null` | Specific validators to run |
-| `validator_config` | `dict` | `null` | Configuration for validators |
-| `columns` | `list[str]` | `null` | Specific columns to validate |
+| `validator_config` | `dict` | `null` | Per-validator configuration (truthound 2.x format) |
 | `min_severity` | `str` | `null` | Minimum severity to report (low/medium/high/critical) |
-| `strict` | `bool` | `false` | Raise exception on validation failures |
 | `parallel` | `bool` | `false` | Enable parallel execution |
 | `max_workers` | `int` | `null` | Max threads for parallel execution |
 | `pushdown` | `bool` | `null` | Enable query pushdown for SQL sources |
+| `schema` | `str` | `null` | Path to schema YAML file |
 | `auto_schema` | `bool` | `false` | Auto-learn schema if not present |
 | `custom_validators` | `list` | `null` | Custom validator configurations |
 
@@ -246,7 +246,9 @@ Extends `th.check()` with column filtering and custom validators.
 ```json
 {
   "validators": ["null", "duplicate", "range"],
-  "columns": ["id", "email", "age"],
+  "validator_config": {
+    "range": {"columns": {"age": {"min": 0, "max": 150}}}
+  },
   "min_severity": "medium",
   "parallel": true,
   "max_workers": 4
@@ -255,54 +257,75 @@ Extends `th.check()` with column filtering and custom validators.
 
 ### PII Scanning (`/scans/sources/{id}/scan`)
 
-Wraps `th.scan()` with post-scan filtering for regulation compliance and confidence thresholds.
+Wraps `th.scan()` for PII detection.
 
-> **Note**: These parameters are applied as post-scan filters. The underlying `th.scan()` performs a full scan, and results are filtered based on the specified criteria.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `columns` | `list[str]` | `null` | Filter results to specific columns |
-| `regulations` | `list[str]` | `null` | Filter by regulations (gdpr, ccpa, lgpd) |
-| `min_confidence` | `float` | `0.8` | Minimum confidence threshold (0.0-1.0) |
-
-**Example Request:**
-```json
-{
-  "columns": ["email", "ssn", "phone"],
-  "regulations": ["gdpr", "ccpa"],
-  "min_confidence": 0.9
-}
-```
-
-### Data Masking (`/masks/sources/{id}/mask`)
-
-Extends `th.mask()` with output format selection.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `columns` | `list[str]` | `null` | Columns to mask (auto-detect if null) |
-| `strategy` | `str` | `"redact"` | Masking strategy (redact/hash/fake) |
-| `output_format` | `str` | `"csv"` | Output format (csv/parquet/json) |
-
-**Example Request:**
-```json
-{
-  "columns": ["ssn", "credit_card", "email"],
-  "strategy": "hash",
-  "output_format": "parquet"
-}
-```
-
-### Data Profiling (`/sources/{id}/profile`)
-
-Wraps `th.profile()` for data profiling and statistics generation.
-
-> **Note**: The underlying `th.profile()` function only accepts `(data, source)` parameters. Advanced configuration options such as sampling strategies, pattern detection settings, and correlation analysis are NOT supported by the truthound library. The profiling is executed with default settings.
+> **Note**: truthound's `th.scan()` does not support configuration parameters.
+> The scan automatically runs on all columns with default settings, detecting all supported PII types.
 
 **Example Request:**
 ```json
 {}
 ```
+
+### Data Masking (`/masks/sources/{id}/mask`)
+
+Wraps `th.mask()` for data protection.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `columns` | `list[str]` | `null` | Columns to mask (auto-detect if null) |
+| `strategy` | `str` | `"redact"` | Masking strategy (redact/hash/fake) |
+
+> **Note**: truthound's `th.mask()` does not support output format selection.
+> The output is always generated in CSV format.
+
+**Example Request:**
+```json
+{
+  "columns": ["ssn", "credit_card", "email"],
+  "strategy": "hash"
+}
+```
+
+### Data Profiling (`/sources/{id}/profile`)
+
+Wraps `th.profile()` for basic data profiling with default settings.
+
+**Example Request:**
+```json
+{}
+```
+
+### Advanced Data Profiling (`/sources/{id}/profile/advanced`)
+
+Uses truthound's `ProfilerConfig` for fine-grained control over profiling behavior.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `sample_size` | `int` | `null` | Maximum rows to sample (null for all rows) |
+| `random_seed` | `int` | `42` | Random seed for reproducible sampling |
+| `include_patterns` | `bool` | `true` | Enable pattern detection (email, phone, uuid, etc.) |
+| `include_correlations` | `bool` | `false` | Calculate column correlations |
+| `include_distributions` | `bool` | `true` | Include value distribution histograms |
+| `top_n_values` | `int` | `10` | Number of top values to return per column |
+| `pattern_sample_size` | `int` | `1000` | Sample size for pattern detection |
+| `correlation_threshold` | `float` | `0.7` | Minimum correlation to report |
+| `min_pattern_match_ratio` | `float` | `0.8` | Minimum match ratio for pattern detection |
+| `n_jobs` | `int` | `1` | Number of parallel jobs for profiling |
+
+**Example Request:**
+```json
+{
+  "sample_size": 50000,
+  "include_patterns": true,
+  "include_correlations": true,
+  "include_distributions": true,
+  "top_n_values": 20,
+  "n_jobs": 4
+}
+```
+
+> **Note**: Advanced profiling requires truthound with ProfilerConfig support. If not available, the API returns a 501 error.
 
 The profile response includes:
 - Column types and inferred semantic types
@@ -311,6 +334,7 @@ The profile response includes:
 - String length statistics
 - Detected patterns (email, phone, UUID, etc.)
 - Value distribution histograms
+- Column correlations (when `include_correlations` is true)
 
 ### Drift Detection (`/drift/compare`)
 

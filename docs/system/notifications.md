@@ -1,321 +1,550 @@
 # Notifications
 
-The Notifications module provides multi-channel alert delivery capabilities, enabling users to configure notification channels, define routing rules, and monitor delivery status.
-
-## Overview
-
-The notification system delivers alerts through multiple communication channels including Slack, email, webhooks, and various incident management platforms. Configurable rules determine which events trigger notifications and to which channels they are routed.
-
-## Notifications Interface
-
-### Statistics Dashboard
-
-The interface displays notification delivery metrics:
-
-| Metric | Description |
-|--------|-------------|
-| **24h Total** | Notifications sent in last 24 hours |
-| **Success Rate** | Percentage of successful deliveries |
-| **Sent** | Successfully delivered notifications |
-| **Failed** | Failed delivery attempts |
-
-## Channels Tab
-
-### Channel Management
-
-The Channels tab manages notification delivery endpoints:
-
-| Column | Description |
-|--------|-------------|
-| **Name** | Channel identifier |
-| **Type** | Channel type (Slack, Email, etc.) |
-| **Status** | Active or inactive |
-| **Last Used** | Most recent notification delivery |
-| **Actions** | Test, edit, delete options |
-
-### Supported Channel Types
-
-| Type | Description | Required Configuration |
-|------|-------------|----------------------|
-| **Slack** | Slack workspace integration | Webhook URL |
-| **Email** | Email notifications | SMTP settings, recipients |
-| **Webhook** | Generic HTTP webhook | URL, method, headers |
-| **Discord** | Discord server integration | Webhook URL |
-| **Telegram** | Telegram bot notifications | Bot token, chat ID |
-| **PagerDuty** | PagerDuty incident creation | Integration key |
-| **OpsGenie** | OpsGenie alert creation | API key |
-| **Teams** | Microsoft Teams integration | Webhook URL |
-| **GitHub** | GitHub Issues/Discussions | Token, repository |
-
-### Creating a Channel
-
-1. Click **Add Channel**
-2. Select channel type
-3. Configure type-specific settings
-4. Save the channel
-
-#### Slack Configuration
-
-| Field | Description |
-|-------|-------------|
-| **Name** | Channel identifier |
-| **Webhook URL** | Slack incoming webhook URL |
-| **Channel** | Target channel (optional override) |
-| **Username** | Bot display name (optional) |
-| **Icon** | Bot icon URL or emoji (optional) |
+The Notifications module provides enterprise-grade alert delivery capabilities built upon the truthound library's checkpoint notification infrastructure. This document presents the architectural foundations, channel implementations, and operational guidelines for configuring multi-channel notification delivery.
+
+## 1. Introduction
+
+### 1.1 Overview
+
+The notification system serves as the communication layer between data quality events and operational teams. It transforms validation results, drift detections, and schema changes into actionable alerts delivered through preferred communication channels.
 
-#### Email Configuration
-
-| Field | Description |
-|-------|-------------|
-| **Name** | Channel identifier |
-| **SMTP Host** | Mail server hostname |
-| **SMTP Port** | Mail server port |
-| **Username** | SMTP authentication username |
-| **Password** | SMTP authentication password |
-| **From Address** | Sender email address |
-| **Recipients** | Comma-separated recipient addresses |
-| **Use TLS** | Enable TLS encryption |
-
-#### Webhook Configuration
-
-| Field | Description |
-|-------|-------------|
-| **Name** | Channel identifier |
-| **URL** | Webhook endpoint URL |
-| **Method** | HTTP method (POST, PUT) |
-| **Headers** | Custom HTTP headers (JSON) |
-| **Authentication** | Auth type and credentials |
-
-#### Discord Configuration
-
-| Field | Description |
-|-------|-------------|
-| **Name** | Channel identifier |
-| **Webhook URL** | Discord webhook URL |
-| **Username** | Bot display name (optional) |
-| **Avatar URL** | Bot avatar (optional) |
-
-#### Telegram Configuration
-
-| Field | Description |
-|-------|-------------|
-| **Name** | Channel identifier |
-| **Bot Token** | Telegram bot API token |
-| **Chat ID** | Target chat/group/channel ID |
+### 1.2 Architecture Foundation
 
-#### PagerDuty Configuration
-
-| Field | Description |
-|-------|-------------|
-| **Name** | Channel identifier |
-| **Integration Key** | PagerDuty integration key |
-| **Severity Mapping** | Map alert severity to PD severity |
+The notification system is built on truthound's `checkpoint.actions` module, which provides battle-tested implementations for various notification channels:
 
-#### OpsGenie Configuration
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    truthound-dashboard                          │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │                NotificationDispatcher                   │    │
+│  │  ┌──────────────────────────────────────────────────┐  │    │
+│  │  │             TruthoundNotificationAdapter          │  │    │
+│  │  └──────────────────────────────────────────────────┘  │    │
+│  └────────────────────────────────────────────────────────┘    │
+│                              │                                  │
+│                              ▼                                  │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │              truthound.checkpoint.actions               │    │
+│  │  ┌────────┐ ┌────────┐ ┌─────┐ ┌───────┐ ┌────────┐   │    │
+│  │  │ Slack  │ │ Email  │ │Teams│ │Discord│ │Telegram│   │    │
+│  │  └────────┘ └────────┘ └─────┘ └───────┘ └────────┘   │    │
+│  │  ┌──────────┐ ┌─────────┐ ┌────────┐ ┌────────┐       │    │
+│  │  │PagerDuty │ │OpsGenie │ │Webhook │ │ GitHub │       │    │
+│  │  └──────────┘ └─────────┘ └────────┘ └────────┘       │    │
+│  └────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-| Field | Description |
-|-------|-------------|
-| **Name** | Channel identifier |
-| **API Key** | OpsGenie API key |
-| **Tags** | Default tags for alerts |
-| **Priority Mapping** | Map alert severity to priority |
+### 1.3 Key Design Principles
 
-#### Microsoft Teams Configuration
+| Principle | Description |
+|-----------|-------------|
+| **Library-First** | All channel implementations delegate to truthound's checkpoint.actions |
+| **Unified Interface** | Consistent API across all channel types |
+| **Extensibility** | New channels can be added by wrapping truthound actions |
+| **Reliability** | Built-in retry, logging, and error handling |
 
-| Field | Description |
-|-------|-------------|
-| **Name** | Channel identifier |
-| **Webhook URL** | Teams incoming webhook URL |
+---
 
-#### GitHub Configuration
+## 2. Notification Channels
 
-| Field | Description |
-|-------|-------------|
-| **Name** | Channel identifier |
-| **Token** | GitHub personal access token |
-| **Repository** | Target repository (owner/repo) |
-| **Create Issues** | Create issues for alerts |
-| **Labels** | Default issue labels |
+### 2.1 Supported Channels
 
-### Testing a Channel
+The dashboard supports nine notification channels, each backed by a corresponding truthound action class:
 
-1. Click **Test** on the channel
-2. System sends a test notification
-3. Review success or failure result
-4. Troubleshoot configuration if failed
+| Channel | truthound Action Class | Protocol | Primary Use Case |
+|---------|------------------------|----------|------------------|
+| **Slack** | `SlackNotification` | Incoming Webhook | Team collaboration |
+| **Email** | `EmailNotification` | SMTP/SendGrid/SES | Formal notifications |
+| **Microsoft Teams** | `TeamsNotification` | Adaptive Cards | Enterprise communication |
+| **Discord** | `DiscordNotification` | Embed Webhook | Developer communities |
+| **Telegram** | `TelegramNotification` | Bot API | Mobile-first teams |
+| **PagerDuty** | `PagerDutyAction` | Events API v2 | On-call incident management |
+| **OpsGenie** | `OpsGenieAction` | REST API | Alert orchestration |
+| **Webhook** | `WebhookAction` | HTTP POST | Custom integrations |
+| **GitHub** | `GitHubAction` | Issues API | Development workflow |
 
-### Channel Status
+### 2.2 Channel Classification
 
-| Status | Description |
-|--------|-------------|
-| **Active** | Channel receiving notifications |
-| **Inactive** | Channel disabled, not receiving |
+Channels can be classified by their operational characteristics:
 
-Toggle channel status to enable or disable without deleting configuration.
+#### 2.2.1 By Delivery Semantics
 
-## Rules Tab
+| Category | Channels | Characteristics |
+|----------|----------|-----------------|
+| **Chat-based** | Slack, Teams, Discord, Telegram | Real-time, ephemeral, conversational |
+| **Incident Management** | PagerDuty, OpsGenie | On-call rotation, escalation, acknowledgment |
+| **Record-based** | Email, GitHub | Persistent, searchable, auditable |
+| **Integration** | Webhook | Customizable, system-to-system |
 
-### Rule Management
+#### 2.2.2 By Urgency Model
 
-Rules determine when notifications are sent:
+| Urgency Level | Recommended Channels | Rationale |
+|---------------|----------------------|-----------|
+| **Critical** | PagerDuty, OpsGenie, Slack (with mentions) | Immediate human attention required |
+| **High** | Slack, Teams, Telegram | Team awareness needed |
+| **Medium** | Email, GitHub | Documentation and tracking |
+| **Low** | Webhook, Email digest | Background awareness |
 
-| Column | Description |
-|--------|-------------|
-| **Name** | Rule identifier |
-| **Trigger** | Event that activates the rule |
-| **Channels** | Destination channels |
-| **Status** | Enabled or disabled |
-| **Actions** | Edit, delete options |
+---
 
-### Creating a Rule
+## 3. Channel Configuration
 
-1. Click **Add Rule**
-2. Configure rule properties:
-   - **Name**: Rule identifier
-   - **Trigger Condition**: Event type
-   - **Channels**: Target channels
-   - **Filters**: Additional conditions
-3. Save the rule
+### 3.1 Slack Channel
 
-### Trigger Conditions
+Slack integration uses the Incoming Webhook mechanism for message delivery.
 
-| Trigger | Description |
-|---------|-------------|
-| **validation_failed** | Validation found issues |
-| **critical_issues** | Critical severity issues detected |
-| **high_issues** | High severity issues detected |
-| **schedule_failed** | Scheduled validation error |
-| **drift_detected** | Drift monitoring alert |
-| **schema_changed** | Source schema modification |
+#### Configuration Parameters
 
-### Rule Filters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `webhook_url` | string | Yes | Slack Incoming Webhook URL |
+| `channel` | string | No | Channel override (#channel-name) |
+| `username` | string | No | Bot display name (default: "Truthound Dashboard") |
+| `icon_emoji` | string | No | Bot icon emoji (e.g., `:bar_chart:`) |
+| `mention_on_failure` | array | No | User IDs to mention on failure events |
 
-Optional filters to narrow rule scope:
+#### Message Format
 
-| Filter | Description |
-|--------|-------------|
-| **Source** | Specific data source |
-| **Severity** | Minimum severity level |
-| **Validator** | Specific validator type |
-
-### Rule Configuration Example
-
-**Rule: Critical Validation Failures**
-- **Trigger**: validation_failed
-- **Filter**: severity = critical
-- **Channels**: Slack-Urgent, PagerDuty
-
-## Logs Tab
-
-### Notification Logs
-
-View notification delivery history:
-
-| Column | Description |
-|--------|-------------|
-| **Timestamp** | When notification was sent |
-| **Channel** | Destination channel |
-| **Rule** | Triggering rule |
-| **Status** | Delivery status |
-| **Message** | Notification content preview |
-
-### Log Status
-
-| Status | Color | Description |
-|--------|-------|-------------|
-| **Sent** | Green | Successfully delivered |
-| **Failed** | Red | Delivery failed |
-| **Pending** | Yellow | Awaiting delivery |
-
-### Log Filtering
-
-Filter logs by delivery status:
-
-1. Click the **Status** filter
-2. Select status to filter
-3. View matching log entries
-
-### Failed Notification Investigation
-
-For failed notifications:
-
-1. Locate the failed entry in logs
-2. Review error message
-3. Check channel configuration
-4. Test channel connectivity
-5. Retry or fix configuration
-
-## Notification Content
-
-### Message Format
-
-Notifications include:
+Slack messages are delivered in Block Kit format providing rich, interactive content:
 
 | Section | Content |
 |---------|---------|
-| **Title** | Alert summary |
-| **Severity** | Issue severity level |
-| **Source** | Affected data source |
-| **Details** | Issue description |
-| **Timestamp** | When issue was detected |
-| **Link** | URL to view full details |
+| **Header** | Status emoji with checkpoint name and result |
+| **Context** | Data asset, run ID, timestamp |
+| **Statistics** | Issue counts by severity, pass rate |
+| **Details** | Issue summary (when enabled) |
 
-### Channel-Specific Formatting
+#### Webhook URL Acquisition
 
-| Channel | Format |
-|---------|--------|
-| **Slack** | Rich formatting with blocks |
-| **Email** | HTML with styling |
-| **Webhook** | JSON payload |
-| **Discord** | Embed with fields |
-| **Telegram** | Markdown formatting |
-| **PagerDuty** | Incident payload |
-| **OpsGenie** | Alert payload |
-| **Teams** | Adaptive card |
-| **GitHub** | Issue/comment body |
+1. Navigate to Slack workspace settings
+2. Access **Apps** → **Incoming Webhooks**
+3. Create new webhook for target channel
+4. Copy the generated URL
 
-## Best Practices
+### 3.2 Email Channel
 
-### Channel Configuration
+Email notifications support three provider backends: SMTP, SendGrid, and AWS SES.
+
+#### Configuration Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_address` | string | Yes | Sender email address |
+| `to_addresses` | array | Yes | Recipient email addresses |
+| `cc_addresses` | array | No | CC recipients |
+| `smtp_host` | string | Conditional | SMTP server hostname (if provider=smtp) |
+| `smtp_port` | integer | Conditional | SMTP server port (default: 587) |
+| `smtp_user` | string | Conditional | SMTP authentication username |
+| `smtp_password` | string | Conditional | SMTP authentication password |
+| `use_tls` | boolean | No | Enable TLS encryption (default: true) |
+| `use_ssl` | boolean | No | Enable SSL encryption (default: false) |
+| `provider` | string | No | Provider: smtp, sendgrid, ses (default: smtp) |
+| `api_key` | string | Conditional | API key for SendGrid/SES providers |
+
+#### Provider Selection
+
+| Provider | Use Case | Requirements |
+|----------|----------|--------------|
+| **SMTP** | Self-hosted, corporate mail servers | SMTP credentials |
+| **SendGrid** | Cloud-based, high volume | SendGrid API key |
+| **AWS SES** | AWS infrastructure integration | AWS credentials (env/IAM) |
+
+#### Message Format
+
+Email notifications include HTML formatting with:
+- Styled header with severity indicator
+- Tabular issue summary
+- Deep links to dashboard views
+
+### 3.3 Microsoft Teams Channel
+
+Teams integration uses Adaptive Cards for rich message formatting.
+
+#### Configuration Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `webhook_url` | string | Yes | Teams Incoming Webhook URL |
+| `channel` | string | No | Channel name for display purposes |
+| `include_details` | boolean | No | Include detailed statistics (default: true) |
+
+#### Webhook Configuration
+
+1. Open Teams channel settings
+2. Navigate to **Connectors**
+3. Add **Incoming Webhook**
+4. Configure name and icon
+5. Copy generated URL
+
+### 3.4 Discord Channel
+
+Discord integration delivers embedded messages through webhooks.
+
+#### Configuration Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `webhook_url` | string | Yes | Discord webhook URL |
+| `username` | string | No | Bot display name (default: "Truthound Bot") |
+| `avatar_url` | string | No | Bot avatar URL |
+| `embed_color` | integer | No | Embed color as hex integer (auto-calculated based on severity) |
+| `include_mentions` | array | No | Mentions to include (@here, role IDs) |
+
+### 3.5 Telegram Channel
+
+Telegram notifications are delivered via the Bot API.
+
+#### Configuration Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `bot_token` | string | Yes | Telegram Bot API token |
+| `chat_id` | string | Yes | Target chat/group/channel ID |
+| `parse_mode` | string | No | Parse mode: Markdown or HTML (default: Markdown) |
+| `disable_notification` | boolean | No | Send silently (default: false) |
+
+#### Bot Setup
+
+1. Contact @BotFather on Telegram
+2. Create new bot with `/newbot`
+3. Copy the API token
+4. Add bot to target chat/channel
+5. Obtain chat ID via bot API
+
+### 3.6 PagerDuty Channel
+
+PagerDuty integration creates incidents through the Events API v2.
+
+#### Configuration Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `routing_key` | string | Yes | PagerDuty Events API v2 routing key |
+| `severity` | string | No | Default severity: critical, error, warning, info |
+| `component` | string | No | Affected component name |
+| `group` | string | No | Alert grouping key |
+| `class_type` | string | No | Alert class/type classification |
+| `custom_details` | object | No | Additional custom details |
+
+#### Severity Mapping
+
+| Dashboard Severity | PagerDuty Severity | Behavior |
+|-------------------|-------------------|----------|
+| Critical | critical | Immediate page |
+| High | error | High-urgency notification |
+| Medium | warning | Low-urgency notification |
+| Low | info | Informational |
+
+### 3.7 OpsGenie Channel
+
+OpsGenie integration creates and manages alerts through the REST API.
+
+#### Configuration Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `api_key` | string | Yes | OpsGenie API key |
+| `region` | string | No | API region: us or eu (default: us) |
+| `priority` | string | No | Alert priority: P1-P5 (default: P3) |
+| `auto_priority` | boolean | No | Automatic priority mapping (default: true) |
+| `tags` | array | No | Alert tags |
+| `auto_close_on_success` | boolean | No | Auto-close on validation success (default: true) |
+
+#### Auto-Priority Mapping
+
+When `auto_priority` is enabled:
+
+| Validation Result | OpsGenie Priority |
+|-------------------|-------------------|
+| Critical issues | P1 |
+| High issues | P2 |
+| Medium issues | P3 |
+| Low issues | P4 |
+| Info only | P5 |
+
+### 3.8 Webhook Channel
+
+Generic webhook integration for custom system-to-system communication.
+
+#### Configuration Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `url` | string | Yes | Webhook endpoint URL |
+| `method` | string | No | HTTP method: GET, POST, PUT, PATCH (default: POST) |
+| `headers` | object | No | Custom HTTP headers |
+| `timeout` | integer | No | Request timeout in seconds (default: 30) |
+| `include_result` | boolean | No | Include full checkpoint result (default: true) |
+
+#### Payload Format
+
+Webhook payloads follow a standardized JSON structure:
+
+```json
+{
+  "checkpoint_name": "string",
+  "run_id": "string",
+  "status": "success | failure | error",
+  "data_asset": "string",
+  "statistics": {
+    "total_issues": 0,
+    "critical_issues": 0,
+    "high_issues": 0,
+    "medium_issues": 0,
+    "low_issues": 0,
+    "pass_rate": 100.0
+  },
+  "timestamp": "ISO8601 timestamp",
+  "dashboard_url": "string"
+}
+```
+
+### 3.9 GitHub Channel
+
+GitHub integration creates issues or check runs for data quality events.
+
+#### Configuration Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `token` | string | Yes | GitHub personal access token |
+| `owner` | string | Yes | Repository owner |
+| `repo` | string | Yes | Repository name |
+| `labels` | array | No | Default issue labels (default: ["data-quality"]) |
+| `assignees` | array | No | Issue assignees |
+| `create_check_run` | boolean | No | Create check run instead of issue (default: false) |
+
+#### Token Permissions
+
+Required token scopes:
+- `repo` - Full repository access
+- `issues:write` - Issue creation (if using issues)
+- `checks:write` - Check run creation (if using check runs)
+
+---
+
+## 4. Notification Rules
+
+### 4.1 Rule Fundamentals
+
+Notification rules define the conditions under which notifications are dispatched and to which channels.
+
+#### Rule Components
+
+| Component | Description |
+|-----------|-------------|
+| **Name** | Human-readable rule identifier |
+| **Condition** | Event type that triggers the rule |
+| **Channels** | Target notification channels |
+| **Source Filter** | Optional restriction to specific data sources |
+| **Status** | Active or inactive |
+
+### 4.2 Trigger Conditions
+
+Available trigger conditions align with dashboard event types:
+
+| Condition | Event Type | Description |
+|-----------|------------|-------------|
+| `validation_failed` | `ValidationFailedEvent` | Validation detected any issues |
+| `critical_issues` | `ValidationFailedEvent` | Critical severity issues found |
+| `high_issues` | `ValidationFailedEvent` | High or critical severity issues found |
+| `schedule_failed` | `ScheduleFailedEvent` | Scheduled validation error |
+| `drift_detected` | `DriftDetectedEvent` | Drift monitoring alert |
+| `schema_changed` | `SchemaChangedEvent` | Source schema modification |
+| `breaking_schema_change` | `SchemaChangedEvent` | Breaking schema changes detected |
+
+### 4.3 Rule Evaluation
+
+Rules are evaluated against incoming events:
+
+```
+Event arrives
+    │
+    ├─► Match event type to conditions
+    │     │
+    │     ├─► Filter by source_ids (if specified)
+    │     │     │
+    │     │     ├─► Filter by condition-specific logic
+    │     │     │     │
+    │     │     │     ├─► MATCH: Dispatch to configured channels
+    │     │     │     │
+    │     │     │     └─► NO MATCH: Skip rule
+    │     │     │
+    │     │     └─► Source not in filter: Skip rule
+    │     │
+    │     └─► Condition not matched: Skip rule
+```
+
+### 4.4 Rule Design Guidelines
+
+| Guideline | Rationale |
+|-----------|-----------|
+| **One purpose per rule** | Simplifies maintenance and troubleshooting |
+| **Use descriptive names** | Enables quick identification (e.g., "Critical Production Failures to PagerDuty") |
+| **Match urgency to channel** | Critical → PagerDuty, Low → Email |
+| **Avoid channel duplication** | Don't send same alert to multiple similar channels |
+
+---
+
+## 5. Notification Logs
+
+### 5.1 Log Structure
+
+Each notification delivery attempt creates a log entry:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique log identifier |
+| `channel_id` | string | Target channel |
+| `rule_id` | string | Triggering rule (optional) |
+| `event_type` | string | Event type that triggered notification |
+| `event_data` | object | Full event payload |
+| `status` | string | Delivery status |
+| `message` | string | Formatted notification content |
+| `error_message` | string | Error details (if failed) |
+| `created_at` | datetime | Log creation timestamp |
+| `sent_at` | datetime | Successful delivery timestamp |
+
+### 5.2 Delivery Status
+
+| Status | Description | Action |
+|--------|-------------|--------|
+| **sent** | Successfully delivered | None required |
+| **failed** | Delivery failed | Review error, fix configuration |
+| **pending** | Awaiting delivery | Check channel availability |
+
+### 5.3 Statistics
+
+The statistics dashboard provides delivery metrics:
+
+| Metric | Calculation | Target |
+|--------|-------------|--------|
+| **Total (24h)** | Count of all notifications | Varies by volume |
+| **Success Rate** | sent / total × 100 | > 95% |
+| **Sent** | Count of successful deliveries | - |
+| **Failed** | Count of failed deliveries | < 5% of total |
+
+---
+
+## 6. Integration with Advanced Notifications
+
+The basic notification system integrates seamlessly with the Advanced Notifications module (see [Advanced Notifications](./notifications-advanced.md)):
+
+### 6.1 Processing Pipeline Integration
+
+When Advanced Notifications are enabled:
+
+```
+Event → Dispatcher (use_truthound=True)
+    │
+    ├─► Routing: ActionRouter matches channels
+    │
+    ├─► Deduplication: Fingerprint-based suppression
+    │
+    ├─► Throttling: Rate limit enforcement
+    │
+    ├─► Channel Delivery: truthound actions
+    │
+    └─► Escalation: State machine for critical events
+```
+
+### 6.2 Fallback Behavior
+
+When Advanced Notifications are disabled or not configured:
+
+```
+Event → Dispatcher (use_truthound=False)
+    │
+    ├─► Legacy rule matching
+    │
+    └─► Direct channel delivery
+```
+
+---
+
+## 7. Operational Guidelines
+
+### 7.1 Channel Testing
+
+Before relying on notification channels in production:
+
+1. **Create channel** with complete configuration
+2. **Send test notification** via "Test" button
+3. **Verify delivery** in target system
+4. **Review formatting** for readability
+5. **Activate channel** only after successful test
+
+### 7.2 Credential Management
 
 | Practice | Recommendation |
 |----------|----------------|
-| **Test First** | Always test channels after creation |
-| **Descriptive Names** | Use clear, descriptive channel names |
-| **Backup Channels** | Configure redundant delivery paths |
-| **Credential Security** | Use secure credential storage |
+| **Environment variables** | Store sensitive values in environment |
+| **Secret rotation** | Rotate API keys and tokens periodically |
+| **Minimal permissions** | Request only required scopes |
+| **Audit access** | Review who has access to credentials |
 
-### Rule Design
+### 7.3 Alert Fatigue Prevention
 
-| Practice | Recommendation |
+| Strategy | Implementation |
 |----------|----------------|
-| **Specificity** | Create specific rules over broad ones |
-| **Severity Mapping** | Match rule urgency to channel urgency |
-| **Avoid Duplication** | Don't send same alert to multiple similar channels |
-| **Regular Review** | Periodically review and clean up rules |
+| **Severity alignment** | Match alert urgency to channel urgency |
+| **Deduplication** | Enable Advanced Notifications deduplication |
+| **Throttling** | Configure rate limits per channel |
+| **Rule specificity** | Narrow rules to relevant conditions |
+| **Regular review** | Audit and cleanup unused rules monthly |
 
-### Alert Fatigue Prevention
+### 7.4 Troubleshooting Failed Notifications
 
-| Practice | Recommendation |
-|----------|----------------|
-| **Threshold Tuning** | Adjust thresholds to reduce noise |
-| **Consolidation** | Group related alerts |
-| **Prioritization** | Reserve urgent channels for critical alerts |
-| **Working Hours** | Consider time-based routing |
+| Symptom | Possible Cause | Resolution |
+|---------|----------------|------------|
+| All notifications fail | Invalid credentials | Verify API keys/tokens |
+| Intermittent failures | Rate limiting | Check provider rate limits |
+| Delayed delivery | Network issues | Verify connectivity |
+| Missing content | Formatting error | Review message template |
+| Wrong channel | Misconfigured rule | Verify rule channel mappings |
 
-## API Reference
+---
+
+## 8. API Reference
+
+### 8.1 Channels API
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/notifications/channels` | GET | List notification channels |
-| `/notifications/channels` | POST | Create a notification channel |
-| `/notifications/channels/{id}` | PUT | Update a channel |
-| `/notifications/channels/{id}` | DELETE | Delete a channel |
-| `/notifications/channels/{id}/test` | POST | Test a channel |
+| `/notifications/channels` | POST | Create notification channel |
+| `/notifications/channels/types` | GET | Get available channel types with schemas |
+| `/notifications/channels/{id}` | GET | Get channel details |
+| `/notifications/channels/{id}` | PUT | Update channel configuration |
+| `/notifications/channels/{id}` | DELETE | Delete channel |
+| `/notifications/channels/{id}/test` | POST | Send test notification |
+
+### 8.2 Rules API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
 | `/notifications/rules` | GET | List notification rules |
-| `/notifications/rules` | POST | Create a notification rule |
-| `/notifications/rules/{id}` | PUT | Update a rule |
-| `/notifications/rules/{id}` | DELETE | Delete a rule |
+| `/notifications/rules` | POST | Create notification rule |
+| `/notifications/rules/conditions` | GET | Get valid rule conditions |
+| `/notifications/rules/{id}` | GET | Get rule details |
+| `/notifications/rules/{id}` | PUT | Update rule |
+| `/notifications/rules/{id}` | DELETE | Delete rule |
+
+### 8.3 Logs API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
 | `/notifications/logs` | GET | List notification logs |
-| `/notifications/stats` | GET | Retrieve notification statistics |
+| `/notifications/logs/{id}` | GET | Get log details |
+| `/notifications/logs/stats` | GET | Get delivery statistics |
+
+---
+
+## 9. References
+
+1. truthound Documentation - Checkpoint Actions. https://truthound.readthedocs.io/checkpoint/actions/
+2. Slack API - Incoming Webhooks. https://api.slack.com/messaging/webhooks
+3. PagerDuty Developer Documentation - Events API v2. https://developer.pagerduty.com/docs/events-api-v2/
+4. OpsGenie API Documentation. https://docs.opsgenie.com/docs/api-overview
+5. Microsoft Teams - Connectors Documentation. https://docs.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/

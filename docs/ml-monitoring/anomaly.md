@@ -285,6 +285,38 @@ The anomaly detection algorithms in the dashboard leverage truthound's ML module
 | Isolation Forest | `truthound.ml.anomaly_models.isolation_forest.IsolationForestDetector` |
 | Ensemble | `truthound.ml.anomaly_models.ensemble.EnsembleAnomalyDetector` |
 
+#### Statistical Anomaly Detector
+
+The `StatisticalAnomalyDetector` provides configurable methods for detecting point anomalies:
+
+| Method | Description | Configuration |
+|--------|-------------|---------------|
+| zscore | Standard deviation-based detection | `n_std`: threshold in standard deviations |
+| iqr | Interquartile range-based detection | `iqr_factor`: multiplier for IQR bounds |
+| mad | Median absolute deviation detection | `mad_factor`: multiplier for MAD |
+
+#### Isolation Forest Detector
+
+The `IsolationForestDetector` implements the isolation forest algorithm optimized for high-dimensional data:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| n_estimators | Number of isolation trees | 100 |
+| max_samples | Samples per tree | "auto" |
+| contamination | Expected anomaly proportion | "auto" |
+| columns | Target columns for detection | All numeric |
+
+#### Ensemble Anomaly Detector
+
+The `EnsembleAnomalyDetector` combines multiple detection methods with configurable voting:
+
+| Voting Mode | Description |
+|-------------|-------------|
+| majority | Anomaly if majority of detectors agree |
+| unanimous | Anomaly only if all detectors agree |
+| any | Anomaly if any detector flags it |
+| weighted | Weighted combination of detector scores |
+
 ### Anomaly Types
 
 Truthound classifies anomalies into the following types:

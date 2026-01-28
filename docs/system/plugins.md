@@ -1,10 +1,19 @@
 # Plugins
 
-The Plugins module provides an extensibility framework for adding custom validators, reporters, connectors, and transformers to the Truthound Dashboard ecosystem.
+The Plugins module provides an extensibility framework for adding custom validators and reporters to the Truthound Dashboard ecosystem.
 
 ## Overview
 
-The plugin system enables users to extend platform capabilities beyond built-in functionality. Through the marketplace, users can discover and install community-contributed plugins, or create custom extensions tailored to specific organizational requirements.
+The plugin system enables users to extend platform capabilities beyond built-in functionality. Users can discover and install plugins from the local registry, or create custom validators and reporters tailored to specific organizational data quality requirements.
+
+### Key Capabilities
+
+| Capability | Description |
+|------------|-------------|
+| **Custom Validators** | Define organization-specific validation rules using Python code |
+| **Custom Reporters** | Create tailored report templates using Jinja2 templating |
+| **Plugin Registry** | Manage installed plugins with enable/disable functionality |
+| **Dependency Tracking** | Visualize plugin dependencies |
 
 ## Plugins Interface
 
@@ -49,8 +58,8 @@ Filter by plugin category:
 |------|-------------|
 | **Validator** | Custom data validation logic |
 | **Reporter** | Custom report generation |
-| **Connector** | Custom data source connectors |
-| **Transformer** | Custom data transformation |
+
+> **Note**: Connector and Transformer types are reserved for future functionality.
 
 #### Status Filter
 
@@ -72,37 +81,15 @@ Click a plugin to view detailed information:
 | Section | Content |
 |---------|---------|
 | **Description** | Full functionality description |
-| **Version History** | Version changelog |
-| **Permissions** | Required system permissions |
-| **Security Level** | Security classification |
+| **Version** | Current version number |
 | **Dependencies** | Required dependencies |
 | **Author** | Plugin creator |
-| **Documentation** | Usage documentation |
-
-### Plugin Permissions
-
-Plugins may request various permissions:
-
-| Permission | Description |
-|------------|-------------|
-| **Read Data** | Access to data source content |
-| **Write Data** | Ability to modify data |
-| **Network Access** | External network connections |
-| **File System** | Local file system access |
-| **Configuration** | Access to system configuration |
-
-### Security Levels
-
-| Level | Description |
-|-------|-------------|
-| **Verified** | Audited by Truthound team |
-| **Community** | Community-contributed |
-| **Experimental** | Early development stage |
+| **Documentation** | Usage documentation (README) |
 
 ### Installing Plugins
 
-1. Locate the desired plugin
-2. Review permissions and security level
+1. Locate the desired plugin in the Marketplace
+2. Review the plugin description and dependencies
 3. Click **Install**
 4. Monitor installation progress
 5. Plugin becomes available after installation
@@ -278,38 +265,13 @@ Preview reporter output:
 3. View rendered output
 4. Adjust template as needed
 
-## Settings Tab
-
-### Plugin System Configuration
-
-Configure plugin system behavior:
-
-| Setting | Description |
-|---------|-------------|
-| **Auto-Update** | Automatically update plugins |
-| **Security Level Threshold** | Minimum security level to allow |
-| **Marketplace URL** | Custom marketplace endpoint |
-| **Local Plugin Path** | Local plugin directory |
-
-### Plugin Isolation
-
-Configure plugin security boundaries:
-
-| Setting | Description |
-|---------|-------------|
-| **Sandbox Mode** | Isolate plugin execution |
-| **Resource Limits** | CPU/memory constraints |
-| **Network Restrictions** | Allowed network access |
-| **Timeout** | Maximum execution time |
-
 ## Best Practices
 
 ### Plugin Selection
 
 | Practice | Recommendation |
 |----------|----------------|
-| **Review Permissions** | Understand what plugins access |
-| **Check Security Level** | Prefer verified plugins |
+| **Review Dependencies** | Understand plugin dependencies |
 | **Read Documentation** | Understand plugin functionality |
 | **Test First** | Test in non-production first |
 
@@ -333,20 +295,52 @@ Configure plugin security boundaries:
 
 ## API Reference
 
+### Plugin Management
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/plugins/marketplace` | GET | List marketplace plugins |
-| `/plugins/installed` | GET | List installed plugins |
+| `/plugins` | GET | List all plugins |
+| `/plugins` | POST | Register a new plugin |
+| `/plugins/search` | POST | Search plugins with filters |
+| `/plugins/stats` | GET | Retrieve marketplace statistics |
+| `/plugins/{id}` | GET | Get plugin details |
+| `/plugins/{id}` | PATCH | Update plugin metadata |
 | `/plugins/{id}/install` | POST | Install a plugin |
-| `/plugins/{id}` | DELETE | Uninstall a plugin |
+| `/plugins/{id}/uninstall` | POST | Uninstall a plugin |
 | `/plugins/{id}/enable` | POST | Enable a plugin |
 | `/plugins/{id}/disable` | POST | Disable a plugin |
-| `/plugins/statistics` | GET | Retrieve plugin statistics |
-| `/plugins/validators` | GET | List custom validators |
-| `/plugins/validators` | POST | Create custom validator |
-| `/plugins/validators/{id}` | PUT | Update custom validator |
-| `/plugins/validators/{id}` | DELETE | Delete custom validator |
-| `/plugins/reporters` | GET | List custom reporters |
-| `/plugins/reporters` | POST | Create custom reporter |
-| `/plugins/reporters/{id}` | PUT | Update custom reporter |
-| `/plugins/reporters/{id}` | DELETE | Delete custom reporter |
+| `/plugins/{id}/dependencies` | GET | Get plugin dependency graph |
+
+### Custom Validators
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/validators/custom` | GET | List custom validators |
+| `/validators/custom` | POST | Create custom validator |
+| `/validators/custom/categories` | GET | List validator categories |
+| `/validators/custom/template` | GET | Get validator code template |
+| `/validators/custom/test` | POST | Test validator code |
+| `/validators/custom/{id}` | GET | Get validator details |
+| `/validators/custom/{id}` | PATCH | Update custom validator |
+| `/validators/custom/{id}` | DELETE | Delete custom validator |
+
+### Custom Reporters
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/reporters/custom` | GET | List custom reporters |
+| `/reporters/custom` | POST | Create custom reporter |
+| `/reporters/custom/templates` | GET | Get reporter code templates |
+| `/reporters/custom/preview` | POST | Preview reporter output |
+| `/reporters/custom/{id}` | GET | Get reporter details |
+| `/reporters/custom/{id}` | PATCH | Update custom reporter |
+| `/reporters/custom/{id}` | DELETE | Delete custom reporter |
+| `/reporters/custom/{id}/generate` | POST | Generate report |
+| `/reporters/custom/{id}/download` | GET | Download generated report |
+
+### Plugin Documentation
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/plugins/{id}/documentation` | GET | Get plugin documentation |
+| `/plugins/{id}/documentation/render` | POST | Render documentation in format |

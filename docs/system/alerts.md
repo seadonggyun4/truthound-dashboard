@@ -1,10 +1,39 @@
-# Unified Alerts
+# Dashboard Alerts
 
-The Unified Alerts module provides a centralized dashboard for managing alerts from all system components, including validation failures, drift detection, anomaly detection, and model monitoring.
+The Dashboard Alerts module provides a centralized dashboard for managing alerts from all dashboard monitoring components, including validation failures, drift detection, anomaly detection, and model monitoring.
+
+> **Note**: Dashboard Alerts is a dashboard-level aggregation system that collects alerts from various monitoring subsystems within the truthound-dashboard application. It is distinct from the truthound library's checkpoint alert system, which provides lower-level programmatic alerting capabilities.
 
 ## Overview
 
 The alert system aggregates notifications from multiple sources into a single interface, enabling efficient triage, acknowledgment, and resolution workflows. This unified approach eliminates the need to monitor multiple alert sources independently.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Dashboard Alerts System                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+│  │  Validation  │  │    Drift     │  │   Anomaly    │           │
+│  │   Module     │  │   Module     │  │    Module    │           │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘           │
+│         │                 │                 │                    │
+│         └────────────┬────┴─────────────────┘                    │
+│                      ▼                                           │
+│         ┌────────────────────────┐                               │
+│         │   Alert Aggregator     │                               │
+│         │   (Dashboard-level)    │                               │
+│         └────────────┬───────────┘                               │
+│                      │                                           │
+│         ┌────────────▼───────────┐                               │
+│         │   Dashboard Alerts     │                               │
+│         │   UI & API             │                               │
+│         └────────────────────────┘                               │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ## Alerts Interface
 
@@ -189,6 +218,51 @@ The system identifies related alerts:
 | **Causal** | Alerts that may share root cause |
 | **Cross-module** | Drift correlating with anomalies |
 
+## Cross-Alert System
+
+### Overview
+
+The Cross-Alert system provides persistent correlation between different alert types across the dashboard. This feature enables automatic detection of relationships between anomaly and drift alerts.
+
+### Database-Backed Storage
+
+All cross-alert configurations, correlations, and trigger events are stored in the database:
+
+| Table | Description |
+|-------|-------------|
+| **CrossAlertConfig** | Global and source-specific configuration settings |
+| **CrossAlertCorrelation** | Recorded correlation relationships between alerts |
+| **CrossAlertTriggerEvent** | Auto-trigger event history and status |
+
+### Configuration Options
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **enabled** | Enable cross-alert detection | true |
+| **trigger_drift_on_anomaly** | Automatically trigger drift analysis when anomalies detected | true |
+| **trigger_anomaly_on_drift** | Automatically trigger anomaly detection when drift detected | true |
+| **anomaly_rate_threshold** | Minimum anomaly rate to trigger correlation | 0.05 |
+| **drift_percentage_threshold** | Minimum drift percentage to trigger correlation | 0.1 |
+| **cooldown_seconds** | Time between auto-triggers for same source | 300 |
+
+### Correlation Strength
+
+Correlations are classified by strength:
+
+| Strength | Criteria |
+|----------|----------|
+| **Strong** | High confidence score, small time delta, multiple common columns |
+| **Moderate** | Medium confidence score, reasonable time delta |
+| **Weak** | Low confidence score, large time delta, few common elements |
+
+### Data Persistence
+
+Cross-alert data persists across server restarts:
+
+- Configuration settings are stored in `CrossAlertConfig`
+- Historical correlations are preserved in `CrossAlertCorrelation`
+- Trigger events and their status are logged in `CrossAlertTriggerEvent`
+
 ## Alert Workflow
 
 ### Recommended Triage Process
@@ -283,3 +357,13 @@ Model performance issues generate alerts with:
 | `/alerts/bulk/acknowledge` | POST | Bulk acknowledge alerts |
 | `/alerts/bulk/resolve` | POST | Bulk resolve alerts |
 | `/alerts/count` | GET | Get alert count by status |
+
+### Cross-Alert API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/cross-alerts/config` | GET | Get cross-alert configuration |
+| `/cross-alerts/config` | PUT | Update cross-alert configuration |
+| `/cross-alerts/correlations` | GET | List recorded correlations |
+| `/cross-alerts/triggers` | GET | List auto-trigger events |
+| `/cross-alerts/summary` | GET | Get cross-alert statistics |

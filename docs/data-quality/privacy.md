@@ -32,15 +32,16 @@ The interface displays aggregate privacy metrics:
 ### Executing a PII Scan
 
 1. Select the target data source
-2. Configure scan parameters:
-   - **Regulations**: Compliance frameworks to check against
-   - **Minimum Confidence**: Threshold for PII classification confidence
-3. Click **Run PII Scan**
-4. Review results upon completion
+2. Click **Run PII Scan**
+3. Review results upon completion
 
-### Regulation Selection
+> **Note**: truthound's `th.scan()` does not support configuration parameters.
+> The scan automatically runs on all columns with default settings, detecting
+> all supported PII types across all applicable regulations.
 
-The system supports multiple regulatory frameworks:
+### Supported Regulatory Frameworks
+
+The system automatically checks against multiple regulatory frameworks:
 
 | Regulation | Description | PII Categories |
 |------------|-------------|----------------|
@@ -48,16 +49,6 @@ The system supports multiple regulatory frameworks:
 | **CCPA** | California Consumer Privacy Act | Personal identifiers, commercial information, biometric |
 | **LGPD** | Brazil's Lei Geral de Proteção de Dados | Similar to GDPR with Brazil-specific requirements |
 | **HIPAA** | Health Insurance Portability and Accountability Act | Protected health information (PHI) |
-
-### Confidence Threshold
-
-Configure the minimum confidence level for PII classification:
-
-| Threshold | Description |
-|-----------|-------------|
-| **High (0.9+)** | Only high-confidence detections reported |
-| **Medium (0.7-0.9)** | Balanced precision and recall |
-| **Low (0.5-0.7)** | Broader detection with potential false positives |
 
 ### Scan Results
 
@@ -93,9 +84,11 @@ Upon completion, scan results display:
 1. Select the target data source
 2. Select columns to mask (typically columns identified in PII scan)
 3. Choose masking strategy
-4. Select output format
-5. Click **Run Mask**
-6. Download masked data file
+4. Click **Run Mask**
+5. Download masked data file (CSV format)
+
+> **Note**: truthound's `th.mask()` does not support output format selection.
+> The output is always generated in CSV format.
 
 ### Masking Strategy Selection
 
@@ -124,15 +117,6 @@ Upon completion, scan results display:
 - Produces realistic-looking but fictional values
 - Suitable for development and testing
 
-### Output Format Selection
-
-| Format | Description | Use Case |
-|--------|-------------|----------|
-| **CSV** | Comma-separated values | Universal compatibility |
-| **Parquet** | Columnar storage format | Big data processing |
-| **JSON** | JavaScript Object Notation | API integration |
-| **Excel** | Microsoft Excel format | Business user consumption |
-
 ### Download Masked Data
 
 Upon completion:
@@ -152,7 +136,6 @@ View historical PII scans:
 |-----------|-------------|
 | **Timestamp** | When the scan was executed |
 | **Source** | Data source that was scanned |
-| **Regulations** | Compliance frameworks checked |
 | **Findings Count** | Number of PII instances detected |
 | **Status** | Scan completion status |
 
@@ -166,7 +149,6 @@ View historical masking operations:
 | **Source** | Data source that was masked |
 | **Columns** | Columns that were masked |
 | **Strategy** | Masking strategy applied |
-| **Output Format** | Format of generated file |
 
 ## Compliance Workflow
 
