@@ -27,11 +27,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
 import { getSource, type Source } from '@/api/modules/sources'
 import { learnSchema, type Schema } from '@/api/modules/schemas'
 import { profileSource, type ProfileResult } from '@/api/modules/profile'
@@ -77,9 +72,6 @@ import {
   Sparkles,
   TrendingUp,
   Loader2,
-  Settings2,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react'
 
 // Import feature components
@@ -88,14 +80,6 @@ import { RuleSuggestionDialog } from '@/components/rules/RuleSuggestionDialog'
 import { ProfileComparisonTable } from '@/components/profile/ProfileComparisonTable'
 import { ProfileTrendChart } from '@/components/profile/ProfileTrendChart'
 import { ProfileVersionSelector } from '@/components/profile/ProfileVersionSelector'
-import {
-  SamplingConfigPanel,
-  PatternDetectionPanel,
-  DEFAULT_SAMPLING_CONFIG,
-  DEFAULT_PATTERN_CONFIG,
-  type SamplingConfig,
-  type PatternDetectionConfig,
-} from '@/components/profile'
 
 // UISuggestedRule removed - using SuggestedRule from API directly
 
@@ -192,13 +176,6 @@ export default function Profile() {
   const [trendData, setTrendData] = useState<ProfileTrendResponse | null>(null)
   const [loadingComparison, setLoadingComparison] = useState(false)
   const [trendGranularity, setTrendGranularity] = useState<'daily' | 'weekly' | 'monthly'>('daily')
-
-  // ============================================================================
-  // Advanced Profiling Configuration State
-  // ============================================================================
-  const [samplingConfig, setSamplingConfig] = useState<SamplingConfig>(DEFAULT_SAMPLING_CONFIG)
-  const [patternConfig, setPatternConfig] = useState<PatternDetectionConfig>(DEFAULT_PATTERN_CONFIG)
-  const [showAdvancedConfig, setShowAdvancedConfig] = useState(false)
 
   // ============================================================================
   // Load Source Data
@@ -415,40 +392,9 @@ export default function Profile() {
     try {
       setProfiling(true)
 
-      // Build profiling options from current configuration
-      const options: Parameters<typeof profileSource>[1] = {}
-
-      // Apply sampling configuration (maps to new ProfilerConfig API)
-      if (samplingConfig.strategy !== 'none') {
-        options.sampling = {
-          strategy: samplingConfig.strategy,
-          sample_size: samplingConfig.sampleSize,
-          confidence_level: samplingConfig.confidenceLevel,
-          margin_of_error: samplingConfig.marginOfError,
-          strata_column: samplingConfig.strataColumn,
-          seed: samplingConfig.seed,
-        }
-      } else if (samplingConfig.sampleSize) {
-        // Backward compatible simple sample_size
-        options.sample_size = samplingConfig.sampleSize
-      }
-
-      // Apply pattern detection configuration (maps to include_patterns option)
-      options.pattern_detection = {
-        enabled: patternConfig.enabled,
-        sample_size: patternConfig.sampleSize,
-        min_confidence: patternConfig.minConfidence,
-        patterns_to_detect: patternConfig.patternsToDetect?.length
-          ? patternConfig.patternsToDetect
-          : null,
-      }
-
-      // Additional profiling options (mapped to new ProfilerConfig)
-      options.include_histograms = true  // include_distributions
-      options.include_correlations = false
-      options.include_cardinality = true  // top_n_values
-
-      const result = await profileSource(sourceId, options)
+      // Note: truthound's th.profile() only accepts (data, source) parameters.
+      // Advanced options like sampling, pattern detection are not supported.
+      const result = await profileSource(sourceId)
       setProfile(result)
       toast({
         title: 'Profile Complete',
@@ -463,7 +409,7 @@ export default function Profile() {
     } finally {
       setProfiling(false)
     }
-  }, [sourceId, samplingConfig, patternConfig, toast])
+  }, [sourceId, toast])
 
   // Learn schema
   const handleLearnSchema = useCallback(async () => {
@@ -662,51 +608,6 @@ export default function Profile() {
         {/* Profile Tab */}
         {/* ================================================================== */}
         <TabsContent value="profile" className="space-y-6">
-          {/* Advanced Profiling Settings - Collapsible */}
-          <Collapsible open={showAdvancedConfig} onOpenChange={setShowAdvancedConfig}>
-            <Card>
-              <CollapsibleTrigger asChild>
-                <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Settings2 className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <CardTitle className="text-base">Advanced Profiling Settings</CardTitle>
-                        <CardDescription className="text-sm">
-                          Configure sampling strategies and pattern detection options
-                        </CardDescription>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      {showAdvancedConfig ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="pt-0">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <SamplingConfigPanel
-                      config={samplingConfig}
-                      onChange={setSamplingConfig}
-                      columns={profile?.columns.map((c) => c.name) || []}
-                      disabled={profiling}
-                    />
-                    <PatternDetectionPanel
-                      config={patternConfig}
-                      onChange={setPatternConfig}
-                      disabled={profiling}
-                    />
-                  </div>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-
           {/* Profile not run yet */}
           {!profile && (
             <Card>

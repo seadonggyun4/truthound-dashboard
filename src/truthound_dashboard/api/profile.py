@@ -1,6 +1,10 @@
 """Profile API endpoints.
 
 This module provides endpoints for data profiling and comparison.
+
+Note: truthound's th.profile() only supports (data, source) parameters.
+Advanced options like sampling strategies, pattern detection configuration,
+and correlation analysis are NOT supported by the underlying library.
 """
 
 from __future__ import annotations
@@ -16,7 +20,6 @@ from truthound_dashboard.schemas import (
     ProfileListResponse,
     ProfileRequest,
     ProfileResponse,
-    ProfileTrendRequest,
     ProfileTrendResponse,
 )
 
@@ -29,7 +32,7 @@ router = APIRouter()
     "/sources/{source_id}/profile",
     response_model=ProfileResponse,
     summary="Profile source",
-    description="Run data profiling on a source with optional sampling and pattern detection",
+    description="Run data profiling on a source",
 )
 async def profile_source(
     service: ProfileServiceDep,
@@ -39,19 +42,17 @@ async def profile_source(
 ) -> ProfileResponse:
     """Run data profiling on a source.
 
-    Supports advanced configuration including:
-    - Sampling strategies: none, head, random, systematic, stratified, reservoir, adaptive, hash
-    - Pattern detection: email, phone, uuid, url, ip_address, credit_card, etc.
-    - Statistical analysis options: histograms, correlations, cardinality
+    Note: truthound's th.profile() only supports (data, source) parameters.
+    Advanced configuration options are not supported.
 
     Args:
         service: Injected profile service.
         source_service: Injected source service.
         source_id: Source to profile.
-        request: Optional profiling configuration.
+        request: Optional request body (not used, kept for API compatibility).
 
     Returns:
-        Profiling result with column statistics, detected patterns, and sampling metadata.
+        Profiling result with column statistics.
 
     Raises:
         HTTPException: 404 if source not found, 500 on profiling error.
@@ -61,45 +62,8 @@ async def profile_source(
     if source is None:
         raise HTTPException(status_code=404, detail="Source not found")
 
-    # Build profiling kwargs from request
-    # Map request options to new ProfilerConfig-based API
-    profile_kwargs: dict = {}
-
-    if request:
-        # Handle sampling configuration
-        if request.sampling:
-            # Advanced sampling config takes precedence
-            profile_kwargs["sample_size"] = request.sampling.sample_size
-        elif request.sample_size:
-            # Backward compatible simple sample_size
-            profile_kwargs["sample_size"] = request.sample_size
-
-        # Handle pattern detection configuration
-        # Maps to new include_patterns option
-        if request.pattern_detection:
-            profile_kwargs["include_patterns"] = request.pattern_detection.enabled
-            # Note: pattern_sample_size and min_confidence are now part of ProfilerConfig
-            # These can be passed via profile_advanced() if needed
-        else:
-            profile_kwargs["include_patterns"] = True  # Default: enabled
-
-        # Map correlations option to new API
-        profile_kwargs["include_correlations"] = getattr(
-            request, "include_correlations", False
-        )
-
-        # include_distributions is now always True for new API
-        # include_histograms maps to include_distributions
-        profile_kwargs["include_distributions"] = getattr(
-            request, "include_histograms", True
-        )
-
-        # top_n_values: use default of 10 if include_cardinality is True
-        if getattr(request, "include_cardinality", True):
-            profile_kwargs["top_n_values"] = 10
-
     try:
-        result = await service.profile_source(source_id, **profile_kwargs)
+        result = await service.profile_source(source_id)
         return ProfileResponse.from_result(result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
