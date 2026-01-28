@@ -8,6 +8,7 @@ import {
   Filter,
   Trash2,
   Edit,
+  ChevronRight,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -20,13 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useGlossaryStore } from '@/stores/glossaryStore'
 import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
 import { useConfirm } from '@/components/ConfirmDialog'
-import { TermFormDialog } from '@/components/glossary/TermFormDialog'
+import { TermFormDialog, CategoryManager } from '@/components/glossary'
 import { useClientFilter } from '@/hooks/useClientFilter'
-import type { GlossaryTerm } from '@/api/modules/glossary'
+import type { GlossaryTerm, GlossaryCategory } from '@/api/modules/glossary'
 
 export default function Glossary() {
   const nav = useSafeIntlayer('nav')
@@ -45,6 +47,24 @@ export default function Glossary() {
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingTerm, setEditingTerm] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'terms' | 'categories'>('terms')
+
+  // Build category path for display
+  const getCategoryPath = (categoryId: string | undefined): GlossaryCategory[] => {
+    if (!categoryId) return []
+    const path: GlossaryCategory[] = []
+    let currentId: string | undefined = categoryId
+    while (currentId) {
+      const cat = categories.find((c) => c.id === currentId)
+      if (cat) {
+        path.unshift(cat)
+        currentId = cat.parent_id
+      } else {
+        break
+      }
+    }
+    return path
+  }
 
   // Client-side filtering
   const {
@@ -134,126 +154,157 @@ export default function Glossary() {
           <h1 className="text-3xl font-bold">{nav.glossary}</h1>
           <p className="text-muted-foreground">{glossary.subtitle}</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          {glossary.addTerm}
-        </Button>
+        {activeTab === 'terms' && (
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {glossary.addTerm}
+          </Button>
+        )}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={str(glossary.searchTerms)}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={filterValues.category || 'all'} onValueChange={(v) => setFilter('category', v === 'all' ? '' : v)}>
-          <SelectTrigger className="w-[200px]">
-            <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder={str(glossary.filterByCategory)} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{glossary.allCategories}</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat.id} value={cat.id}>
-                {cat.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterValues.status || 'all'} onValueChange={(v) => setFilter('status', v === 'all' ? '' : v)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder={str(glossary.filterByStatus)} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{glossary.allStatuses}</SelectItem>
-            <SelectItem value="draft">{glossary.status.draft}</SelectItem>
-            <SelectItem value="approved">{glossary.status.approved}</SelectItem>
-            <SelectItem value="deprecated">{glossary.status.deprecated}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Tabs for Terms and Categories */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'terms' | 'categories')}>
+        <TabsList>
+          <TabsTrigger value="terms">{glossary.tabs.terms}</TabsTrigger>
+          <TabsTrigger value="categories">{glossary.tabs.categories}</TabsTrigger>
+        </TabsList>
 
-      {/* Terms List */}
-      {filteredTerms.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <BookOpen className="h-16 w-16 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">{glossary.noTermsYet}</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              {glossary.noTermsDesc}
-            </p>
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              {glossary.addFirstTerm}
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {filteredTerms.map((term) => (
-            <Card key={term.id}>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <BookOpen className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Link
-                        to={`/glossary/${term.id}`}
-                        className="font-semibold hover:text-primary transition-colors"
-                      >
-                        {term.name}
-                      </Link>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                        {term.definition}
-                      </p>
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        <Badge variant={getStatusBadgeVariant(term.status)}>
-                          {getStatusLabel(term.status)}
-                        </Badge>
-                        {term.category && (
-                          <Badge variant="outline">{term.category.name}</Badge>
-                        )}
-                        {term.owner_id && (
-                          <span className="text-xs text-muted-foreground">
-                            {glossary.owner}: {term.owner_id}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+        {/* Terms Tab */}
+        <TabsContent value="terms" className="space-y-4 mt-4">
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={str(glossary.searchTerms)}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={filterValues.category || 'all'} onValueChange={(v) => setFilter('category', v === 'all' ? '' : v)}>
+              <SelectTrigger className="w-[200px]">
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue placeholder={str(glossary.filterByCategory)} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{glossary.allCategories}</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterValues.status || 'all'} onValueChange={(v) => setFilter('status', v === 'all' ? '' : v)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder={str(glossary.filterByStatus)} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{glossary.allStatuses}</SelectItem>
+                <SelectItem value="draft">{glossary.status.draft}</SelectItem>
+                <SelectItem value="approved">{glossary.status.approved}</SelectItem>
+                <SelectItem value="deprecated">{glossary.status.deprecated}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-                  <div className="flex items-center gap-2 ml-4">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setEditingTerm(term.id)
-                        setDialogOpen(true)
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(term.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
+          {/* Terms List */}
+          {filteredTerms.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <BookOpen className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-semibold mb-2">{glossary.noTermsYet}</h3>
+                <p className="text-muted-foreground text-center mb-4">
+                  {glossary.noTermsDesc}
+                </p>
+                <Button onClick={() => setDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {glossary.addFirstTerm}
+                </Button>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="grid gap-4">
+              {filteredTerms.map((term) => {
+                const categoryPath = getCategoryPath(term.category_id)
+                return (
+                  <Card key={term.id}>
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4 flex-1">
+                          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <BookOpen className="h-6 w-6 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <Link
+                              to={`/glossary/${term.id}`}
+                              className="font-semibold hover:text-primary transition-colors"
+                            >
+                              {term.name}
+                            </Link>
+                            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                              {term.definition}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              <Badge variant={getStatusBadgeVariant(term.status)}>
+                                {getStatusLabel(term.status)}
+                              </Badge>
+                              {/* Category hierarchy breadcrumb */}
+                              {categoryPath.length > 0 && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  {categoryPath.map((cat, index) => (
+                                    <span key={cat.id} className="flex items-center gap-1">
+                                      {index > 0 && <ChevronRight className="h-3 w-3" />}
+                                      <Badge variant="outline" className="text-xs py-0 px-1.5">
+                                        {cat.name}
+                                      </Badge>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {term.owner_id && (
+                                <span className="text-xs text-muted-foreground">
+                                  {glossary.owner}: {term.owner_id}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 ml-4">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditingTerm(term.id)
+                              setDialogOpen(true)
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(term.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Categories Tab */}
+        <TabsContent value="categories" className="mt-4">
+          <CategoryManager terms={terms} onCategoryChange={loadData} />
+        </TabsContent>
+      </Tabs>
 
       {/* Dialogs */}
       <TermFormDialog

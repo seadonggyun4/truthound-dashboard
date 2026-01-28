@@ -98,6 +98,66 @@ const glossaryContent = {
       relationships: t({ en: 'Relationships', ko: '관계' }),
       history: t({ en: 'History', ko: '이력' }),
       comments: t({ en: 'Comments', ko: '댓글' }),
+      terms: t({ en: 'Terms', ko: '용어' }),
+      categories: t({ en: 'Categories', ko: '카테고리' }),
+    },
+
+    // Category management
+    categoryManagement: {
+      title: t({ en: 'Category Management', ko: '카테고리 관리' }),
+      subtitle: t({ en: 'Organize terms with hierarchical categories', ko: '계층적 카테고리로 용어 정리' }),
+      addCategory: t({ en: 'Add Category', ko: '카테고리 추가' }),
+      editCategory: t({ en: 'Edit Category', ko: '카테고리 수정' }),
+      deleteCategory: t({ en: 'Delete Category', ko: '카테고리 삭제' }),
+      categoryName: t({ en: 'Category Name', ko: '카테고리 이름' }),
+      parentCategory: t({ en: 'Parent Category', ko: '상위 카테고리' }),
+      noParent: t({ en: 'No parent (root level)', ko: '상위 없음 (최상위)' }),
+      confirmDeleteCategory: t({
+        en: 'Are you sure you want to delete this category? Terms in this category will become uncategorized.',
+        ko: '이 카테고리를 삭제하시겠습니까? 이 카테고리의 용어는 미분류 상태가 됩니다.',
+      }),
+      noCategories: t({ en: 'No categories yet', ko: '등록된 카테고리가 없습니다' }),
+      noCategoriesDesc: t({
+        en: 'Create categories to organize your business terms',
+        ko: '비즈니스 용어를 정리할 카테고리를 생성하세요',
+      }),
+      createSuccess: t({ en: 'Category created successfully', ko: '카테고리가 생성되었습니다' }),
+      createError: t({ en: 'Failed to create category', ko: '카테고리 생성에 실패했습니다' }),
+      updateSuccess: t({ en: 'Category updated successfully', ko: '카테고리가 수정되었습니다' }),
+      updateError: t({ en: 'Failed to update category', ko: '카테고리 수정에 실패했습니다' }),
+      deleteSuccess: t({ en: 'Category deleted successfully', ko: '카테고리가 삭제되었습니다' }),
+      deleteError: t({ en: 'Failed to delete category', ko: '카테고리 삭제에 실패했습니다' }),
+      termCount: t({ en: 'terms', ko: '개 용어' }),
+      subcategories: t({ en: 'Subcategories', ko: '하위 카테고리' }),
+      expand: t({ en: 'Expand', ko: '펼치기' }),
+      collapse: t({ en: 'Collapse', ko: '접기' }),
+    },
+
+    // Relationship management
+    relationshipManagement: {
+      title: t({ en: 'Term Relationships', ko: '용어 관계' }),
+      addRelationship: t({ en: 'Add Relationship', ko: '관계 추가' }),
+      removeRelationship: t({ en: 'Remove', ko: '제거' }),
+      selectRelationType: t({ en: 'Select relationship type', ko: '관계 유형 선택' }),
+      selectTargetTerm: t({ en: 'Select target term', ko: '대상 용어 선택' }),
+      noRelationships: t({ en: 'No relationships defined', ko: '정의된 관계가 없습니다' }),
+      createSuccess: t({ en: 'Relationship created successfully', ko: '관계가 생성되었습니다' }),
+      createError: t({ en: 'Failed to create relationship', ko: '관계 생성에 실패했습니다' }),
+      deleteSuccess: t({ en: 'Relationship removed successfully', ko: '관계가 제거되었습니다' }),
+      deleteError: t({ en: 'Failed to remove relationship', ko: '관계 제거에 실패했습니다' }),
+      duplicateError: t({ en: 'This relationship already exists', ko: '이 관계는 이미 존재합니다' }),
+      selfReferenceError: t({ en: 'A term cannot have a relationship with itself', ko: '용어는 자기 자신과 관계를 가질 수 없습니다' }),
+      parentTerms: t({ en: 'Parent Terms', ko: '상위 용어' }),
+      childTerms: t({ en: 'Child Terms', ko: '하위 용어' }),
+    },
+
+    // Hierarchy
+    hierarchy: {
+      viewAsTree: t({ en: 'View as Tree', ko: '트리로 보기' }),
+      viewAsList: t({ en: 'View as List', ko: '목록으로 보기' }),
+      rootLevel: t({ en: 'Root Level', ko: '최상위' }),
+      level: t({ en: 'Level', ko: '레벨' }),
+      path: t({ en: 'Path', ko: '경로' }),
     },
   },
 } satisfies Dictionary

@@ -5,7 +5,6 @@ import {
   BookOpen,
   ArrowLeft,
   Edit,
-  Link2,
   History,
   MessageSquare,
 } from 'lucide-react'
@@ -14,11 +13,11 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useGlossaryStore } from '@/stores/glossaryStore'
-import { getTermHistory, getTermRelationships, type TermHistory, type TermRelationship } from '@/api/modules/glossary'
+import { getTermHistory, type TermHistory } from '@/api/modules/glossary'
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { Comments } from '@/components/collaboration/Comments'
-import { TermFormDialog } from '@/components/glossary/TermFormDialog'
+import { TermFormDialog, RelationshipManager } from '@/components/glossary'
 
 export default function GlossaryDetail() {
   const { id } = useParams<{ id: string }>()
@@ -35,35 +34,29 @@ export default function GlossaryDetail() {
   const { toast } = useToast()
 
   const [history, setHistory] = useState<TermHistory[]>([])
-  const [relationships, setRelationships] = useState<TermRelationship[]>([])
   const [, setLoadingExtra] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
 
-  useEffect(() => {
+  const loadData = async () => {
     if (!id) return
+    try {
+      await Promise.all([fetchTerm(id), fetchCategories()])
 
-    const loadData = async () => {
-      try {
-        await Promise.all([fetchTerm(id), fetchCategories()])
-
-        setLoadingExtra(true)
-        const [historyData, relationshipsData] = await Promise.all([
-          getTermHistory(id),
-          getTermRelationships(id),
-        ])
-        setHistory(historyData)
-        setRelationships(relationshipsData)
-      } catch {
-        toast({
-          title: 'Error',
-          description: 'Failed to load term details',
-          variant: 'destructive',
-        })
-      } finally {
-        setLoadingExtra(false)
-      }
+      setLoadingExtra(true)
+      const historyData = await getTermHistory(id)
+      setHistory(historyData)
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to load term details',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoadingExtra(false)
     }
+  }
 
+  useEffect(() => {
     loadData()
 
     return () => {
@@ -101,9 +94,6 @@ export default function GlossaryDetail() {
       </div>
     )
   }
-
-  const synonyms = relationships.filter((r) => r.relationship_type === 'synonym')
-  const relatedTerms = relationships.filter((r) => r.relationship_type === 'related')
 
   return (
     <div className="space-y-6">
@@ -181,118 +171,15 @@ export default function GlossaryDetail() {
             </Card>
           </div>
 
-          {/* Quick Relationships */}
-          {(synonyms.length > 0 || relatedTerms.length > 0) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Link2 className="h-5 w-5" />
-                  {glossary.relationships}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {synonyms.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">{glossary.synonyms}</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {synonyms.map((r) => (
-                        <Link key={r.id} to={`/glossary/${r.target_term.id}`}>
-                          <Badge variant="outline" className="cursor-pointer hover:bg-accent">
-                            {r.target_term.name}
-                          </Badge>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {relatedTerms.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">{glossary.relatedTerms}</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {relatedTerms.map((r) => (
-                        <Link key={r.id} to={`/glossary/${r.target_term.id}`}>
-                          <Badge variant="outline" className="cursor-pointer hover:bg-accent">
-                            {r.target_term.name}
-                          </Badge>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         {/* Relationships Tab */}
         <TabsContent value="relationships" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Link2 className="h-5 w-5" />
-                {glossary.synonyms}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {synonyms.length === 0 ? (
-                <p className="text-muted-foreground text-sm">-</p>
-              ) : (
-                <div className="space-y-2">
-                  {synonyms.map((r) => (
-                    <Link
-                      key={r.id}
-                      to={`/glossary/${r.target_term.id}`}
-                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors"
-                    >
-                      <div>
-                        <p className="font-medium">{r.target_term.name}</p>
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {r.target_term.definition}
-                        </p>
-                      </div>
-                      <Badge variant="secondary">
-                        {glossary.relationshipTypes.synonym}
-                      </Badge>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Link2 className="h-5 w-5" />
-                {glossary.relatedTerms}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {relatedTerms.length === 0 ? (
-                <p className="text-muted-foreground text-sm">-</p>
-              ) : (
-                <div className="space-y-2">
-                  {relatedTerms.map((r) => (
-                    <Link
-                      key={r.id}
-                      to={`/glossary/${r.target_term.id}`}
-                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors"
-                    >
-                      <div>
-                        <p className="font-medium">{r.target_term.name}</p>
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {r.target_term.definition}
-                        </p>
-                      </div>
-                      <Badge variant="secondary">
-                        {glossary.relationshipTypes.related}
-                      </Badge>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <RelationshipManager
+            termId={id!}
+            termName={selectedTerm.name}
+            onRelationshipChange={() => fetchTerm(id!)}
+          />
         </TabsContent>
 
         {/* History Tab */}
@@ -360,7 +247,7 @@ export default function GlossaryDetail() {
         termId={id}
         categories={categories}
         onSuccess={() => {
-          fetchTerm(id!)
+          loadData()
           setEditDialogOpen(false)
         }}
       />
