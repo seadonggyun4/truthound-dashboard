@@ -210,20 +210,18 @@ The Dashboard extends the core Truthound library functions with additional param
 
 ### Schema Learning (`/sources/{id}/learn`)
 
-Extends `th.learn()` with additional sampling support.
+Wraps `th.learn()` for automatic schema generation.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `infer_constraints` | `bool` | `true` | Infer min/max and allowed values from data |
 | `categorical_threshold` | `int` | `20` | Max unique values for categorical detection (1-1000) |
-| `sample_size` | `int` | `null` | Number of rows to sample for large datasets |
 
 **Example Request:**
 ```json
 {
   "infer_constraints": true,
-  "categorical_threshold": 50,
-  "sample_size": 10000
+  "categorical_threshold": 50
 }
 ```
 
@@ -257,12 +255,14 @@ Extends `th.check()` with column filtering and custom validators.
 
 ### PII Scanning (`/scans/sources/{id}/scan`)
 
-Extends `th.scan()` with regulation compliance and confidence filtering.
+Wraps `th.scan()` with post-scan filtering for regulation compliance and confidence thresholds.
+
+> **Note**: These parameters are applied as post-scan filters. The underlying `th.scan()` performs a full scan, and results are filtered based on the specified criteria.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `columns` | `list[str]` | `null` | Specific columns to scan |
-| `regulations` | `list[str]` | `null` | Regulations to check (gdpr, ccpa, lgpd) |
+| `columns` | `list[str]` | `null` | Filter results to specific columns |
+| `regulations` | `list[str]` | `null` | Filter by regulations (gdpr, ccpa, lgpd) |
 | `min_confidence` | `float` | `0.8` | Minimum confidence threshold (0.0-1.0) |
 
 **Example Request:**
@@ -292,6 +292,25 @@ Extends `th.mask()` with output format selection.
   "output_format": "parquet"
 }
 ```
+
+### Data Profiling (`/sources/{id}/profile`)
+
+Wraps `th.profile()` for data profiling and statistics generation.
+
+> **Note**: The underlying `th.profile()` function only accepts `(data, source)` parameters. Advanced configuration options such as sampling strategies, pattern detection settings, and correlation analysis are NOT supported by the truthound library. The profiling is executed with default settings.
+
+**Example Request:**
+```json
+{}
+```
+
+The profile response includes:
+- Column types and inferred semantic types
+- Null and unique value percentages
+- Statistical measures (min, max, mean, std, median, quartiles)
+- String length statistics
+- Detected patterns (email, phone, UUID, etc.)
+- Value distribution histograms
 
 ### Drift Detection (`/drift/compare`)
 

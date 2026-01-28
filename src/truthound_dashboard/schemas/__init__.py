@@ -43,14 +43,8 @@ from .profile import (
     ColumnProfile,
     DetectedPattern,
     HistogramBucket,
-    PatternDetectionConfig,
-    PatternType,
     ProfileRequest,
     ProfileResponse,
-    SamplingConfig,
-    SamplingMetadata,
-    SamplingStrategy,
-    SamplingStrategyType,
 )
 from .rule import (
     RuleBase,
@@ -430,12 +424,6 @@ __all__ = [
     "ProfileResponse",
     "DetectedPattern",
     "HistogramBucket",
-    "PatternDetectionConfig",
-    "PatternType",
-    "SamplingConfig",
-    "SamplingMetadata",
-    "SamplingStrategy",
-    "SamplingStrategyType",
     # Data Masking
     "MaskingStrategy",
     "MaskingStrategyLiteral",

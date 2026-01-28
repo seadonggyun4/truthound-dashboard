@@ -29,6 +29,10 @@ logger = logging.getLogger(__name__)
 
 # In-memory config storage (would be DB in production)
 _global_config: dict[str, Any] = {
+    "id": "global",
+    "created_at": datetime.now(),
+    "updated_at": datetime.now(),
+    "source_id": None,
     "enabled": True,
     "trigger_drift_on_anomaly": True,
     "trigger_anomaly_on_drift": True,

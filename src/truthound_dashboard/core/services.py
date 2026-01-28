@@ -1352,33 +1352,18 @@ class ProfileService:
         self,
         source_id: str,
         *,
-        sample_size: int | None = None,
-        include_patterns: bool = True,
-        include_correlations: bool = False,
-        include_distributions: bool = True,
-        top_n_values: int = 10,
         save: bool = True,
     ) -> Profile:
         """Profile a data source and optionally save result.
 
-        Uses the new truthound profiler API with comprehensive options
-        for pattern detection, correlations, and distribution analysis.
+        Note: truthound's th.profile() only accepts (data, source) parameters.
+        Advanced configuration options are NOT supported by the underlying library.
 
         Supports all data source types including files, SQL databases,
         cloud data warehouses, and async sources.
 
         Args:
             source_id: Source ID to profile.
-            sample_size: Maximum number of rows to sample for profiling.
-                If None, profiles all data. Useful for large datasets.
-            include_patterns: Enable pattern detection for string columns.
-                Detects emails, phones, UUIDs, etc. Default True.
-            include_correlations: Calculate column correlations.
-                Can be expensive for many columns. Default False.
-            include_distributions: Include distribution statistics.
-                Default True.
-            top_n_values: Number of top/bottom values per column.
-                Default 10.
             save: Whether to save profile to database.
 
         Returns:
@@ -1397,14 +1382,7 @@ class ProfileService:
         else:
             data_input = get_data_input_from_source(source)
 
-        result = await self.adapter.profile(
-            data_input,
-            sample_size=sample_size,
-            include_patterns=include_patterns,
-            include_correlations=include_correlations,
-            include_distributions=include_distributions,
-            top_n_values=top_n_values,
-        )
+        result = await self.adapter.profile(data_input)
 
         if save:
             profile = await self.profile_repo.create(

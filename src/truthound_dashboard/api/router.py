@@ -9,6 +9,7 @@ from . import (
     # Phase 1-4
     alerts,
     drift,
+    drift_monitor,
     health,
     history,
     maintenance,
@@ -100,6 +101,12 @@ api_router.include_router(
 api_router.include_router(
     drift.router,
     tags=["drift"],
+)
+
+# Drift monitoring endpoints
+api_router.include_router(
+    drift_monitor.router,
+    tags=["drift-monitor"],
 )
 
 # PII scan endpoints

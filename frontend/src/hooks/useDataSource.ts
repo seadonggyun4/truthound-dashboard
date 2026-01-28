@@ -28,7 +28,6 @@ import {
 import {
   profileSource,
   type ProfileResult,
-  type ProfileOptions,
 } from '@/api/modules/profile'
 import {
   runValidation,
@@ -545,12 +544,12 @@ export function useSourceProfile(sourceId: string | null) {
   }, [sourceId])
 
   const runProfile = useCallback(
-    async (options?: ProfileOptions) => {
+    async () => {
       if (!sourceId) return null
 
       setState((prev) => ({ ...prev, loading: true, error: null }))
       try {
-        const profile = await profileSource(sourceId, options)
+        const profile = await profileSource(sourceId)
         setState({ data: profile, loading: false, error: null })
         return profile
       } catch (err) {

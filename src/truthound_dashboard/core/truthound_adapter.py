@@ -630,12 +630,10 @@ class TruthoundAdapter:
         *,
         infer_constraints: bool = True,
         categorical_threshold: int | None = None,
-        sample_size: int | None = None,
     ) -> LearnResult:
         """Learn schema from data asynchronously.
 
         Uses truthound's th.learn() to analyze data and generate schema.
-        Supports all th.learn() parameters for maximum flexibility.
 
         Args:
             source: Data source - can be:
@@ -647,9 +645,6 @@ class TruthoundAdapter:
                 Columns with unique values <= threshold are treated as categorical
                 and will have allowed_values inferred. If None, uses truthound
                 default (20).
-            sample_size: Number of rows to sample for large datasets.
-                If None, uses all rows. Sampling improves performance but may
-                miss rare values.
 
         Returns:
             LearnResult with schema information.
@@ -661,8 +656,6 @@ class TruthoundAdapter:
 
         if categorical_threshold is not None:
             kwargs["categorical_threshold"] = categorical_threshold
-        if sample_size is not None:
-            kwargs["sample_size"] = sample_size
 
         func = partial(th.learn, source, **kwargs)
 
@@ -674,52 +667,20 @@ class TruthoundAdapter:
     async def profile(
         self,
         source: DataInput,
-        *,
-        sample_size: int | None = None,
-        include_patterns: bool = True,
-        include_correlations: bool = False,
-        include_distributions: bool = True,
-        top_n_values: int = 10,
-        pattern_sample_size: int = 1000,
-        correlation_threshold: float = 0.7,
-        min_pattern_match_ratio: float = 0.8,
-        n_jobs: int = 1,
     ) -> ProfileResult:
-        """Run data profiling asynchronously using truthound's DataProfiler.
+        """Run data profiling asynchronously.
 
-        This method supports the new profiler API with ProfilerConfig for
-        fine-grained control over profiling behavior.
+        Note: truthound's th.profile() only accepts (data, source) parameters.
+        Advanced configuration options are NOT supported by the underlying library.
 
         Args:
             source: Data source - can be:
                 - File path string
                 - DataSource object
-            sample_size: Maximum number of rows to sample for profiling.
-                If None, profiles all data. Useful for large datasets.
-            include_patterns: Enable pattern detection for string columns.
-                Detects emails, phones, UUIDs, URLs, etc. Default True.
-            include_correlations: Calculate column correlations.
-                Can be expensive for many columns. Default False.
-            include_distributions: Include distribution statistics (min, max,
-                mean, std, quartiles) for numeric columns. Default True.
-            top_n_values: Number of top/bottom values to include per column.
-                Default 10.
-            pattern_sample_size: Sample size for pattern matching.
-                Default 1000.
-            correlation_threshold: Minimum correlation to report.
-                Default 0.7.
-            min_pattern_match_ratio: Minimum pattern match ratio to report.
-                Default 0.8.
-            n_jobs: Number of parallel jobs for profiling.
-                Default 1 (sequential).
 
         Returns:
-            ProfileResult with comprehensive profiling information.
+            ProfileResult with profiling information.
         """
-        # Use th.profile() API which handles file paths and DataFrames
-        # Note: th.profile() doesn't support advanced ProfilerConfig options,
-        # those are only available via DataProfiler with LazyFrame input.
-        # See: .truthound_docs/python-api/core-functions.md
         import truthound as th
 
         func = partial(th.profile, source)
