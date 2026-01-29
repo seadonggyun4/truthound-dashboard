@@ -11,8 +11,6 @@ import { useIntlayer } from 'react-intlayer'
 import {
   Copy,
   Download,
-  ChevronDown,
-  ChevronUp,
   RotateCcw,
   FileCode,
   ArrowRight,
@@ -26,16 +24,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
 import { useToast } from '@/hooks/use-toast'
 import { str } from '@/lib/intlayer-utils'
 import { cn } from '@/lib/utils'
 import {
-  graphToMermaid,
   graphToMermaidSimple,
   copyToClipboard,
   downloadAsFile,
@@ -58,7 +50,7 @@ mermaid.initialize({
 })
 
 type MermaidDirection = 'LR' | 'TB' | 'RL' | 'BT'
-type MermaidStyle = 'grouped' | 'simple'
+type MermaidStyle = 'simple'
 
 interface MermaidLineageGraphProps {
   nodes: LineageNode[]
@@ -78,9 +70,8 @@ export function MermaidLineageGraph({
   const containerRef = useRef<HTMLDivElement>(null)
   const [svgContent, setSvgContent] = useState<string>('')
   const [mermaidCode, setMermaidCode] = useState<string>('')
-  const [isCodeVisible, setIsCodeVisible] = useState(false)
   const [direction, setDirection] = useState<MermaidDirection>('LR')
-  const [style, setStyle] = useState<MermaidStyle>('grouped')
+  const style: MermaidStyle = 'simple'
   const [error, setError] = useState<string | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(false)
 
@@ -109,11 +100,8 @@ export function MermaidLineageGraph({
         return
       }
 
-      // Generate Mermaid code
-      const code =
-        style === 'grouped'
-          ? graphToMermaid(nodes, edges, direction)
-          : graphToMermaidSimple(nodes, edges, direction)
+      // Generate Mermaid code (simple style)
+      const code = graphToMermaidSimple(nodes, edges, direction)
       setMermaidCode(code)
 
       try {
@@ -154,12 +142,23 @@ export function MermaidLineageGraph({
 
     const handleClick = (e: MouseEvent) => {
       const target = e.target as Element
+      // Mermaid wraps nodes in <g> with class "node" and id like "flowchart-{nodeId}-{n}"
       const nodeElement = target.closest('.node')
       if (nodeElement) {
-        const nodeId = nodeElement.id?.replace(/_/g, '-')
-        const node = nodes.find((n) => n.id === nodeId || n.id.replace(/-/g, '_') === nodeElement.id)
-        if (node) {
-          onNodeClick(node)
+        const elementId = nodeElement.id || ''
+        // Try multiple matching strategies
+        for (const n of nodes) {
+          const normalizedId = n.id.replace(/-/g, '_')
+          if (
+            elementId === normalizedId ||
+            elementId === n.id ||
+            elementId.startsWith(`flowchart-${normalizedId}-`) ||
+            elementId.startsWith(`flowchart-${n.id}-`) ||
+            elementId.includes(normalizedId)
+          ) {
+            onNodeClick(n)
+            return
+          }
         }
       }
     }
@@ -168,7 +167,7 @@ export function MermaidLineageGraph({
     return () => {
       containerRef.current?.removeEventListener('click', handleClick)
     }
-  }, [nodes, onNodeClick])
+  }, [nodes, onNodeClick, svgContent])
 
   // Copy Mermaid code to clipboard
   const handleCopyCode = useCallback(async () => {
@@ -211,8 +210,8 @@ export function MermaidLineageGraph({
       {/* Toolbar */}
       <div className="flex items-center gap-2 p-2 border-b bg-background">
         <Select value={direction} onValueChange={(v) => setDirection(v as MermaidDirection)}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder={t.mermaid.direction} />
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder={str(t.mermaid.direction)} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="LR">
@@ -239,16 +238,6 @@ export function MermaidLineageGraph({
                 {t.mermaid.bottomToTop}
               </div>
             </SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={style} onValueChange={(v) => setStyle(v as MermaidStyle)}>
-          <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder={t.mermaid.style} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="grouped">{t.mermaid.grouped}</SelectItem>
-            <SelectItem value="simple">{t.mermaid.simple}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -282,43 +271,11 @@ export function MermaidLineageGraph({
         ) : (
           <div
             ref={containerRef}
-            className="flex items-center justify-center mermaid-container"
+            className="flex items-center justify-center mermaid-container [&_.node]:cursor-pointer [&_.node:hover]:opacity-80"
             dangerouslySetInnerHTML={{ __html: svgContent }}
           />
         )}
       </div>
-
-      {/* Collapsible code panel */}
-      <Collapsible open={isCodeVisible} onOpenChange={setIsCodeVisible}>
-        <CollapsibleTrigger asChild>
-          <Button variant="ghost" className="w-full rounded-none border-t justify-between">
-            <span className="flex items-center gap-2">
-              <FileCode className="h-4 w-4" />
-              {t.mermaid.showCode}
-            </span>
-            {isCodeVisible ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronUp className="h-4 w-4" />
-            )}
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="relative">
-            <pre className="p-4 bg-muted overflow-x-auto text-sm max-h-[300px]">
-              <code>{mermaidCode}</code>
-            </pre>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 right-2"
-              onClick={handleCopyCode}
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
 
       {/* Stats */}
       <div className="flex gap-2 p-2 border-t text-sm text-muted-foreground">
