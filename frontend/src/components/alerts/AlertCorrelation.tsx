@@ -18,7 +18,7 @@ import {
   ExternalLink,
   Clock,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, parseUTC } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -193,7 +193,7 @@ export function AlertCorrelation({
                         <span>-</span>
                         <Clock className="h-3 w-3" />
                         <span>
-                          {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true })}
+                          {formatDistanceToNow(parseUTC(alert.created_at), { addSuffix: true })}
                         </span>
                       </div>
                     </div>

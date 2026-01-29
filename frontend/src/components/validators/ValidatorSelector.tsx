@@ -443,21 +443,32 @@ export function ValidatorSelector({
                       {group.enabledCount} / {group.validators.length}
                     </Badge>
                   </div>
-                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                  <div
+                    className="flex gap-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 hover:bg-accent hover:text-accent-foreground cursor-pointer"
                       onClick={() => toggleCategory(group.category, true)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") toggleCategory(group.category, true);
+                      }}
                     >
                       Enable All
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                    </span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 hover:bg-accent hover:text-accent-foreground cursor-pointer"
                       onClick={() => toggleCategory(group.category, false)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") toggleCategory(group.category, false);
+                      }}
                     >
                       Disable All
-                    </Button>
+                    </span>
                   </div>
                 </button>
 

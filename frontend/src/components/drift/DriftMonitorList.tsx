@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { formatDistanceToNow } from 'date-fns'
+import { parseUTC } from '@/lib/utils'
 import {
   MoreHorizontal,
   Play,
@@ -134,7 +135,7 @@ export function DriftMonitorList({
               <TableCell>
                 {monitor.last_run_at ? (
                   <span className="text-sm text-muted-foreground">
-                    {formatDistanceToNow(new Date(monitor.last_run_at), { addSuffix: true })}
+                    {formatDistanceToNow(parseUTC(monitor.last_run_at), { addSuffix: true })}
                   </span>
                 ) : (
                   <span className="text-sm text-muted-foreground">-</span>

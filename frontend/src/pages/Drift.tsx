@@ -245,6 +245,9 @@ export default function Drift() {
                     ))}
                   </SelectContent>
                 </Select>
+                {baselineId && currentId && baselineId === currentId && (
+                  <p className="text-sm text-destructive">{drift_t.mustBeDifferent}</p>
+                )}
               </div>
 
               {/* Drift Configuration Panel */}
@@ -290,7 +293,10 @@ export default function Drift() {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 {common.cancel}
               </Button>
-              <Button onClick={handleCompare} disabled={comparing}>
+              <Button
+                onClick={handleCompare}
+                disabled={comparing || !baselineId || !currentId || baselineId === currentId}
+              >
                 {comparing ? drift_t.comparing : drift_t.compare}
               </Button>
             </DialogFooter>

@@ -17,6 +17,7 @@ import {
   ReferenceLine,
 } from 'recharts'
 import { format } from 'date-fns'
+import { parseUTC } from '@/lib/utils'
 import { TrendingUp, Loader2 } from 'lucide-react'
 
 interface TrendDataPoint {
@@ -73,8 +74,8 @@ export function DriftTrendChart({
 
   const chartData = data.data_points.map((point) => ({
     ...point,
-    timestamp: format(new Date(point.timestamp), 'MMM dd'),
-    fullDate: format(new Date(point.timestamp), 'MMM dd, yyyy HH:mm'),
+    timestamp: format(parseUTC(point.timestamp), 'MMM dd'),
+    fullDate: format(parseUTC(point.timestamp), 'MMM dd, yyyy HH:mm'),
   }))
 
   return (
@@ -85,8 +86,8 @@ export function DriftTrendChart({
           {t.trend.title}
         </CardTitle>
         <CardDescription>
-          {format(new Date(data.period_start), 'MMM dd, yyyy')} -{' '}
-          {format(new Date(data.period_end), 'MMM dd, yyyy')}
+          {format(parseUTC(data.period_start), 'MMM dd, yyyy')} -{' '}
+          {format(parseUTC(data.period_end), 'MMM dd, yyyy')}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -153,9 +154,10 @@ export function DriftTrendChart({
                 stroke="#fd9e4b"
                 strokeWidth={2}
                 dot={(props) => {
-                  const { cx, cy, payload } = props
+                  const { cx, cy, payload, index } = props
                   return (
                     <circle
+                      key={`dot-${index}`}
                       cx={cx}
                       cy={cy}
                       r={4}

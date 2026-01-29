@@ -113,9 +113,15 @@ export function getStatusBadgeVariant(
 /**
  * Format a date to relative time (e.g., "2 hours ago")
  */
+export function parseUTC(date: string | Date): Date {
+  if (date instanceof Date) return date
+  // Server returns UTC timestamps without 'Z' suffix; append it to ensure correct parsing
+  return new Date(date.endsWith('Z') ? date : date + 'Z')
+}
+
 export function formatDistanceToNow(date: string | Date | null | undefined): string {
   if (!date) return '-'
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = parseUTC(date)
   const now = new Date()
   const diffMs = now.getTime() - d.getTime()
   const diffSec = Math.floor(diffMs / 1000)

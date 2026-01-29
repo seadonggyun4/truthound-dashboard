@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatDistanceToNow } from 'date-fns'
+import { parseUTC } from '@/lib/utils'
 import { Eye, Lock, AlertTriangle, Shield, ChevronRight, Loader2 } from 'lucide-react'
 import type { PIIScan, DataMaskListItem } from '@/api/modules/privacy'
 
@@ -88,7 +89,7 @@ export function ScanHistoryList({
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(scan.created_at), { addSuffix: true })}
+                      {formatDistanceToNow(parseUTC(scan.created_at), { addSuffix: true })}
                     </p>
                   </div>
                 </div>
@@ -104,7 +105,7 @@ export function ScanHistoryList({
           return (
             <Card
               key={`mask-${mask.id}`}
-              className="cursor-pointer transition-colors hover:bg-muted/50"
+              className={onViewMask ? 'cursor-pointer transition-colors hover:bg-muted/50' : 'transition-colors'}
               onClick={() => onViewMask?.(mask)}
             >
               <CardContent className="flex items-center justify-between p-4">
@@ -121,13 +122,15 @@ export function ScanHistoryList({
                       <Badge variant="secondary">{mask.strategy}</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(mask.created_at), { addSuffix: true })}
+                      {formatDistanceToNow(parseUTC(mask.created_at), { addSuffix: true })}
                     </p>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon">
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                {onViewMask && (
+                  <Button variant="ghost" size="icon">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )

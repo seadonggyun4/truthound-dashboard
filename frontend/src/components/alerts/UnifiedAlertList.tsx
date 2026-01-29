@@ -25,7 +25,7 @@ import {
   ExternalLink,
   MoreHorizontal,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, parseUTC } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -342,7 +342,7 @@ export function UnifiedAlertList({
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true })}
+                      {formatDistanceToNow(parseUTC(alert.created_at), { addSuffix: true })}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>

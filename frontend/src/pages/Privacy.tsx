@@ -65,6 +65,7 @@ export default function Privacy() {
   const [maskHistory, setMaskHistory] = useState<DataMaskListItem[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [activeTab, setActiveTab] = useState('scan')
+  const [viewingScan, setViewingScan] = useState<PIIScan | null>(null)
   const [stats, setStats] = useState({
     totalScans: 0,
     totalFindings: 0,
@@ -193,6 +194,11 @@ export default function Privacy() {
     loadHistory()
   }
 
+  const handleViewScan = (scan: PIIScan) => {
+    setViewingScan(scan)
+    setActiveTab('scan')
+  }
+
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -284,7 +290,7 @@ export default function Privacy() {
       {selectedSourceId && (
         <Card>
           <CardHeader>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); if (v !== 'scan') setViewingScan(null) }}>
               <TabsList>
                 <TabsTrigger value="scan" className="gap-2">
                   <Eye className="h-4 w-4" />
@@ -306,12 +312,13 @@ export default function Privacy() {
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); if (v !== 'scan') setViewingScan(null) }}>
                 <TabsContent value="scan" className="mt-0">
                   <PIIScanPanel
                     sourceId={selectedSourceId}
                     columns={columns}
-                    onScanComplete={handleScanComplete}
+                    initialScan={viewingScan ?? selectedSource?.latestScan}
+                    onScanComplete={() => { setViewingScan(null); handleScanComplete() }}
                   />
                 </TabsContent>
 
@@ -329,6 +336,7 @@ export default function Privacy() {
                     scans={scanHistory}
                     masks={maskHistory}
                     isLoading={isLoadingHistory}
+                    onViewScan={handleViewScan}
                   />
                 </TabsContent>
               </Tabs>

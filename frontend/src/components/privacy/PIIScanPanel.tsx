@@ -7,7 +7,7 @@
  * or regulations parameters. These options have been removed from the UI.
  */
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useIntlayer } from 'react-intlayer'
 import { str } from '@/lib/intlayer-utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,17 +20,23 @@ import { runPIIScan, getPIIScan } from '@/api/modules/privacy'
 
 interface PIIScanPanelProps {
   sourceId: string
+  initialScan?: PIIScan | null
   onScanComplete?: (scan: PIIScan) => void
 }
 
-export function PIIScanPanel({ sourceId, onScanComplete }: PIIScanPanelProps) {
+export function PIIScanPanel({ sourceId, initialScan, onScanComplete }: PIIScanPanelProps) {
   const t = useIntlayer('privacy')
   void useIntlayer('common')
   const { toast } = useToast()
 
   // State
   const [isScanning, setIsScanning] = useState(false)
-  const [currentScan, setCurrentScan] = useState<PIIScan | null>(null)
+  const [currentScan, setCurrentScan] = useState<PIIScan | null>(initialScan ?? null)
+
+  // Sync with parent when initialScan or sourceId changes
+  useEffect(() => {
+    setCurrentScan(initialScan ?? null)
+  }, [initialScan, sourceId])
 
   const handleRunScan = useCallback(async () => {
     setIsScanning(true)
@@ -56,6 +62,7 @@ export function PIIScanPanel({ sourceId, onScanComplete }: PIIScanPanelProps) {
           } else if (result.status === 'error') {
             toast({
               title: str(t.scan.scanFailed),
+              description: result.error_message || undefined,
               variant: 'destructive',
             })
           }

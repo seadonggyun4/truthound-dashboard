@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { formatDistanceToNow } from 'date-fns'
+import { parseUTC } from '@/lib/utils'
 import {
   AlertTriangle,
   AlertCircle,
@@ -148,7 +149,7 @@ export function DriftAlertList({
                 <p className="text-sm">{alert.message}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>
-                    {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true })}
+                    {formatDistanceToNow(parseUTC(alert.created_at), { addSuffix: true })}
                   </span>
                   {alert.drifted_columns.length > 0 && (
                     <>
