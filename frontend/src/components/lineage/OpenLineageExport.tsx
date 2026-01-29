@@ -206,8 +206,8 @@ export function OpenLineageExport({ sourceId, disabled }: OpenLineageExportProps
           Export OpenLineage
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <FileJson className="h-5 w-5" />
             Export as OpenLineage
@@ -218,6 +218,7 @@ export function OpenLineageExport({ sourceId, disabled }: OpenLineageExportProps
           </DialogDescription>
         </DialogHeader>
 
+        <div className="flex-1 min-h-0 overflow-y-auto">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'download' | 'emit')}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="download">
@@ -332,7 +333,7 @@ export function OpenLineageExport({ sourceId, disabled }: OpenLineageExportProps
                     <span className="ml-2 font-mono">{previewData.total_jobs}</span>
                   </div>
                 </div>
-                <pre className="max-h-48 overflow-auto rounded bg-background p-2 text-xs">
+                <pre className="overflow-auto rounded bg-background p-2 text-xs">
                   {JSON.stringify(previewData.events[0], null, 2)}
                 </pre>
               </div>
@@ -409,8 +410,9 @@ export function OpenLineageExport({ sourceId, disabled }: OpenLineageExportProps
             </div>
           </TabsContent>
         </Tabs>
+        </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="flex-shrink-0 gap-2">
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
