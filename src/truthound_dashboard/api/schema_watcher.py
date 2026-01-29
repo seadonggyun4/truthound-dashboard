@@ -162,6 +162,153 @@ async def get_scheduler_status(
     return await service.get_scheduler_status()
 
 
+# =============================================================================
+# Alert Endpoints
+# =============================================================================
+
+
+@router.get(
+    "/alerts",
+    response_model=PaginatedResponse[SchemaWatcherAlertSummary],
+    summary="List alerts",
+    description="List all schema watcher alerts with optional filtering.",
+)
+async def list_alerts(
+    service: SchemaWatcherServiceDep,
+    watcher_id: str | None = Query(None, description="Filter by watcher ID"),
+    status: SchemaWatcherAlertStatus | None = Query(None, description="Filter by status"),
+    severity: SchemaWatcherAlertSeverity | None = Query(None, description="Filter by severity"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+) -> PaginatedResponse[SchemaWatcherAlertSummary]:
+    """List schema watcher alerts."""
+    alerts, total = await service.list_alerts(
+        watcher_id=watcher_id,
+        status=status,
+        severity=severity,
+        limit=limit,
+        offset=offset,
+    )
+
+    return PaginatedResponse(
+        data=alerts,
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/alerts/{alert_id}",
+    response_model=SchemaWatcherAlertResponse,
+    summary="Get alert",
+    description="Get a specific schema watcher alert by ID.",
+)
+async def get_alert(
+    alert_id: str,
+    service: SchemaWatcherServiceDep,
+) -> SchemaWatcherAlertResponse:
+    """Get a schema watcher alert by ID."""
+    alert = await service.get_alert(alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return alert
+
+
+@router.post(
+    "/alerts/{alert_id}/acknowledge",
+    response_model=SchemaWatcherAlertResponse,
+    summary="Acknowledge alert",
+    description="Acknowledge a schema watcher alert.",
+)
+async def acknowledge_alert(
+    alert_id: str,
+    request: SchemaWatcherAlertAcknowledge,
+    service: SchemaWatcherServiceDep,
+) -> SchemaWatcherAlertResponse:
+    """Acknowledge an alert."""
+    alert = await service.acknowledge_alert(
+        alert_id,
+        acknowledged_by=request.acknowledged_by,
+    )
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return alert
+
+
+@router.post(
+    "/alerts/{alert_id}/resolve",
+    response_model=SchemaWatcherAlertResponse,
+    summary="Resolve alert",
+    description="Resolve a schema watcher alert.",
+)
+async def resolve_alert(
+    alert_id: str,
+    request: SchemaWatcherAlertResolve,
+    service: SchemaWatcherServiceDep,
+) -> SchemaWatcherAlertResponse:
+    """Resolve an alert."""
+    alert = await service.resolve_alert(
+        alert_id,
+        resolved_by=request.resolved_by,
+        resolution_notes=request.resolution_notes,
+    )
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return alert
+
+
+# =============================================================================
+# Run Endpoints
+# =============================================================================
+
+
+@router.get(
+    "/runs",
+    response_model=PaginatedResponse[SchemaWatcherRunSummary],
+    summary="List runs",
+    description="List all schema watcher runs with optional filtering.",
+)
+async def list_runs(
+    service: SchemaWatcherServiceDep,
+    watcher_id: str | None = Query(None, description="Filter by watcher ID"),
+    status: SchemaWatcherRunStatus | None = Query(None, description="Filter by status"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+) -> PaginatedResponse[SchemaWatcherRunSummary]:
+    """List schema watcher runs."""
+    runs, total = await service.list_runs(
+        watcher_id=watcher_id,
+        status=status,
+        limit=limit,
+        offset=offset,
+    )
+
+    return PaginatedResponse(
+        data=runs,
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/runs/{run_id}",
+    response_model=SchemaWatcherRunResponse,
+    summary="Get run",
+    description="Get a specific schema watcher run by ID.",
+)
+async def get_run(
+    run_id: str,
+    service: SchemaWatcherServiceDep,
+) -> SchemaWatcherRunResponse:
+    """Get a schema watcher run by ID."""
+    run = await service.get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    return run
+
+
 @router.get(
     "/{watcher_id}",
     response_model=SchemaWatcherResponse,
@@ -445,153 +592,6 @@ async def rollback_schema_version(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
-# =============================================================================
-# Alert Endpoints
-# =============================================================================
-
-
-@router.get(
-    "/alerts",
-    response_model=PaginatedResponse[SchemaWatcherAlertSummary],
-    summary="List alerts",
-    description="List all schema watcher alerts with optional filtering.",
-)
-async def list_alerts(
-    service: SchemaWatcherServiceDep,
-    watcher_id: str | None = Query(None, description="Filter by watcher ID"),
-    status: SchemaWatcherAlertStatus | None = Query(None, description="Filter by status"),
-    severity: SchemaWatcherAlertSeverity | None = Query(None, description="Filter by severity"),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-) -> PaginatedResponse[SchemaWatcherAlertSummary]:
-    """List schema watcher alerts."""
-    alerts, total = await service.list_alerts(
-        watcher_id=watcher_id,
-        status=status,
-        severity=severity,
-        limit=limit,
-        offset=offset,
-    )
-
-    return PaginatedResponse(
-        data=alerts,
-        total=total,
-        offset=offset,
-        limit=limit,
-    )
-
-
-@router.get(
-    "/alerts/{alert_id}",
-    response_model=SchemaWatcherAlertResponse,
-    summary="Get alert",
-    description="Get a specific schema watcher alert by ID.",
-)
-async def get_alert(
-    alert_id: str,
-    service: SchemaWatcherServiceDep,
-) -> SchemaWatcherAlertResponse:
-    """Get a schema watcher alert by ID."""
-    alert = await service.get_alert(alert_id)
-    if not alert:
-        raise HTTPException(status_code=404, detail="Alert not found")
-    return alert
-
-
-@router.post(
-    "/alerts/{alert_id}/acknowledge",
-    response_model=SchemaWatcherAlertResponse,
-    summary="Acknowledge alert",
-    description="Acknowledge a schema watcher alert.",
-)
-async def acknowledge_alert(
-    alert_id: str,
-    request: SchemaWatcherAlertAcknowledge,
-    service: SchemaWatcherServiceDep,
-) -> SchemaWatcherAlertResponse:
-    """Acknowledge an alert."""
-    alert = await service.acknowledge_alert(
-        alert_id,
-        acknowledged_by=request.acknowledged_by,
-    )
-    if not alert:
-        raise HTTPException(status_code=404, detail="Alert not found")
-    return alert
-
-
-@router.post(
-    "/alerts/{alert_id}/resolve",
-    response_model=SchemaWatcherAlertResponse,
-    summary="Resolve alert",
-    description="Resolve a schema watcher alert.",
-)
-async def resolve_alert(
-    alert_id: str,
-    request: SchemaWatcherAlertResolve,
-    service: SchemaWatcherServiceDep,
-) -> SchemaWatcherAlertResponse:
-    """Resolve an alert."""
-    alert = await service.resolve_alert(
-        alert_id,
-        resolved_by=request.resolved_by,
-        resolution_notes=request.resolution_notes,
-    )
-    if not alert:
-        raise HTTPException(status_code=404, detail="Alert not found")
-    return alert
-
-
-# =============================================================================
-# Run Endpoints
-# =============================================================================
-
-
-@router.get(
-    "/runs",
-    response_model=PaginatedResponse[SchemaWatcherRunSummary],
-    summary="List runs",
-    description="List all schema watcher runs with optional filtering.",
-)
-async def list_runs(
-    service: SchemaWatcherServiceDep,
-    watcher_id: str | None = Query(None, description="Filter by watcher ID"),
-    status: SchemaWatcherRunStatus | None = Query(None, description="Filter by status"),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-) -> PaginatedResponse[SchemaWatcherRunSummary]:
-    """List schema watcher runs."""
-    runs, total = await service.list_runs(
-        watcher_id=watcher_id,
-        status=status,
-        limit=limit,
-        offset=offset,
-    )
-
-    return PaginatedResponse(
-        data=runs,
-        total=total,
-        offset=offset,
-        limit=limit,
-    )
-
-
-@router.get(
-    "/runs/{run_id}",
-    response_model=SchemaWatcherRunResponse,
-    summary="Get run",
-    description="Get a specific schema watcher run by ID.",
-)
-async def get_run(
-    run_id: str,
-    service: SchemaWatcherServiceDep,
-) -> SchemaWatcherRunResponse:
-    """Get a schema watcher run by ID."""
-    run = await service.get_run(run_id)
-    if not run:
-        raise HTTPException(status_code=404, detail="Run not found")
-    return run
 
 
 # =============================================================================

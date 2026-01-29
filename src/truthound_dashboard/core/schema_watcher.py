@@ -93,29 +93,34 @@ def _generate_id() -> str:
     return str(uuid4())
 
 
-def _map_db_status(status: DBStatus) -> SchemaWatcherStatus:
+def _map_db_status(status: DBStatus | str) -> SchemaWatcherStatus:
     """Map DB status enum to schema enum."""
-    return SchemaWatcherStatus(status.value)
+    value = status.value if hasattr(status, "value") else status
+    return SchemaWatcherStatus(value)
 
 
-def _map_schema_status(status: SchemaWatcherStatus) -> DBStatus:
+def _map_schema_status(status: SchemaWatcherStatus | str) -> DBStatus:
     """Map schema status enum to DB enum."""
-    return DBStatus(status.value)
+    value = status.value if hasattr(status, "value") else status
+    return DBStatus(value)
 
 
-def _map_db_alert_status(status: DBAlertStatus) -> SchemaWatcherAlertStatus:
+def _map_db_alert_status(status: DBAlertStatus | str) -> SchemaWatcherAlertStatus:
     """Map DB alert status enum to schema enum."""
-    return SchemaWatcherAlertStatus(status.value)
+    value = status.value if hasattr(status, "value") else status
+    return SchemaWatcherAlertStatus(value)
 
 
-def _map_db_alert_severity(severity: DBAlertSeverity) -> SchemaWatcherAlertSeverity:
+def _map_db_alert_severity(severity: DBAlertSeverity | str) -> SchemaWatcherAlertSeverity:
     """Map DB alert severity enum to schema enum."""
-    return SchemaWatcherAlertSeverity(severity.value)
+    value = severity.value if hasattr(severity, "value") else severity
+    return SchemaWatcherAlertSeverity(value)
 
 
-def _map_db_run_status(status: DBRunStatus) -> SchemaWatcherRunStatus:
+def _map_db_run_status(status: DBRunStatus | str) -> SchemaWatcherRunStatus:
     """Map DB run status enum to schema enum."""
-    return SchemaWatcherRunStatus(status.value)
+    value = status.value if hasattr(status, "value") else status
+    return SchemaWatcherRunStatus(value)
 
 
 class SchemaWatcherService:

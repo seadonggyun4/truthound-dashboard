@@ -127,6 +127,18 @@ import {
   COMPATIBILITY_LEVEL_LABELS,
 } from '@/api/modules/schema-watcher'
 import { formatDistanceToNow, format } from 'date-fns'
+import { parseUTC } from '@/lib/utils'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from '@/components/ui/pagination'
+
+const PAGE_SIZE = 10
 
 // ============================================================================
 // Helper Functions
@@ -234,11 +246,20 @@ export default function SchemaWatcherPage() {
   // State
   const [activeTab, setActiveTab] = useState('watchers')
   const [isLoading, setIsLoading] = useState(true)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [watchers, setWatchers] = useState<SchemaWatcherSummary[]>([])
   const [alerts, setAlerts] = useState<SchemaWatcherAlertSummary[]>([])
   const [runs, setRuns] = useState<SchemaWatcherRunSummary[]>([])
   const [statistics, setStatistics] = useState<SchemaWatcherStatistics | null>(null)
   const [sources, setSources] = useState<Source[]>([])
+
+  // Pagination
+  const [watcherPage, setWatcherPage] = useState(1)
+  const [watcherTotal, setWatcherTotal] = useState(0)
+  const [alertPage, setAlertPage] = useState(1)
+  const [alertTotal, setAlertTotal] = useState(0)
+  const [runPage, setRunPage] = useState(1)
+  const [runTotal, setRunTotal] = useState(0)
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -295,16 +316,31 @@ export default function SchemaWatcherPage() {
     setIsLoading(true)
     try {
       const [watchersRes, alertsRes, runsRes, statsRes, sourcesRes] = await Promise.all([
-        listSchemaWatchers({ limit: 100 }),
-        listSchemaWatcherAlerts({ limit: 100 }),
-        listSchemaWatcherRuns({ limit: 100 }),
+        listSchemaWatchers({
+          limit: PAGE_SIZE,
+          offset: (watcherPage - 1) * PAGE_SIZE,
+          ...(statusFilter !== 'all' ? { status: statusFilter as SchemaWatcherStatus } : {}),
+        }),
+        listSchemaWatcherAlerts({
+          limit: PAGE_SIZE,
+          offset: (alertPage - 1) * PAGE_SIZE,
+          ...(alertStatusFilter !== 'all' ? { status: alertStatusFilter as SchemaWatcherAlertStatus } : {}),
+          ...(severityFilter !== 'all' ? { severity: severityFilter as string } : {}),
+        }),
+        listSchemaWatcherRuns({
+          limit: PAGE_SIZE,
+          offset: (runPage - 1) * PAGE_SIZE,
+        }),
         getSchemaWatcherStatistics(),
         listSources({ limit: 100 }),
       ])
 
       setWatchers(watchersRes.data)
+      setWatcherTotal(watchersRes.total)
       setAlerts(alertsRes.data)
+      setAlertTotal(alertsRes.total)
       setRuns(runsRes.data)
+      setRunTotal(runsRes.total)
       setStatistics(statsRes)
       setSources(sourcesRes.data)
     } catch (error) {
@@ -315,12 +351,13 @@ export default function SchemaWatcherPage() {
       })
     } finally {
       setIsLoading(false)
+      setIsInitialLoad(false)
     }
-  }, [toast, common])
+  }, [toast, common, watcherPage, alertPage, runPage, statusFilter, alertStatusFilter, severityFilter])
 
   useEffect(() => {
     loadData()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadData])
 
   // ============================================================================
   // Handlers
@@ -428,10 +465,18 @@ export default function SchemaWatcherPage() {
       try {
         toast({ title: str(t.messages.checkStarted) })
         const result = await checkSchemaWatcherNow(id)
-        toast({
-          title: str(t.messages.checkCompleted),
-          description: result.message,
-        })
+        if (result.status === 'failed') {
+          toast({
+            title: str(common.error),
+            description: result.message,
+            variant: 'destructive',
+          })
+        } else {
+          toast({
+            title: str(t.messages.checkCompleted),
+            description: result.message,
+          })
+        }
         loadData()
       } catch (error) {
         toast({
@@ -640,22 +685,85 @@ export default function SchemaWatcherPage() {
   // Filtered Data
   // ============================================================================
 
-  const filteredWatchers = watchers.filter((w) => {
-    if (statusFilter !== 'all' && w.status !== statusFilter) return false
-    return true
-  })
+  // Reset page when filters change
+  useEffect(() => { setWatcherPage(1) }, [statusFilter])
+  useEffect(() => { setAlertPage(1) }, [alertStatusFilter, severityFilter])
 
-  const filteredAlerts = alerts.filter((a) => {
-    if (alertStatusFilter !== 'all' && a.status !== alertStatusFilter) return false
-    if (severityFilter !== 'all' && a.severity !== severityFilter) return false
-    return true
-  })
+  const watcherTotalPages = Math.ceil(watcherTotal / PAGE_SIZE)
+  const alertTotalPages = Math.ceil(alertTotal / PAGE_SIZE)
+  const runTotalPages = Math.ceil(runTotal / PAGE_SIZE)
+
+  const renderPagination = (currentPage: number, totalPages: number, total: number, onPageChange: (page: number) => void) => {
+    if (totalPages <= 1) return null
+
+    const getPageNumbers = () => {
+      const pages: (number | 'ellipsis')[] = []
+      if (totalPages <= 7) {
+        for (let i = 1; i <= totalPages; i++) pages.push(i)
+      } else {
+        pages.push(1)
+        if (currentPage > 3) pages.push('ellipsis')
+        for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+          pages.push(i)
+        }
+        if (currentPage < totalPages - 2) pages.push('ellipsis')
+        pages.push(totalPages)
+      }
+      return pages
+    }
+
+    const from = (currentPage - 1) * PAGE_SIZE + 1
+    const to = Math.min(currentPage * PAGE_SIZE, total)
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-2 pb-2">
+        <p className="text-sm text-muted-foreground whitespace-nowrap mr-4">
+          {from}-{to} of {total}
+        </p>
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() => onPageChange(currentPage - 1)}
+                aria-disabled={currentPage <= 1}
+                className={currentPage <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+              />
+            </PaginationItem>
+            {getPageNumbers().map((page, i) =>
+              page === 'ellipsis' ? (
+                <PaginationItem key={`ellipsis-${i}`}>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              ) : (
+                <PaginationItem key={page}>
+                  <PaginationLink
+                    isActive={page === currentPage}
+                    onClick={() => onPageChange(page)}
+                    className="cursor-pointer"
+                  >
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+              )
+            )}
+            <PaginationItem>
+              <PaginationNext
+                onClick={() => onPageChange(currentPage + 1)}
+                aria-disabled={currentPage >= totalPages}
+                className={currentPage >= totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    )
+  }
 
   // ============================================================================
   // Render
   // ============================================================================
 
-  if (isLoading) {
+  if (isInitialLoad && isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -794,7 +902,7 @@ export default function SchemaWatcherPage() {
           </div>
 
           {/* Watchers Table */}
-          {filteredWatchers.length === 0 ? (
+          {watchers.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Eye className="h-12 w-12 text-muted-foreground/50 mb-4" />
@@ -822,7 +930,7 @@ export default function SchemaWatcherPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredWatchers.map((watcher) => (
+                  {watchers.map((watcher) => (
                     <TableRow key={watcher.id}>
                       <TableCell className="font-medium">{watcher.name}</TableCell>
                       <TableCell>{watcher.source_name || watcher.source_id}</TableCell>
@@ -836,62 +944,85 @@ export default function SchemaWatcherPage() {
                       <TableCell>{watcher.change_count}</TableCell>
                       <TableCell>
                         {watcher.last_check_at
-                          ? formatDistanceToNow(new Date(watcher.last_check_at), {
+                          ? formatDistanceToNow(parseUTC(watcher.last_check_at), {
                               addSuffix: true,
                             })
                           : '-'}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleCheckNow(watcher.id)}
-                            title={str(t.watcher.checkNow)}
-                          >
-                            <Play className="h-4 w-4" />
-                          </Button>
-                          {watcher.status === 'active' ? (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleStatusChange(watcher.id, 'paused')}
-                              title={str(t.watcher.pause)}
-                            >
-                              <Pause className="h-4 w-4" />
-                            </Button>
-                          ) : watcher.status === 'paused' ? (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleStatusChange(watcher.id, 'active')}
-                              title={str(t.watcher.resume)}
-                            >
-                              <Play className="h-4 w-4" />
-                            </Button>
-                          ) : null}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditWatcher(watcher.id)}
-                            title={str(t.watcher.editWatcher)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteWatcher(watcher.id)}
-                            title={str(t.watcher.deleteWatcher)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <TooltipProvider>
+                          <div className="flex gap-1">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleCheckNow(watcher.id)}
+                                >
+                                  <RefreshCw className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{str(t.watcher.checkNow)}</TooltipContent>
+                            </Tooltip>
+                            {watcher.status === 'active' ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleStatusChange(watcher.id, 'paused')}
+                                  >
+                                    <Pause className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{str(t.watcher.pause)}</TooltipContent>
+                              </Tooltip>
+                            ) : watcher.status === 'paused' ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleStatusChange(watcher.id, 'active')}
+                                  >
+                                    <Play className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{str(t.watcher.resume)}</TooltipContent>
+                              </Tooltip>
+                            ) : null}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEditWatcher(watcher.id)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{str(t.watcher.editWatcher)}</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteWatcher(watcher.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{str(t.watcher.deleteWatcher)}</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TooltipProvider>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              {renderPagination(watcherPage, watcherTotalPages, watcherTotal, setWatcherPage)}
             </Card>
           )}
         </TabsContent>
@@ -929,7 +1060,7 @@ export default function SchemaWatcherPage() {
           </div>
 
           {/* Alerts Table */}
-          {filteredAlerts.length === 0 ? (
+          {alerts.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Bell className="h-12 w-12 text-muted-foreground/50 mb-4" />
@@ -952,7 +1083,7 @@ export default function SchemaWatcherPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAlerts.map((alert) => (
+                  {alerts.map((alert) => (
                     <TableRow key={alert.id}>
                       <TableCell className="max-w-[300px] truncate">{alert.title}</TableCell>
                       <TableCell>{getAlertSeverityBadge(alert.severity)}</TableCell>
@@ -966,7 +1097,7 @@ export default function SchemaWatcherPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {formatDistanceToNow(new Date(alert.created_at), {
+                        {formatDistanceToNow(parseUTC(alert.created_at), {
                           addSuffix: true,
                         })}
                       </TableCell>
@@ -1006,6 +1137,7 @@ export default function SchemaWatcherPage() {
                   ))}
                 </TableBody>
               </Table>
+              {renderPagination(alertPage, alertTotalPages, alertTotal, setAlertPage)}
             </Card>
           )}
         </TabsContent>
@@ -1048,7 +1180,7 @@ export default function SchemaWatcherPage() {
                       </TableCell>
                       <TableCell>{formatDuration(run.duration_ms)}</TableCell>
                       <TableCell>
-                        {formatDistanceToNow(new Date(run.started_at), {
+                        {formatDistanceToNow(parseUTC(run.started_at), {
                           addSuffix: true,
                         })}
                       </TableCell>
@@ -1056,6 +1188,7 @@ export default function SchemaWatcherPage() {
                   ))}
                 </TableBody>
               </Table>
+              {renderPagination(runPage, runTotalPages, runTotal, setRunPage)}
             </Card>
           )}
         </TabsContent>
@@ -1173,7 +1306,7 @@ export default function SchemaWatcherPage() {
                       </TableCell>
                       <TableCell>
                         {version.created_at
-                          ? formatDistanceToNow(new Date(version.created_at), { addSuffix: true })
+                          ? formatDistanceToNow(parseUTC(version.created_at), { addSuffix: true })
                           : '-'}
                       </TableCell>
                       <TableCell>
