@@ -318,15 +318,110 @@ The `ImpactAnalyzer` accepts a `LineageGraph` and performs **downstream-only** t
 
 ### OpenLineage Support
 
-The module supports the OpenLineage standard for interoperability with external lineage systems:
+The module supports the [OpenLineage](https://openlineage.io/) specification (v1.0.5) for interoperability with external lineage systems. OpenLineage defines a standard event model for tracking data pipeline execution, enabling cross-platform lineage integration regardless of the orchestration framework in use.
+
+#### Event Model
+
+OpenLineage represents data pipeline execution as a sequence of run events. Each event captures the relationship between a **job** (a unit of computation) and **datasets** (inputs and outputs).
 
 | Event Type | Description |
 |------------|-------------|
-| RunEvent | Job execution start/complete/fail |
-| DatasetEvent | Dataset read/write operations |
-| JobEvent | Job metadata and facets |
+| **RunEvent** | Records the lifecycle of a job execution (START, COMPLETE, FAIL, ABORT) |
+| **DatasetEvent** | Describes datasets consumed or produced, including schema facets |
+| **JobEvent** | Captures job-level metadata such as namespace, name, and custom facets |
 
-Compatible systems: Marquez, DataHub, Apache Atlas.
+#### Compatible Systems
+
+Truthound Dashboard generates OpenLineage-compliant events that can be consumed by:
+
+| System | Integration Method | Description |
+|--------|-------------------|-------------|
+| **Marquez** | HTTP API | Open-source metadata service with native OpenLineage support |
+| **DataHub** | HTTP API | Data discovery platform with lineage ingestion |
+| **Apache Atlas** | Webhook | Enterprise metadata governance and lineage |
+| **Atlan** | HTTP API | Modern data catalog with OpenLineage ingestion |
+
+### OpenLineage Export
+
+The Export panel provides two mechanisms for delivering OpenLineage events to external systems: file download and direct endpoint emission.
+
+#### Export Settings
+
+All export operations share a common set of configuration parameters:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| **Job Namespace** | `truthound-dashboard` | Logical grouping identifier for the exported jobs. Namespaces isolate lineage events across environments (e.g., `production`, `staging`). |
+| **Job Name** | `lineage_export` | Identifier for the exported job within the namespace. Combined with the namespace, this forms a globally unique job reference. |
+| **Include Schema** | Enabled | When enabled, column-level schema information is embedded as dataset facets, providing downstream consumers with structural metadata. |
+| **Granular Export** | Disabled | When enabled, each transformation node generates a separate pair of START and COMPLETE events. When disabled, the entire lineage graph is represented as a single composite job. |
+
+#### Download Mode
+
+File-based export generates OpenLineage events as a downloadable file in one of two formats:
+
+| Format | Extension | Structure | Use Case |
+|--------|-----------|-----------|----------|
+| **JSON** | `.json` | Single JSON array containing all events, formatted with indentation | Human-readable inspection, documentation, version control |
+| **NDJSON** | `.ndjson` | One JSON object per line, no outer array | Streaming ingestion, log-based pipelines, large event volumes |
+
+**Workflow:**
+
+1. Configure export settings (namespace, job name, schema inclusion, granularity)
+2. Select the desired format (JSON or NDJSON)
+3. Click **Preview** to generate and inspect the events before downloading
+4. Review the preview summary (event count, dataset count, job count) and the first event payload
+5. Click **Download** to save the file locally
+
+#### Emit Mode
+
+Direct emission sends OpenLineage events to an HTTP endpoint via POST requests, suitable for real-time integration with lineage consumers.
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| **Webhook URL** | Yes | The HTTP(S) endpoint that accepts OpenLineage events. Example: `http://localhost:5000/api/v1/lineage` for Marquez. |
+| **API Key** | No | Bearer token appended to the `Authorization` header for authenticated endpoints. |
+| **Batch Size** | No (default: 100) | Number of events sent per HTTP request. Larger batches reduce network overhead; smaller batches provide more granular error handling. |
+
+The emission process sends events sequentially in batches and reports the total number of successfully transmitted events upon completion.
+
+### OpenLineage Webhooks
+
+Webhook configurations define persistent connections to external OpenLineage consumers. Unlike the one-time emission in Export mode, webhooks enable continuous event forwarding for ongoing lineage synchronization.
+
+#### Webhook Management
+
+| Operation | Description |
+|-----------|-------------|
+| **Add Webhook** | Register a new endpoint with name, URL, optional API key, headers, and timeout |
+| **Edit Webhook** | Modify an existing webhook's configuration |
+| **Delete Webhook** | Remove a webhook registration |
+| **Test Webhook** | Send a test OpenLineage event to verify endpoint connectivity and measure response latency |
+| **Activate / Deactivate** | Toggle a webhook between Active and Inactive states without deleting the configuration |
+
+#### Webhook Properties
+
+| Property | Description |
+|----------|-------------|
+| **Name** | Human-readable identifier for the webhook |
+| **URL** | Target HTTP(S) endpoint |
+| **Status** | Active (events are forwarded) or Inactive (events are not forwarded) |
+| **API Key** | Optional authentication credential |
+| **Headers** | Optional custom HTTP headers (key-value pairs) |
+| **Timeout** | Maximum wait time for endpoint response (seconds) |
+
+#### Connectivity Testing
+
+The **Test** button sends a probe event to the configured endpoint and reports:
+
+| Field | Description |
+|-------|-------------|
+| **Success / Failure** | Whether the endpoint accepted the event |
+| **Response Time** | Round-trip latency in milliseconds |
+| **Status Code** | HTTP status code returned by the endpoint |
+| **Error Message** | Diagnostic information if the test fails |
+
+Test events include a special header to distinguish them from production lineage events, allowing receiving systems to discard or flag them appropriately.
 
 ## API Reference
 
@@ -343,7 +438,14 @@ Compatible systems: Marquez, DataHub, Apache Atlas.
 | `/lineage/edges/{id}` | DELETE | Delete an edge |
 | `/lineage/positions` | POST | Update node positions (batch) |
 | `/lineage/auto-discover` | POST | Auto-discover lineage from data sources |
-| `/lineage/openlineage/webhooks` | GET | List OpenLineage webhook configurations |
+| `/lineage/openlineage/export` | POST | Export lineage as OpenLineage events |
+| `/lineage/openlineage/export/granular` | POST | Export with per-transformation events |
+| `/lineage/openlineage/emit` | POST | Emit events to an external endpoint |
+| `/lineage/openlineage/webhooks` | GET | List webhook configurations |
+| `/lineage/openlineage/webhooks` | POST | Create a webhook configuration |
+| `/lineage/openlineage/webhooks/{id}` | PUT | Update a webhook configuration |
+| `/lineage/openlineage/webhooks/{id}` | DELETE | Delete a webhook configuration |
+| `/lineage/openlineage/webhooks/test` | POST | Test webhook endpoint connectivity |
 
 ## Best Practices
 
