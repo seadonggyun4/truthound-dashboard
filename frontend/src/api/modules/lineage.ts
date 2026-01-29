@@ -41,13 +41,15 @@ export interface LineageGraph {
 }
 
 export interface ImpactAnalysisResponse {
-  node_id: string
-  node_name: string
-  upstream: LineageNode[]
-  downstream: LineageNode[]
+  root_node_id: string
+  root_node_name: string
+  direction: string
+  upstream_nodes: LineageNode[]
+  downstream_nodes: LineageNode[]
+  affected_sources: string[]
   upstream_count: number
   downstream_count: number
-  depth: number
+  total_affected: number
 }
 
 export interface NodePositionUpdate {

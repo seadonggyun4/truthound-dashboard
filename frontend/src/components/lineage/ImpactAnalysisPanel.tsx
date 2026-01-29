@@ -58,9 +58,9 @@ export function ImpactAnalysisPanel({ analysis, isLoading }: ImpactAnalysisPanel
       <CardContent className="space-y-4">
         {/* Target node */}
         <div className="rounded-lg border p-3">
-          <p className="text-sm font-medium">{analysis.node_name}</p>
+          <p className="text-sm font-medium">{analysis.root_node_name}</p>
           <p className="text-xs text-muted-foreground">
-            Analysis depth: {analysis.depth} levels
+            Total affected: {analysis.total_affected} nodes
           </p>
         </div>
 
@@ -72,11 +72,11 @@ export function ImpactAnalysisPanel({ analysis, isLoading }: ImpactAnalysisPanel
               {t.affectedUpstream} ({analysis.upstream_count})
             </span>
           </div>
-          {analysis.upstream.length === 0 ? (
+          {analysis.upstream_nodes.length === 0 ? (
             <p className="text-sm text-muted-foreground">No upstream dependencies</p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {analysis.upstream.map((node) => (
+              {analysis.upstream_nodes.map((node) => (
                 <NodeBadge key={node.id} node={node} />
               ))}
             </div>
@@ -91,11 +91,11 @@ export function ImpactAnalysisPanel({ analysis, isLoading }: ImpactAnalysisPanel
               {t.affectedDownstream} ({analysis.downstream_count})
             </span>
           </div>
-          {analysis.downstream.length === 0 ? (
+          {analysis.downstream_nodes.length === 0 ? (
             <p className="text-sm text-muted-foreground">No downstream dependents</p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {analysis.downstream.map((node) => (
+              {analysis.downstream_nodes.map((node) => (
                 <NodeBadge key={node.id} node={node} />
               ))}
             </div>

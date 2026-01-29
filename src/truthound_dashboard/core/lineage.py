@@ -579,38 +579,39 @@ class LineageService:
             # Perform impact analysis
             impact_result = analyzer.analyze_impact(
                 node_id=node_id,
-                direction=direction,
                 max_depth=max_depth,
             )
 
             # Convert truthound result to our format
-            upstream_nodes = [
-                self._truthound_node_to_summary(n)
-                for n in impact_result.upstream_nodes
-            ]
+            # ImpactResult has: source_node, affected_nodes (downstream), total_affected, max_depth
             downstream_nodes = [
-                self._truthound_node_to_summary(n)
-                for n in impact_result.downstream_nodes
+                {
+                    "id": getattr(an.node, 'id', None),
+                    "name": getattr(an.node, 'name', None),
+                    "node_type": getattr(an.node, 'node_type', None),
+                    "source_id": None,
+                    "depth": getattr(an, 'depth', 0),
+                    "impact_level": str(getattr(an, 'impact_level', '')),
+                }
+                for an in impact_result.affected_nodes
             ]
 
-            affected_sources = set()
-            for n in impact_result.upstream_nodes + impact_result.downstream_nodes:
-                if hasattr(n, 'source_id') and n.source_id:
-                    affected_sources.add(n.source_id)
+            # For upstream, use fallback traversal (ImpactAnalyzer only does downstream)
+            upstream_nodes_list: list[dict[str, Any]] = []
+            if direction in ("upstream", "both"):
+                upstream = await self._traverse_upstream(node_id, max_depth)
+                upstream_nodes_list = [self._node_summary(n) for n in upstream]
 
             return {
                 "root_node_id": node_id,
                 "root_node_name": root_node.name,
                 "direction": direction,
-                "upstream_nodes": upstream_nodes,
+                "upstream_nodes": upstream_nodes_list,
                 "downstream_nodes": downstream_nodes,
-                "affected_sources": list(affected_sources),
-                "upstream_count": len(upstream_nodes),
+                "affected_sources": [],
+                "upstream_count": len(upstream_nodes_list),
                 "downstream_count": len(downstream_nodes),
-                "total_affected": len(upstream_nodes) + len(downstream_nodes),
-                # Additional truthound analysis data
-                "impact_score": getattr(impact_result, 'impact_score', None),
-                "critical_paths": getattr(impact_result, 'critical_paths', []),
+                "total_affected": len(upstream_nodes_list) + len(downstream_nodes),
             }
 
         except ImportError:
@@ -651,29 +652,44 @@ class LineageService:
         """Build a truthound LineageGraph from database state."""
         try:
             from truthound.lineage import LineageGraph, LineageNode as TruthoundNode, LineageEdge as TruthoundEdge
+            from truthound.lineage.base import NodeType, EdgeType
+
+            # Map dashboard node types to truthound NodeType enum
+            node_type_map = {
+                "source": NodeType.SOURCE,
+                "transform": NodeType.TRANSFORMATION,
+                "sink": NodeType.EXTERNAL,
+            }
+
+            # Map dashboard edge types to truthound EdgeType enum
+            edge_type_map = {
+                "derives_from": EdgeType.DERIVED_FROM,
+                "transforms_to": EdgeType.TRANSFORMED_TO,
+                "joins_with": EdgeType.JOINED_WITH,
+                "filters_from": EdgeType.FILTERED_TO,
+            }
 
             graph = LineageGraph()
 
             # Add all nodes
             nodes = await self.node_repo.get_all_nodes()
             for node in nodes:
+                th_node_type = node_type_map.get(node.node_type, NodeType.EXTERNAL)
                 th_node = TruthoundNode(
                     id=node.id,
                     name=node.name,
-                    node_type=node.node_type,
-                    source_id=node.source_id,
-                    metadata=node.metadata_json or {},
+                    node_type=th_node_type,
                 )
                 graph.add_node(th_node)
 
             # Add all edges
             edges = await self.edge_repo.get_all_edges()
             for edge in edges:
+                th_edge_type = edge_type_map.get(edge.edge_type, EdgeType.DERIVED_FROM)
                 th_edge = TruthoundEdge(
-                    source_node_id=edge.source_node_id,
-                    target_node_id=edge.target_node_id,
-                    edge_type=edge.edge_type,
-                    metadata=edge.metadata_json or {},
+                    source=edge.source_node_id,
+                    target=edge.target_node_id,
+                    edge_type=th_edge_type,
                 )
                 graph.add_edge(th_edge)
 
@@ -684,11 +700,12 @@ class LineageService:
 
     def _truthound_node_to_summary(self, node: Any) -> dict[str, Any]:
         """Convert truthound LineageNode to summary dict."""
+        node_type = getattr(node, 'node_type', None)
         return {
             "id": getattr(node, 'id', None),
             "name": getattr(node, 'name', None),
-            "node_type": getattr(node, 'node_type', None),
-            "source_id": getattr(node, 'source_id', None),
+            "node_type": str(node_type.value) if hasattr(node_type, 'value') else str(node_type),
+            "source_id": None,
         }
 
     async def analyze_schema_change_impact(
