@@ -129,14 +129,17 @@ export function RuleSuggestionDialog({
   const [copied, setCopied] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
-  // Reset selection when dialog opens with new suggestions
+  // Reset selection when dialog opens or suggestions change
   useEffect(() => {
-    if (open && suggestions.length > 0) {
+    if (!open) return
+    if (suggestions.length > 0) {
       // Pre-select high confidence suggestions
       const highConfidence = suggestions
         .filter((s) => s.confidence >= 0.85)
         .map((s) => s.id)
       setSelectedIds(new Set(highConfidence))
+    } else {
+      setSelectedIds(new Set())
     }
   }, [open, suggestions])
 
