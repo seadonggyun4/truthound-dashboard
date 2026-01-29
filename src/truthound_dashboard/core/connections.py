@@ -1581,6 +1581,11 @@ class KafkaConnectionBuilder(ConnectionBuilder):
 CONNECTION_BUILDERS: dict[str, type[ConnectionBuilder]] = {
     # File-based
     SourceType.FILE.value: FileConnectionBuilder,
+    SourceType.CSV.value: FileConnectionBuilder,
+    SourceType.PARQUET.value: FileConnectionBuilder,
+    SourceType.JSON.value: FileConnectionBuilder,
+    SourceType.NDJSON.value: FileConnectionBuilder,
+    SourceType.JSONL.value: FileConnectionBuilder,
     # Core SQL
     SourceType.POSTGRESQL.value: PostgreSQLConnectionBuilder,
     SourceType.MYSQL.value: MySQLConnectionBuilder,
