@@ -187,7 +187,7 @@ class MaskListItem(BaseSchema, IDMixin):
         return cls(
             id=db_mask.id,
             source_id=db_mask.source_id,
-            source_name=source_name or getattr(db_mask.source, "name", None),
+            source_name=source_name if source_name is not None else None,
             status=db_mask.status,
             strategy=db_mask.strategy,
             columns_masked=len(db_mask.columns_masked) if db_mask.columns_masked else 0,

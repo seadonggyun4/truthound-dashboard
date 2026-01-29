@@ -10,7 +10,7 @@ import { CheckCircle, XCircle, Clock, AlertCircle, Activity } from 'lucide-react
 
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { cn } from '@/lib/utils'
+import { cn, parseUTC } from '@/lib/utils'
 import { useIntlayer } from '@/providers'
 import { str } from '@/lib/intlayer-utils'
 import type { OpenLineageWebhook } from '@/api/modules/lineage'
@@ -56,7 +56,7 @@ export function WebhookStatus({ webhook, className, compact = false }: WebhookSt
         </Badge>
         {webhook.last_sent_at && (
           <span className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(webhook.last_sent_at), { addSuffix: true })}
+            {formatDistanceToNow(parseUTC(webhook.last_sent_at), { addSuffix: true })}
           </span>
         )}
       </div>
@@ -79,7 +79,7 @@ export function WebhookStatus({ webhook, className, compact = false }: WebhookSt
         <span className="text-muted-foreground">{str(t.lastSent)}</span>
         <span>
           {webhook.last_sent_at
-            ? formatDistanceToNow(new Date(webhook.last_sent_at), { addSuffix: true })
+            ? formatDistanceToNow(parseUTC(webhook.last_sent_at), { addSuffix: true })
             : str(t.neverSent)}
         </span>
       </div>

@@ -146,7 +146,7 @@ async def get_config(
     Returns:
         Configuration object.
     """
-    config = service.get_config(source_id)
+    config = await service.get_config(source_id)
     return AutoTriggerConfig(**config)
 
 
@@ -173,7 +173,7 @@ async def update_config(
     update_data = request.model_dump(exclude_unset=True)
     source_id = update_data.pop("source_id", None)
 
-    config = service.update_config(source_id, **update_data)
+    config = await service.update_config(source_id, **update_data)
 
     return AutoTriggerConfig(**config)
 
@@ -200,7 +200,7 @@ async def patch_config(
         Updated configuration.
     """
     update_data = request.model_dump(exclude_unset=True)
-    config = service.update_config(source_id, **update_data)
+    config = await service.update_config(source_id, **update_data)
 
     return AutoTriggerConfig(**config)
 

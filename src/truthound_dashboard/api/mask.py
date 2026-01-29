@@ -127,7 +127,7 @@ async def list_masks(
     """
     masks = await service.list_for_source(source_id, limit=limit)
     return MaskListResponse(
-        data=[MaskListItem.from_db(m) for m in masks],
+        data=[MaskListItem.from_db(m, source_name=None) for m in masks],
         total=len(masks),
         limit=limit,
     )

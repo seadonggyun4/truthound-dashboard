@@ -621,10 +621,16 @@ class TruthoundAdapter:
         *,
         infer_constraints: bool = True,
         categorical_threshold: int | None = None,
+        sample_size: int | None = None,
     ) -> LearnResult:
         """Learn schema from data asynchronously.
 
         Uses truthound's th.learn() to analyze data and generate schema.
+        If sample_size is provided, delegates to learn_with_sampling() which
+        handles dashboard-level sampling before calling th.learn().
+
+        Note: th.learn() only supports (data, infer_constraints, categorical_threshold).
+        sample_size is handled at dashboard level, not passed to truthound.
 
         Args:
             source: Data source - can be:
@@ -636,10 +642,20 @@ class TruthoundAdapter:
                 Columns with unique values <= threshold are treated as categorical
                 and will have allowed_values inferred. If None, uses truthound
                 default (20).
+            sample_size: Sample size for large datasets. Handled at dashboard level
+                by pre-sampling data before passing to th.learn().
 
         Returns:
             LearnResult with schema information.
         """
+        if sample_size is not None:
+            return await self.learn_with_sampling(
+                source,
+                infer_constraints=infer_constraints,
+                categorical_threshold=categorical_threshold,
+                sample_size=sample_size,
+            )
+
         import truthound as th
 
         # Build kwargs dynamically to let truthound use its defaults when not specified
@@ -1228,11 +1244,12 @@ class TruthoundAdapter:
                     )
                     source = sample_result.sampled_path
 
+        # sample_size already handled by dashboard-level sampling above,
+        # do NOT pass it to self.learn() — th.learn() doesn't support it
         return await self.learn(
             source,
             infer_constraints=infer_constraints,
             categorical_threshold=categorical_threshold,
-            sample_size=sample_size,
         )
 
     async def profile_with_sampling(

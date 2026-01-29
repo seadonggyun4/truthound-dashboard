@@ -99,8 +99,9 @@ class CrossAlertService:
             return self._config_to_dict(config)
 
         # Return defaults if no config exists
+        now = datetime.utcnow()
         return {
-            "id": None,
+            "id": str(uuid.uuid4()),
             "source_id": source_id,
             "enabled": True,
             "trigger_drift_on_anomaly": True,
@@ -111,8 +112,8 @@ class CrossAlertService:
             "cooldown_seconds": 300,
             "last_anomaly_trigger_at": None,
             "last_drift_trigger_at": None,
-            "created_at": None,
-            "updated_at": None,
+            "created_at": now,
+            "updated_at": now,
         }
 
     def _config_to_dict(self, config: "CrossAlertConfig") -> dict[str, Any]:
