@@ -107,6 +107,15 @@ export async function profileSource(sourceId: string): Promise<ProfileResult> {
  * - Output: top_n_values, correlation_threshold
  * - Performance: n_jobs
  */
+/**
+ * Get the latest profile result for a source.
+ *
+ * Returns null if no profile has been run yet.
+ */
+export async function getLatestProfile(sourceId: string): Promise<ProfileResult | null> {
+  return request<ProfileResult | null>(`/sources/${sourceId}/profile/latest`)
+}
+
 export async function profileSourceAdvanced(
   sourceId: string,
   config: ProfileAdvancedConfig

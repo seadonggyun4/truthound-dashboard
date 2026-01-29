@@ -36,6 +36,7 @@ import { learnSchema, type Schema, type LearnSchemaOptions } from '@/api/modules
 import {
   profileSource,
   profileSourceAdvanced,
+  getLatestProfile,
   type ProfileResult,
   type ProfileAdvancedConfig as APIProfileAdvancedConfig,
 } from '@/api/modules/profile'
@@ -219,6 +220,12 @@ export default function Profile() {
         const sourceData = await getSource(sourceId!)
         setSource(sourceData)
         setError(null)
+
+        // Load latest profile if available
+        const latestProfile = await getLatestProfile(sourceId!)
+        if (latestProfile) {
+          setProfile(latestProfile)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load source')
       } finally {
@@ -303,14 +310,12 @@ export default function Profile() {
   // ============================================================================
   // Rule Suggestion Functions
   // ============================================================================
-  const handleGenerateSuggestions = useCallback(async () => {
+  const handleGenerateSuggestions = useCallback(async (options?: Record<string, unknown>) => {
     if (!sourceId) return
 
     try {
       setLoadingSuggestions(true)
-      setRuleSuggestionDialogOpen(true)
-      const response = await suggestRules(sourceId, { min_confidence: 0.5 })
-      // Use API response directly (SuggestedRule[])
+      const response = await suggestRules(sourceId, options ?? { min_confidence: 0.5 })
       setSuggestions(response.suggestions)
     } catch (err) {
       toast({
@@ -318,7 +323,6 @@ export default function Profile() {
         title: 'Failed to generate suggestions',
         description: err instanceof Error ? err.message : 'Unknown error',
       })
-      setRuleSuggestionDialogOpen(false)
     } finally {
       setLoadingSuggestions(false)
     }
@@ -649,7 +653,10 @@ export default function Profile() {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={handleGenerateSuggestions}
+            onClick={() => {
+              setRuleSuggestionDialogOpen(true)
+              handleGenerateSuggestions()
+            }}
             disabled={!profile || loadingSuggestions}
           >
             <Sparkles className="h-4 w-4 mr-2" />
@@ -1257,7 +1264,7 @@ export default function Profile() {
         suggestions={suggestions}
         isLoading={loadingSuggestions}
         onApply={handleApplyRules}
-        onGenerate={async () => { await handleGenerateSuggestions() }}
+        onGenerate={async (options) => { await handleGenerateSuggestions(options) }}
       />
     </div>
   )

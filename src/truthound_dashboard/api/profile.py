@@ -140,6 +140,41 @@ async def profile_source_advanced(
 
 
 @router.get(
+    "/sources/{source_id}/profile/latest",
+    response_model=ProfileResponse | None,
+    summary="Get latest profile",
+    description="Retrieve the most recent profile result for a source",
+)
+async def get_latest_profile(
+    service: ProfileServiceDep,
+    source_service: SourceServiceDep,
+    source_id: Annotated[str, Path(description="Source ID")],
+) -> ProfileResponse | None:
+    """Get the latest profile for a source.
+
+    Args:
+        service: Injected profile service.
+        source_service: Injected source service.
+        source_id: Source ID.
+
+    Returns:
+        Latest profile result or null.
+
+    Raises:
+        HTTPException: 404 if source not found.
+    """
+    source = await source_service.get_by_id(source_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    profile = await service.get_latest_profile(source_id)
+    if profile is None:
+        return None
+
+    return ProfileResponse.from_result(profile)
+
+
+@router.get(
     "/sources/{source_id}/profiles",
     response_model=ProfileListResponse,
     summary="List profiles",
