@@ -366,7 +366,7 @@ async def create_edge(
         HTTPException: 400 if nodes not found or edge already exists.
     """
     try:
-        created = await service.create_edge(
+        created, source_node, target_node = await service.create_edge(
             source_node_id=edge.source_node_id,
             target_node_id=edge.target_node_id,
             edge_type=edge.edge_type,
@@ -376,8 +376,8 @@ async def create_edge(
             id=created.id,
             source_node_id=created.source_node_id,
             target_node_id=created.target_node_id,
-            source_node_name=created.source_node.name if created.source_node else None,
-            target_node_name=created.target_node.name if created.target_node else None,
+            source_node_name=source_node.name if source_node else None,
+            target_node_name=target_node.name if target_node else None,
             edge_type=created.edge_type,
             metadata=created.metadata_json,
             created_at=created.created_at.isoformat() if created.created_at else "",

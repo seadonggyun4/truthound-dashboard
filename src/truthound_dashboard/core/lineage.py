@@ -221,10 +221,8 @@ class LineageService:
 
             # Create lineage tracker with default configuration
             config = LineageConfig(
-                enable_auto_tracking=True,
-                track_schema_changes=True,
-                track_data_transformations=True,
-                include_column_level=True,
+                auto_track=True,
+                track_column_level=True,
             )
             self._tracker = LineageTracker(config)
             logger.info("truthound.lineage.LineageTracker initialized")
@@ -480,7 +478,7 @@ class LineageService:
         target_node_id: str,
         edge_type: str = "derives_from",
         metadata: dict[str, Any] | None = None,
-    ) -> LineageEdge:
+    ) -> tuple[LineageEdge, LineageNode, LineageNode]:
         """Create a new lineage edge.
 
         Args:
@@ -490,7 +488,7 @@ class LineageService:
             metadata: Optional additional metadata.
 
         Returns:
-            Created edge.
+            Tuple of (created edge, source node, target node).
 
         Raises:
             ValueError: If source or target node not found, or edge already exists.
@@ -514,7 +512,7 @@ class LineageService:
             edge_type=edge_type,
             metadata_json=metadata,
         )
-        return edge
+        return edge, source_node, target_node
 
     async def get_edge(self, edge_id: str) -> LineageEdge | None:
         """Get an edge by ID.
