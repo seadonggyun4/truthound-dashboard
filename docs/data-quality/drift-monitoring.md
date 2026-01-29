@@ -178,23 +178,47 @@ The system identifies correlations between drift alerts and other alert types:
 
 ## Auto-Trigger Configuration
 
-### Automated Response
+The Auto-Trigger system enables cross-feature automation between drift detection and anomaly detection modules. When an event is detected in one module, the system can automatically initiate checks in the other, creating a bidirectional monitoring loop.
 
-Configure automated actions when drift is detected:
+### Accessing the Configuration Panel
 
-| Trigger Type | Description |
-|--------------|-------------|
-| **Notification** | Send alerts to configured channels |
-| **Validation** | Trigger validation on affected sources |
-| **Report Generation** | Generate detailed drift report |
-| **Webhook** | Call external systems for integration |
+Click the **Configure** button in the Drift Monitoring toolbar to open the Auto-Trigger Configuration dialog. The dialog is scrollable, ensuring all settings remain accessible regardless of viewport dimensions.
 
-### Configuration Options
+### Trigger Directions
 
-1. Access the Auto-Trigger panel
-2. Enable desired trigger types
-3. Configure trigger parameters
-4. Save configuration
+The system supports two independent trigger directions, each independently enabled or disabled:
+
+| Trigger Direction | Description |
+|-------------------|-------------|
+| **Drift → Anomaly** | When drift is detected in a dataset, automatically initiate anomaly detection on the same data source to identify whether the distribution shift has introduced anomalous records |
+| **Anomaly → Drift** | When an anomaly spike is detected, automatically initiate drift comparison to determine whether the anomalies are attributable to an underlying distribution change |
+
+### Trigger Thresholds
+
+Thresholds define the minimum conditions that must be met before a cross-feature trigger is activated. These parameters prevent unnecessary trigger cascades during minor fluctuations:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| **Anomaly Rate Threshold** | Minimum anomaly rate (as percentage) required to trigger a drift check | 10% |
+| **Anomaly Count Threshold** | Minimum number of detected anomalies required to trigger a drift check | 10 |
+| **Drift Percentage Threshold** | Minimum percentage of drifted columns required to trigger an anomaly check | 10% |
+| **Drifted Columns Threshold** | Minimum number of drifted columns required to trigger an anomaly check | 2 |
+
+### Additional Settings
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Notify on Correlation** | Send a notification when cross-feature correlation is detected between drift and anomaly events | Enabled |
+| **Cooldown (seconds)** | Minimum interval between consecutive auto-triggered checks, to prevent alert storms | 300 |
+
+### Configuration Scope
+
+The Auto-Trigger configuration supports two levels of scope:
+
+- **Global Configuration**: Applies to all data sources by default
+- **Source-Specific Configuration**: Overrides global settings for a particular data source, allowing fine-grained control
+
+When no configuration has been explicitly saved, the system returns default values. Configuration is persisted to the database upon first save.
 
 ## Monitor Configuration Reference
 

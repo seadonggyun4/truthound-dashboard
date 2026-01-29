@@ -16,6 +16,15 @@ Data drift occurs when the statistical properties of data change over time. The 
 4. Configure detection parameters
 5. Execute the comparison
 
+#### Source Selection Constraint
+
+The system enforces that the baseline source and the current source must be different datasets. When the same data source is selected for both, the following safeguards are applied:
+
+- The **Compare** button is disabled, preventing submission of an invalid comparison request
+- An inline validation message is displayed beneath the Current Source selector, indicating that distinct sources must be chosen
+
+This constraint exists because drift detection is defined as a comparison between two distinct data distributions. Comparing a dataset against itself yields no meaningful statistical information and would trivially return zero drift across all columns and metrics.
+
 ### Configuration Parameters
 
 #### Detection Method

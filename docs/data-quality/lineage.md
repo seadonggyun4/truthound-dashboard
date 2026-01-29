@@ -4,7 +4,7 @@ The Data Lineage module provides visualization and analysis of data flow relatio
 
 ## Overview
 
-Data lineage tracks the origin, movement, and transformation of data across systems. This module renders lineage graphs showing upstream sources and downstream consumers, supporting both table-level and column-level lineage tracking with integrated anomaly visualization.
+Data lineage tracks the origin, movement, and transformation of data across systems. This module renders lineage graphs showing upstream sources and downstream consumers, with integrated anomaly visualization and multi-engine rendering support.
 
 ## Lineage Interface
 
@@ -14,70 +14,164 @@ The lineage interface centers on an interactive graph visualization:
 
 | Element | Description |
 |---------|-------------|
-| **Nodes** | Represent data assets (tables, files, processes) |
+| **Nodes** | Represent data assets — sources, transformations, and sinks |
 | **Edges** | Represent data flow relationships between nodes |
-| **Layout** | Hierarchical arrangement showing upstream to downstream flow |
+| **Layout** | Hierarchical arrangement showing upstream-to-downstream flow |
 
-### Renderer Selection
+### Node Types
 
-The system supports multiple rendering engines optimized for different scenarios:
+| Type | Icon | Description |
+|------|------|-------------|
+| **Source** | Database icon | Origin data sources (databases, files, APIs) |
+| **Transform** | Processing icon | Data transformation steps (joins, filters, aggregations) |
+| **Sink** | Output icon | Final destinations (reports, exports, downstream systems) |
 
-| Renderer | Description | Best For |
-|----------|-------------|----------|
-| **React Flow** | Default interactive renderer | General use, up to 500 nodes |
-| **Cytoscape** | Performance-optimized renderer | Large graphs (500+ nodes) |
-| **Mermaid** | Export-focused renderer | Documentation generation |
+### Edge Types
 
-### Performance Optimization
+| Type | Description |
+|------|-------------|
+| **derives_from** | Derived-from relationship (output depends on input) |
+| **transforms_to** | Transformation output relationship |
+| **joins_with** | Join relationship between data assets |
+| **filters_from** | Filtered subset of source data |
 
-For large lineage graphs (500+ nodes), the system automatically applies:
+## Renderer Selection
 
-- **Clustering**: Groups related nodes to reduce visual complexity
-- **Virtualization**: Renders only visible nodes for performance
-- **Level-of-Detail**: Reduces detail at lower zoom levels
+The system supports three rendering engines, each optimized for different use cases. Select a renderer from the dropdown menu at the top of the lineage page.
 
-A performance information popover displays:
+### Renderer Comparison
 
-- Current node count
-- Rendering mode (normal/optimized)
-- Threshold settings
-- Manual override toggle
+| Renderer | Technology | Best For | Node Capacity | Interactive |
+|----------|-----------|----------|---------------|-------------|
+| **React Flow** | React Flow library | General use, editing | Up to 500 nodes | ✅ Full |
+| **Cytoscape** | Cytoscape.js (Canvas) | Large graphs, performance | 500+ nodes | ✅ Full |
+| **Mermaid** | Mermaid.js (SVG) | Documentation, export | Up to 200 nodes | ⚠️ Click only |
 
-## Column Lineage
+### React Flow (Default)
 
-### Enabling Column-Level Tracking
+The default renderer provides the richest interactive experience:
 
-1. Click the **Column Lineage** toggle button
-2. The graph updates to show column-level relationships
-3. Select viewing mode: Graph or Table
+- Drag-and-drop node repositioning
+- Zoom and pan navigation
+- Edge routing with bezier curves
+- Mini-map overview panel
 
-### Graph View
+### Cytoscape
 
-Column lineage in graph view displays:
+A high-performance canvas-based renderer designed for large lineage graphs:
 
-- Table nodes with expandable column lists
-- Column-to-column edge relationships
-- Transformation annotations on edges
+**Layout Options:**
 
-### Table View
+| Layout | Description | Best For |
+|--------|-------------|----------|
+| **Dagre** | Hierarchical directed graph layout | Default; clear upstream/downstream flow |
+| **Breadthfirst** | Breadth-first tree layout | Shallow, wide hierarchies |
+| **Cose** | Compound spring embedder | Organic cluster visualization |
+| **Circle** | Circular node arrangement | Identifying central nodes |
+| **Grid** | Grid-aligned arrangement | Uniform spacing |
+| **Concentric** | Concentric circles by degree | Highlighting connectivity |
 
-Column lineage in table view displays:
+**Controls:**
 
-| Column | Description |
-|--------|-------------|
-| **Source Table** | Origin table name |
-| **Source Column** | Origin column name |
-| **Target Table** | Destination table name |
-| **Target Column** | Destination column name |
-| **Transformation** | Applied transformation (if any) |
+| Button | Function |
+|--------|----------|
+| Zoom In (+) | Increase zoom level |
+| Zoom Out (−) | Decrease zoom level |
+| Reset (↻) | Re-run layout algorithm and fit graph to viewport |
 
-### Column-Level Impact Analysis
+### Mermaid
 
-Click on any column to view:
+An SVG-based renderer optimized for diagram export and documentation embedding. The Mermaid renderer exclusively uses the **simple** style for clean, readable output.
 
-- Upstream sources feeding this column
-- Downstream targets consuming this column
-- Transformation chain from source to target
+**Direction Options:**
+
+| Direction | Code | Description |
+|-----------|------|-------------|
+| Left to Right | `LR` | Horizontal left-to-right flow |
+| Top to Bottom | `TB` | Vertical top-to-bottom flow |
+| Right to Left | `RL` | Horizontal right-to-left flow |
+| Bottom to Top | `BT` | Vertical bottom-to-top flow |
+
+**Node Click Interaction:**
+
+Clicking a node in the Mermaid diagram opens the Node Details panel on the right side, identical to the behavior of other renderers. The system matches clicked SVG elements to lineage nodes using multiple ID-matching strategies.
+
+## Node Details Panel
+
+Clicking any node in the lineage graph opens a details panel on the right side of the interface.
+
+### Panel Contents
+
+| Section | Description |
+|---------|-------------|
+| **Header** | Node name and type badge |
+| **Linked Source** | Link to the associated data source (if applicable) |
+| **Metadata** | Additional metadata key-value pairs |
+| **Connected Nodes** | List of upstream and downstream connections |
+| **Impact Analysis** | Button to trigger impact analysis from this node |
+| **Timestamps** | Creation and last update timestamps |
+
+## Node Management
+
+### Adding Nodes
+
+1. Click the **Add Node** button
+2. Configure node properties:
+   - **Name**: Identifier for the node
+   - **Type**: Classification (source, transform, sink)
+   - **Source Reference**: Optional link to a data source
+   - **Description**: Documentation text
+3. Save to add the node to the graph
+
+### Deleting Nodes
+
+1. Select the target node
+2. Click the **Delete** button in the details panel
+3. Confirm deletion
+4. The node and all associated edges are removed
+
+## Impact Analysis
+
+### Overview
+
+Impact Analysis evaluates which nodes are affected when a selected node undergoes changes. It leverages the truthound library's `ImpactAnalyzer` for downstream traversal and the dashboard's internal graph traversal for upstream analysis.
+
+### Initiating Impact Analysis
+
+1. Select a node in the lineage graph
+2. In the Node Details panel, click **Impact Analysis**
+3. The system analyzes both upstream and downstream dependencies
+
+### Impact Analysis Results
+
+The results panel displays:
+
+| Section | Description |
+|---------|-------------|
+| **Root Node** | The node being analyzed, with total affected count |
+| **Upstream Nodes** | Nodes that feed data into the selected node |
+| **Downstream Nodes** | Nodes that consume data from the selected node |
+| **High Impact Warning** | Displayed when more than 5 nodes are affected |
+
+Each affected node appears as a badge with color-coded type indicators.
+
+### Severity Indicators
+
+| Indicator | Condition | Description |
+|-----------|-----------|-------------|
+| ✅ Green check | ≤ 5 affected nodes | Low impact; changes are relatively safe |
+| ⚠️ Amber warning | > 5 affected nodes | High impact; review dependencies before proceeding |
+
+### Use Cases
+
+**Change Impact Assessment:**
+- Before modifying a table schema, identify all downstream consumers
+- Before deprecating a data source, understand the blast radius
+- Before changing transformation logic, verify affected outputs
+
+**Root Cause Analysis:**
+- When data quality issues are detected, trace back to the originating source
+- When downstream systems report failures, identify the upstream breakpoint
 
 ## Anomaly Overlay
 
@@ -96,109 +190,61 @@ Click on any column to view:
 | **Critical** | Red | Significant anomalies detected |
 | **Unknown** | Gray | No anomaly data available |
 
-### Status Filter
-
-Filter nodes by anomaly status to focus on:
-
-- All nodes
-- Nodes with anomalies only
-- Specific severity levels
-
-## Node Management
-
-### Adding Nodes
-
-1. Click the **Add Node** button
-2. Configure node properties:
-   - **Name**: Identifier for the node
-   - **Type**: Classification (table, file, process, etc.)
-   - **Source Reference**: Optional link to data source
-   - **Description**: Documentation
-3. Save to add the node to the graph
-
-### Deleting Nodes
-
-1. Select the target node
-2. Click the **Delete** button
-3. Confirm deletion
-4. Node and all associated edges are removed
-
-## Impact Analysis
-
-### Initiating Impact Analysis
-
-1. Select a node in the lineage graph
-2. Click **Impact Analysis**
-3. Choose analysis direction:
-   - **Downstream**: What is affected if this node changes
-   - **Upstream**: What sources feed this node
-
-### Impact Analysis Results
-
-| Section | Content |
-|---------|---------|
-| **Direct Dependencies** | Immediately connected nodes |
-| **Transitive Dependencies** | Full dependency chain |
-| **Affected Assets** | Catalog assets impacted |
-| **Risk Assessment** | Potential impact severity |
-
-### Use Cases
-
-**Change Impact Assessment**:
-- Before modifying a table schema
-- Before deprecating a data source
-- Before changing transformation logic
-
-**Root Cause Analysis**:
-- When data quality issues are detected
-- When downstream systems fail
-- When anomalies are identified
-
 ## Export Capabilities
 
 ### Export Panel
 
-Access the Export Panel to generate lineage documentation:
+Access the Export panel from the top-right menu to generate lineage artifacts in various formats.
 
-| Format | Description | Use Case |
-|--------|-------------|----------|
-| **Image** | PNG/SVG export | Presentations, documentation |
-| **PDF** | Document export | Formal documentation |
-| **Code** | Mermaid/GraphViz code | Version control, automation |
+### Supported Formats
 
-### Export Options
+| Format | Extension | Source | Description |
+|--------|-----------|--------|-------------|
+| **SVG** | `.svg` | All renderers | Scalable vector image; resolution-independent |
+| **PNG** | `.png` | Cytoscape, React Flow | Raster image at 2× resolution |
+| **Mermaid Code** | `.mmd` | Generated | Mermaid diagram source code |
+| **JSON** | `.json` | API data | Raw lineage graph data |
 
-- **Full Graph**: Export entire lineage graph
-- **Selection**: Export selected nodes and their relationships
-- **Filtered**: Export nodes matching current filter criteria
+### Export by Renderer
 
-## Node Interaction
+| Renderer | SVG | PNG | Mermaid Code | JSON |
+|----------|-----|-----|-------------|------|
+| **React Flow** | ✅ | ✅ (via SVG) | ✅ | ✅ |
+| **Cytoscape** | ✅ (embedded) | ✅ (native) | ✅ | ✅ |
+| **Mermaid** | ✅ (native) | ✅ (via SVG) | ✅ | ✅ |
 
-### Node Click Actions
+**Notes on Cytoscape SVG export:** Cytoscape renders to an HTML Canvas element. SVG export wraps the high-resolution PNG output inside an `<svg>` container with an embedded `<image>` element, producing a portable SVG file suitable for documentation.
 
-Clicking a node displays:
+### Copy to Clipboard
 
-- Node details panel
-- Associated data source link
-- Column list (if table node)
-- Validation status
-- Last updated timestamp
+- **Mermaid Code**: Copy the generated Mermaid diagram source to the clipboard
+- **JSON**: Copy the raw lineage graph data as JSON
 
-### Edge Click Actions
+## Performance Optimization
 
-Clicking an edge displays:
+For large lineage graphs (500+ nodes), the system provides performance optimizations:
 
-- Source and target node information
-- Column mappings (if column lineage enabled)
-- Transformation details
-- Data flow direction
+| Technique | Description |
+|-----------|-------------|
+| **Clustering** | Groups related nodes to reduce visual complexity |
+| **Virtualization** | Renders only visible nodes for improved frame rates |
+| **Level-of-Detail** | Reduces rendered detail at lower zoom levels |
+| **Canvas Rendering** | Cytoscape uses Canvas instead of DOM for better performance |
+
+### Recommended Renderer by Graph Size
+
+| Graph Size | Recommended Renderer |
+|-----------|---------------------|
+| < 100 nodes | React Flow with full detail |
+| 100–500 nodes | React Flow with selective detail |
+| 500–1,000 nodes | Cytoscape with Dagre layout |
+| 1,000+ nodes | Cytoscape with sub-graph filtering |
 
 ## Integration with Other Modules
 
 ### Data Catalog Integration
 
 - Lineage nodes link to catalog assets
-- Column lineage maps to catalog column metadata
 - Impact analysis considers catalog relationships
 
 ### Anomaly Detection Integration
@@ -213,55 +259,66 @@ Clicking an edge displays:
 - Impact analysis considers drift propagation
 - Root cause analysis incorporates lineage context
 
-## Truthound Integration
+## Truthound Library Integration
 
-The Data Lineage module leverages truthound's native lineage tracking capabilities from `truthound.lineage`:
+The Data Lineage module integrates with truthound's native lineage tracking capabilities from `truthound.lineage`.
 
 ### Core Components
 
 | Component | Module | Purpose |
 |-----------|--------|---------|
-| LineageTracker | `truthound.lineage.LineageTracker` | Automatic lineage capture and tracking |
-| ImpactAnalyzer | `truthound.lineage.ImpactAnalyzer` | Impact analysis with propagation |
-| OpenLineage | `truthound.lineage.OpenLineageEmitter` | OpenLineage standard event emission |
+| `LineageTracker` | `truthound.lineage` | Automatic lineage capture and tracking |
+| `ImpactAnalyzer` | `truthound.lineage` | Impact analysis with downstream propagation |
+| `OpenLineageEmitter` | `truthound.lineage` | OpenLineage standard event emission |
 
-### LineageTracker
+### Type Mapping
 
-The `LineageTracker` provides automatic lineage capture for data operations:
+The dashboard maintains its own simplified node/edge types that are mapped to truthound's enum types at runtime:
 
-| Feature | Description |
-|---------|-------------|
-| Auto-tracking | Automatically captures read/write operations |
-| Schema tracking | Records schema changes with lineage events |
-| Operation context | Captures transformation metadata |
-| Graph building | Constructs complete lineage graphs |
+**Node Types:**
 
-Configuration options (`LineageConfig`):
+| Dashboard Type | truthound `NodeType` |
+|---------------|---------------------|
+| `source` | `NodeType.SOURCE` |
+| `transform` | `NodeType.TRANSFORMATION` |
+| `sink` | `NodeType.EXTERNAL` |
 
-| Parameter | Type | Description | Default |
-|-----------|------|-------------|---------|
-| `track_column_level` | `bool` | Enable column-level lineage tracking | `true` |
-| `track_row_level` | `bool` | Enable row-level lineage tracking (expensive) | `false` |
-| `store_samples` | `bool` | Persist data samples alongside lineage events | `false` |
-| `max_history` | `int` | Maximum number of operations retained in history | `100` |
-| `auto_track` | `bool` | Automatically capture read/write operations | `true` |
-| `persist_path` | `str \| None` | File system path for automatic lineage persistence | `null` |
-| `metadata` | `dict` | User-defined metadata attached to lineage sessions | `{}` |
+**Edge Types:**
+
+| Dashboard Type | truthound `EdgeType` |
+|---------------|---------------------|
+| `derives_from` | `EdgeType.DERIVED_FROM` |
+| `transforms_to` | `EdgeType.TRANSFORMED_TO` |
+| `joins_with` | `EdgeType.JOINED_WITH` |
+| `filters_from` | `EdgeType.FILTERED_TO` |
 
 ### ImpactAnalyzer
 
-The `ImpactAnalyzer` provides sophisticated impact analysis capabilities:
+The `ImpactAnalyzer` accepts a `LineageGraph` and performs **downstream-only** traversal to determine affected nodes.
 
-| Analysis Type | Description |
-|---------------|-------------|
-| Downstream Impact | What entities are affected by changes |
-| Upstream Lineage | What sources feed an entity |
-| Change Propagation | How changes cascade through the graph |
-| Risk Assessment | Severity scoring for impacted entities |
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `node_id` | `str` | — | ID of the node to analyze |
+| `max_depth` | `int` | `-1` | Maximum traversal depth (-1 for unlimited) |
+| `include_validations` | `bool` | `true` | Include validation nodes in results |
+
+**Return Value (`ImpactResult`):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `source_node` | `LineageNode` | The starting node |
+| `affected_nodes` | `tuple[AffectedNode]` | All downstream-affected nodes |
+| `total_affected` | `int` | Count of affected nodes |
+| `max_depth` | `int` | Maximum depth reached |
+| `analysis_time_ms` | `float` | Execution time in milliseconds |
+
+> **Note:** For upstream analysis, the dashboard uses its own SQL-based graph traversal since truthound's `ImpactAnalyzer` only provides downstream impact.
 
 ### OpenLineage Support
 
-The module supports the OpenLineage standard for lineage interoperability:
+The module supports the OpenLineage standard for interoperability with external lineage systems:
 
 | Event Type | Description |
 |------------|-------------|
@@ -269,34 +326,40 @@ The module supports the OpenLineage standard for lineage interoperability:
 | DatasetEvent | Dataset read/write operations |
 | JobEvent | Job metadata and facets |
 
-This enables integration with external lineage systems like Marquez, Datahub, and Apache Atlas.
-
-## Best Practices
-
-### Lineage Documentation
-
-1. **Completeness**: Ensure all data flows are documented
-2. **Accuracy**: Validate lineage relationships periodically
-3. **Granularity**: Document column-level lineage for critical paths
-4. **Maintenance**: Update lineage when systems change
-
-### Performance Considerations
-
-| Graph Size | Recommended Approach |
-|-----------|---------------------|
-| < 100 nodes | React Flow with full detail |
-| 100-500 nodes | React Flow with selective detail |
-| 500+ nodes | Cytoscape with clustering |
-| 1000+ nodes | Consider sub-graph analysis |
+Compatible systems: Marquez, DataHub, Apache Atlas.
 
 ## API Reference
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/lineage/graph` | GET | Retrieve lineage graph |
+| `/lineage/graph` | GET | Retrieve full lineage graph (nodes + edges) |
+| `/lineage/nodes` | GET | List all lineage nodes |
 | `/lineage/nodes` | POST | Create a new node |
+| `/lineage/nodes/{id}` | GET | Get node details |
 | `/lineage/nodes/{id}` | DELETE | Delete a node |
-| `/lineage/nodes/{id}/impact-analysis` | POST | Execute impact analysis |
-| `/lineage/nodes/{id}/columns` | GET | Retrieve column lineage |
-| `/lineage/edges/{id}/column-mappings` | GET | Retrieve column mappings |
-| `/lineage/columns/impact` | GET | Column-level impact analysis |
+| `/lineage/nodes/{id}/impact` | GET | Execute impact analysis |
+| `/lineage/edges` | GET | List all lineage edges |
+| `/lineage/edges` | POST | Create a new edge |
+| `/lineage/edges/{id}` | DELETE | Delete an edge |
+| `/lineage/positions` | POST | Update node positions (batch) |
+| `/lineage/auto-discover` | POST | Auto-discover lineage from data sources |
+| `/lineage/openlineage/webhooks` | GET | List OpenLineage webhook configurations |
+
+## Best Practices
+
+### Lineage Documentation
+
+1. **Completeness**: Ensure all data flows are documented with appropriate node types
+2. **Accuracy**: Validate lineage relationships periodically using auto-discovery
+3. **Maintenance**: Update lineage when systems change or data sources are added
+4. **Export**: Regularly export lineage diagrams for offline documentation
+
+### Renderer Selection Guidelines
+
+| Scenario | Recommended Renderer |
+|----------|---------------------|
+| Day-to-day exploration | React Flow |
+| Performance-critical large graphs | Cytoscape |
+| Generating documentation | Mermaid |
+| Embedding in wikis or README files | Mermaid (copy Mermaid code) |
+| Sharing with stakeholders | Export as SVG or PNG |
