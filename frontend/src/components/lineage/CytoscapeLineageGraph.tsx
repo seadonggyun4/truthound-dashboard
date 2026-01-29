@@ -9,7 +9,8 @@ import cytoscape, { Core } from 'cytoscape'
 // @ts-expect-error - cytoscape-dagre has no type declarations
 import dagre from 'cytoscape-dagre'
 import { useIntlayer } from 'react-intlayer'
-import { ZoomIn, ZoomOut, Maximize2, LayoutGrid } from 'lucide-react'
+import { str } from '@/lib/intlayer-utils'
+import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -262,22 +263,41 @@ export function CytoscapeLineageGraph({
     })
   }, [])
 
-  // Expose export function via ref or callback
+  // Export to SVG (convert canvas PNG to embedded SVG)
+  const exportToSvg = useCallback(() => {
+    if (!cyRef.current) return null
+    const pngDataUrl = cyRef.current.png({
+      output: 'base64uri',
+      scale: 2,
+      bg: 'transparent',
+      full: true,
+    }) as string
+    const extent = cyRef.current.extent()
+    const w = (extent.w + 100) * 2
+    const h = (extent.h + 100) * 2
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+  <image href="${pngDataUrl}" width="${w}" height="${h}" />
+</svg>`
+  }, [])
+
+  // Expose export functions via window for external access
   useEffect(() => {
-    // Store export function for external access if needed
-    (window as unknown as { __cytoscapeExportPng?: () => Blob | null }).__cytoscapeExportPng = exportToPng
+    const w = window as unknown as { __cytoscapeExportPng?: () => Blob | null; __cytoscapeExportSvg?: () => string | null }
+    w.__cytoscapeExportPng = exportToPng
+    w.__cytoscapeExportSvg = exportToSvg
     return () => {
-      delete (window as unknown as { __cytoscapeExportPng?: () => Blob | null }).__cytoscapeExportPng
+      delete w.__cytoscapeExportPng
+      delete w.__cytoscapeExportSvg
     }
-  }, [exportToPng])
+  }, [exportToPng, exportToSvg])
 
   return (
     <div className={cn('relative flex flex-col', className)}>
       {/* Toolbar */}
       <div className="flex items-center gap-2 p-2 border-b bg-background">
         <Select value={layout} onValueChange={(v) => setLayout(v as CytoscapeLayout)}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder={t.layouts.selectLayout} />
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder={str(t.layouts.selectLayout)} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="dagre">{t.layouts.dagre}</SelectItem>
@@ -296,11 +316,8 @@ export function CytoscapeLineageGraph({
           <Button variant="ghost" size="icon" onClick={handleZoomOut} title={String(t.zoomOut)}>
             <ZoomOut className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={handleFit} title={String(t.fitView)}>
-            <Maximize2 className="h-4 w-4" />
-          </Button>
           <Button variant="ghost" size="icon" onClick={handleReLayout} title={String(t.autoLayout)}>
-            <LayoutGrid className="h-4 w-4" />
+            <RotateCcw className="h-4 w-4" />
           </Button>
         </div>
       </div>
