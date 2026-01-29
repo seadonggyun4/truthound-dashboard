@@ -81,6 +81,7 @@ export function OpenLineageConfig({ trigger }: OpenLineageConfigProps) {
 
   // Test state
   const [testingId, setTestingId] = useState<string | null>(null)
+  const [testedId, setTestedId] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<WebhookTestResult | null>(null)
 
   const fetchWebhooks = useCallback(async () => {
@@ -162,6 +163,7 @@ export function OpenLineageConfig({ trigger }: OpenLineageConfigProps) {
 
   const handleTest = async (webhook: OpenLineageWebhook) => {
     setTestingId(webhook.id)
+    setTestedId(webhook.id)
     setTestResult(null)
     try {
       const result = await testWebhook({
@@ -317,7 +319,7 @@ export function OpenLineageConfig({ trigger }: OpenLineageConfigProps) {
                       <WebhookStatus webhook={webhook} />
 
                       {/* Test Result */}
-                      {testResult && testingId === null && webhooks[0]?.id === webhook.id && (
+                      {testResult && testingId === null && testedId === webhook.id && (
                         <div
                           className={`mt-4 p-3 rounded-lg ${
                             testResult.success
