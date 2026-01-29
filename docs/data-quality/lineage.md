@@ -236,14 +236,17 @@ The `LineageTracker` provides automatic lineage capture for data operations:
 | Operation context | Captures transformation metadata |
 | Graph building | Constructs complete lineage graphs |
 
-Configuration options:
+Configuration options (`LineageConfig`):
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| enable_auto_tracking | Enable automatic operation tracking | true |
-| track_schema_changes | Record schema evolution | true |
-| track_row_counts | Capture row count metrics | true |
-| storage_backend | Persistence backend | "sqlite" |
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| `track_column_level` | `bool` | Enable column-level lineage tracking | `true` |
+| `track_row_level` | `bool` | Enable row-level lineage tracking (expensive) | `false` |
+| `store_samples` | `bool` | Persist data samples alongside lineage events | `false` |
+| `max_history` | `int` | Maximum number of operations retained in history | `100` |
+| `auto_track` | `bool` | Automatically capture read/write operations | `true` |
+| `persist_path` | `str \| None` | File system path for automatic lineage persistence | `null` |
+| `metadata` | `dict` | User-defined metadata attached to lineage sessions | `{}` |
 
 ### ImpactAnalyzer
 

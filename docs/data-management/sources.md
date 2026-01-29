@@ -119,6 +119,8 @@ Verifies connectivity to the data source without executing validation:
 3. Success or failure notification is displayed
 4. For failures, error details assist in troubleshooting
 
+All registered source types support connection testing. For file-based sources (`csv`, `parquet`, `json`, `ndjson`, `jsonl`), the test verifies that the specified file path exists and reports the file size. For database and external service sources, the test establishes a live connection and retrieves metadata including column count and row count.
+
 #### Learn Schema
 
 Automatically generates a schema definition by analyzing the data source:
@@ -200,6 +202,7 @@ Sensitive configuration fields are masked in the user interface by default. User
 | `/sources/{id}/learn` | POST | Generate schema automatically |
 | `/sources/{id}/schema` | GET | Retrieve current schema |
 | `/sources/{id}/profile` | POST | Generate basic data profile |
+| `/sources/{id}/profile/latest` | GET | Retrieve the most recent profile result |
 | `/sources/{id}/profile/advanced` | POST | Generate data profile with advanced configuration |
 | `/scans/sources/{id}/scan` | POST | Scan for PII |
 | `/masks/sources/{id}/mask` | POST | Mask sensitive data |
@@ -295,6 +298,14 @@ Wraps `th.profile()` for basic data profiling with default settings.
 ```json
 {}
 ```
+
+#### Result Persistence and Automatic Retrieval
+
+Every profiling execution—whether basic or advanced—is automatically persisted to the database upon completion. This design ensures that profile results are durable across user sessions and browser navigation events.
+
+When the Profile page is loaded, the system automatically retrieves the most recently stored profile via `GET /sources/{id}/profile/latest`. Consequently, users observe the last profiling result immediately upon page entry without requiring re-execution. If no prior profile exists for the source, the page renders in its initial empty state, prompting the user to initiate profiling.
+
+The profile history is independently accessible through `GET /sources/{id}/profiles`, which returns a paginated list of all stored profile summaries ordered by creation timestamp in descending order.
 
 ### Advanced Data Profiling (`/sources/{id}/profile/advanced`)
 

@@ -79,6 +79,7 @@ Translate the UI to any language using OpenAI, Anthropic, Ollama, or Mistral wit
 - [Data Lineage](./data-quality/lineage.md) - Data flow visualization
 - [Quality Reporter](./data-quality/quality-reporter.md) - Quality scoring and reporting
 - [Enterprise Sampling](./data-quality/enterprise-sampling.md) - Large-scale sampling (100M+ rows)
+- [Rule Suggestions](./data-quality/rule-suggestions.md) - AI-powered validation rule generation
 
 ### ML & Monitoring
 - [Anomaly Detection](./ml-monitoring/anomaly.md) - ML-based outlier detection
