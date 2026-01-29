@@ -96,6 +96,17 @@ export function LineageExportPanel({
   const handleDownloadSvg = useCallback(async () => {
     setIsExporting(true)
     try {
+      // Try Cytoscape SVG export first
+      const cytoscapeExportSvg = (window as unknown as { __cytoscapeExportSvg?: () => string | null }).__cytoscapeExportSvg
+      if (cytoscapeExportSvg) {
+        const svgString = cytoscapeExportSvg()
+        if (svgString) {
+          downloadAsFile(svgString, 'lineage-diagram.svg', 'image/svg+xml')
+          toast({ title: str(t.export.svgDownloaded) })
+          return
+        }
+      }
+
       // Try to find SVG from React Flow or other renderers
       const svgElement = document.querySelector('.react-flow__viewport svg') as SVGSVGElement
       if (svgElement) {
