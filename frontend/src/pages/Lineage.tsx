@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
-import { Loader2, BarChart3, Zap, AlertTriangle, Columns, Table2, Grid3X3 } from 'lucide-react'
+import { Loader2, BarChart3, Zap, AlertTriangle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { str } from '@/lib/intlayer-utils'
 import {
@@ -22,14 +22,8 @@ import {
   MermaidLineageGraph,
   LineageExportPanel,
   AnomalyLegend,
-  ColumnLineagePanel,
-  ColumnMappingTable,
-  ColumnImpactAnalysis,
   type LineageRenderer,
   type AnomalyStatusLevel,
-  type ColumnMapping,
-  type LineageColumn,
-  type ColumnImpactResult,
 } from '@/components/lineage'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
@@ -41,8 +35,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-// Tabs imported but not currently used in main view - keeping for potential future use
-// import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PERFORMANCE_THRESHOLDS } from '@/lib/lineage-performance'
 import { useLineageStore } from '@/stores/lineageStore'
 import {
@@ -90,15 +82,6 @@ export default function Lineage() {
   const [anomalyStatusFilter, setAnomalyStatusFilter] = useState<AnomalyStatusLevel[]>([
     'unknown', 'clean', 'low', 'medium', 'high'
   ])
-
-  // Column lineage state
-  const [showColumnLineage, setShowColumnLineage] = useState(false)
-  const [columnLineageView, setColumnLineageView] = useState<'graph' | 'table'>('graph')
-  const [_selectedColumn, setSelectedColumn] = useState<string | null>(null)
-  const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([])
-  const [nodeColumns, setNodeColumns] = useState<Record<string, LineageColumn[]>>({})
-  const [columnImpact, setColumnImpact] = useState<ColumnImpactResult | null>(null)
-  const [isLoadingColumnData, setIsLoadingColumnData] = useState(false)
 
   // Check if graph is large enough to warrant performance warning
   const isLargeGraph = (lineageData?.total_nodes ?? 0) >= PERFORMANCE_THRESHOLDS.WARNING_THRESHOLD
@@ -200,85 +183,6 @@ export default function Lineage() {
     [toast]
   )
 
-  // Load column lineage data when enabled
-  const loadColumnLineageData = useCallback(async () => {
-    if (!lineageData || !showColumnLineage) return
-
-    setIsLoadingColumnData(true)
-    try {
-      // Load columns for all nodes
-      const columnsMap: Record<string, LineageColumn[]> = {}
-      const mappings: ColumnMapping[] = []
-
-      // Fetch columns for each node
-      for (const node of lineageData.nodes) {
-        try {
-          const response = await fetch(`/api/v1/lineage/nodes/${node.id}/columns`)
-          if (response.ok) {
-            const data = await response.json()
-            columnsMap[node.id] = data.columns || []
-          }
-        } catch {
-          // Ignore individual node errors
-        }
-      }
-
-      // Fetch column mappings for each edge
-      for (const edge of lineageData.edges) {
-        try {
-          const response = await fetch(`/api/v1/lineage/edges/${edge.id}/column-mappings`)
-          if (response.ok) {
-            const data = await response.json()
-            mappings.push(...(data.mappings || []))
-          }
-        } catch {
-          // Ignore individual edge errors
-        }
-      }
-
-      setNodeColumns(columnsMap)
-      setColumnMappings(mappings)
-    } catch (error) {
-      toast({
-        title: str(t.columnLineage?.errorLoadingData ?? 'Failed to load column lineage'),
-        variant: 'destructive',
-      })
-    } finally {
-      setIsLoadingColumnData(false)
-    }
-  }, [lineageData, showColumnLineage, toast, t])
-
-  // Load column data when column lineage is enabled
-  useEffect(() => {
-    if (showColumnLineage) {
-      loadColumnLineageData()
-    }
-  }, [showColumnLineage, loadColumnLineageData])
-
-  // Handle column click for impact analysis
-  const handleColumnClick = useCallback(
-    async (nodeId: string, columnName: string) => {
-      setSelectedColumn(`${nodeId}:${columnName}`)
-      try {
-        const response = await fetch(
-          `/api/v1/lineage/columns/impact?node_id=${nodeId}&column_name=${columnName}`
-        )
-        if (response.ok) {
-          const data = await response.json()
-          setColumnImpact(data)
-        }
-      } catch {
-        // Ignore errors
-      }
-    },
-    []
-  )
-
-  // Handle column mapping click
-  const handleMappingClick = useCallback((mapping: ColumnMapping) => {
-    setSelectedColumn(`${mapping.sourceNodeId}:${mapping.sourceColumn}`)
-  }, [])
-
   // Loading state
   if (isLoading) {
     return (
@@ -336,41 +240,6 @@ export default function Lineage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {/* Column lineage toggle */}
-            <Button
-              variant={showColumnLineage ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setShowColumnLineage(!showColumnLineage)}
-              className={showColumnLineage ? 'bg-blue-500 hover:bg-blue-600' : ''}
-            >
-              <Columns className="mr-2 h-4 w-4" />
-              {showColumnLineage
-                ? (t.columnLineage?.hideColumnLineage ?? 'Hide Columns')
-                : (t.columnLineage?.showColumnLineage ?? 'Show Columns')}
-            </Button>
-
-            {/* Column view toggle - only show when column lineage is enabled */}
-            {showColumnLineage && (
-              <div className="flex items-center rounded-md border">
-                <Button
-                  variant={columnLineageView === 'graph' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="rounded-r-none"
-                  onClick={() => setColumnLineageView('graph')}
-                >
-                  <Grid3X3 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={columnLineageView === 'table' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="rounded-l-none"
-                  onClick={() => setColumnLineageView('table')}
-                >
-                  <Table2 className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-
             {/* Anomaly overlay toggle */}
             <Button
               variant={showAnomalyOverlay ? 'default' : 'outline'}
@@ -451,102 +320,50 @@ export default function Lineage() {
 
         {/* Main content area */}
         <div className="relative flex gap-4 h-[600px]">
-          {/* Graph/Table area */}
+          {/* Graph area */}
           <div className="flex-1 rounded-lg border overflow-hidden">
-            {/* Column lineage table view */}
-            {showColumnLineage && columnLineageView === 'table' ? (
-              <div className="h-full overflow-auto p-4">
-                {isLoadingColumnData ? (
-                  <div className="flex h-full items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <ColumnMappingTable
-                    mappings={columnMappings}
-                    nodes={new Map((lineageData?.nodes ?? []).map(n => [n.id, n.name]))}
-                    onRowClick={handleMappingClick}
-                  />
-                )}
-              </div>
-            ) : (
-              <>
-                {renderer === 'reactflow' && (
-                  <LineageGraph
-                    className="h-full"
-                    forcePerformanceMode={forcePerformanceMode}
-                  />
-                )}
+            {renderer === 'reactflow' && (
+              <LineageGraph
+                className="h-full"
+                forcePerformanceMode={forcePerformanceMode}
+              />
+            )}
 
-                {renderer === 'cytoscape' && lineageData && (
-                  <CytoscapeLineageGraph
-                    nodes={lineageData.nodes}
-                    edges={lineageData.edges}
-                    onNodeClick={handleNodeClick}
-                    className="h-full"
-                  />
-                )}
+            {renderer === 'cytoscape' && lineageData && (
+              <CytoscapeLineageGraph
+                nodes={lineageData.nodes}
+                edges={lineageData.edges}
+                onNodeClick={handleNodeClick}
+                className="h-full"
+              />
+            )}
 
-                {renderer === 'mermaid' && lineageData && (
-                  <MermaidLineageGraph
-                    nodes={lineageData.nodes}
-                    edges={lineageData.edges}
-                    onNodeClick={handleNodeClick}
-                    className="h-full"
-                  />
-                )}
-              </>
+            {renderer === 'mermaid' && lineageData && (
+              <MermaidLineageGraph
+                nodes={lineageData.nodes}
+                edges={lineageData.edges}
+                onNodeClick={handleNodeClick}
+                className="h-full"
+              />
             )}
           </div>
 
-          {/* Side panel - show for cytoscape/mermaid OR when column lineage is enabled */}
-          {(renderer !== 'reactflow' || showColumnLineage) && (
+          {/* Side panel - show for cytoscape/mermaid */}
+          {renderer !== 'reactflow' && (
             <div className="w-80 space-y-4 overflow-y-auto rounded-lg border p-4">
-              {/* Node details for non-reactflow renderers */}
-              {renderer !== 'reactflow' && (
-                <>
-                  <LineageNodeDetails
-                    node={selectedNode}
-                    edges={lineageData?.edges ?? []}
-                    allNodes={lineageData?.nodes ?? []}
-                    columns={selectedNode ? nodeColumns[selectedNode.id] : undefined}
-                    columnMappings={columnMappings}
-                    onDelete={handleDeleteNode}
-                    onAnalyzeImpact={handleAnalyzeImpact}
-                    onColumnClick={(columnName) =>
-                      selectedNode && handleColumnClick(selectedNode.id, columnName)
-                    }
-                    onColumnImpactAnalysis={(columnName) =>
-                      selectedNode && handleColumnClick(selectedNode.id, columnName)
-                    }
-                  />
+              <LineageNodeDetails
+                node={selectedNode}
+                edges={lineageData?.edges ?? []}
+                allNodes={lineageData?.nodes ?? []}
+                onDelete={handleDeleteNode}
+                onAnalyzeImpact={handleAnalyzeImpact}
+              />
 
-                  {impactAnalysis && (
-                    <ImpactAnalysisPanel
-                      analysis={impactAnalysis}
-                      isLoading={isAnalyzing}
-                    />
-                  )}
-                </>
-              )}
-
-              {/* Column lineage panel */}
-              {showColumnLineage && (
-                <>
-                  <ColumnLineagePanel
-                    mappings={columnMappings}
-                    onColumnClick={handleMappingClick}
-                  />
-
-                  {/* Column impact analysis */}
-                  {columnImpact && (
-                    <ColumnImpactAnalysis
-                      result={columnImpact}
-                      onColumnSelect={(nodeId: string, columnName: string) =>
-                        handleColumnClick(nodeId, columnName)
-                      }
-                    />
-                  )}
-                </>
+              {impactAnalysis && (
+                <ImpactAnalysisPanel
+                  analysis={impactAnalysis}
+                  isLoading={isAnalyzing}
+                />
               )}
             </div>
           )}

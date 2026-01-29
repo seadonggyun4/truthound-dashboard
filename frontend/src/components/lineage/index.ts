@@ -34,11 +34,8 @@ export { AnomalyOverlayNode } from './AnomalyOverlayNode'
 export { AnomalyImpactPath, LineageEdgeWithImpact } from './AnomalyImpactPath'
 export { AnomalyLegend } from './AnomalyLegend'
 
-// Column-level lineage components
-export { ColumnLineagePanel } from './ColumnLineagePanel'
+// Column-level lineage edge (used by LineageGraph)
 export { ColumnLineageEdge } from './ColumnLineageEdge'
-export { ColumnMappingTable } from './ColumnMappingTable'
-export { ColumnImpactAnalysis } from './ColumnImpactAnalysis'
 
 // Types
 export type { AnomalyStatusLevel, AnomalyStatus, LineageNodeData } from './LineageNode'
@@ -46,13 +43,3 @@ export type { AnomalyOverlayNodeData } from './AnomalyOverlayNode'
 export type { AnomalyImpactPathData, ImpactSeverityLevel } from './AnomalyImpactPath'
 export type { LineageClusterData } from './LineageCluster'
 export type { LazyLineageNodeData } from './LazyLineageNode'
-export type {
-  ColumnTransformationType,
-  LineageColumn,
-  ColumnMapping,
-  NodeColumnLineage,
-  ColumnImpactResult,
-  AffectedColumn,
-  ColumnImpactPath,
-  EdgeColumnMappings,
-} from './column-lineage-types'
