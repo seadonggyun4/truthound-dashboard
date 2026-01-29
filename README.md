@@ -54,7 +54,7 @@ truthound-dashboard provides a graphical interface for managing data sources, ex
 ## Requirements
 
 - Python 3.11 or higher
-- truthound >= 1.0.5
+- truthound >= 1.2.10
 
 ## Installation
 
@@ -395,9 +395,6 @@ Execute `truthound translate --list-languages` to view the complete list with la
 Full documentation is available at [https://truthound.netlify.app](https://truthound.netlify.app).
 
 - [Getting Started](./docs/getting-started.md)
-- [Features](./docs/features.md)
-- [API Reference](./docs/api.md)
-- [Configuration](./docs/configuration.md)
 
 ## Related Projects
 

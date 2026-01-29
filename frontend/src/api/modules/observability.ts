@@ -5,7 +5,7 @@
  * using truthound's observability module.
  */
 
-import { apiClient } from '../client'
+import { request } from '../core'
 
 // =============================================================================
 // Types
@@ -213,8 +213,7 @@ export interface AuditQueryParams {
  * Get observability configuration
  */
 export async function getObservabilityConfig(): Promise<ObservabilityConfig> {
-  const response = await apiClient.get<ObservabilityConfig>('/observability/config')
-  return response.data
+  return request<ObservabilityConfig>('/observability/config')
 }
 
 /**
@@ -223,16 +222,18 @@ export async function getObservabilityConfig(): Promise<ObservabilityConfig> {
 export async function updateObservabilityConfig(
   config: Partial<ObservabilityConfig>
 ): Promise<ObservabilityConfig> {
-  const response = await apiClient.put<ObservabilityConfig>('/observability/config', config)
-  return response.data
+  return request<ObservabilityConfig>('/observability/config', {
+    method: 'PUT',
+    body: JSON.stringify(config),
+    headers: { 'Content-Type': 'application/json' },
+  })
 }
 
 /**
  * Get combined observability statistics
  */
 export async function getObservabilityStats(): Promise<ObservabilityStats> {
-  const response = await apiClient.get<ObservabilityStats>('/observability/stats')
-  return response.data
+  return request<ObservabilityStats>('/observability/stats')
 }
 
 // =============================================================================
@@ -245,18 +246,22 @@ export async function getObservabilityStats(): Promise<ObservabilityStats> {
 export async function listAuditEvents(
   params?: AuditQueryParams
 ): Promise<AuditEventListResponse> {
-  const response = await apiClient.get<AuditEventListResponse>('/observability/audit/events', {
-    params,
-  })
-  return response.data
+  const queryParams: Record<string, string | number | boolean | undefined | null> = {}
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) {
+        queryParams[key] = value
+      }
+    })
+  }
+  return request<AuditEventListResponse>('/observability/audit/events', { params: queryParams })
 }
 
 /**
  * Get audit statistics
  */
 export async function getAuditStats(): Promise<AuditStats> {
-  const response = await apiClient.get<AuditStats>('/observability/audit/stats')
-  return response.data
+  return request<AuditStats>('/observability/audit/stats')
 }
 
 // =============================================================================
@@ -267,16 +272,14 @@ export async function getAuditStats(): Promise<AuditStats> {
  * Get all metrics
  */
 export async function getMetrics(): Promise<MetricsResponse> {
-  const response = await apiClient.get<MetricsResponse>('/observability/metrics')
-  return response.data
+  return request<MetricsResponse>('/observability/metrics')
 }
 
 /**
  * Get store-specific metrics
  */
 export async function getStoreMetrics(): Promise<StoreMetrics> {
-  const response = await apiClient.get<StoreMetrics>('/observability/metrics/store')
-  return response.data
+  return request<StoreMetrics>('/observability/metrics/store')
 }
 
 // =============================================================================
@@ -287,8 +290,7 @@ export async function getStoreMetrics(): Promise<StoreMetrics> {
  * Get tracing statistics
  */
 export async function getTracingStats(): Promise<TracingStats> {
-  const response = await apiClient.get<TracingStats>('/observability/tracing/stats')
-  return response.data
+  return request<TracingStats>('/observability/tracing/stats')
 }
 
 /**
@@ -298,8 +300,5 @@ export async function listSpans(params?: {
   limit?: number
   offset?: number
 }): Promise<SpanListResponse> {
-  const response = await apiClient.get<SpanListResponse>('/observability/tracing/spans', {
-    params,
-  })
-  return response.data
+  return request<SpanListResponse>('/observability/tracing/spans', { params })
 }

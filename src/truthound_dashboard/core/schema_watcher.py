@@ -47,7 +47,7 @@ from truthound_dashboard.db.models import (
     SchemaWatcherRunModel,
     SchemaWatcherRunStatus as DBRunStatus,
     SchemaWatcherStatus as DBStatus,
-    SourceModel,
+    Source as SourceModel,
 )
 from truthound_dashboard.schemas.schema_watcher import (
     CompatibilityLevel,

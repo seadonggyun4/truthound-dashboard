@@ -24,8 +24,6 @@ from truthound.stores import get_store
 from truthound.stores.retention import (
     CompositePolicy,
     CountBasedPolicy,
-    PolicyMode,
-    RetentionAction,
     RetentionConfig,
     RetentionResult,
     RetentionSchedule,
@@ -40,14 +38,15 @@ from truthound.stores.caching import (
     CacheConfig,
     CacheMode,
     EvictionPolicy,
+    LFUCache,
+    LRUCache,
+    TTLCache,
 )
-from truthound.stores.caching.backends import LFUCache, LRUCache, TTLCache
 from truthound.stores.versioning import (
     VersionedStore,
     VersionDiff,
     VersionInfo,
     VersioningConfig,
-    VersioningMode,
 )
 from truthound.stores.tiering import (
     AccessBasedTierPolicy,
@@ -62,26 +61,68 @@ from truthound.stores.tiering import (
     TierType,
 )
 from truthound.stores.observability import ObservableStore
-from truthound.stores.observability.config import (
+from truthound.stores.observability import (
     AuditConfig,
-    MetricsConfig,
-    ObservabilityConfig,
-    TracingConfig,
-)
-from truthound.stores.observability.audit import (
     AuditEvent,
     AuditEventType,
     AuditLogger,
-    AuditStatus,
-    DataRedactor,
     InMemoryAuditBackend,
-    JsonAuditBackend,
-)
-from truthound.stores.observability.metrics import (
     InMemoryMetricsBackend,
+    JsonAuditBackend,
+    MetricsConfig,
     MetricsRegistry,
+    ObservabilityConfig,
     StoreMetrics,
+    TracingConfig,
 )
+
+
+# Local definitions for types not exported by truthound
+class PolicyMode(str, Enum):
+    """Mode for composite retention policies."""
+
+    ALL = "all"  # All policies must match
+    ANY = "any"  # Any policy can match
+
+
+class RetentionAction(str, Enum):
+    """Action to take when retention policy matches."""
+
+    DELETE = "delete"
+    ARCHIVE = "archive"
+    MOVE = "move"
+
+
+class VersioningMode(str, Enum):
+    """Mode for versioning strategy."""
+
+    SEMANTIC = "semantic"
+    INCREMENTAL = "incremental"
+    TIMESTAMP = "timestamp"
+    GIT_LIKE = "git_like"
+
+
+class AuditStatus(str, Enum):
+    """Status of audit events."""
+
+    SUCCESS = "success"
+    FAILURE = "failure"
+    WARNING = "warning"
+
+
+class DataRedactor:
+    """Simple data redactor for audit logs."""
+
+    def __init__(self, fields_to_redact: list[str] | None = None):
+        self.fields_to_redact = fields_to_redact or []
+
+    def redact(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Redact sensitive fields from data."""
+        result = dict(data)
+        for field in self.fields_to_redact:
+            if field in result:
+                result[field] = "[REDACTED]"
+        return result
 
 from truthound_dashboard.config import get_settings
 

@@ -12,6 +12,7 @@ All data is persisted to the database.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.model_monitoring import ModelMonitoringService

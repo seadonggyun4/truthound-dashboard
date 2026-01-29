@@ -296,6 +296,25 @@ export async function updateNodePositions(
   })
 }
 
+export interface AutoDiscoverLineageRequest {
+  source_id?: string
+}
+
+export interface AutoDiscoverLineageResponse {
+  nodes_created: number
+  edges_created: number
+  message: string
+}
+
+export async function autoDiscoverLineage(
+  req?: AutoDiscoverLineageRequest
+): Promise<AutoDiscoverLineageResponse> {
+  return request<AutoDiscoverLineageResponse>('/lineage/discover', {
+    method: 'POST',
+    body: JSON.stringify(req || {}),
+  })
+}
+
 // ============================================================================
 // OpenLineage API
 // ============================================================================

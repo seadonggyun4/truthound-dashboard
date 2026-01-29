@@ -22,7 +22,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from truthound_dashboard.api.deps import get_db
+from truthound_dashboard.api.deps import get_session
 from truthound_dashboard.core.enterprise_sampling import (
     QUALITY_PRESETS,
     SCALE_STRATEGY_MAP,
@@ -31,7 +31,8 @@ from truthound_dashboard.core.enterprise_sampling import (
     get_sample_size_estimator,
     get_sketch_estimator,
 )
-from truthound_dashboard.db import crud
+from sqlalchemy import select
+from truthound_dashboard.db import Source
 from truthound_dashboard.schemas.enterprise_sampling import (
     BlockSamplingConfig,
     ColumnAwareSamplingConfig,
@@ -155,11 +156,12 @@ STRATEGY_DOCS = {
 )
 async def run_enterprise_sampling(
     request: EnterpriseSamplingRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ) -> EnterpriseSamplingResponse:
     """Run enterprise-scale sampling on a data source."""
     # Get source
-    source = await crud.get_source(db, request.source_id)
+    result = await db.execute(select(Source).where(Source.id == request.source_id))
+    source = result.scalar_one_or_none()
     if not source:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -256,11 +258,12 @@ async def estimate_sample_size(
 )
 async def run_sketch_estimation(
     request: SketchEstimateRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ) -> SketchEstimateResponse:
     """Run sketch-based estimation using probabilistic data structures."""
     # Get source
-    source = await crud.get_source(db, request.source_id)
+    result = await db.execute(select(Source).where(Source.id == request.source_id))
+    source = result.scalar_one_or_none()
     if not source:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
