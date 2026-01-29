@@ -24,17 +24,20 @@ import {
   Puzzle,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Loader2,
   HardDrive,
   Eye,
   BarChart3,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useTheme } from '@/components/theme-provider'
 import { LanguageSelector } from '@/components/common'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import logoImg from '@/assets/logo.png'
 import { request } from '@/api/core'
 import {
@@ -42,6 +45,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 // Navigation throttle delay (ms) - must wait this long between navigations
 const NAV_THROTTLE_MS = 800
@@ -90,6 +99,10 @@ export default function Layout() {
   const nav = useSafeIntlayer('nav')
   const { theme, setTheme } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebar-collapsed')
+    return saved === 'true'
+  })
   const [alertCount, setAlertCount] = useState(0)
   const [localIP, setLocalIP] = useState<string>('')
 
@@ -97,6 +110,16 @@ export default function Layout() {
   const [isNavigating, setIsNavigating] = useState(false)
   const lastNavTime = useRef(0)
   const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const sidebarWidth = sidebarCollapsed ? 64 : 220
+
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev
+      localStorage.setItem('sidebar-collapsed', String(next))
+      return next
+    })
+  }, [])
 
   // Collapsible section states
   const [dataOpen, setDataOpen] = useState(true)
@@ -192,25 +215,63 @@ export default function Layout() {
       )}
 
       {/* Sidebar */}
+      <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'fixed left-0 top-0 bottom-0 z-50 w-[220px] transform bg-card border-r transition-transform duration-200 lg:translate-x-0 flex flex-col h-screen',
+          'fixed left-0 top-0 bottom-0 z-50 transform bg-card border-r transition-all duration-200 lg:translate-x-0 flex flex-col h-screen',
+          sidebarCollapsed ? 'w-16' : 'w-[220px]',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center gap-2 border-b px-6 flex-shrink-0">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+        <div className={cn(
+          'flex h-16 items-center gap-2 border-b flex-shrink-0',
+          sidebarCollapsed ? 'justify-center px-2' : 'px-6'
+        )}>
+          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
             <img src={logoImg} alt="Truthound" className="h-6 w-6" />
           </div>
-          <div className="flex flex-col">
-            <span className="font-semibold text-lg">Truthound</span>
-          </div>
+          {!sidebarCollapsed && (
+            <div className="flex flex-col">
+              <span className="font-semibold text-lg">Truthound</span>
+            </div>
+          )}
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-2 min-h-0">
+        <nav className={cn(
+          'flex-1 overflow-y-auto space-y-2 min-h-0',
+          sidebarCollapsed ? 'p-2' : 'p-4'
+        )}>
           {/* Data Management Section */}
+          {sidebarCollapsed ? (
+            <div className="space-y-1">
+              <div className="h-px bg-border my-2" />
+              {navigation.filter(item => item.section === 'data').map((item) => {
+                const isActive = isRouteActive(item.href)
+                return (
+                  <Tooltip key={item.key}>
+                    <TooltipTrigger asChild>
+                      <a
+                        href={item.href}
+                        onClick={(e) => handleNavClick(e, item.href)}
+                        className={cn(
+                          'flex items-center justify-center rounded-lg p-2.5 transition-colors relative',
+                          isActive
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                          isNavigating && 'pointer-events-none opacity-50'
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{nav[item.key]}</TooltipContent>
+                  </Tooltip>
+                )
+              })}
+            </div>
+          ) : (
           <Collapsible open={dataOpen} onOpenChange={setDataOpen}>
             <CollapsibleTrigger className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               {dataOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -239,8 +300,37 @@ export default function Layout() {
               })}
             </CollapsibleContent>
           </Collapsible>
+          )}
 
           {/* Data Quality Section */}
+          {sidebarCollapsed ? (
+            <div className="space-y-1">
+              <div className="h-px bg-border my-2" />
+              {navigation.filter(item => item.section === 'quality').map((item) => {
+                const isActive = isRouteActive(item.href)
+                return (
+                  <Tooltip key={item.key}>
+                    <TooltipTrigger asChild>
+                      <a
+                        href={item.href}
+                        onClick={(e) => handleNavClick(e, item.href)}
+                        className={cn(
+                          'flex items-center justify-center rounded-lg p-2.5 transition-colors',
+                          isActive
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                          isNavigating && 'pointer-events-none opacity-50'
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{nav[item.key]}</TooltipContent>
+                  </Tooltip>
+                )
+              })}
+            </div>
+          ) : (
           <Collapsible open={qualityOpen} onOpenChange={setQualityOpen}>
             <CollapsibleTrigger className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               {qualityOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -269,8 +359,37 @@ export default function Layout() {
               })}
             </CollapsibleContent>
           </Collapsible>
+          )}
 
           {/* ML & Monitoring Section */}
+          {sidebarCollapsed ? (
+            <div className="space-y-1">
+              <div className="h-px bg-border my-2" />
+              {navigation.filter(item => item.section === 'ml').map((item) => {
+                const isActive = isRouteActive(item.href)
+                return (
+                  <Tooltip key={item.key}>
+                    <TooltipTrigger asChild>
+                      <a
+                        href={item.href}
+                        onClick={(e) => handleNavClick(e, item.href)}
+                        className={cn(
+                          'flex items-center justify-center rounded-lg p-2.5 transition-colors',
+                          isActive
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                          isNavigating && 'pointer-events-none opacity-50'
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{nav[item.key]}</TooltipContent>
+                  </Tooltip>
+                )
+              })}
+            </div>
+          ) : (
           <Collapsible open={mlOpen} onOpenChange={setMlOpen}>
             <CollapsibleTrigger className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               {mlOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -299,8 +418,47 @@ export default function Layout() {
               })}
             </CollapsibleContent>
           </Collapsible>
+          )}
 
           {/* System Section */}
+          {sidebarCollapsed ? (
+            <div className="space-y-1">
+              <div className="h-px bg-border my-2" />
+              {navigation.filter(item => item.section === 'system').map((item) => {
+                const isActive = isRouteActive(item.href)
+                return (
+                  <Tooltip key={item.key}>
+                    <TooltipTrigger asChild>
+                      <a
+                        href={item.href}
+                        onClick={(e) => handleNavClick(e, item.href)}
+                        className={cn(
+                          'flex items-center justify-center rounded-lg p-2.5 transition-colors relative',
+                          isActive
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                          isNavigating && 'pointer-events-none opacity-50'
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.showBadge && alertCount > 0 && (
+                          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
+                        )}
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <span>{nav[item.key]}</span>
+                      {item.showBadge && alertCount > 0 && (
+                        <Badge variant="destructive" className="ml-2 h-5 min-w-[20px] px-1.5 text-xs">
+                          {alertCount > 99 ? '99+' : alertCount}
+                        </Badge>
+                      )}
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              })}
+            </div>
+          ) : (
           <Collapsible open={systemOpen} onOpenChange={setSystemOpen}>
             <CollapsibleTrigger className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               {systemOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -337,12 +495,41 @@ export default function Layout() {
               })}
             </CollapsibleContent>
           </Collapsible>
+          )}
         </nav>
 
+        {/* Collapse toggle */}
+        <div className="border-t p-2 flex-shrink-0 hidden lg:block">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleSidebarCollapsed}
+                className={cn('w-full', sidebarCollapsed ? 'justify-center px-0' : 'justify-start')}
+              >
+                {sidebarCollapsed ? (
+                  <PanelLeftOpen className="h-4 w-4" />
+                ) : (
+                  <>
+                    <PanelLeftClose className="h-4 w-4 mr-2" />
+                    <span className="text-xs text-muted-foreground">Collapse</span>
+                  </>
+                )}
+              </Button>
+            </TooltipTrigger>
+            {sidebarCollapsed && <TooltipContent side="right">Expand sidebar</TooltipContent>}
+          </Tooltip>
+        </div>
       </aside>
+      </TooltipProvider>
 
       {/* Main content */}
-      <div className="lg:pl-[220px]">
+      <div
+        className="transition-all duration-200"
+        style={{ paddingLeft: `var(--sidebar-width, 0px)` }}
+      >
+        <style>{`@media (min-width: 1024px) { :root { --sidebar-width: ${sidebarWidth}px; } }`}</style>
         {/* Top bar */}
         <header
           className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6"
