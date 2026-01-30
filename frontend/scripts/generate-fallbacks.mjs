@@ -44,7 +44,7 @@ function extractEnglishValues(content) {
  * Get the key name from content file
  */
 function extractKey(content) {
-  const keyMatch = content.match(/key:\s*['"](\w+)['"]/s)
+  const keyMatch = content.match(/key:\s*['"]([\w-]+)['"]/s)
   return keyMatch ? keyMatch[1] : null
 }
 

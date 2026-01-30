@@ -1,6 +1,6 @@
 # truthound-dashboard
 
-> **UNDER ACTIVE DEVELOPMENT**: This project is currently in active development. APIs and features may change without notice. Not recommended for production use yet.
+> **Alpha Version**: APIs and features may change without notice.
 
 ## Overview
 <img width="300" height="300" alt="Truthound_icon" src="https://github.com/user-attachments/assets/90d9e806-8895-45ec-97dc-f8300da4d997" />
@@ -15,7 +15,9 @@ A web-based data quality monitoring dashboard for [truthound](https://github.com
 
 truthound-dashboard provides a graphical interface for managing data sources, executing validations, tracking historical results, scheduling automated checks, and configuring notifications. It serves as an alternative to commercial data quality platforms.
 
-[Documentation](https://truthound.netlify.app) | [PyPI](https://pypi.org/project/truthound-dashboard/)
+[Documentation](https://truthound.netlify.app) | [PyPI](https://pypi.org/project/truthound-dashboard/) | [Live Demo](https://truthound-dashboard.vercel.app)
+
+> **Demo Note**: The live demo uses a free-tier backend ([Render](https://render.com)), which enters sleep mode after 15 minutes of inactivity. The first request may take 30–60 seconds to wake up the server.
 
 ## Design Principles
 
