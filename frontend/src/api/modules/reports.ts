@@ -191,15 +191,15 @@ export async function listReportHistory(params?: {
   page?: number
   page_size?: number
 }): Promise<GeneratedReportListResponse> {
-  return request<GeneratedReportListResponse>('/reports', { params })
+  return request<GeneratedReportListResponse>('/reports/history', { params })
 }
 
 export async function getReportStatistics(): Promise<ReportStatistics> {
-  return request<ReportStatistics>('/reports/statistics')
+  return request<ReportStatistics>('/reports/history/statistics')
 }
 
 export async function getGeneratedReport(reportId: string): Promise<GeneratedReport> {
-  return request<GeneratedReport>(`/reports/${reportId}`)
+  return request<GeneratedReport>(`/reports/history/${reportId}`)
 }
 
 export async function createReportRecord(data: {
@@ -214,7 +214,7 @@ export async function createReportRecord(data: {
   include_statistics?: boolean
   generate_immediately?: boolean
 }): Promise<GeneratedReport> {
-  return request<GeneratedReport>('/reports', {
+  return request<GeneratedReport>('/reports/history', {
     method: 'POST',
     body: JSON.stringify(data),
   })
@@ -224,18 +224,18 @@ export async function updateReportRecord(reportId: string, data: {
   name?: string
   description?: string
 }): Promise<GeneratedReport> {
-  return request<GeneratedReport>(`/reports/${reportId}`, {
-    method: 'PUT',
+  return request<GeneratedReport>(`/reports/history/${reportId}`, {
+    method: 'PATCH',
     body: JSON.stringify(data),
   })
 }
 
 export async function deleteReportRecord(reportId: string): Promise<void> {
-  await request<void>(`/reports/${reportId}`, { method: 'DELETE' })
+  await request<void>(`/reports/history/${reportId}`, { method: 'DELETE' })
 }
 
 export async function downloadSavedReport(reportId: string): Promise<Blob> {
-  const url = `${API_BASE}/reports/${reportId}/download`
+  const url = `${API_BASE}/reports/history/${reportId}/download`
   const response = await fetch(url)
 
   if (!response.ok) {
@@ -246,13 +246,13 @@ export async function downloadSavedReport(reportId: string): Promise<Blob> {
 }
 
 export async function generateReportContent(reportId: string): Promise<GeneratedReport> {
-  return request<GeneratedReport>(`/reports/${reportId}/generate`, {
+  return request<GeneratedReport>(`/reports/history/${reportId}/generate`, {
     method: 'POST',
   })
 }
 
 export async function cleanupExpiredReports(): Promise<{ deleted: number }> {
-  return request<{ deleted: number }>('/reports/cleanup', { method: 'POST' })
+  return request<{ deleted: number }>('/reports/history/cleanup', { method: 'POST' })
 }
 
 export async function generateBulkReports(data: BulkReportGenerateRequest): Promise<BulkReportGenerateResponse> {

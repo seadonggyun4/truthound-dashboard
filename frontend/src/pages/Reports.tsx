@@ -202,7 +202,7 @@ export default function Reports() {
   const totalPages = Math.ceil(total / pageSize)
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

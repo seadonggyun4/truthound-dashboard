@@ -324,8 +324,8 @@ export function useReportHistory(
         page: query.page,
         page_size: query.pageSize,
       })
-      setReports(response.data as unknown as GeneratedReport[])
-      setTotal(response.total)
+      setReports((response.data ?? []) as unknown as GeneratedReport[])
+      setTotal(response.total ?? 0)
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch reports')
       setError(error)
