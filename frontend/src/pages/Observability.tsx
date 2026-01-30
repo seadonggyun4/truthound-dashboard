@@ -340,14 +340,14 @@ export default function Observability() {
                 <div className="w-48">
                   <Label>{content.audit.filterByType}</Label>
                   <Select
-                    value={auditEventType}
-                    onValueChange={(v) => setAuditEventType(v as AuditEventType)}
+                    value={auditEventType || "__all__"}
+                    onValueChange={(v) => setAuditEventType(v === "__all__" ? "" as AuditEventType : v as AuditEventType)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All types" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All types</SelectItem>
+                      <SelectItem value="__all__">All types</SelectItem>
                       <SelectItem value="create">{str(content.audit.eventTypes.create)}</SelectItem>
                       <SelectItem value="read">{str(content.audit.eventTypes.read)}</SelectItem>
                       <SelectItem value="update">{str(content.audit.eventTypes.update)}</SelectItem>
@@ -360,14 +360,14 @@ export default function Observability() {
                 <div className="w-48">
                   <Label>{content.audit.filterByStatus}</Label>
                   <Select
-                    value={auditStatus}
-                    onValueChange={(v) => setAuditStatus(v as AuditStatus)}
+                    value={auditStatus || "__all__"}
+                    onValueChange={(v) => setAuditStatus(v === "__all__" ? "" as AuditStatus : v as AuditStatus)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All statuses" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All statuses</SelectItem>
+                      <SelectItem value="__all__">All statuses</SelectItem>
                       <SelectItem value="success">{str(content.audit.statuses.success)}</SelectItem>
                       <SelectItem value="failure">{str(content.audit.statuses.failure)}</SelectItem>
                       <SelectItem value="partial">{str(content.audit.statuses.partial)}</SelectItem>
