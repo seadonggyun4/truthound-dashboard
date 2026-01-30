@@ -3,6 +3,7 @@
  */
 
 import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
@@ -432,15 +433,13 @@ function CompositeConfigForm({
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Combination Logic</Label>
-        <div className="flex gap-4">
+        <RadioGroup
+          value={config.require_all !== false ? 'all' : 'any'}
+          onValueChange={(value) => onChange({ ...config, require_all: value === 'all' })}
+          className="flex gap-4"
+        >
           <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="require_all"
-              checked={config.require_all !== false}
-              onChange={() => onChange({ ...config, require_all: true })}
-              className="h-4 w-4"
-            />
+            <RadioGroupItem value="all" />
             <div>
               <div className="font-medium">AND (All must match)</div>
               <div className="text-xs text-muted-foreground">
@@ -449,13 +448,7 @@ function CompositeConfigForm({
             </div>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="require_all"
-              checked={config.require_all === false}
-              onChange={() => onChange({ ...config, require_all: false })}
-              className="h-4 w-4"
-            />
+            <RadioGroupItem value="any" />
             <div>
               <div className="font-medium">OR (Any can match)</div>
               <div className="text-xs text-muted-foreground">
@@ -463,7 +456,7 @@ function CompositeConfigForm({
               </div>
             </div>
           </label>
-        </div>
+        </RadioGroup>
       </div>
       <div className="p-3 bg-muted/50 rounded-md text-sm">
         <strong>Note:</strong> Child policies are managed separately after creation.
