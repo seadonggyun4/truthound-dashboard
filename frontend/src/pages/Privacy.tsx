@@ -316,7 +316,6 @@ export default function Privacy() {
                 <TabsContent value="scan" className="mt-0">
                   <PIIScanPanel
                     sourceId={selectedSourceId}
-                    columns={columns}
                     initialScan={viewingScan ?? selectedSource?.latestScan}
                     onScanComplete={() => { setViewingScan(null); handleScanComplete() }}
                   />

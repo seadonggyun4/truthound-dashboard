@@ -201,9 +201,23 @@ export default function Schedules() {
         // Use advanced trigger configuration
         createData.trigger_type = triggerConfig.type
         createData.trigger_config = triggerConfig
-        // For cron triggers, also set cron_expression for backward compatibility
+        // Always set cron_expression for backend compatibility
         if (triggerConfig.type === 'cron' && 'expression' in triggerConfig) {
           createData.cron_expression = triggerConfig.expression
+        } else if (triggerConfig.type === 'interval') {
+          // Convert interval to cron expression
+          const hours = triggerConfig.hours ?? 1
+          const minutes = triggerConfig.minutes ?? 0
+          if (hours >= 1 && minutes === 0) {
+            createData.cron_expression = `0 */${hours} * * *`
+          } else if (hours === 0 && minutes >= 1) {
+            createData.cron_expression = `*/${minutes} * * * *`
+          } else {
+            createData.cron_expression = `${minutes} */${hours} * * *`
+          }
+        } else {
+          // Fallback
+          createData.cron_expression = '0 * * * *'
         }
       } else {
         // Use simple cron mode
@@ -309,8 +323,11 @@ export default function Schedules() {
     try {
       const result = await runScheduleNow(id)
       toast({
+        variant: result.passed === false ? 'destructive' : 'default',
         title: str(schedules_t.validationTriggered),
-        description: str(result.passed ? validation.passed : validation.failed),
+        description: result.passed === null || result.passed === undefined
+          ? str(schedules_t.validationTriggered)
+          : str(result.passed ? validation.passed : validation.failed),
       })
     } catch (err) {
       toast({
@@ -415,7 +432,7 @@ export default function Schedules() {
                   <Clock className="h-4 w-4 mr-2" />
                   Basic Settings
                 </TabsTrigger>
-                <TabsTrigger value="trigger">
+                <TabsTrigger value="trigger" disabled={!useAdvancedTrigger}>
                   <Timer className="h-4 w-4 mr-2" />
                   Trigger
                   {useAdvancedTrigger && triggerConfig.type !== 'cron' && (

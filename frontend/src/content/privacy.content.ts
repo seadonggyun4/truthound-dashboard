@@ -103,6 +103,7 @@ const privacyContent = {
     // th.scan() does not support these parameters.
     config: {
       selectSource: t({ en: 'Select Data Source', ko: '데이터 소스 선택' }),
+      selectColumns: t({ en: 'Select Columns', ko: '컬럼 선택' }),
     },
 
     // Results Table

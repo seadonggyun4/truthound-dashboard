@@ -37,7 +37,6 @@ import {
 import {
   runPIIScan,
   type PIIScan,
-  type PIIScanOptions,
 } from '@/api/modules/privacy'
 import {
   compareDrift,
@@ -660,10 +659,10 @@ export function usePIIScan() {
   })
 
   const scan = useCallback(
-    async (sourceId: string, options?: PIIScanOptions) => {
+    async (sourceId: string) => {
       setState({ data: null, loading: true, error: null, success: false })
       try {
-        const result = await runPIIScan(sourceId, options)
+        const result = await runPIIScan(sourceId)
         setState({ data: result, loading: false, error: null, success: true })
         return result
       } catch (err) {
@@ -712,9 +711,9 @@ export function useSourceOperations(sourceId: string | null) {
   )
 
   const runScan = useCallback(
-    async (options?: PIIScanOptions) => {
+    async () => {
       if (!sourceId) return null
-      return scan(sourceId, options)
+      return scan(sourceId)
     },
     [sourceId, scan]
   )

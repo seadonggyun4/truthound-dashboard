@@ -108,6 +108,7 @@ import {
   type SchemaWatcherRunSummary,
   type SchemaWatcherStatus,
   type SchemaWatcherAlertStatus,
+  type SchemaWatcherAlertSeverity,
   type VersionStrategy,
   type SimilarityAlgorithm,
   type WatcherSchemaVersionSummary,
@@ -325,7 +326,7 @@ export default function SchemaWatcherPage() {
           limit: PAGE_SIZE,
           offset: (alertPage - 1) * PAGE_SIZE,
           ...(alertStatusFilter !== 'all' ? { status: alertStatusFilter as SchemaWatcherAlertStatus } : {}),
-          ...(severityFilter !== 'all' ? { severity: severityFilter as string } : {}),
+          ...(severityFilter !== 'all' ? { severity: severityFilter as SchemaWatcherAlertSeverity } : {}),
         }),
         listSchemaWatcherRuns({
           limit: PAGE_SIZE,
@@ -772,7 +773,7 @@ export default function SchemaWatcherPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

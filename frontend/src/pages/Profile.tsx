@@ -1264,7 +1264,7 @@ export default function Profile() {
         suggestions={suggestions}
         isLoading={loadingSuggestions}
         onApply={handleApplyRules}
-        onGenerate={async (options) => { await handleGenerateSuggestions(options) }}
+        onGenerate={async (options) => { await handleGenerateSuggestions(options as Record<string, unknown>) }}
       />
     </div>
   )

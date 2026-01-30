@@ -81,4 +81,13 @@ export * from './schema-watcher'
 export * from './enterprise-sampling'
 
 // Observability
-export * from './observability'
+// Note: HistogramBucket excluded to avoid conflict with profile module
+export {
+  type AuditEventType, type AuditStatus, type MetricType, type SpanKind, type SpanStatus,
+  type ObservabilityConfig, type AuditEvent, type AuditEventListResponse, type AuditStats,
+  type MetricValue, type HistogramValue, type SummaryQuantile, type SummaryValue,
+  type MetricsResponse, type StoreMetrics, type SpanContext, type SpanEvent, type Span,
+  type SpanListResponse, type TracingStats, type ObservabilityStats, type AuditQueryParams,
+  getObservabilityConfig, updateObservabilityConfig, getObservabilityStats,
+  listAuditEvents, getAuditStats, getMetrics, getStoreMetrics, getTracingStats, listSpans,
+} from './observability'

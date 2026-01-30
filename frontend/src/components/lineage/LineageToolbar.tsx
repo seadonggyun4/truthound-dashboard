@@ -33,15 +33,19 @@ import type { LineageNodeType } from '@/api/modules/lineage'
 
 interface LineageToolbarProps {
   onAddNode: (name: string, nodeType: LineageNodeType) => void
+  onAutoDiscover?: () => void
   onSavePositions: () => void
   onRefresh: () => void
+  isDiscovering?: boolean
   isSaving?: boolean
 }
 
 export function LineageToolbar({
   onAddNode,
+  onAutoDiscover: _onAutoDiscover,
   onSavePositions,
   onRefresh,
+  isDiscovering: _isDiscovering = false,
   isSaving = false,
 }: LineageToolbarProps) {
   const t = useIntlayer('lineage')

@@ -603,11 +603,11 @@ export async function executePolicy(
  */
 export async function migrateItem(
   itemId: string,
-  request: MigrateItemRequest
+  req: MigrateItemRequest
 ): Promise<MigrationItemResponse> {
   return request<MigrationItemResponse>(`/tiering/items/${itemId}/migrate`, {
     method: 'POST',
-    body: JSON.stringify(request),
+    body: JSON.stringify(req),
   })
 }
 

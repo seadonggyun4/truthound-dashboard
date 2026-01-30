@@ -70,6 +70,12 @@ const lineageContent = {
     affectedDownstream: t({ en: 'Affected Downstream', ko: '영향받는 하위' }),
     analysisDepth: t({ en: 'Analysis Depth', ko: '분석 깊이' }),
 
+    // Auto-discovery
+    discoveryComplete: t({ en: 'Discovery complete', ko: '발견 완료' }),
+    discoveryFailed: t({ en: 'Discovery failed', ko: '발견 실패' }),
+    nodesDiscovered: t({ en: 'nodes discovered', ko: '개 노드 발견' }),
+    edgesDiscovered: t({ en: 'edges discovered', ko: '개 엣지 발견' }),
+
     // Empty states
     noLineageYet: t({ en: 'No lineage data yet', ko: '계보 데이터 없음' }),
     noLineageDesc: t({
