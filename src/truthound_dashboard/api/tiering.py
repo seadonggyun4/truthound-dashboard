@@ -49,7 +49,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from ..db import get_session
+from ..db import get_db_session as get_session
 from ..db.models import (
     MigrationDirection,
     StorageTierModel,
@@ -116,7 +116,7 @@ def _tier_to_response(tier: StorageTierModel) -> StorageTierResponse:
         priority=tier.priority,
         cost_per_gb=tier.cost_per_gb,
         retrieval_time_ms=tier.retrieval_time_ms,
-        metadata=tier.metadata,
+        metadata=tier.tier_metadata,
         is_active=tier.is_active,
         created_at=tier.created_at,
         updated_at=tier.updated_at,
@@ -280,7 +280,7 @@ async def create_storage_tier(
         priority=request.priority,
         cost_per_gb=request.cost_per_gb,
         retrieval_time_ms=request.retrieval_time_ms,
-        metadata=request.metadata,
+        tier_metadata=request.metadata,
         is_active=request.is_active,
     )
     session.add(tier)
@@ -349,7 +349,7 @@ async def update_storage_tier(
     if request.retrieval_time_ms is not None:
         tier.retrieval_time_ms = request.retrieval_time_ms
     if request.metadata is not None:
-        tier.metadata = request.metadata
+        tier.tier_metadata = request.metadata
     if request.is_active is not None:
         tier.is_active = request.is_active
 
