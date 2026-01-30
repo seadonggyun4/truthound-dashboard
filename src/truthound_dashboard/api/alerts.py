@@ -127,6 +127,49 @@ async def get_alert(
 
 
 # =============================================================================
+# Bulk Action Endpoints (must be before /{alert_id} routes to avoid path conflict)
+# =============================================================================
+
+
+@router.post("/bulk/acknowledge", response_model=BulkAlertActionResponse)
+async def bulk_acknowledge_alerts(
+    request: BulkAlertActionRequest,
+    service: UnifiedAlertsService = Depends(get_service),
+) -> BulkAlertActionResponse:
+    """Bulk acknowledge multiple alerts."""
+    success, failed, failed_ids = await service.bulk_acknowledge(
+        request.alert_ids,
+        request.actor,
+        request.message,
+    )
+
+    return BulkAlertActionResponse(
+        success_count=success,
+        failed_count=failed,
+        failed_ids=failed_ids,
+    )
+
+
+@router.post("/bulk/resolve", response_model=BulkAlertActionResponse)
+async def bulk_resolve_alerts(
+    request: BulkAlertActionRequest,
+    service: UnifiedAlertsService = Depends(get_service),
+) -> BulkAlertActionResponse:
+    """Bulk resolve multiple alerts."""
+    success, failed, failed_ids = await service.bulk_resolve(
+        request.alert_ids,
+        request.actor,
+        request.message,
+    )
+
+    return BulkAlertActionResponse(
+        success_count=success,
+        failed_count=failed,
+        failed_ids=failed_ids,
+    )
+
+
+# =============================================================================
 # Alert Action Endpoints
 # =============================================================================
 
@@ -171,49 +214,6 @@ async def resolve_alert(
         )
 
     return alert
-
-
-# =============================================================================
-# Bulk Action Endpoints
-# =============================================================================
-
-
-@router.post("/bulk/acknowledge", response_model=BulkAlertActionResponse)
-async def bulk_acknowledge_alerts(
-    request: BulkAlertActionRequest,
-    service: UnifiedAlertsService = Depends(get_service),
-) -> BulkAlertActionResponse:
-    """Bulk acknowledge multiple alerts."""
-    success, failed, failed_ids = await service.bulk_acknowledge(
-        request.alert_ids,
-        request.actor,
-        request.message,
-    )
-
-    return BulkAlertActionResponse(
-        success_count=success,
-        failed_count=failed,
-        failed_ids=failed_ids,
-    )
-
-
-@router.post("/bulk/resolve", response_model=BulkAlertActionResponse)
-async def bulk_resolve_alerts(
-    request: BulkAlertActionRequest,
-    service: UnifiedAlertsService = Depends(get_service),
-) -> BulkAlertActionResponse:
-    """Bulk resolve multiple alerts."""
-    success, failed, failed_ids = await service.bulk_resolve(
-        request.alert_ids,
-        request.actor,
-        request.message,
-    )
-
-    return BulkAlertActionResponse(
-        success_count=success,
-        failed_count=failed,
-        failed_ids=failed_ids,
-    )
 
 
 # =============================================================================

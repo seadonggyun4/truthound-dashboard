@@ -285,28 +285,37 @@ class CrossAlertService:
         )
         anomaly_detections = list(anomaly_result.scalars().all())
 
-        # Get recent drift alerts for this source
-        drift_result = await self.session.execute(
-            select(DriftAlert)
-            .where(DriftAlert.created_at >= since)
-            .order_by(DriftAlert.created_at.desc())
-            .limit(100)
-        )
-        drift_alerts = list(drift_result.scalars().all())
+        # Get recent drift alerts for this source via DriftMonitor
+        from truthound_dashboard.db.models import DriftMonitor
 
-        # Filter drift alerts related to this source
-        related_drift_alerts = []
-        for alert in drift_alerts:
-            # Get the comparison to check source IDs
-            comp_result = await self.session.execute(
-                select(DriftComparison).where(DriftComparison.id == alert.comparison_id)
+        # Find monitors related to this source
+        monitor_result = await self.session.execute(
+            select(DriftMonitor).where(
+                or_(
+                    DriftMonitor.baseline_source_id == source_id,
+                    DriftMonitor.current_source_id == source_id,
+                )
             )
-            comparison = comp_result.scalar_one_or_none()
-            if comparison and (
-                comparison.baseline_source_id == source_id
-                or comparison.current_source_id == source_id
-            ):
-                related_drift_alerts.append((alert, comparison))
+        )
+        monitors = {m.id: m for m in monitor_result.scalars().all()}
+
+        related_drift_alerts: list[tuple[Any, Any]] = []
+        if monitors:
+            drift_result = await self.session.execute(
+                select(DriftAlert)
+                .where(
+                    and_(
+                        DriftAlert.monitor_id.in_(list(monitors.keys())),
+                        DriftAlert.created_at >= since,
+                    )
+                )
+                .order_by(DriftAlert.created_at.desc())
+                .limit(100)
+            )
+            for alert in drift_result.scalars().all():
+                monitor = monitors.get(alert.monitor_id)
+                if monitor:
+                    related_drift_alerts.append((alert, monitor))
 
         # Find correlations
         correlations = []
@@ -334,7 +343,7 @@ class CrossAlertService:
 
                 # Find common columns
                 anomaly_cols = detection.columns_analyzed or []
-                drift_cols = alert.drifted_columns_json or []
+                drift_cols = alert.affected_columns or []
                 common_cols = list(set(anomaly_cols) & set(drift_cols))
 
                 correlation_id = str(uuid.uuid4())
@@ -362,8 +371,8 @@ class CrossAlertService:
                     "severity": alert.severity,
                     "message": alert.message,
                     "created_at": alert.created_at.isoformat(),
-                    "drift_percentage": alert.drift_percentage,
-                    "drifted_columns": alert.drifted_columns_json,
+                    "drift_percentage": alert.drift_score,
+                    "drifted_columns": alert.affected_columns or [],
                 }
 
                 correlation = {
