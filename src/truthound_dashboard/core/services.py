@@ -2055,6 +2055,8 @@ class ScheduleService:
         *,
         name: str,
         cron_expression: str,
+        trigger_type: str = "cron",
+        trigger_config: dict[str, Any] | None = None,
         notify_on_failure: bool = True,
         config: dict[str, Any] | None = None,
     ) -> Schedule:
@@ -2084,6 +2086,8 @@ class ScheduleService:
             name=name,
             source_id=source_id,
             cron_expression=cron_expression,
+            trigger_type=trigger_type,
+            trigger_config=trigger_config,
             is_active=True,
             notify_on_failure=notify_on_failure,
             next_run_at=next_run,

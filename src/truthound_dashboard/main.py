@@ -108,6 +108,13 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     await ws_manager.start()
     logger.info("WebSocket manager started")
 
+    # Start streaming session cleanup
+    from truthound_dashboard.core.streaming_anomaly import get_streaming_detector
+
+    streaming_detector = get_streaming_detector()
+    await streaming_detector.start()
+    logger.info("Streaming session cleanup started")
+
     # Register maintenance tasks with scheduler
     _register_maintenance_tasks()
 
@@ -115,6 +122,10 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Shutdown
     logger.info("Shutting down Truthound Dashboard")
+
+    # Stop streaming session cleanup
+    await streaming_detector.stop()
+    logger.info("Streaming session cleanup stopped")
 
     # Stop WebSocket manager
     await ws_manager.stop()
