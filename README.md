@@ -1,4 +1,5 @@
 # truthound-dashboard
+<img width="1697" height="847" alt="truthound-dashboard" src="https://github.com/user-attachments/assets/2239ebff-470b-49fe-ab09-81bc3117880d" />
 
 > **Alpha Version**: APIs and features may change without notice.
 
