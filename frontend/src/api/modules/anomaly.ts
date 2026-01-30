@@ -537,7 +537,7 @@ export async function getAlgorithmComparison(comparisonId: string): Promise<Algo
 export async function startStreamingSession(
   data: StreamingSessionCreate
 ): Promise<StreamingSession> {
-  return request<StreamingSession>('/anomaly/streaming/sessions', {
+  return request<StreamingSession>('/anomaly/streaming/start', {
     method: 'POST',
     body: JSON.stringify(data),
   })
@@ -547,7 +547,7 @@ export async function pushStreamingData(
   sessionId: string,
   dataPoint: StreamingDataPoint
 ): Promise<{ is_anomaly: boolean; anomaly_score: number; alerts: StreamingAlert[] }> {
-  return request(`/anomaly/streaming/sessions/${sessionId}/data`, {
+  return request(`/anomaly/streaming/${sessionId}/data`, {
     method: 'POST',
     body: JSON.stringify(dataPoint),
   })
@@ -557,7 +557,7 @@ export async function pushStreamingBatch(
   sessionId: string,
   batch: StreamingDataBatch
 ): Promise<{ anomalies: number; alerts: StreamingAlert[] }> {
-  return request(`/anomaly/streaming/sessions/${sessionId}/batch`, {
+  return request(`/anomaly/streaming/${sessionId}/batch`, {
     method: 'POST',
     body: JSON.stringify(batch),
   })
@@ -566,26 +566,26 @@ export async function pushStreamingBatch(
 export async function getStreamingStatus(
   sessionId: string
 ): Promise<StreamingStatusResponse> {
-  return request<StreamingStatusResponse>(`/anomaly/streaming/sessions/${sessionId}`)
+  return request<StreamingStatusResponse>(`/anomaly/streaming/${sessionId}/status`)
 }
 
 export async function stopStreamingSession(
   sessionId: string
 ): Promise<StreamingSession> {
-  return request<StreamingSession>(`/anomaly/streaming/sessions/${sessionId}/stop`, {
+  return request<StreamingSession>(`/anomaly/streaming/${sessionId}/stop`, {
     method: 'POST',
   })
 }
 
 export async function deleteStreamingSession(sessionId: string): Promise<void> {
-  await request(`/anomaly/streaming/sessions/${sessionId}`, { method: 'DELETE' })
+  await request(`/anomaly/streaming/${sessionId}`, { method: 'DELETE' })
 }
 
 export async function listStreamingAlerts(
   sessionId: string,
   params?: { offset?: number; limit?: number }
 ): Promise<StreamingAlertListResponse> {
-  return request<StreamingAlertListResponse>(`/anomaly/streaming/sessions/${sessionId}/alerts`, {
+  return request<StreamingAlertListResponse>(`/anomaly/streaming/${sessionId}/alerts`, {
     params,
   })
 }
@@ -594,7 +594,7 @@ export async function getStreamingRecentData(
   sessionId: string,
   limit = 100
 ): Promise<StreamingRecentDataResponse> {
-  return request<StreamingRecentDataResponse>(`/anomaly/streaming/sessions/${sessionId}/data`, {
+  return request<StreamingRecentDataResponse>(`/anomaly/streaming/${sessionId}/data`, {
     params: { limit },
   })
 }
@@ -611,5 +611,5 @@ export async function listStreamingAlgorithms(): Promise<StreamingAlgorithmListR
 
 export function getStreamingWebSocketUrl(sessionId: string): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${protocol}//${window.location.host}/api/v1/anomaly/streaming/sessions/${sessionId}/ws`
+  return `${protocol}//${window.location.host}/api/v1/anomaly/streaming/${sessionId}/ws`
 }

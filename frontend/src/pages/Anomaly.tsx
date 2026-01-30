@@ -195,6 +195,7 @@ export default function Anomaly() {
       if (job.status === 'running' || job.status === 'pending') {
         setActiveBatchId(jobId)
       }
+      setActiveTab('batch')
     } catch (error) {
       toast({
         title: str(common.error),

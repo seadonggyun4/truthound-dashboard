@@ -5,6 +5,7 @@
  */
 
 import { useIntlayer } from 'react-intlayer'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -193,12 +194,10 @@ function ParameterInput({ parameter, value, onChange }: ParameterInputProps) {
             <Label htmlFor={parameter.name}>{parameter.label}</Label>
             <p className="text-xs text-muted-foreground">{parameter.description}</p>
           </div>
-          <input
+          <Checkbox
             id={parameter.name}
-            type="checkbox"
             checked={value as boolean}
-            onChange={(e) => onChange(e.target.checked)}
-            className="h-4 w-4"
+            onCheckedChange={(checked) => onChange(!!checked)}
           />
         </div>
       )
