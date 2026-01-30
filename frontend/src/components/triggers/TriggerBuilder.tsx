@@ -15,6 +15,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { TriggerTypeSelector } from './TriggerTypeSelector'
@@ -302,11 +303,9 @@ function EventTriggerForm({
             key={event.value}
             className="flex items-center gap-2 p-2 border rounded cursor-pointer hover:bg-muted/50"
           >
-            <input
-              type="checkbox"
+            <Checkbox
               checked={eventTypes.includes(event.value)}
-              onChange={() => toggleEvent(event.value)}
-              className="rounded"
+              onCheckedChange={() => toggleEvent(event.value)}
             />
             <span className="text-sm">{event.label}</span>
           </label>
@@ -429,17 +428,15 @@ function WebhookTriggerForm({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={requireSignature}
-              onChange={(e) =>
+              onCheckedChange={(checked) =>
                 onChange({
                   allowedSources,
-                  requireSignature: e.target.checked,
+                  requireSignature: !!checked,
                   cooldownMinutes,
                 })
               }
-              className="rounded"
             />
             <span className="text-sm">Require HMAC signature</span>
           </label>

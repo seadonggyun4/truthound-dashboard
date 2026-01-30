@@ -4,6 +4,8 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -243,11 +245,10 @@ function CompositeTriggerItemForm({
       return (
         <div className="flex items-center gap-2">
           <Label className="text-xs shrink-0">Expression:</Label>
-          <input
-            type="text"
+          <Input
             value={trigger.expression || ''}
             onChange={(e) => onChange({ expression: e.target.value })}
-            className="flex-1 px-2 py-1 text-sm border rounded font-mono"
+            className="flex-1 font-mono"
             placeholder="0 0 * * *"
           />
         </div>
@@ -258,19 +259,19 @@ function CompositeTriggerItemForm({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1">
             <Label className="text-xs">Days:</Label>
-            <input
+            <Input
               type="number"
               min={0}
               value={trigger.days || ''}
               onChange={(e) =>
                 onChange({ days: parseInt(e.target.value) || undefined })
               }
-              className="w-14 px-2 py-1 text-sm border rounded"
+              className="w-14"
             />
           </div>
           <div className="flex items-center gap-1">
             <Label className="text-xs">Hours:</Label>
-            <input
+            <Input
               type="number"
               min={0}
               max={23}
@@ -278,12 +279,12 @@ function CompositeTriggerItemForm({
               onChange={(e) =>
                 onChange({ hours: parseInt(e.target.value) || undefined })
               }
-              className="w-14 px-2 py-1 text-sm border rounded"
+              className="w-14"
             />
           </div>
           <div className="flex items-center gap-1">
             <Label className="text-xs">Min:</Label>
-            <input
+            <Input
               type="number"
               min={0}
               max={59}
@@ -291,7 +292,7 @@ function CompositeTriggerItemForm({
               onChange={(e) =>
                 onChange({ minutes: parseInt(e.target.value) || undefined })
               }
-              className="w-14 px-2 py-1 text-sm border rounded"
+              className="w-14"
             />
           </div>
         </div>
@@ -302,7 +303,7 @@ function CompositeTriggerItemForm({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1">
             <Label className="text-xs">Threshold:</Label>
-            <input
+            <Input
               type="number"
               min={1}
               max={100}
@@ -312,7 +313,7 @@ function CompositeTriggerItemForm({
                   change_threshold: (parseInt(e.target.value) || 5) / 100,
                 })
               }
-              className="w-16 px-2 py-1 text-sm border rounded"
+              className="w-16"
             />
             <span className="text-xs">%</span>
           </div>
@@ -325,17 +326,15 @@ function CompositeTriggerItemForm({
           {['schema_changed', 'drift_detected', 'validation_failed'].map(
             (event) => (
               <label key={event} className="flex items-center gap-1 text-xs">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={(trigger.event_types || []).includes(event)}
-                  onChange={(e) => {
+                  onCheckedChange={(checked) => {
                     const current = trigger.event_types || []
-                    const updated = e.target.checked
+                    const updated = checked
                       ? [...current, event]
                       : current.filter((t) => t !== event)
                     onChange({ event_types: updated })
                   }}
-                  className="rounded"
                 />
                 {event.replace('_', ' ')}
               </label>

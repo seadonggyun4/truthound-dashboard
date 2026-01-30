@@ -5,6 +5,7 @@
  */
 
 import { useMemo } from 'react'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
@@ -177,11 +178,9 @@ export function DataChangeTriggerForm({
                         : 'border-border hover:bg-muted/50'
                     }`}
                   >
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={metrics.includes(metric.id)}
-                      onChange={() => toggleMetric(metric.id)}
-                      className="rounded"
+                      onCheckedChange={() => toggleMetric(metric.id)}
                     />
                     <span className="text-sm truncate">{metric.label}</span>
                   </label>
