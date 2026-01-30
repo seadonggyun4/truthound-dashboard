@@ -700,9 +700,72 @@ Content-Type: application/json
 
 ---
 
-## 9. API Reference
+## 9. Template Library
 
-### 9.1 Routing Rules API
+The Template Library provides a curated registry of pre-built notification configurations, enabling rapid deployment of proven orchestration patterns without manual parameter tuning.
+
+### 9.1 Overview
+
+Each template encapsulates a complete configuration for one of the four notification subsystems. Templates are categorized by their target subsystem and tagged with descriptive metadata to facilitate discovery.
+
+| Attribute | Description |
+|-----------|-------------|
+| **Name** | Human-readable template identifier |
+| **Category** | Target subsystem (routing, deduplication, throttling, escalation) |
+| **Description** | Functional summary of the template's purpose |
+| **Tags** | Searchable keywords for discovery |
+| **Configuration** | Pre-defined parameter values for the target subsystem |
+
+### 9.2 Available Template Categories
+
+| Category | Purpose | Example Templates |
+|----------|---------|-------------------|
+| **Routing** | Content-based notification distribution rules | Severity-based routing, source-type routing |
+| **Deduplication** | Duplicate suppression configurations | Aggressive dedup, conservative dedup |
+| **Throttling** | Rate limiting presets | Burst-friendly throttle, strict rate limit |
+| **Escalation** | Multi-level alert policies | On-call escalation, business-hours policy |
+
+### 9.3 Template Selection Workflow
+
+The Template Library implements an integrated workflow that bridges template selection with configuration editing:
+
+1. **Browse and Search**: Open the Template Library panel to browse available templates. Use the search field or category tabs to locate a relevant template.
+2. **Preview**: Review the template's description, tags, and configuration summary before selection.
+3. **Apply**: Select a template to initiate the application process. The system performs the following actions automatically:
+   - **Tab Navigation**: The active tab switches to the subsystem matching the template's category (e.g., selecting a throttling template activates the Throttling tab).
+   - **Dialog Auto-Open**: The corresponding configuration dialog opens with the template's pre-filled values, allowing the user to review and adjust parameters before saving.
+   - **Quick Templates Hidden**: When a template is applied from the Template Library, the in-dialog Quick Templates selector is hidden to avoid confusion between the externally applied template and the dialog's built-in presets.
+4. **Save or Discard**: The user may modify the pre-filled values and save, or close the dialog to discard the template application.
+
+### 9.4 Active Template Indicator
+
+When a template is actively applied, the Template Library panel displays an indicator banner containing:
+
+| Element | Description |
+|---------|-------------|
+| **Category Icon** | Visual icon corresponding to the template's subsystem |
+| **Template Name** | Name of the currently applied template |
+| **Category Badge** | Labeled badge showing the target subsystem |
+| **Dismiss Button** | Allows the user to clear the active template selection |
+
+This indicator persists within the current page session. Navigating away from the Advanced Notifications page clears the active template state, as templates serve as ephemeral configuration aids rather than persistent selections.
+
+### 9.5 Relationship to Quick Templates
+
+Each tab's configuration dialog also provides an independent Quick Templates selector for rapid in-context configuration. The Template Library and Quick Templates serve complementary roles:
+
+| Feature | Template Library | Quick Templates |
+|---------|-----------------|-----------------|
+| **Scope** | Cross-subsystem, centralized | Per-subsystem, contextual |
+| **Access** | From the page header | Within each configuration dialog |
+| **Behavior** | Switches tab + opens dialog | Fills form within current dialog |
+| **Visibility** | Always visible | Hidden when Template Library applies a template |
+
+---
+
+## 10. API Reference
+
+### 10.1 Routing Rules API
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -714,7 +777,7 @@ Content-Type: application/json
 | `/notifications/routing/rules/types` | GET | List available rule types |
 | `/notifications/routing/rules/test` | POST | Test rule against context |
 
-### 9.2 Deduplication API
+### 10.2 Deduplication API
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -725,7 +788,7 @@ Content-Type: application/json
 | `/notifications/deduplication/configs/{id}` | DELETE | Delete config |
 | `/notifications/deduplication/stats` | GET | Get runtime stats |
 
-### 9.3 Throttling API
+### 10.3 Throttling API
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -736,7 +799,7 @@ Content-Type: application/json
 | `/notifications/throttling/configs/{id}` | DELETE | Delete config |
 | `/notifications/throttling/stats` | GET | Get runtime stats |
 
-### 9.4 Escalation API
+### 10.4 Escalation API
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -754,9 +817,9 @@ Content-Type: application/json
 
 ---
 
-## 10. Best Practices
+## 11. Best Practices
 
-### 10.1 Routing Best Practices
+### 11.1 Routing Best Practices
 
 | Practice | Description |
 |----------|-------------|
@@ -765,7 +828,7 @@ Content-Type: application/json
 | Test before deploying | Use the test endpoint to validate rules |
 | Document routing logic | Maintain documentation for team reference |
 
-### 10.2 Deduplication Best Practices
+### 11.2 Deduplication Best Practices
 
 | Practice | Description |
 |----------|-------------|
@@ -774,7 +837,7 @@ Content-Type: application/json
 | Use SEVERITY policy | Good balance between dedup and visibility |
 | Review active fingerprints | High counts may indicate memory pressure |
 
-### 10.3 Throttling Best Practices
+### 11.3 Throttling Best Practices
 
 | Practice | Description |
 |----------|-------------|
@@ -783,7 +846,7 @@ Content-Type: application/json
 | Enable priority bypass | Critical alerts should not be throttled |
 | Monitor throttle rate | Above 10% may indicate configuration issues |
 
-### 10.4 Escalation Best Practices
+### 11.4 Escalation Best Practices
 
 | Practice | Description |
 |----------|-------------|

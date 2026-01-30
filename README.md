@@ -30,25 +30,20 @@ truthound-dashboard provides a graphical interface for managing data sources, ex
 |---------|-----------------|---------------------|
 | Data Source Management | Available | Available |
 | Schema Learning | Available | Available |
-| Validation Execution | Available | Available |
-| Validator Registry | Available | Available (150+ validators) |
+| Validation Execution | Available | Available (289+ validators) |
 | Validation History | Available | Available |
-| Scheduled Validations | Available | Available |
-| Slack Notifications | Available | Available |
-| Email Notifications | Available | Available |
-| Webhook Notifications | Available | Available |
-| Drift Detection | Available | Available (5 methods) |
+| Scheduled Validations | Available | Available (6 trigger types) |
+| Notifications | Available | Available (9 channels) |
+| Drift Detection | Available | Available (14 methods) |
 | Data Profiling | Available | Available |
-| PII Scan | Available | Available (GDPR/CCPA/LGPD) |
-| Data Masking | Available | Available (redact/hash/fake) |
-| Anomaly Detection | Limited | Available (6 algorithms) |
-| Data Lineage | Available | Available (3 viz options) |
+| PII Scan & Masking | Available | Available (GDPR/CCPA/LGPD) |
+| Anomaly Detection | Limited | Available (6 ML algorithms) |
+| Data Lineage | Available | Available (4 renderers) |
 | Model Monitoring | Available | Available |
 | Reports & Export | Available | Available (6 formats) |
-| Plugins Marketplace | Not Available | Available |
-| Maintenance Tools | Limited | Available |
-| Dark Mode | Available | Available |
-| Multi-language | Limited | 2 languages (en, ko) + AI translation CLI |
+| Plugin Marketplace | Not Available | Available |
+| Storage Tiering | Not Available | Available |
+| Dark Mode & i18n | Limited | Available (2 languages + AI translation) |
 | License | Commercial | Apache 2.0 |
 
 ## Requirements
@@ -82,194 +77,55 @@ truthound serve --no-browser
 
 The dashboard interface is accessible at `http://localhost:8765`.
 
-## Implemented Features
+## Features
 
-### Data Source Management
-- Supported file formats: CSV, Parquet, JSON
-- Supported databases (13 connectors): PostgreSQL, MySQL, SQLite, BigQuery, Snowflake, Redshift, Databricks, Oracle, SQL Server, Spark
-- Connection validation and management UI
-- Dynamic configuration forms per source type
+### Data Management
 
-### Schema Management
-- Automated schema generation using `th.learn`
-- Manual schema editing in YAML format
+| Feature | Description | Documentation |
+|---------|-------------|---------------|
+| **Dashboard** | Overview statistics and quick navigation | [docs/data-management/dashboard.md](./docs/data-management/dashboard.md) |
+| **Data Sources** | CSV, Parquet, JSON, 13 database connectors (PostgreSQL, MySQL, SQLite, BigQuery, Snowflake, etc.) | [docs/data-management/sources.md](./docs/data-management/sources.md) |
+| **Data Catalog** | Asset metadata, column-level management, quality scores, sensitivity classification | [docs/data-management/catalog.md](./docs/data-management/catalog.md) |
+| **Business Glossary** | Term definitions, categories, relationships, lifecycle management | [docs/data-management/glossary.md](./docs/data-management/glossary.md) |
 
-### Validation
-- On-demand validation execution using `th.check`
-- 150+ validators across 15 categories (schema, completeness, uniqueness, distribution, string, datetime, aggregate, cross-table, multi-column, query, table, geospatial, drift, anomaly, privacy)
-- Per-validator parameter configuration with UI
-- Persistent storage of validation results
-- Issue classification by severity (Critical, High, Medium, Low)
-- Advanced options: column filtering, min_severity, parallel execution, SQL pushdown
-- ML-based caching layer for expensive operations
+### Data Quality
 
-### Anomaly Detection
-- 6 ML algorithms: IsolationForest, LocalOutlierFactor, DBSCAN, OneClassSVM, EllipticEnvelope, Ensemble
-- Streaming anomaly detection support
-- Explainability with feature contribution analysis
-- Batch detection with progress tracking
-- Algorithm comparison and agreement scoring
+| Feature | Description | Documentation |
+|---------|-------------|---------------|
+| **Validations** | 289+ validators across 15 categories, per-validator configuration, severity override, parallel execution | [docs/data-quality/validations.md](./docs/data-quality/validations.md) |
+| **Drift Detection** | 14 statistical methods (KS, PSI, Chi2, JS, Wasserstein, etc.), column-level comparison | [docs/data-quality/drift.md](./docs/data-quality/drift.md) |
+| **Drift Monitoring** | Continuous monitoring with alerts, root cause analysis, remediation suggestions | [docs/data-quality/drift-monitoring.md](./docs/data-quality/drift-monitoring.md) |
+| **Schema Evolution** | Change tracking, breaking/warning/safe classification, version timeline | [docs/data-quality/schema-evolution.md](./docs/data-quality/schema-evolution.md) |
+| **Schema Watcher** | Real-time schema change detection, rename detection, alert thresholds | [docs/data-quality/schema-watcher.md](./docs/data-quality/schema-watcher.md) |
+| **Profile Comparison** | Longitudinal profile analysis, delta computation, trend charts | [docs/data-quality/profile-comparison.md](./docs/data-quality/profile-comparison.md) |
+| **Privacy & PII** | PII detection (`th.scan`), data masking (`th.mask`), GDPR/CCPA/LGPD compliance | [docs/data-quality/privacy.md](./docs/data-quality/privacy.md) |
+| **Data Lineage** | Interactive graph visualization (D3/Mermaid/Cytoscape), impact analysis, OpenLineage integration | [docs/data-quality/lineage.md](./docs/data-quality/lineage.md) |
+| **Quality Reporter** | Quality scoring with F1/Precision/Recall metrics, multi-format export | [docs/data-quality/quality-reporter.md](./docs/data-quality/quality-reporter.md) |
+| **Enterprise Sampling** | Block, multi-stage, column-aware, progressive strategies for 100M+ rows | [docs/data-quality/enterprise-sampling.md](./docs/data-quality/enterprise-sampling.md) |
+| **Rule Suggestions** | AI-powered rule generation from data profiles, confidence scoring | [docs/data-quality/rule-suggestions.md](./docs/data-quality/rule-suggestions.md) |
 
-### Drift Monitoring
-- 5 detection methods: Kolmogorov-Smirnov, Population Stability Index (PSI), Chi-Square, Jensen-Shannon, Auto
-- 4 sampling strategies: Random, Stratified, Reservoir, Systematic
-- Column-level distribution comparison
-- Drift trend visualization and alerting
-- Root cause analysis and remediation suggestions
+### ML & Monitoring
 
-### Data Lineage
-- Interactive lineage graph visualization (D3.js/Mermaid/Cytoscape)
-- Column-level lineage tracking
-- Impact analysis (upstream/downstream)
-- OpenLineage standard integration
-- Webhook support for lineage events
-- Performance optimization with lazy loading and virtualization
+| Feature | Description | Documentation |
+|---------|-------------|---------------|
+| **Anomaly Detection** | 6 ML algorithms (IsolationForest, Z-Score, IQR, MAD, Ensemble, DistributionDrift), streaming support | [docs/ml-monitoring/anomaly.md](./docs/ml-monitoring/anomaly.md) |
+| **Model Monitoring** | ML model performance tracking, metric monitoring, alert rules, model versioning | [docs/ml-monitoring/model-monitoring.md](./docs/ml-monitoring/model-monitoring.md) |
 
-### Schema Evolution
-- Automatic schema change detection
-- Breaking vs non-breaking change classification
-- Version timeline and comparison
-- Change notification support
+### System
 
-### Profile Comparison
-- Profile-to-profile comparison
-- Time-series trend analysis
-- Quality metric visualization (null%, unique%)
-- Historical profile snapshots
-
-### Rule Suggestions
-- Profile-based automatic rule generation
-- Confidence scoring (high/medium/low)
-- Bulk rule application
-- Category-based filtering (completeness, uniqueness, distribution, string, datetime)
-
-### Reports & Export
-- 6 formats: HTML, PDF, CSV, JSON, Excel, Markdown
-- Customizable themes for HTML/PDF reports
-- Statistics dashboard (total reports, size, downloads, avg generation time)
-- Search and filtering (by name, format, status)
-- Report lifecycle management with automatic expiration
-- Download tracking and batch cleanup
-- Integration with validation schedules and notifications
-
-### Plugins & Extensions
-- Plugin marketplace for community extensions
-- 4 plugin types: Validators, Reporters, Connectors, Transformers
-- 4 security levels: Trusted, Verified, Unverified, Sandboxed
-- Custom validator creation with UI (severity, category, parameters)
-- Custom reporter creation with template support
-- Plugin lifecycle management (install, enable, disable, uninstall)
-- Filter by type and status
-
-### Maintenance & System Health
-- Auto maintenance scheduling with enable/disable toggle
-- Retention policies with configurable ranges:
-  - Validation history: 1-365 days
-  - Profile snapshots: 1-100 per source
-  - Notification logs: 1-365 days
-- Manual operations: cleanup, vacuum, cache clear
-- Cache statistics monitoring (total, valid, expired entries, hit rate)
-- Database optimization (VACUUM/ANALYZE)
-- Real-time configuration updates
-
-### Validation History
-- Historical record of validation results
-- Trend visualization
-- Result versioning with 4 strategies (Incremental, Semantic, Timestamp, GitLike)
-- Version comparison and rollback support
-
-### Scheduling
-- Cron-based scheduling using APScheduler
-- Schedule controls: pause, resume, immediate execution
-
-### Notifications
-- Supported channels: Slack, Email, Webhook
-- Configurable notification rules based on validation outcomes
-- Notification delivery logs
-
-### Advanced Notifications
-- 9 provider channels: Slack, Email, Webhook, Discord, Telegram, PagerDuty, OpsGenie, Microsoft Teams, GitHub
-- Rule-based routing with 11+ rule types (severity, issue count, pass rate, time window, tag, data asset, metadata, status, error)
-- Deduplication: 4 window strategies (Sliding, Tumbling, Session, Adaptive), 6 policies
-- Throttling: 5 methods (TokenBucket, LeakyBucket, FixedWindow, SlidingWindow, Adaptive)
-- Multi-level escalation with state machine
-- Incident management and acknowledgment
-
-### Unified Alerts
-- Cross-feature alert aggregation (validation, drift, anomaly, schema changes)
-- Severity-based filtering (Critical, High, Medium, Low)
-- Alert correlation and grouping
-- Action tracking (acknowledged, resolved)
-
-### Cross-Table Validation
-- Referential integrity checks
-- Foreign key validation
-- SQL-based cross-table queries
-- Automated trigger configuration
-
-### Model Monitoring
-- ML model performance tracking
-- Metric monitoring (accuracy, precision, recall, F1, AUC-ROC)
-- Alert rules for model degradation
-- Model registration and versioning
-
-### Automated Triggers
-- Data change detection triggers
-- Composite triggers (AND/OR combinations)
-- Cron-based scheduling
-- Interval-based execution
-- Preview and testing support
-
-### Drift Detection
-- Dataset comparison using `th.compare`
-- 5 detection methods: Kolmogorov-Smirnov (KS), Population Stability Index (PSI), Chi-Square, Jensen-Shannon (JS), Auto
-- 4 sampling strategies: Random, Stratified, Reservoir, Systematic
-- Column-level distribution comparison with visualizations
-- Drift trend monitoring and alerting
-- Root cause analysis and remediation suggestions
-- Large dataset support with chunked processing
-
-### Data Profiling
-- Statistical profiling using `th.profile`
-- Column-level statistics
-- Sample size configuration for large datasets
-
-### PII Scan
-- Personal data detection using `th.scan`
-- Supported PII types: email, phone, SSN, credit card, IP address, and more
-- Regulation compliance: GDPR, CCPA, LGPD
-- Configurable confidence threshold
-
-### Data Masking
-- Sensitive data protection using `th.mask`
-- Three masking strategies: redact (asterisks), hash (SHA256), fake (realistic data)
-- Auto-detection of PII columns
-- Multiple output formats: CSV, Parquet, JSON
-
-### Business Glossary
-- Business term definitions with categories
-- Term relationships (synonyms, related terms)
-- Term lifecycle management (draft, approved, deprecated)
-- Change history tracking
-
-### Data Catalog
-- Data asset registration (tables, files, APIs)
-- Column-level metadata management
-- Column-to-term mapping
-- Quality score tracking
-- Sensitivity classification (public, internal, confidential, restricted)
-- Custom tagging
-
-### Collaboration
-- Comments on terms, assets, and columns
-- Activity feed for tracking changes
-
-### User Interface
-- Light and dark theme support with system preference detection
-- Internationalization: 2 built-in languages (English, Korean)
-- AI-powered translation CLI to expand to 15+ languages (OpenAI, Anthropic, Mistral, Ollama)
-- Type-safe translations using Intlayer framework
-- Comprehensive E2E test coverage (197+ tests) for all features
+| Feature | Description | Documentation |
+|---------|-------------|---------------|
+| **Unified Alerts** | Cross-feature alert aggregation, severity filtering, correlation and grouping | [docs/system/alerts.md](./docs/system/alerts.md) |
+| **Schedules** | 6 trigger types (cron, interval, data change, composite, event, manual), validator configuration | [docs/system/schedules.md](./docs/system/schedules.md) |
+| **Trigger Monitoring** | Real-time trigger health, cooldown tracking, webhook management, execution history | [docs/system/trigger-monitoring.md](./docs/system/trigger-monitoring.md) |
+| **Activity Feed** | System event timeline, collaboration comments, change tracking | [docs/system/activity.md](./docs/system/activity.md) |
+| **Notifications** | 9 channels (Slack, Email, Webhook, Discord, Telegram, PagerDuty, OpsGenie, Teams, GitHub) | [docs/system/notifications.md](./docs/system/notifications.md) |
+| **Advanced Notifications** | Rule-based routing, deduplication (4 strategies), throttling (5 methods), multi-level escalation | [docs/system/notifications-advanced.md](./docs/system/notifications-advanced.md) |
+| **Reports** | 6 formats (HTML, PDF, CSV, JSON, Excel, Markdown), statistics dashboard, lifecycle management | [docs/system/reports.md](./docs/system/reports.md) |
+| **Plugins** | Marketplace, 4 plugin types, custom validator/reporter creation, security levels | [docs/system/plugins.md](./docs/system/plugins.md) |
+| **Storage Tiering** | Hot/Warm/Cold/Archive tiers, 6 policy types, composite AND/OR logic, migration history | [docs/system/storage-tiering.md](./docs/system/storage-tiering.md) |
+| **Observability** | Audit logging, metrics collection, distributed tracing | [docs/system/observability.md](./docs/system/observability.md) |
+| **Maintenance** | Retention policies, auto-cleanup, database optimization (VACUUM), cache management | [docs/system/maintenance.md](./docs/system/maintenance.md) |
 
 ## Internationalization
 
@@ -395,6 +251,8 @@ Execute `truthound translate --list-languages` to view the complete list with la
 Full documentation is available at [https://truthound.netlify.app](https://truthound.netlify.app).
 
 - [Getting Started](./docs/getting-started.md)
+- [Architecture](./docs/architecture.md)
+- [All Documentation](./docs/index.md)
 
 ## Related Projects
 

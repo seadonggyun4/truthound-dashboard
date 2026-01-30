@@ -72,9 +72,12 @@ Translate the UI to any language using OpenAI, Anthropic, Ollama, or Mistral wit
 - [Business Glossary](./data-management/glossary.md) - Business terminology management
 
 ### Data Quality
+- [Validations](./data-quality/validations.md) - Validation execution, history, versioning, and custom rules
 - [Drift Detection](./data-quality/drift.md) - Distribution comparison
 - [Drift Monitoring](./data-quality/drift-monitoring.md) - Continuous drift monitoring
+- [Schema Evolution](./data-quality/schema-evolution.md) - Schema change tracking and version history
 - [Schema Watcher](./data-quality/schema-watcher.md) - Continuous schema monitoring
+- [Profile Comparison](./data-quality/profile-comparison.md) - Longitudinal profile analysis and trend detection
 - [Privacy & PII](./data-quality/privacy.md) - PII detection and masking
 - [Data Lineage](./data-quality/lineage.md) - Data flow visualization
 - [Quality Reporter](./data-quality/quality-reporter.md) - Quality scoring and reporting
@@ -88,6 +91,7 @@ Translate the UI to any language using OpenAI, Anthropic, Ollama, or Mistral wit
 ### System
 - [Unified Alerts](./system/alerts.md) - Centralized alert management
 - [Schedules](./system/schedules.md) - Automated validation scheduling
+- [Trigger Monitoring](./system/trigger-monitoring.md) - Trigger health, cooldown tracking, and webhook management
 - [Activity Feed](./system/activity.md) - System event timeline
 - [Notifications](./system/notifications.md) - Multi-channel alerting
 - [Advanced Notifications](./system/notifications-advanced.md) - Routing, deduplication, escalation

@@ -59,6 +59,25 @@ Quick configuration options:
 | **Weekly** | `0 9 * * 1` | Every Monday at 9:00 AM |
 | **Monthly** | `0 9 1 * *` | First of month at 9:00 AM |
 
+#### Advanced Trigger Activation
+
+The Trigger tab is accessible only when the **Use advanced trigger options** toggle is enabled in the Basic tab. This design separates simple cron-based scheduling from advanced trigger configurations, reducing interface complexity for standard use cases.
+
+| Toggle State | Behavior |
+|--------------|----------|
+| **Disabled** (default) | Simple cron preset and expression input displayed directly in the Basic tab. The Trigger tab is disabled. |
+| **Enabled** | Cron input is replaced with a guidance message directing the user to the Trigger tab, which becomes active. |
+
+When advanced triggers are enabled, the system automatically derives a compatible cron expression for backend scheduling. The conversion rules are as follows:
+
+| Trigger Type | Derived Cron Expression | Example |
+|--------------|------------------------|---------|
+| **Interval** (hours only) | `0 */{hours} * * *` | 2h → `0 */2 * * *` |
+| **Interval** (minutes only) | `*/{minutes} * * * *` | 30m → `*/30 * * * *` |
+| **Interval** (hours + minutes) | `{minutes} */{hours} * * *` | 2h15m → `15 */2 * * *` |
+| **Daily** | `{minute} {hour} * * *` | 09:30 → `30 9 * * *` |
+| **Other types** | Fallback `0 * * * *` | — |
+
 #### Trigger Tab
 
 Configure the execution trigger mechanism:
@@ -172,6 +191,15 @@ Execute a schedule immediately:
 2. Validation executes with configured settings
 3. Results appear in validation history
 4. Next scheduled run remains unchanged
+
+Upon completion, the system provides differentiated visual feedback:
+
+| Validation Result | Notification Style | Description |
+|-------------------|--------------------|-------------|
+| **Passed** | Default (neutral) | All validators passed without issues |
+| **Failed** | Destructive (red) | One or more validators reported issues |
+
+This distinction ensures operators can immediately identify whether manual intervention is required following an ad-hoc execution.
 
 ### Pause
 

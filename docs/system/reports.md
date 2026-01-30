@@ -321,10 +321,12 @@ Automate report distribution:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/reports` | GET | List reports with filters |
-| `/reports` | POST | Generate a new report |
-| `/reports/statistics` | GET | Retrieve report statistics |
-| `/reports/{id}` | GET | Retrieve report details |
-| `/reports/{id}/download` | GET | Download report file |
-| `/reports/{id}` | DELETE | Delete a report |
-| `/reports/cleanup` | POST | Delete expired reports |
+| `/reports/history` | GET | List reports with filters |
+| `/reports/history` | POST | Generate a new report |
+| `/reports/history/statistics` | GET | Retrieve report statistics |
+| `/reports/history/{id}` | GET | Retrieve report details |
+| `/reports/history/{id}` | PATCH | Update report metadata |
+| `/reports/history/{id}/download` | GET | Download report file |
+| `/reports/history/{id}/generate` | POST | Re-generate a report |
+| `/reports/history/{id}` | DELETE | Delete a report |
+| `/reports/history/cleanup` | DELETE | Delete expired reports |

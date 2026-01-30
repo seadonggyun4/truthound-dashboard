@@ -127,20 +127,107 @@ Upon completion, results display:
 
 ### Real-Time Anomaly Detection
 
-The Streaming tab provides real-time anomaly detection for data streams:
+The Streaming tab provides real-time anomaly detection for continuous data streams. Unlike batch detection, which operates on static datasets, streaming detection applies online learning algorithms to data points as they arrive, enabling immediate identification of anomalous observations.
 
-1. Configure stream source connection
-2. Set detection parameters
-3. Enable streaming detection
-4. Monitor anomalies as they occur
+#### Operational Workflow
+
+1. Select a data source to associate with the streaming session
+2. Choose a streaming detection algorithm
+3. Configure window size and detection threshold
+4. Click **Start Streaming** to create and activate a session
+5. Push data points via the API, WebSocket, or the dashboard interface
+6. Monitor anomalies and alerts in real time
+7. Click **Stop** to terminate the session
+
+### Streaming Algorithms
+
+| Algorithm | Description | Characteristics |
+|-----------|-------------|-----------------|
+| **Z-Score Rolling** | Rolling z-score computation over a sliding window | Low latency, interpretable, suitable for univariate stationary data |
+| **Exponential Moving Average (EMA)** | Weighted moving average with exponential decay | Responsive to recent changes, smooths noise |
+| **Isolation Forest (Incremental)** | Incremental variant of tree-based isolation | Handles multivariate data, higher computational cost |
+| **Half-Space Trees** | Lightweight streaming tree ensemble | Memory-efficient, fast updates |
+| **Robust Random Cut Forest (RRCF)** | Robust tree-based streaming detector | Resilient to concept drift, handles high-dimensional data |
 
 ### Stream Configuration
 
-| Parameter | Description |
-|-----------|-------------|
-| **Window Size** | Number of records in sliding window |
-| **Update Interval** | Frequency of model updates |
-| **Alert Threshold** | Anomaly score threshold for alerts |
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| **Window Size** | Number of records retained in the sliding window buffer | 100 |
+| **Threshold** | Anomaly score threshold for triggering alerts | 3.0 |
+| **Columns** | Specific columns to monitor (empty = all numeric columns) | All |
+
+### Session Lifecycle
+
+Streaming sessions follow a defined state machine:
+
+| State | Description | Transitions |
+|-------|-------------|-------------|
+| **Created** | Session initialized, awaiting start | → Running |
+| **Running** | Actively receiving and processing data points | → Paused, Stopped, Error |
+| **Paused** | Temporarily suspended, retains internal state | → Running, Stopped |
+| **Stopped** | Explicitly terminated by user | → *(terminal)* |
+| **Error** | Terminated due to an internal error | → *(terminal)* |
+
+### Session Lifecycle Management and Automatic Cleanup
+
+Streaming sessions are maintained in server memory for the duration of their use. Since sessions are ephemeral and not persisted to the database, a TTL (Time-To-Live) based automatic cleanup mechanism prevents orphaned sessions from accumulating and consuming memory indefinitely.
+
+#### Cleanup Policy Architecture
+
+The cleanup system employs a **strategy pattern**, allowing the cleanup behavior to be defined, composed, and extended independently of the detection logic.
+
+| Policy | Description |
+|--------|-------------|
+| **IdleTTLPolicy** | Removes sessions that have been idle (no data pushed, no API interaction) beyond a configurable TTL. Supports per-status TTL configuration. |
+| **CompositeCleanupPolicy** | Combines multiple policies using AND or OR logic, enabling complex cleanup rules. |
+
+#### Per-Status TTL Defaults
+
+Different session states have different idle tolerances, reflecting their expected usage patterns:
+
+| Session Status | Default TTL | Rationale |
+|----------------|-------------|-----------|
+| **Stopped** | 5 minutes | Terminal state; retained briefly for final result retrieval |
+| **Error** | 10 minutes | Terminal state; longer retention for diagnostic inspection |
+| **Created** | 15 minutes | Session was created but never started; likely abandoned |
+| **Paused** | 30 minutes | May be resumed; moderate retention period |
+| **Running** | 60 minutes | Active session; longest retention to tolerate temporary inactivity |
+
+#### Activity Tracking
+
+Each session maintains a `last_active_at` timestamp that is updated whenever the session receives data (`push_data_point`, `push_batch`) or transitions state (`start_session`). The cleanup policy evaluates the elapsed time since this timestamp to determine expiration.
+
+#### Background Cleanup Process
+
+A background asyncio task runs at a configurable interval (default: 60 seconds), iterating over all sessions and removing those that satisfy the active cleanup policy. The cleanup process is integrated into the application lifecycle:
+
+- **Startup**: The cleanup task is started automatically when the server starts.
+- **Shutdown**: The cleanup task is gracefully cancelled during server shutdown.
+
+#### Extending Cleanup Policies
+
+Custom cleanup policies can be implemented by extending the `SessionCleanupPolicy` interface. For example:
+
+- **MaxSessionsPolicy**: Enforce a maximum number of concurrent sessions by evicting the least recently active sessions.
+- **MaxBufferSizePolicy**: Evict sessions whose internal buffer exceeds a memory threshold.
+
+Multiple policies can be combined using `CompositeCleanupPolicy` with either AND (all policies must agree) or OR (any policy is sufficient) semantics.
+
+### WebSocket Real-Time Interface
+
+For low-latency streaming, a WebSocket endpoint is available per session:
+
+| Message Type (Client → Server) | Payload | Description |
+|-------------------------------|---------|-------------|
+| `data` | `{"type": "data", "data": {...}, "timestamp": "..."}` | Push a data point for detection |
+| `ping` | `{"type": "ping"}` | Keep-alive heartbeat |
+
+| Message Type (Server → Client) | Payload | Description |
+|-------------------------------|---------|-------------|
+| `alert` | `{"type": "alert", "alert": {...}}` | Anomaly alert notification |
+| `ack` | `{"type": "ack", "has_alert": bool}` | Acknowledgement with alert status |
+| `pong` | `{"type": "pong"}` | Heartbeat response |
 
 ## Batch Detection Tab
 
@@ -201,6 +288,22 @@ View all batch job executions:
 | **Sources** | Number of sources processed |
 | **Status** | Final job status |
 | **Total Anomalies** | Aggregate anomaly count |
+
+### Viewing Batch Results
+
+To inspect the detailed results of a completed batch job:
+
+1. Navigate to the **History** tab within the Anomaly Detection page
+2. Click on a batch job entry in the list
+3. The interface automatically transitions to the **Batch** tab and displays the `BatchResults` component, which presents:
+   - Per-source anomaly counts and rates
+   - Sortable results table
+   - High anomaly rate warnings
+   - Navigation links to individual source detection details
+
+Clicking **View Details** on a specific source result transitions to the **Single** tab, pre-selecting the corresponding source for in-depth analysis.
+
+> **Note**: Batch results are state-driven and do not support direct URL access (deep linking). Navigation must occur through the History tab interaction.
 
 ## Algorithm Comparison
 
