@@ -444,18 +444,20 @@ class DashboardStoreManager:
         audit_backend = None
         if self._config.enable_audit:
             self._config.audit_log_path.mkdir(parents=True, exist_ok=True)
+            audit_config = AuditConfig(
+                enabled=True,
+                file_path=str(self._config.audit_log_path / "dashboard_audit.jsonl"),
+                redact_sensitive=True,
+                sensitive_fields=["password", "api_key", "token"],
+            )
             audit_backend = JsonAuditBackend(
-                directory=str(self._config.audit_log_path),
-                file_prefix="dashboard_audit",
-                rotate_daily=True,
+                config=audit_config,
+                file_path=self._config.audit_log_path / "dashboard_audit.jsonl",
             )
             self._audit_logger = AuditLogger(
                 backend=audit_backend,
                 store_type="dashboard",
                 store_id="validation_store",
-                redactor=DataRedactor(
-                    fields_to_redact=["password", "api_key", "token"],
-                ),
             )
 
         # Metrics backend
@@ -469,9 +471,9 @@ class DashboardStoreManager:
             )
 
         obs_config = ObservabilityConfig(
-            audit=AuditConfig(enabled=self._config.enable_audit) if self._config.enable_audit else None,
-            metrics=MetricsConfig(enabled=self._config.enable_metrics) if self._config.enable_metrics else None,
-            tracing=TracingConfig(enabled=self._config.enable_tracing) if self._config.enable_tracing else None,
+            audit=AuditConfig(enabled=self._config.enable_audit),
+            metrics=MetricsConfig(enabled=self._config.enable_metrics),
+            tracing=TracingConfig(enabled=self._config.enable_tracing),
         )
 
         self._observable_store = ObservableStore(base_store, obs_config)
@@ -703,7 +705,7 @@ class DashboardStoreManager:
         if not self._audit_logger:
             return []
 
-        return self._audit_logger._backend.query(
+        return self._audit_logger.backend.query(
             event_type=event_type,
             start_time=start_time,
             end_time=end_time,
@@ -719,7 +721,14 @@ class DashboardStoreManager:
         if not self._metrics:
             return {}
 
-        return self._metrics._backend.get_metrics()
+        try:
+            backend = self._metrics.backend
+            if hasattr(backend, 'get_metrics'):
+                return backend.get_metrics()
+            # InMemoryMetricsBackend doesn't have get_metrics, return empty
+            return {}
+        except Exception:
+            return {}
 
     # ----- Standard Store Operations -----
 
