@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm install && rm -rf .intlayer && npx intlayer build && npx tsc && npx vite build --mode mock --outDir dist",
+  "buildCommand": "npm install && rm -rf .intlayer && npx intlayer build && npx tsc && npx vite build --outDir dist",
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
