@@ -133,7 +133,15 @@ export default function Layout() {
     if (path === '/sources' && location.pathname.startsWith('/validations')) {
       return true
     }
-    return location.pathname === path || location.pathname.startsWith(`${path}/`)
+    if (location.pathname === path) return true
+    if (location.pathname.startsWith(`${path}/`)) {
+      // Don't match parent if a more specific nav item exists for this path
+      const hasMoreSpecific = navigation.some(
+        (item) => item.href !== path && item.href.startsWith(`${path}/`) && location.pathname.startsWith(item.href)
+      )
+      return !hasMoreSpecific
+    }
+    return false
   }
 
   // Throttled navigation handler
