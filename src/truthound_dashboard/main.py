@@ -24,6 +24,7 @@ Example:
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -244,12 +245,15 @@ def configure_cors(app: FastAPI) -> None:
     """
     settings = get_settings()
 
+    extra_origins = os.environ.get("TRUTHOUND_CORS_ORIGINS", "")
     origins = [
         "http://localhost:5173",  # Vite dev server
         "http://127.0.0.1:5173",
         f"http://localhost:{settings.port}",  # Dashboard server
         f"http://127.0.0.1:{settings.port}",
     ]
+    if extra_origins:
+        origins.extend([o.strip() for o in extra_origins.split(",") if o.strip()])
 
     app.add_middleware(
         CORSMiddleware,
