@@ -45,6 +45,8 @@ def _schedule_to_response(schedule) -> ScheduleResponse:
         name=schedule.name,
         source_id=schedule.source_id,
         cron_expression=schedule.cron_expression,
+        trigger_type=getattr(schedule, "trigger_type", None) or "cron",
+        trigger_config=getattr(schedule, "trigger_config", None),
         is_active=schedule.is_active,
         notify_on_failure=schedule.notify_on_failure,
         last_run_at=(
@@ -66,6 +68,8 @@ def _schedule_to_list_item(schedule) -> ScheduleListItem:
         name=schedule.name,
         source_id=schedule.source_id,
         cron_expression=schedule.cron_expression,
+        trigger_type=getattr(schedule, "trigger_type", None) or "cron",
+        trigger_config=getattr(schedule, "trigger_config", None),
         is_active=schedule.is_active,
         notify_on_failure=schedule.notify_on_failure,
         last_run_at=(
@@ -143,6 +147,8 @@ async def create_schedule(
             source_id=request.source_id,
             name=request.name,
             cron_expression=request.cron_expression,
+            trigger_type=request.trigger_type,
+            trigger_config=request.trigger_config,
             notify_on_failure=request.notify_on_failure,
             config=request.config,
         )
@@ -309,7 +315,7 @@ class ScheduleRunResponse(BaseModel):
 
     message: str
     validation_id: str
-    passed: bool
+    passed: bool | None = None
 
 
 @router.post(
