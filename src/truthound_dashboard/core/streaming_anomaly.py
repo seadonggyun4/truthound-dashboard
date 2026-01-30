@@ -7,14 +7,18 @@ supporting sliding window detection and online learning.
 from __future__ import annotations
 
 import asyncio
+import logging
+from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 from uuid import uuid4
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 class StreamingSessionStatus(str, Enum):
@@ -130,6 +134,7 @@ class StreamingSession:
     created_at: datetime
     started_at: datetime | None = None
     stopped_at: datetime | None = None
+    last_active_at: datetime | None = None
     config: dict[str, Any] = field(default_factory=dict)
 
     # Runtime state (not persisted)
@@ -140,10 +145,16 @@ class StreamingSession:
     _ema_values: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        """Initialize column statistics."""
+        """Initialize column statistics and activity tracking."""
         for col in self.columns:
             self._column_stats[col] = StreamingStatistics()
             self._ema_values[col] = 0.0
+        if self.last_active_at is None:
+            self.last_active_at = self.created_at
+
+    def touch(self) -> None:
+        """Update last_active_at to current time."""
+        self.last_active_at = datetime.utcnow()
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -158,11 +169,95 @@ class StreamingSession:
             "created_at": self.created_at.isoformat(),
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "stopped_at": self.stopped_at.isoformat() if self.stopped_at else None,
+            "last_active_at": self.last_active_at.isoformat() if self.last_active_at else None,
             "config": self.config,
             "statistics": {col: stats.to_dict() for col, stats in self._column_stats.items()},
             "total_points": len(self._buffer),
             "total_alerts": len(self._alerts),
         }
+
+
+# =============================================================================
+# Session Cleanup Policies
+# =============================================================================
+
+
+class SessionCleanupPolicy(ABC):
+    """Abstract policy for determining if a streaming session should be cleaned up.
+
+    Implement this interface to define custom cleanup strategies.
+    """
+
+    @abstractmethod
+    def should_cleanup(self, session: StreamingSession, now: datetime) -> bool:
+        """Determine if a session should be removed.
+
+        Args:
+            session: The streaming session to evaluate.
+            now: Current timestamp.
+
+        Returns:
+            True if the session should be cleaned up.
+        """
+        ...
+
+
+class IdleTTLPolicy(SessionCleanupPolicy):
+    """Remove sessions that have been idle longer than their TTL.
+
+    Supports per-status TTL configuration so that stopped/error sessions
+    are cleaned up faster than active ones.
+    """
+
+    # Default TTL per session status (in seconds)
+    DEFAULT_STATUS_TTLS: dict[StreamingSessionStatus, int] = {
+        StreamingSessionStatus.STOPPED: 300,    # 5 min
+        StreamingSessionStatus.ERROR: 600,      # 10 min
+        StreamingSessionStatus.CREATED: 900,    # 15 min
+        StreamingSessionStatus.PAUSED: 1800,    # 30 min
+        StreamingSessionStatus.RUNNING: 3600,   # 60 min
+    }
+
+    def __init__(
+        self,
+        default_ttl_seconds: int = 1800,
+        status_ttls: dict[StreamingSessionStatus, int] | None = None,
+    ) -> None:
+        self._default_ttl = default_ttl_seconds
+        self._status_ttls = status_ttls or dict(self.DEFAULT_STATUS_TTLS)
+
+    def should_cleanup(self, session: StreamingSession, now: datetime) -> bool:
+        ttl = self._status_ttls.get(session.status, self._default_ttl)
+        reference_time = session.last_active_at or session.created_at
+        return (now - reference_time) > timedelta(seconds=ttl)
+
+
+class CompositeCleanupPolicy(SessionCleanupPolicy):
+    """Combine multiple cleanup policies with AND/OR logic.
+
+    Args:
+        policies: List of policies to combine.
+        require_all: If True, all policies must agree (AND).
+                     If False, any policy is sufficient (OR). Default: False.
+    """
+
+    def __init__(
+        self,
+        policies: list[SessionCleanupPolicy],
+        require_all: bool = False,
+    ) -> None:
+        self._policies = policies
+        self._require_all = require_all
+
+    def should_cleanup(self, session: StreamingSession, now: datetime) -> bool:
+        if self._require_all:
+            return all(p.should_cleanup(session, now) for p in self._policies)
+        return any(p.should_cleanup(session, now) for p in self._policies)
+
+
+# =============================================================================
+# Streaming Anomaly Detector
+# =============================================================================
 
 
 class StreamingAnomalyDetector:
@@ -173,12 +268,80 @@ class StreamingAnomalyDetector:
     - Multiple algorithms (Z-score, EMA, etc.)
     - Online learning / model updates
     - Alert callbacks for real-time notifications
+    - Automatic session cleanup via configurable policies
     """
 
-    def __init__(self) -> None:
-        """Initialize the streaming detector."""
+    def __init__(
+        self,
+        cleanup_policy: SessionCleanupPolicy | None = None,
+        cleanup_interval_seconds: int = 60,
+    ) -> None:
+        """Initialize the streaming detector.
+
+        Args:
+            cleanup_policy: Policy for automatic session cleanup.
+                            Defaults to IdleTTLPolicy.
+            cleanup_interval_seconds: How often to run cleanup (in seconds).
+        """
         self._sessions: dict[str, StreamingSession] = {}
         self._lock = asyncio.Lock()
+        self._cleanup_policy = cleanup_policy or IdleTTLPolicy()
+        self._cleanup_interval = cleanup_interval_seconds
+        self._cleanup_task: asyncio.Task[None] | None = None
+
+    # =========================================================================
+    # Lifecycle
+    # =========================================================================
+
+    async def start(self) -> None:
+        """Start the background session cleanup task."""
+        if self._cleanup_task is None:
+            self._cleanup_task = asyncio.create_task(self._cleanup_loop())
+            logger.info("Streaming session cleanup task started")
+
+    async def stop(self) -> None:
+        """Stop the background session cleanup task."""
+        if self._cleanup_task is not None:
+            self._cleanup_task.cancel()
+            try:
+                await self._cleanup_task
+            except asyncio.CancelledError:
+                pass
+            self._cleanup_task = None
+            logger.info("Streaming session cleanup task stopped")
+
+    async def _cleanup_loop(self) -> None:
+        """Background loop that periodically removes expired sessions."""
+        while True:
+            try:
+                await asyncio.sleep(self._cleanup_interval)
+                removed = await self._cleanup_expired_sessions()
+                if removed:
+                    logger.info(
+                        "Cleaned up %d expired streaming session(s)", removed
+                    )
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                logger.exception("Error during streaming session cleanup")
+
+    async def _cleanup_expired_sessions(self) -> int:
+        """Remove sessions that match the cleanup policy.
+
+        Returns:
+            Number of sessions removed.
+        """
+        now = datetime.utcnow()
+        async with self._lock:
+            to_remove = [
+                sid
+                for sid, session in self._sessions.items()
+                if self._cleanup_policy.should_cleanup(session, now)
+            ]
+            for sid in to_remove:
+                logger.debug("Removing expired streaming session %s", sid)
+                del self._sessions[sid]
+            return len(to_remove)
 
     # =========================================================================
     # Session Management
@@ -244,6 +407,7 @@ class StreamingAnomalyDetector:
 
             session.status = StreamingSessionStatus.RUNNING
             session.started_at = datetime.utcnow()
+            session.touch()
 
         return session
 
@@ -333,6 +497,7 @@ class StreamingAnomalyDetector:
         if session.status != StreamingSessionStatus.RUNNING:
             raise ValueError(f"Session '{session_id}' is not running")
 
+        session.touch()
         timestamp = timestamp or datetime.utcnow()
 
         # Store data point in buffer

@@ -182,14 +182,14 @@ async def list_detections(
 
 @router.get(
     "/sources/{source_id}/anomaly/latest",
-    response_model=AnomalyDetectionResponse,
+    response_model=AnomalyDetectionResponse | None,
     summary="Get latest detection",
     description="Get the latest anomaly detection result for a source",
 )
 async def get_latest_detection(
     service: AnomalyDetectionServiceDep,
     source_id: Annotated[str, Path(description="Source ID")],
-) -> AnomalyDetectionResponse:
+) -> AnomalyDetectionResponse | None:
     """Get the latest detection for a source.
 
     Args:
@@ -197,17 +197,11 @@ async def get_latest_detection(
         source_id: Source ID.
 
     Returns:
-        Latest detection result.
-
-    Raises:
-        HTTPException: 404 if no detections found.
+        Latest detection result, or None if no detections found.
     """
     detection = await service.get_latest_detection(source_id)
     if detection is None:
-        raise HTTPException(
-            status_code=404,
-            detail="No detections found for this source",
-        )
+        return None
     return _detection_to_response(detection)
 
 
