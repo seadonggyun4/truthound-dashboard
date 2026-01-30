@@ -271,9 +271,7 @@ export function UnifiedAlertList({
             <TableRow>
               <TableHead className="w-[40px]">
                 <Checkbox
-                  checked={allSelected}
-                  // @ts-expect-error indeterminate is valid prop
-                  indeterminate={someSelected}
+                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
                   onCheckedChange={handleSelectAll}
                   disabled={selectableAlerts.length === 0}
                 />

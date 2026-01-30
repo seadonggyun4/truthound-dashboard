@@ -82,8 +82,19 @@ async function getModelDashboard(modelId: string, hours: number = 24): Promise<D
     `${API_BASE}/model-monitoring/models/${modelId}/dashboard?hours=${hours}`
   )
   if (!response.ok) throw new Error('Failed to fetch dashboard')
-  // API returns dashboard data directly
-  return response.json()
+  // API returns { model, metrics: { metrics: [...], data_points, ... }, active_alerts }
+  // Flatten metrics response into DashboardData shape
+  const raw = await response.json()
+  const metricsObj = raw.metrics ?? {}
+  return {
+    model_id: metricsObj.model_id ?? modelId,
+    model_name: metricsObj.model_name ?? '',
+    time_range_hours: metricsObj.time_range_hours ?? hours,
+    metrics: Array.isArray(metricsObj.metrics) ? metricsObj.metrics : [],
+    data_points: metricsObj.data_points ?? {},
+    health_breakdown: raw.health_breakdown ?? null,
+    recent_alerts: raw.active_alerts ?? [],
+  }
 }
 
 export function ModelDashboard({ model, onBack }: ModelDashboardProps) {
