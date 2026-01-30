@@ -661,7 +661,7 @@ export function EscalationLevelBuilder({
                                     </SelectTrigger>
                                     <SelectContent>
                                       {channels.length === 0 ? (
-                                        <SelectItem value="" disabled>
+                                        <SelectItem value="__none__" disabled>
                                           {labels.noChannels}
                                         </SelectItem>
                                       ) : (

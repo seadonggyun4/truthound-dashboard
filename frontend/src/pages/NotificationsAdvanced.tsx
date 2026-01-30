@@ -31,6 +31,7 @@ import {
   EscalationTab,
   ConfigImportExport,
   TemplateLibrary,
+  type Template,
 } from '@/components/notifications'
 import {
   getDeduplicationStats,
@@ -53,12 +54,28 @@ export default function NotificationsAdvanced() {
 
   const [activeTab, setActiveTab] = useState('routing')
   const [isLoadingStats, setIsLoadingStats] = useState(true)
+  const [appliedTemplate, setAppliedTemplate] = useState<Template | null>(null)
+  const [templatePayload, setTemplatePayload] = useState<{ id: string; config: Record<string, unknown> } | null>(null)
   const [stats, setStats] = useState<Stats>({
     routing: { total: 0, active: 0 },
     deduplication: { dedupRate: 0, totalDeduplicated: 0 },
     throttling: { throttleRate: 0, totalThrottled: 0 },
     escalation: { activeIncidents: 0, totalPolicies: 0 },
   })
+
+  const handleTemplateSelect = useCallback((template: Template) => {
+    // Switch to the matching tab
+    setActiveTab(template.category as string)
+    // Set template payload for the tab to consume
+    setTemplatePayload({ id: template.id, config: template.config as Record<string, unknown> })
+    // Track applied template for display
+    setAppliedTemplate(template)
+  }, [])
+
+  const clearAppliedTemplate = useCallback(() => {
+    setAppliedTemplate(null)
+    setTemplatePayload(null)
+  }, [])
 
   const loadStats = useCallback(async () => {
     setIsLoadingStats(true)
@@ -117,14 +134,20 @@ export default function NotificationsAdvanced() {
             Configure routing, deduplication, throttling, and escalation policies
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <ConfigImportExport onImportComplete={loadStats} />
-          <TemplateLibrary onSelect={() => loadStats()} />
-          <Button variant="outline" onClick={loadStats} disabled={isLoadingStats}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${isLoadingStats ? 'animate-spin' : ''}`} />
-            {common.refresh}
-          </Button>
-        </div>
+        <Button variant="outline" onClick={loadStats} disabled={isLoadingStats}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${isLoadingStats ? 'animate-spin' : ''}`} />
+          {common.refresh}
+        </Button>
+      </div>
+
+      {/* Config & Template Actions */}
+      <div className="flex items-center gap-3">
+        <ConfigImportExport onImportComplete={loadStats} />
+        <TemplateLibrary
+          onSelect={handleTemplateSelect}
+          appliedTemplate={appliedTemplate}
+          onClearApplied={clearAppliedTemplate}
+        />
       </div>
 
       {/* Stats Overview */}
@@ -247,19 +270,19 @@ export default function NotificationsAdvanced() {
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsContent value="routing" className="mt-0">
-              <RoutingRulesTab />
+              <RoutingRulesTab initialTemplate={appliedTemplate?.category === 'routing' ? templatePayload : null} />
             </TabsContent>
 
             <TabsContent value="deduplication" className="mt-0">
-              <DeduplicationTab />
+              <DeduplicationTab initialTemplate={appliedTemplate?.category === 'deduplication' ? templatePayload : null} />
             </TabsContent>
 
             <TabsContent value="throttling" className="mt-0">
-              <ThrottlingTab />
+              <ThrottlingTab initialTemplate={appliedTemplate?.category === 'throttling' ? templatePayload : null} />
             </TabsContent>
 
             <TabsContent value="escalation" className="mt-0">
-              <EscalationTab />
+              <EscalationTab initialTemplate={appliedTemplate?.category === 'escalation' ? templatePayload : null} />
             </TabsContent>
           </Tabs>
         </CardContent>

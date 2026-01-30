@@ -22,6 +22,8 @@ import {
   Check,
   Star,
   Zap,
+  X,
+  CheckCircle,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -442,6 +444,8 @@ TemplateRegistry.registerMany([
 interface TemplateLibraryProps {
   category?: TemplateCategory
   onSelect: (template: Template) => void
+  appliedTemplate?: Template | null
+  onClearApplied?: () => void
   className?: string
 }
 
@@ -452,7 +456,7 @@ const CATEGORY_INFO: Record<TemplateCategory, { icon: React.ReactNode; label: st
   escalation: { icon: <AlertTriangle className="h-4 w-4" />, label: 'Escalation', color: 'text-red-500' },
 }
 
-export function TemplateLibrary({ category, onSelect, className }: TemplateLibraryProps) {
+export function TemplateLibrary({ category, onSelect, appliedTemplate, onClearApplied, className }: TemplateLibraryProps) {
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<TemplateCategory | 'all'>(category || 'all')
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
@@ -498,6 +502,35 @@ export function TemplateLibrary({ category, onSelect, className }: TemplateLibra
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Applied Template */}
+        {appliedTemplate && (
+          <div className="flex items-center gap-2 p-2.5 rounded-md border border-primary/30 bg-primary/5">
+            <CheckCircle className="h-4 w-4 text-primary shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">Active Template</p>
+              <div className="flex items-center gap-1.5">
+                <span className={CATEGORY_INFO[appliedTemplate.category].color}>
+                  {CATEGORY_INFO[appliedTemplate.category].icon}
+                </span>
+                <span className="text-sm font-medium truncate">{appliedTemplate.name}</span>
+                <Badge variant="outline" className="text-[10px] h-4 px-1 shrink-0">
+                  {CATEGORY_INFO[appliedTemplate.category].label}
+                </Badge>
+              </div>
+            </div>
+            {onClearApplied && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 shrink-0"
+                onClick={onClearApplied}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />

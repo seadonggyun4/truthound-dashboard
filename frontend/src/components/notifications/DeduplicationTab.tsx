@@ -59,12 +59,13 @@ import {
 
 interface DeduplicationTabProps {
   className?: string
+  initialTemplate?: { id: string; config: Record<string, unknown> } | null
 }
 
 const STRATEGIES: DeduplicationStrategy[] = ['sliding', 'tumbling', 'session', 'adaptive']
 const POLICIES: DeduplicationPolicy[] = ['none', 'basic', 'severity', 'issue_based', 'strict', 'custom']
 
-export function DeduplicationTab({ className }: DeduplicationTabProps) {
+export function DeduplicationTab({ className, initialTemplate }: DeduplicationTabProps) {
   const content = useIntlayer('notificationsAdvanced')
   const common = useIntlayer('common')
   const { toast } = useToast()
@@ -259,11 +260,23 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
       policy?: DeduplicationPolicy
       window_seconds?: number
     }
+    // Reset form and open dialog with template config
+    setEditingConfig(null)
+    setFormName('')
+    setFormIsActive(true)
     if (config.strategy) setFormStrategy(config.strategy)
     if (config.policy) setFormPolicy(config.policy)
     if (config.window_seconds) setFormWindowSeconds(config.window_seconds)
+    setIsDialogOpen(true)
     toast({ title: `Applied template: ${template.id}` })
   }
+
+  // Apply template from parent (TemplateLibrary)
+  useEffect(() => {
+    if (initialTemplate) {
+      handleApplyTemplate(initialTemplate)
+    }
+  }, [initialTemplate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (
@@ -435,13 +448,15 @@ export function DeduplicationTab({ className }: DeduplicationTabProps) {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Template Quick Select */}
+            {/* Template Quick Select (hidden when opened via TemplateLibrary) */}
             <div className="flex items-center justify-between">
               <Label className="text-base font-medium">Configuration</Label>
-              <TemplateQuickSelect
-                category="deduplication"
-                onSelect={handleApplyTemplate}
-              />
+              {!initialTemplate && (
+                <TemplateQuickSelect
+                  category="deduplication"
+                  onSelect={handleApplyTemplate}
+                />
+              )}
             </div>
 
             <div className="space-y-2">

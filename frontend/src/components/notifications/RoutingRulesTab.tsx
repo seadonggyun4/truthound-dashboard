@@ -82,9 +82,10 @@ import {
 
 interface RoutingRulesTabProps {
   className?: string
+  initialTemplate?: { id: string; config: Record<string, unknown> } | null
 }
 
-export function RoutingRulesTab({ className }: RoutingRulesTabProps) {
+export function RoutingRulesTab({ className, initialTemplate }: RoutingRulesTabProps) {
   const content = useIntlayer('notificationsAdvanced')
   const common = useIntlayer('common')
   const { toast } = useToast()
@@ -367,11 +368,28 @@ export function RoutingRulesTab({ className }: RoutingRulesTabProps) {
   const handleApplyTemplate = (template: { id: string; config: Record<string, unknown> }) => {
     const config = jsonToRuleConfig(JSON.stringify(template.config))
     if (config) {
+      // Reset form and open dialog with template config
+      setEditingRule(null)
+      setFormName('')
+      setFormPriority(0)
+      setFormStopOnMatch(false)
+      setFormIsActive(true)
+      setFormActions([])
+      setEditorMode('visual')
+      setJsonError(null)
       setFormRuleConfig(config)
       setFormRuleConfigJson(JSON.stringify(template.config, null, 2))
+      setIsDialogOpen(true)
       toast({ title: `Applied template: ${template.id}` })
     }
   }
+
+  // Apply template from parent (TemplateLibrary)
+  useEffect(() => {
+    if (initialTemplate) {
+      handleApplyTemplate(initialTemplate)
+    }
+  }, [initialTemplate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (
@@ -565,12 +583,14 @@ export function RoutingRulesTab({ className }: RoutingRulesTabProps) {
               <div className="flex items-center justify-between">
                 <Label>{content.routing.ruleConfig}</Label>
                 <div className="flex items-center gap-2">
-                  {/* Template Quick Select */}
-                  <TemplateQuickSelect
-                    category="routing"
-                    onSelect={handleApplyTemplate}
-                    triggerClassName="h-7"
-                  />
+                  {/* Template Quick Select (hidden when opened via TemplateLibrary) */}
+                  {!initialTemplate && (
+                    <TemplateQuickSelect
+                      category="routing"
+                      onSelect={handleApplyTemplate}
+                      triggerClassName="h-7"
+                    />
+                  )}
                   <Button
                     type="button"
                     variant="ghost"

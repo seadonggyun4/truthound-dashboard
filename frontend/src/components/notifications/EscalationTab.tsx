@@ -72,6 +72,7 @@ type IncidentWithName = EscalationIncident & BulkActionItem
 
 interface EscalationTabProps {
   className?: string
+  initialTemplate?: { id: string; config: Record<string, unknown> } | null
 }
 
 const STATE_COLORS: Record<EscalationState, string> = {
@@ -90,7 +91,7 @@ const STATE_ICONS: Record<EscalationState, React.ReactNode> = {
   resolved: <CheckCircle className="h-4 w-4" />,
 }
 
-export function EscalationTab({ className }: EscalationTabProps) {
+export function EscalationTab({ className, initialTemplate }: EscalationTabProps) {
   const rawContent = useIntlayer('notificationsAdvanced')
   const rawCommon = useIntlayer('common')
   const { toast } = useToast()
@@ -266,6 +267,30 @@ export function EscalationTab({ className }: EscalationTabProps) {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  const handleApplyTemplate = (template: { id: string; config: Record<string, unknown> }) => {
+    const config = template.config as {
+      levels?: EscalationLevel[]
+      auto_resolve_on_success?: boolean
+      max_escalations?: number
+    }
+    setEditingPolicy(null)
+    setFormName('')
+    setFormDescription('')
+    if (config.auto_resolve_on_success !== undefined) setFormAutoResolve(config.auto_resolve_on_success)
+    if (config.max_escalations !== undefined) setFormMaxEscalations(config.max_escalations)
+    if (config.levels) setFormLevels(config.levels)
+    setFormIsActive(true)
+    setIsDialogOpen(true)
+    toast({ title: `Applied template: ${template.id}` })
+  }
+
+  // Apply template from parent (TemplateLibrary)
+  useEffect(() => {
+    if (initialTemplate) {
+      handleApplyTemplate(initialTemplate)
+    }
+  }, [initialTemplate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const openCreateDialog = () => {
     setEditingPolicy(null)

@@ -55,9 +55,10 @@ import {
 
 interface ThrottlingTabProps {
   className?: string
+  initialTemplate?: { id: string; config: Record<string, unknown> } | null
 }
 
-export function ThrottlingTab({ className }: ThrottlingTabProps) {
+export function ThrottlingTab({ className, initialTemplate }: ThrottlingTabProps) {
   const content = useIntlayer('notificationsAdvanced')
   const common = useIntlayer('common')
   const { toast } = useToast()
@@ -252,12 +253,25 @@ export function ThrottlingTab({ className }: ThrottlingTabProps) {
       per_day?: number | null
       burst_allowance?: number
     }
+    // Reset form and open dialog with template config
+    setEditingConfig(null)
+    setFormName('')
+    setFormChannelId(null)
+    setFormIsActive(true)
     if (config.per_minute !== undefined) setFormPerMinute(config.per_minute)
     if (config.per_hour !== undefined) setFormPerHour(config.per_hour)
     if (config.per_day !== undefined) setFormPerDay(config.per_day)
     if (config.burst_allowance !== undefined) setFormBurstAllowance(config.burst_allowance)
+    setIsDialogOpen(true)
     toast({ title: `Applied template: ${template.id}` })
   }
+
+  // Apply template from parent (TemplateLibrary)
+  useEffect(() => {
+    if (initialTemplate) {
+      handleApplyTemplate(initialTemplate)
+    }
+  }, [initialTemplate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (
@@ -446,10 +460,12 @@ export function ThrottlingTab({ className }: ThrottlingTabProps) {
                 >
                   {showAlgorithmGuide ? 'Hide Algorithm Guide' : 'Show Algorithm Guide'}
                 </Button>
-                <TemplateQuickSelect
-                  category="throttling"
-                  onSelect={handleApplyTemplate}
-                />
+                {!initialTemplate && (
+                  <TemplateQuickSelect
+                    category="throttling"
+                    onSelect={handleApplyTemplate}
+                  />
+                )}
               </div>
             </div>
 
