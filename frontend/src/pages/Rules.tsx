@@ -10,6 +10,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
@@ -423,27 +424,23 @@ export default function Rules() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium">Rule Name</label>
-                  <input
-                    type="text"
+                  <Input
                     value={ruleName}
                     onChange={(e) => {
                       setRuleName(e.target.value)
                       setHasChanges(true)
                     }}
-                    className="w-full px-3 py-2 text-sm rounded-md border bg-background"
                     placeholder="Enter rule name"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium">Description</label>
-                  <input
-                    type="text"
+                  <Input
                     value={ruleDescription}
                     onChange={(e) => {
                       setRuleDescription(e.target.value)
                       setHasChanges(true)
                     }}
-                    className="w-full px-3 py-2 text-sm rounded-md border bg-background"
                     placeholder="Optional description"
                   />
                 </div>

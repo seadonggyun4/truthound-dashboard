@@ -11,6 +11,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { Search, Filter, ChevronDown, ChevronRight, Zap, Shield, Database, Code, Sparkles } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -543,11 +544,10 @@ export function ValidatorSelector({
                             }`}
                           >
                             {/* Enable/disable checkbox */}
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={isEnabled}
-                              onChange={(e) => toggleCustomValidator(cv, e.target.checked)}
-                              className="mt-1 h-4 w-4 rounded border-gray-300"
+                              onCheckedChange={(checked) => toggleCustomValidator(cv, !!checked)}
+                              className="mt-1"
                             />
 
                             <div className="flex-1 min-w-0">
