@@ -4,7 +4,7 @@
  * Displays history of PII scans and masking operations.
  */
 
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'

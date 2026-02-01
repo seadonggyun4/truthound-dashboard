@@ -2,7 +2,7 @@
  * Overview stats cards for model monitoring dashboard.
  */
 
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Cpu,

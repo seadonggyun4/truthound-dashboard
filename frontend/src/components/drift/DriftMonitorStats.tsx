@@ -4,7 +4,7 @@
  * Displays overview statistics for drift monitoring.
  */
 
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Activity, AlertTriangle, CheckCircle, Columns } from 'lucide-react'

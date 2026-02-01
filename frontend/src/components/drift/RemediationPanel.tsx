@@ -5,7 +5,7 @@
  * with priority indicators and action buttons.
  */
 
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'

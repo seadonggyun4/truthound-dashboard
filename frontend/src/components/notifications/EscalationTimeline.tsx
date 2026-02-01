@@ -12,7 +12,7 @@
  */
 
 import { useMemo, useEffect, useState, useRef } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Bell,
   User,

@@ -4,7 +4,7 @@
  * Displays list of drift monitors with status and actions.
  */
 
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Table,
   TableBody,

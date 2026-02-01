@@ -19,7 +19,7 @@ import ReactFlow, {
   type OnEdgesChange,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { AlertTriangle, Zap } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'

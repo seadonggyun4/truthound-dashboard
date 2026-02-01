@@ -4,7 +4,7 @@
  * Displays detected patterns for a column profile.
  * Shows pattern badges, confidence scores, and match statistics.
  */
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Mail,
   Phone,

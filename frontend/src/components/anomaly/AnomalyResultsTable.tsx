@@ -3,7 +3,7 @@
  * Includes "Explain" button for SHAP/LIME explanations.
  */
 
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Table,
   TableBody,

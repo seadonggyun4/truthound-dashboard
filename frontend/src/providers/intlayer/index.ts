@@ -23,5 +23,5 @@ export {
   type LocaleInfo,
 } from './config'
 
-// Re-export commonly used hooks from react-intlayer for convenience
-export { useIntlayer, useLocale } from 'react-intlayer'
+// Re-export commonly used hooks
+export { useSafeIntlayer as useIntlayer, useLocale } from '@/hooks/useSafeIntlayer'

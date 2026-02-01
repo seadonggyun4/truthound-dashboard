@@ -5,7 +5,7 @@
  */
 
 import { useMemo, useState } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Table,
   TableBody,

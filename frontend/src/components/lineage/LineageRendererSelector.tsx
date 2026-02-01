@@ -7,7 +7,7 @@
  * - Mermaid (export, documentation)
  */
 
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { Monitor, Workflow, FileCode } from 'lucide-react'
 import {
   Select,

@@ -3,7 +3,7 @@
  */
 
 import { useReactFlow } from 'reactflow'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { ZoomIn, ZoomOut, Maximize2, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {

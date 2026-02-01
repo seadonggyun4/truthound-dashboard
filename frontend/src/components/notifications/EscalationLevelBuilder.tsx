@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useState, useMemo } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Plus,
   Trash2,

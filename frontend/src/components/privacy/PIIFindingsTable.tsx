@@ -4,7 +4,7 @@
  * Displays detected PII with confidence scores and actions.
  */
 
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Table,
   TableBody,

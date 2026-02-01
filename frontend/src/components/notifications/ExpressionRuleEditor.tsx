@@ -50,7 +50,7 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { CodeEditor, type CodeEditorRef } from '@/components/common/CodeEditor'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { str } from '@/lib/intlayer-utils'
 
 // =============================================================================

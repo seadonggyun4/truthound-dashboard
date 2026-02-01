@@ -2,7 +2,7 @@
  * Side panel showing details of the selected lineage node.
  */
 
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Database,
   ArrowRightLeft,

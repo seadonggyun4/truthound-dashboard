@@ -21,7 +21,7 @@ import ReactFlow, {
   ReactFlowProvider,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { AlertTriangle, Zap } from 'lucide-react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Alert, AlertDescription } from '@/components/ui/alert'

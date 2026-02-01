@@ -5,7 +5,7 @@
  * with key contributing features highlighted.
  */
 
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { Badge } from '@/components/ui/badge'
 import { AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react'
 import { cn } from '@/lib/utils'

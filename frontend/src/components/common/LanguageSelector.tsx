@@ -12,7 +12,8 @@
  */
 import { useState, useMemo } from 'react'
 import { Globe, Check, Search } from 'lucide-react'
-import { useLocale, useIntlayer } from 'react-intlayer'
+import { useLocale } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

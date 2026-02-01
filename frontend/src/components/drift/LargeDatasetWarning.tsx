@@ -4,7 +4,7 @@
  * Shows when a dataset is large and recommends using sample_size parameter.
  */
 
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { AlertTriangle, Database, Clock } from 'lucide-react'

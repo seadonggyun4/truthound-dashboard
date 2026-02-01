@@ -11,7 +11,7 @@
 
 import { useCallback, useMemo, useRef, KeyboardEvent } from 'react'
 import { Clock, Globe, Calendar } from 'lucide-react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import {

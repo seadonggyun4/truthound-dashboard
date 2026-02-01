@@ -6,7 +6,7 @@
 
 import { memo, useState } from 'react'
 import { EdgeLabelRenderer, getBezierPath, type EdgeProps } from 'reactflow'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { ChevronDown, ChevronUp, ArrowRight, Columns } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'

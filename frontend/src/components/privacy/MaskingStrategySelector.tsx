@@ -4,7 +4,7 @@
  * Provides visual selection of masking strategies (redact, hash, fake).
  */
 
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { EyeOff, Hash, Sparkles, Check } from 'lucide-react'

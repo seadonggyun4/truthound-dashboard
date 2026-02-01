@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { Plus, Save, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {

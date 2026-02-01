@@ -8,7 +8,7 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import cytoscape, { Core } from 'cytoscape'
 // @ts-expect-error - cytoscape-dagre has no type declarations
 import dagre from 'cytoscape-dagre'
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { str } from '@/lib/intlayer-utils'
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'

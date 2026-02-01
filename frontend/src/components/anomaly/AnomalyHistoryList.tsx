@@ -2,7 +2,7 @@
  * List of past anomaly detection runs.
  */
 
-import { useIntlayer } from 'react-intlayer'
+import { useSafeIntlayer as useIntlayer } from '@/hooks/useSafeIntlayer'
 import { formatDistanceToNow } from '@/lib/utils'
 import {
   Table,
