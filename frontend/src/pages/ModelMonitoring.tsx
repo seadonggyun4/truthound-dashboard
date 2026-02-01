@@ -306,7 +306,7 @@ export default function ModelMonitoring() {
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [overviewRes, modelsRes, alertsRes, rulesRes, handlersRes] = await Promise.all([
+      const [overviewRes, modelsRes, alertsRes, rulesRes, handlersRes] = await Promise.allSettled([
         getMonitoringOverview(),
         listModels(),
         listAlerts({ active_only: true }),
@@ -314,16 +314,16 @@ export default function ModelMonitoring() {
         listAlertHandlers(),
       ])
 
-      setOverview(overviewRes)
-      setModels(modelsRes.items)
-      setAlerts(alertsRes.items)
-      setRules(rulesRes.items)
-      setHandlers(handlersRes.items)
-
-      // Auto-select first model
-      if (modelsRes.items.length > 0 && !selectedModelId) {
-        setSelectedModelId(modelsRes.items[0].id)
+      if (overviewRes.status === 'fulfilled') setOverview(overviewRes.value)
+      if (modelsRes.status === 'fulfilled') {
+        setModels(modelsRes.value.items)
+        if (modelsRes.value.items.length > 0 && !selectedModelId) {
+          setSelectedModelId(modelsRes.value.items[0].id)
+        }
       }
+      if (alertsRes.status === 'fulfilled') setAlerts(alertsRes.value.items)
+      if (rulesRes.status === 'fulfilled') setRules(rulesRes.value.items)
+      if (handlersRes.status === 'fulfilled') setHandlers(handlersRes.value.items)
     } catch {
       toast({
         title: str(common.error),
