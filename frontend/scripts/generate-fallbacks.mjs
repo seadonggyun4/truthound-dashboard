@@ -63,14 +63,14 @@ function parseObject(block) {
     pos = skipWhitespaceAndComments(block, pos)
     if (pos >= block.length) break
 
-    // Try to match a key
-    const keyMatch = block.slice(pos).match(/^(\w+)\s*:\s*/)
+    // Try to match a key (unquoted, single-quoted, or double-quoted)
+    const keyMatch = block.slice(pos).match(/^(?:(\w+)|'([^']+)'|"([^"]+)")\s*:\s*/)
     if (!keyMatch) {
       pos++
       continue
     }
 
-    const key = keyMatch[1]
+    const key = keyMatch[1] ?? keyMatch[2] ?? keyMatch[3]
     pos += keyMatch[0].length
 
     // Skip whitespace

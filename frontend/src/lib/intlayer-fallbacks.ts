@@ -2058,6 +2058,12 @@ export const fallbacks: Record<string, FallbackContent> = {
       "p95": "P95",
       "p99": "P99"
     },
+    "timeRanges": {
+      "1h": "Last 1 Hour",
+      "6h": "Last 6 Hours",
+      "24h": "Last 24 Hours",
+      "7d": "Last 7 Days"
+    },
     "alerts": {
       "title": "Active Alerts",
       "noAlerts": "No active alerts",
