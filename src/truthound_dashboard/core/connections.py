@@ -187,7 +187,7 @@ class FileConnectionBuilder(ConnectionBuilder):
     """Connection builder for file-based sources."""
 
     source_type = SourceType.FILE
-    SUPPORTED_EXTENSIONS = {".csv", ".parquet", ".json", ".xlsx", ".xls"}
+    SUPPORTED_EXTENSIONS = {".csv", ".parquet", ".json", ".ndjson", ".jsonl"}
 
     def build(self, config: dict[str, Any]) -> str:
         """Build file path from config."""
@@ -216,7 +216,7 @@ class FileConnectionBuilder(ConnectionBuilder):
         return SourceTypeDefinition(
             type=SourceType.FILE.value,
             name="File",
-            description="Local file (CSV, Parquet, JSON, Excel)",
+            description="Local file (CSV, Parquet, JSON, NDJSON, JSONL)",
             icon="file",
             category="file",
             fields=[
@@ -237,7 +237,8 @@ class FileConnectionBuilder(ConnectionBuilder):
                         {"value": "csv", "label": "CSV"},
                         {"value": "parquet", "label": "Parquet"},
                         {"value": "json", "label": "JSON"},
-                        {"value": "excel", "label": "Excel"},
+                        {"value": "ndjson", "label": "NDJSON"},
+                        {"value": "jsonl", "label": "JSONL"},
                     ],
                     default="auto",
                     description="File format (auto-detected from extension if not specified)",
@@ -271,13 +272,195 @@ class FileConnectionBuilder(ConnectionBuilder):
                     default=True,
                     description="First row contains column names",
                 ),
+            ],
+        )
+
+
+class CSVConnectionBuilder(FileConnectionBuilder):
+    """Connection builder for CSV files."""
+
+    source_type = SourceType.CSV
+
+    @classmethod
+    def get_definition(cls) -> SourceTypeDefinition:
+        return SourceTypeDefinition(
+            type=SourceType.CSV.value,
+            name="CSV",
+            description="Comma-separated values file",
+            icon="file",
+            category="file",
+            fields=[
                 FieldDefinition(
-                    name="sheet",
-                    label="Sheet Name",
-                    placeholder="Sheet1",
-                    description="Excel sheet name (for Excel files)",
-                    depends_on="format",
-                    depends_value="excel",
+                    name="path",
+                    label="File Path",
+                    type=FieldType.FILE_PATH,
+                    required=True,
+                    placeholder="/path/to/data.csv",
+                    description="Path to the CSV file",
+                ),
+                FieldDefinition(
+                    name="delimiter",
+                    label="Delimiter",
+                    placeholder=",",
+                    default=",",
+                    description="CSV delimiter character",
+                ),
+                FieldDefinition(
+                    name="encoding",
+                    label="Encoding",
+                    type=FieldType.SELECT,
+                    options=[
+                        {"value": "utf-8", "label": "UTF-8"},
+                        {"value": "utf-16", "label": "UTF-16"},
+                        {"value": "iso-8859-1", "label": "ISO-8859-1 (Latin-1)"},
+                        {"value": "cp1252", "label": "Windows-1252"},
+                    ],
+                    default="utf-8",
+                    description="File encoding",
+                ),
+                FieldDefinition(
+                    name="has_header",
+                    label="Has Header Row",
+                    type=FieldType.BOOLEAN,
+                    default=True,
+                    description="First row contains column names",
+                ),
+            ],
+        )
+
+
+class ParquetConnectionBuilder(FileConnectionBuilder):
+    """Connection builder for Parquet files."""
+
+    source_type = SourceType.PARQUET
+
+    @classmethod
+    def get_definition(cls) -> SourceTypeDefinition:
+        return SourceTypeDefinition(
+            type=SourceType.PARQUET.value,
+            name="Parquet",
+            description="Apache Parquet columnar storage file",
+            icon="file",
+            category="file",
+            fields=[
+                FieldDefinition(
+                    name="path",
+                    label="File Path",
+                    type=FieldType.FILE_PATH,
+                    required=True,
+                    placeholder="/path/to/data.parquet",
+                    description="Path to the Parquet file",
+                ),
+            ],
+        )
+
+
+class JSONConnectionBuilder(FileConnectionBuilder):
+    """Connection builder for JSON files."""
+
+    source_type = SourceType.JSON
+
+    @classmethod
+    def get_definition(cls) -> SourceTypeDefinition:
+        return SourceTypeDefinition(
+            type=SourceType.JSON.value,
+            name="JSON",
+            description="JSON file (array of objects)",
+            icon="file_json",
+            category="file",
+            fields=[
+                FieldDefinition(
+                    name="path",
+                    label="File Path",
+                    type=FieldType.FILE_PATH,
+                    required=True,
+                    placeholder="/path/to/data.json",
+                    description="Path to the JSON file",
+                ),
+                FieldDefinition(
+                    name="encoding",
+                    label="Encoding",
+                    type=FieldType.SELECT,
+                    options=[
+                        {"value": "utf-8", "label": "UTF-8"},
+                        {"value": "utf-16", "label": "UTF-16"},
+                    ],
+                    default="utf-8",
+                    description="File encoding",
+                ),
+            ],
+        )
+
+
+class NDJSONConnectionBuilder(FileConnectionBuilder):
+    """Connection builder for NDJSON files."""
+
+    source_type = SourceType.NDJSON
+
+    @classmethod
+    def get_definition(cls) -> SourceTypeDefinition:
+        return SourceTypeDefinition(
+            type=SourceType.NDJSON.value,
+            name="NDJSON",
+            description="Newline-delimited JSON file",
+            icon="file_json",
+            category="file",
+            fields=[
+                FieldDefinition(
+                    name="path",
+                    label="File Path",
+                    type=FieldType.FILE_PATH,
+                    required=True,
+                    placeholder="/path/to/data.ndjson",
+                    description="Path to the NDJSON file",
+                ),
+                FieldDefinition(
+                    name="encoding",
+                    label="Encoding",
+                    type=FieldType.SELECT,
+                    options=[
+                        {"value": "utf-8", "label": "UTF-8"},
+                        {"value": "utf-16", "label": "UTF-16"},
+                    ],
+                    default="utf-8",
+                    description="File encoding",
+                ),
+            ],
+        )
+
+
+class JSONLConnectionBuilder(FileConnectionBuilder):
+    """Connection builder for JSONL files."""
+
+    source_type = SourceType.JSONL
+
+    @classmethod
+    def get_definition(cls) -> SourceTypeDefinition:
+        return SourceTypeDefinition(
+            type=SourceType.JSONL.value,
+            name="JSONL",
+            description="JSON Lines file (one JSON object per line)",
+            icon="file_json",
+            category="file",
+            fields=[
+                FieldDefinition(
+                    name="path",
+                    label="File Path",
+                    type=FieldType.FILE_PATH,
+                    required=True,
+                    placeholder="/path/to/data.jsonl",
+                    description="Path to the JSONL file",
+                ),
+                FieldDefinition(
+                    name="encoding",
+                    label="Encoding",
+                    type=FieldType.SELECT,
+                    options=[
+                        {"value": "utf-8", "label": "UTF-8"},
+                        {"value": "utf-16", "label": "UTF-16"},
+                    ],
+                    default="utf-8",
+                    description="File encoding",
                 ),
             ],
         )
@@ -1581,11 +1764,11 @@ class KafkaConnectionBuilder(ConnectionBuilder):
 CONNECTION_BUILDERS: dict[str, type[ConnectionBuilder]] = {
     # File-based
     SourceType.FILE.value: FileConnectionBuilder,
-    SourceType.CSV.value: FileConnectionBuilder,
-    SourceType.PARQUET.value: FileConnectionBuilder,
-    SourceType.JSON.value: FileConnectionBuilder,
-    SourceType.NDJSON.value: FileConnectionBuilder,
-    SourceType.JSONL.value: FileConnectionBuilder,
+    SourceType.CSV.value: CSVConnectionBuilder,
+    SourceType.PARQUET.value: ParquetConnectionBuilder,
+    SourceType.JSON.value: JSONConnectionBuilder,
+    SourceType.NDJSON.value: NDJSONConnectionBuilder,
+    SourceType.JSONL.value: JSONLConnectionBuilder,
     # Core SQL
     SourceType.POSTGRESQL.value: PostgreSQLConnectionBuilder,
     SourceType.MYSQL.value: MySQLConnectionBuilder,
@@ -1735,11 +1918,18 @@ def get_supported_source_types() -> list[dict[str, Any]]:
         List of source type definitions.
     """
     result = []
+    seen_types: set[str] = set()
     for source_type in SourceType:
+        # Skip generic FILE type - specific format types (CSV, Parquet, etc.) cover it
+        if source_type == SourceType.FILE:
+            continue
         builder_class = CONNECTION_BUILDERS.get(source_type.value)
         if builder_class:
             definition = builder_class.get_definition()
-            result.append(definition.to_dict())
+            # Deduplicate by type value
+            if definition.type not in seen_types:
+                seen_types.add(definition.type)
+                result.append(definition.to_dict())
     return result
 
 
@@ -1774,12 +1964,17 @@ def get_source_types_by_category() -> dict[str, list[dict[str, Any]]]:
         "streaming": [],
     }
 
+    seen_types: set[str] = set()
     for source_type in SourceType:
+        if source_type == SourceType.FILE:
+            continue
         builder_class = CONNECTION_BUILDERS.get(source_type.value)
         if builder_class:
             definition = builder_class.get_definition()
-            category = definition.category
-            if category in categories:
-                categories[category].append(definition.to_dict())
+            if definition.type not in seen_types:
+                seen_types.add(definition.type)
+                category = definition.category
+                if category in categories:
+                    categories[category].append(definition.to_dict())
 
     return categories
