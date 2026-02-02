@@ -1,0 +1,13 @@
+order_id,customer_id,product_id,quantity,unit_price,total_amount,order_date,status,shipping_address
+ORD-001,1,PROD-101,2,29.99,59.98,2024-02-01,delivered,123 Main St, New York, NY 10001
+ORD-002,2,PROD-102,1,149.99,149.99,2024-02-02,delivered,456 Oak Ave, Los Angeles, CA 90001
+ORD-003,3,PROD-103,5,9.99,49.95,2024-02-03,shipped,789 Pine Rd, Toronto, ON M5V 1A1
+ORD-004,1,PROD-104,1,299.99,299.99,2024-02-04,processing,123 Main St, New York, NY 10001
+ORD-005,4,PROD-101,3,29.99,89.97,2024-02-05,delivered,321 Elm St, London, UK SW1A 1AA
+ORD-006,5,PROD-105,2,79.99,159.98,2024-02-06,delivered,654 Maple Dr, Sydney, NSW 2000
+ORD-007,6,PROD-102,1,149.99,149.99,2024-02-07,cancelled,987 Birch Ln, Berlin, 10115
+ORD-008,7,PROD-106,4,19.99,79.96,2024-02-08,delivered,246 Cedar Way, Madrid, 28001
+ORD-009,8,PROD-103,2,9.99,19.98,2024-02-09,shipped,135 Willow St, Paris, 75001
+ORD-010,9,PROD-107,1,499.99,499.99,2024-02-10,delivered,864 Spruce Ave, Tokyo, 100-0001
+ORD-011,10,PROD-101,6,29.99,179.94,2024-02-11,processing,753 Ash Blvd, Seoul, 04524
+ORD-012,2,PROD-108,1,89.99,89.99,2024-02-12,delivered,456 Oak Ave, Los Angeles, CA 90001

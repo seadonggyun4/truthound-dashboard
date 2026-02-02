@@ -1,0 +1,11 @@
+id,name,email,phone,age,country,created_at,status,credit_score
+1,John Smith,john.smith@email.com,+1-555-0101,32,USA,2024-01-15,active,750
+2,Jane Doe,jane.doe@email.com,+1-555-0102,28,USA,2024-01-16,active,680
+3,Bob Wilson,bob.wilson@email.com,+1-555-0103,45,Canada,2024-01-17,inactive,720
+4,Alice Brown,alice.brown@email.com,+1-555-0104,35,UK,2024-01-18,active,695
+5,Charlie Davis,charlie.davis@email.com,+1-555-0105,52,Australia,2024-01-19,active,810
+6,Diana Miller,diana.miller@email.com,+1-555-0106,29,Germany,2024-01-20,pending,640
+7,Edward Garcia,edward.garcia@email.com,+1-555-0107,41,Spain,2024-01-21,active,705
+8,Fiona Martinez,fiona.martinez@email.com,+1-555-0108,38,France,2024-01-22,active,730
+9,George Anderson,george.anderson@email.com,+1-555-0109,55,Japan,2024-01-23,inactive,690
+10,Helen Thomas,helen.thomas@email.com,+1-555-0110,33,South Korea,2024-01-24,active,755

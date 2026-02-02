@@ -1,0 +1,11 @@
+employee_id,first_name,last_name,email,department,position,salary,hire_date,manager_id,is_active
+EMP-001,Michael,Johnson,michael.johnson@company.com,Engineering,Senior Engineer,95000.00,2020-03-15,,true
+EMP-002,Sarah,Williams,sarah.williams@company.com,Engineering,Junior Engineer,65000.00,2022-06-01,EMP-001,true
+EMP-003,David,Brown,david.brown@company.com,Engineering,Engineer,78000.00,2021-01-20,EMP-001,true
+EMP-004,Emily,Davis,emily.davis@company.com,Marketing,Marketing Manager,85000.00,2019-08-10,,true
+EMP-005,James,Miller,james.miller@company.com,Marketing,Marketing Specialist,55000.00,2023-02-14,EMP-004,true
+EMP-006,Jennifer,Wilson,jennifer.wilson@company.com,Sales,Sales Director,120000.00,2018-05-22,,true
+EMP-007,Robert,Taylor,robert.taylor@company.com,Sales,Sales Representative,60000.00,2022-09-05,EMP-006,true
+EMP-008,Linda,Anderson,linda.anderson@company.com,HR,HR Manager,75000.00,2017-11-30,,true
+EMP-009,William,Thomas,william.thomas@company.com,Finance,CFO,150000.00,2016-04-01,,true
+EMP-010,Patricia,Jackson,patricia.jackson@company.com,Finance,Accountant,62000.00,2021-07-18,EMP-009,false

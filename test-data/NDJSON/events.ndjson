@@ -1,0 +1,15 @@
+{"event_id": "evt-001", "timestamp": "2024-03-01T10:00:00Z", "event_type": "page_view", "user_id": "usr-001", "page": "/home", "duration_ms": 1500}
+{"event_id": "evt-002", "timestamp": "2024-03-01T10:00:15Z", "event_type": "click", "user_id": "usr-001", "element": "signup_button", "page": "/home"}
+{"event_id": "evt-003", "timestamp": "2024-03-01T10:00:30Z", "event_type": "page_view", "user_id": "usr-001", "page": "/signup", "duration_ms": 45000}
+{"event_id": "evt-004", "timestamp": "2024-03-01T10:01:00Z", "event_type": "form_submit", "user_id": "usr-001", "form": "registration", "success": true}
+{"event_id": "evt-005", "timestamp": "2024-03-01T10:01:30Z", "event_type": "page_view", "user_id": "usr-002", "page": "/products", "duration_ms": 8000}
+{"event_id": "evt-006", "timestamp": "2024-03-01T10:02:00Z", "event_type": "search", "user_id": "usr-002", "query": "wireless mouse", "results_count": 15}
+{"event_id": "evt-007", "timestamp": "2024-03-01T10:02:30Z", "event_type": "click", "user_id": "usr-002", "element": "product_card", "product_id": "PROD-101"}
+{"event_id": "evt-008", "timestamp": "2024-03-01T10:03:00Z", "event_type": "add_to_cart", "user_id": "usr-002", "product_id": "PROD-101", "quantity": 1}
+{"event_id": "evt-009", "timestamp": "2024-03-01T10:03:30Z", "event_type": "page_view", "user_id": "usr-003", "page": "/home", "duration_ms": 2500}
+{"event_id": "evt-010", "timestamp": "2024-03-01T10:04:00Z", "event_type": "error", "user_id": "usr-003", "error_code": "404", "page": "/invalid-page"}
+{"event_id": "evt-011", "timestamp": "2024-03-01T10:04:30Z", "event_type": "checkout", "user_id": "usr-002", "cart_value": 29.99, "items_count": 1}
+{"event_id": "evt-012", "timestamp": "2024-03-01T10:05:00Z", "event_type": "purchase", "user_id": "usr-002", "order_id": "ORD-001", "total": 29.99}
+{"event_id": "evt-013", "timestamp": "2024-03-01T10:05:30Z", "event_type": "page_view", "user_id": "usr-004", "page": "/about", "duration_ms": 3200}
+{"event_id": "evt-014", "timestamp": "2024-03-01T10:06:00Z", "event_type": "click", "user_id": "usr-004", "element": "contact_link", "page": "/about"}
+{"event_id": "evt-015", "timestamp": "2024-03-01T10:06:30Z", "event_type": "logout", "user_id": "usr-001", "session_duration_ms": 390000}

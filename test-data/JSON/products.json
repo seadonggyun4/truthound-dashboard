@@ -1,0 +1,107 @@
+[
+  {
+    "product_id": "PROD-101",
+    "name": "Wireless Mouse",
+    "category": "Electronics",
+    "price": 29.99,
+    "stock_quantity": 150,
+    "supplier": {
+      "id": "SUP-001",
+      "name": "TechSupply Co",
+      "country": "China"
+    },
+    "specifications": {
+      "weight_kg": 0.12,
+      "dimensions": {"length": 10, "width": 6, "height": 3},
+      "color": ["black", "white", "silver"]
+    },
+    "is_active": true,
+    "rating": 4.5,
+    "reviews_count": 245,
+    "created_at": "2023-06-15"
+  },
+  {
+    "product_id": "PROD-102",
+    "name": "Bluetooth Headphones",
+    "category": "Electronics",
+    "price": 149.99,
+    "stock_quantity": 75,
+    "supplier": {
+      "id": "SUP-001",
+      "name": "TechSupply Co",
+      "country": "China"
+    },
+    "specifications": {
+      "weight_kg": 0.35,
+      "dimensions": {"length": 18, "width": 15, "height": 8},
+      "color": ["black", "blue"]
+    },
+    "is_active": true,
+    "rating": 4.7,
+    "reviews_count": 512,
+    "created_at": "2023-07-20"
+  },
+  {
+    "product_id": "PROD-103",
+    "name": "USB Cable 2m",
+    "category": "Electronics",
+    "price": 9.99,
+    "stock_quantity": 500,
+    "supplier": {
+      "id": "SUP-002",
+      "name": "CableWorks Inc",
+      "country": "Taiwan"
+    },
+    "specifications": {
+      "weight_kg": 0.08,
+      "dimensions": {"length": 200, "width": 1, "height": 1},
+      "color": ["white"]
+    },
+    "is_active": true,
+    "rating": 4.2,
+    "reviews_count": 1203,
+    "created_at": "2023-08-01"
+  },
+  {
+    "product_id": "PROD-104",
+    "name": "Laptop Stand",
+    "category": "Office",
+    "price": 299.99,
+    "stock_quantity": 30,
+    "supplier": {
+      "id": "SUP-003",
+      "name": "OfficePro Ltd",
+      "country": "Germany"
+    },
+    "specifications": {
+      "weight_kg": 2.5,
+      "dimensions": {"length": 35, "width": 25, "height": 15},
+      "color": ["silver", "black"]
+    },
+    "is_active": true,
+    "rating": 4.8,
+    "reviews_count": 89,
+    "created_at": "2023-09-10"
+  },
+  {
+    "product_id": "PROD-105",
+    "name": "Desk Lamp",
+    "category": "Office",
+    "price": 79.99,
+    "stock_quantity": 200,
+    "supplier": {
+      "id": "SUP-003",
+      "name": "OfficePro Ltd",
+      "country": "Germany"
+    },
+    "specifications": {
+      "weight_kg": 1.2,
+      "dimensions": {"length": 20, "width": 15, "height": 45},
+      "color": ["white", "black", "gold"]
+    },
+    "is_active": true,
+    "rating": 4.4,
+    "reviews_count": 167,
+    "created_at": "2023-10-05"
+  }
+]

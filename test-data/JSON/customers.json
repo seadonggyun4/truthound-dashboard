@@ -1,0 +1,77 @@
+[
+  {
+    "id": 1,
+    "name": "John Smith",
+    "email": "john.smith@email.com",
+    "phone": "+1-555-0101",
+    "age": 32,
+    "country": "USA",
+    "created_at": "2024-01-15",
+    "status": "active",
+    "credit_score": 750,
+    "preferences": {
+      "newsletter": true,
+      "notifications": ["email", "sms"]
+    }
+  },
+  {
+    "id": 2,
+    "name": "Jane Doe",
+    "email": "jane.doe@email.com",
+    "phone": "+1-555-0102",
+    "age": 28,
+    "country": "USA",
+    "created_at": "2024-01-16",
+    "status": "active",
+    "credit_score": 680,
+    "preferences": {
+      "newsletter": false,
+      "notifications": ["email"]
+    }
+  },
+  {
+    "id": 3,
+    "name": "Bob Wilson",
+    "email": "bob.wilson@email.com",
+    "phone": "+1-555-0103",
+    "age": 45,
+    "country": "Canada",
+    "created_at": "2024-01-17",
+    "status": "inactive",
+    "credit_score": 720,
+    "preferences": {
+      "newsletter": true,
+      "notifications": []
+    }
+  },
+  {
+    "id": 4,
+    "name": "Alice Brown",
+    "email": "alice.brown@email.com",
+    "phone": "+1-555-0104",
+    "age": 35,
+    "country": "UK",
+    "created_at": "2024-01-18",
+    "status": "active",
+    "credit_score": 695,
+    "preferences": {
+      "newsletter": true,
+      "notifications": ["push", "email"]
+    }
+  },
+  {
+    "id": 5,
+    "name": "Charlie Davis",
+    "email": "charlie.davis@email.com",
+    "phone": "+1-555-0105",
+    "age": 52,
+    "country": "Australia",
+    "created_at": "2024-01-19",
+    "status": "active",
+    "credit_score": 810,
+    "preferences": {
+      "newsletter": false,
+      "notifications": ["sms"]
+    }
+  }
+]
