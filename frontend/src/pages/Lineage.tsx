@@ -56,6 +56,7 @@ export default function Lineage() {
   const {
     lineageData,
     isLoading,
+    error,
     fetchLineageData,
     addNode,
     removeNode,
@@ -192,8 +193,30 @@ export default function Lineage() {
     )
   }
 
+  // Error state (e.g. API unreachable on Vercel demo)
+  if (!lineageData) {
+    return (
+      <div className="p-6 space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">{t.title}</h1>
+          <p className="text-muted-foreground">{t.subtitle}</p>
+        </div>
+        <div className="flex h-[500px] flex-col items-center justify-center gap-4 rounded-lg border-2 border-dashed">
+          <AlertTriangle className="h-10 w-10 text-muted-foreground" />
+          <p className="text-lg font-medium">Failed to load lineage data</p>
+          <p className="text-muted-foreground text-sm">
+            {error || 'Unable to connect to the backend API.'}
+          </p>
+          <Button variant="outline" onClick={handleRefresh}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   // Empty state
-  if (lineageData && lineageData.nodes.length === 0) {
+  if (lineageData.nodes.length === 0) {
     return (
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
