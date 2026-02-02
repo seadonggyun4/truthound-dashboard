@@ -1919,14 +1919,14 @@ def get_supported_source_types() -> list[dict[str, Any]]:
     """
     result = []
     seen_types: set[str] = set()
+    # File types are unified into a single "File" card
+    FILE_SUBTYPES = {SourceType.CSV, SourceType.PARQUET, SourceType.JSON, SourceType.NDJSON, SourceType.JSONL}
     for source_type in SourceType:
-        # Skip generic FILE type - specific format types (CSV, Parquet, etc.) cover it
-        if source_type == SourceType.FILE:
+        if source_type in FILE_SUBTYPES:
             continue
         builder_class = CONNECTION_BUILDERS.get(source_type.value)
         if builder_class:
             definition = builder_class.get_definition()
-            # Deduplicate by type value
             if definition.type not in seen_types:
                 seen_types.add(definition.type)
                 result.append(definition.to_dict())
@@ -1965,8 +1965,9 @@ def get_source_types_by_category() -> dict[str, list[dict[str, Any]]]:
     }
 
     seen_types: set[str] = set()
+    FILE_SUBTYPES = {SourceType.CSV, SourceType.PARQUET, SourceType.JSON, SourceType.NDJSON, SourceType.JSONL}
     for source_type in SourceType:
-        if source_type == SourceType.FILE:
+        if source_type in FILE_SUBTYPES:
             continue
         builder_class = CONNECTION_BUILDERS.get(source_type.value)
         if builder_class:

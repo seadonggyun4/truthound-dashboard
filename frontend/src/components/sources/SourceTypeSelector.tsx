@@ -29,7 +29,10 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 import type { SourceTypeDefinition, SourceCategory } from '@/api/modules/sources'
+
+const FILE_FORMAT_BADGES = ['CSV', 'Parquet', 'JSON', 'NDJSON', 'JSONL']
 
 interface SourceTypeSelectorProps {
   sourceTypes: SourceTypeDefinition[]
@@ -139,14 +142,18 @@ export function SourceTypeSelector({
             <div
               className={cn(
                 'grid gap-2',
-                compact
-                  ? 'grid-cols-2 sm:grid-cols-3'
-                  : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
+                // File category with single card gets full width
+                category === 'file' && types.length === 1
+                  ? 'grid-cols-1'
+                  : compact
+                    ? 'grid-cols-2 sm:grid-cols-3'
+                    : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
               )}
             >
               {types.map((sourceType) => {
                 const Icon = SOURCE_ICONS[sourceType.icon] || getFallbackIcon(sourceType.category)
                 const isSelected = selectedType === sourceType.type
+                const isFileCard = category === 'file' && types.length === 1
 
                 return (
                   <button
@@ -154,8 +161,11 @@ export function SourceTypeSelector({
                     type="button"
                     onClick={() => onSelect(sourceType.type)}
                     className={cn(
-                      'group relative flex flex-col items-center gap-2 rounded-lg border transition-all',
-                      compact ? 'p-3' : 'p-4',
+                      'group relative rounded-lg border transition-all',
+                      isFileCard
+                        ? 'flex items-center gap-4 p-4'
+                        : 'flex flex-col items-center gap-2',
+                      !isFileCard && (compact ? 'p-3' : 'p-4'),
                       'hover:border-primary/50 hover:bg-accent/50',
                       isSelected
                         ? 'border-primary bg-primary/10 ring-1 ring-primary'
@@ -174,13 +184,23 @@ export function SourceTypeSelector({
                       <Icon className={cn(compact ? 'h-4 w-4' : 'h-5 w-5')} />
                     </div>
 
-                    <div className="text-center">
+                    <div className={isFileCard ? 'flex-1 text-left' : 'text-center'}>
                       <div className={cn('font-medium', compact ? 'text-xs' : 'text-sm')}>
                         {sourceType.name}
                       </div>
                       {!compact && (
                         <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                           {sourceType.description}
+                        </div>
+                      )}
+                      {/* Show supported format badges for unified file card */}
+                      {isFileCard && !compact && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {FILE_FORMAT_BADGES.map((fmt) => (
+                            <Badge key={fmt} variant="secondary" className="text-xs font-normal">
+                              {fmt}
+                            </Badge>
+                          ))}
                         </div>
                       )}
                     </div>
