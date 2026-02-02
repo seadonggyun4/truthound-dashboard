@@ -130,7 +130,7 @@ class ValidationRunRequest(BaseSchema):
 class ValidationSummary(BaseSchema):
     """Summary statistics for a validation run."""
 
-    passed: bool = Field(..., description="Whether validation passed")
+    passed: bool | None = Field(default=None, description="Whether validation passed (null when status is error)")
     has_critical: bool = Field(default=False, description="Has critical issues")
     has_high: bool = Field(default=False, description="Has high severity issues")
     total_issues: int = Field(default=0, ge=0, description="Total issue count")
@@ -196,7 +196,7 @@ class ValidationResponse(IDMixin, ValidationSummary):
             id=validation.id,
             source_id=validation.source_id,
             status=validation.status,
-            passed=validation.passed or False,
+            passed=None if validation.status == "error" else (validation.passed or False),
             has_critical=validation.has_critical or False,
             has_high=validation.has_high or False,
             total_issues=validation.total_issues or 0,
@@ -239,7 +239,7 @@ class ValidationListItem(IDMixin, ValidationSummary):
             id=validation.id,
             source_id=validation.source_id,
             status=validation.status,
-            passed=validation.passed or False,
+            passed=None if validation.status == "error" else (validation.passed or False),
             has_critical=validation.has_critical or False,
             has_high=validation.has_high or False,
             total_issues=validation.total_issues or 0,
