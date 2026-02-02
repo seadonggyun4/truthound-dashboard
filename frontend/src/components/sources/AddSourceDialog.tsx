@@ -511,7 +511,7 @@ export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDial
             </Button>
 
             {step === 'test' ? (
-              <Button onClick={handleCreate} disabled={creating}>
+              <Button onClick={handleCreate} disabled={creating || !testResult?.success}>
                 {creating ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
