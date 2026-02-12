@@ -22,6 +22,9 @@ import {
   GitBranch,
   Network,
   BrainCircuit,
+  ChevronDown,
+  ChevronRight,
+  Info,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -35,6 +38,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   getSource,
   testSourceConnection,
@@ -48,6 +62,7 @@ import {
   runValidation,
   type Validation,
   type ValidatorConfig,
+  type ResultFormatLevel,
 } from '@/api/modules/validations'
 import {
   listValidators,
@@ -99,6 +114,15 @@ export default function SourceDetail() {
   const [customValidators, setCustomValidators] = useState<UnifiedValidatorDefinition[]>([])
   const [customValidatorConfigs, setCustomValidatorConfigs] = useState<CustomValidatorSelectionConfig[]>([])
   const [loadingValidators, setLoadingValidators] = useState(false)
+
+  // Advanced validation options (PHASE 1 + PHASE 5)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [resultFormat, setResultFormat] = useState<ResultFormatLevel>('basic')
+  const [includeUnexpectedRows, setIncludeUnexpectedRows] = useState(false)
+  const [maxUnexpectedRows, setMaxUnexpectedRows] = useState(100)
+  const [catchExceptions, setCatchExceptions] = useState(true)
+  const [maxRetries, setMaxRetries] = useState(3)
+
   const { toast } = useToast()
   const sources_t = useSafeIntlayer('sources')
   const common = useSafeIntlayer('common')
@@ -192,7 +216,15 @@ export default function SourceDetail() {
           params: c.params || {},
         }))
 
-      const options: Parameters<typeof runValidation>[1] = {}
+      const options: Parameters<typeof runValidation>[1] = {
+        // PHASE 1: Result format options
+        result_format: resultFormat,
+        include_unexpected_rows: includeUnexpectedRows,
+        ...(includeUnexpectedRows && { max_unexpected_rows: maxUnexpectedRows }),
+        // PHASE 5: Exception control
+        catch_exceptions: catchExceptions,
+        max_retries: maxRetries,
+      }
       if (enabledConfigs.length > 0) {
         options.validator_configs = enabledConfigs
       }
@@ -454,6 +486,123 @@ export default function SourceDetail() {
                     onCustomValidatorChange={setCustomValidatorConfigs}
                   />
                 )}
+
+                {/* Advanced Options (PHASE 1 + PHASE 5) */}
+                <Separator className="my-4" />
+                <button
+                  type="button"
+                  onClick={() => setAdvancedOpen(!advancedOpen)}
+                  className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
+                >
+                  {advancedOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  Advanced Options
+                </button>
+
+                {advancedOpen && (
+                  <div className="mt-3 space-y-5 rounded-lg border p-4 bg-muted/30">
+                    {/* Result Format */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Result Detail Level</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Controls how much detail is included in validation results.
+                      </p>
+                      <Select
+                        value={resultFormat}
+                        onValueChange={(v) => setResultFormat(v as ResultFormatLevel)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="boolean_only">
+                            Boolean Only — Pass/fail only
+                          </SelectItem>
+                          <SelectItem value="basic">
+                            Basic — Counts + sample values
+                          </SelectItem>
+                          <SelectItem value="summary">
+                            Summary — Counts + value frequencies
+                          </SelectItem>
+                          <SelectItem value="complete">
+                            Complete — Full rows + debug queries
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Include Unexpected Rows (only visible when format >= summary) */}
+                    {(resultFormat === 'summary' || resultFormat === 'complete') && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label className="text-sm font-medium">Include Unexpected Rows</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Return full row data for failing records.
+                            </p>
+                          </div>
+                          <Switch
+                            checked={includeUnexpectedRows}
+                            onCheckedChange={setIncludeUnexpectedRows}
+                          />
+                        </div>
+
+                        {includeUnexpectedRows && (
+                          <div className="flex items-center gap-3 pl-4">
+                            <Label className="text-sm whitespace-nowrap">Max rows</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={10000}
+                              value={maxUnexpectedRows}
+                              onChange={(e) => setMaxUnexpectedRows(Number(e.target.value) || 100)}
+                              className="w-28"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <Separator />
+
+                    {/* Exception Control */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm font-medium">Catch Exceptions</Label>
+                          <p className="text-xs text-muted-foreground">
+                            Continue validation even if individual validators fail.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={catchExceptions}
+                          onCheckedChange={setCatchExceptions}
+                        />
+                      </div>
+
+                      {catchExceptions && (
+                        <div className="flex items-center gap-3 pl-4">
+                          <Label className="text-sm whitespace-nowrap">Max retries</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={10}
+                            value={maxRetries}
+                            onChange={(e) => setMaxRetries(Number(e.target.value) || 0)}
+                            className="w-28"
+                          />
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Info className="h-3 w-3" />
+                            <span>Transient errors are retried with backoff</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setValidationDialogOpen(false)}>
@@ -654,10 +803,25 @@ export default function SourceDetail() {
           {latestValidation && latestValidation.issues && latestValidation.issues.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                  Issues Found ({latestValidation.total_issues})
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                    Issues Found ({latestValidation.total_issues})
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    {latestValidation.result_format && (
+                      <Badge variant="outline" className="text-xs">
+                        {latestValidation.result_format}
+                      </Badge>
+                    )}
+                    <Link
+                      to={`/validations/${latestValidation.id}`}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      View Full Details
+                    </Link>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -684,16 +848,24 @@ export default function SourceDetail() {
                           <p className="font-medium">
                             {issue.column}: {issue.issue_type}
                           </p>
-                          {issue.details && (
-                            <p className="text-sm text-muted-foreground">
-                              {issue.details}
-                            </p>
-                          )}
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            {issue.details && <span>{issue.details}</span>}
+                            {issue.validator_name && (
+                              <Badge variant="outline" className="text-xs">
+                                {issue.validator_name}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <span className="text-sm text-muted-foreground">
-                        {formatNumber(issue.count)} occurrences
-                      </span>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        {issue.result && (
+                          <span className="text-xs">
+                            {issue.result.unexpected_percent.toFixed(1)}% failed
+                          </span>
+                        )}
+                        <span>{formatNumber(issue.count)} occurrences</span>
+                      </div>
                     </div>
                   ))}
                 </div>
