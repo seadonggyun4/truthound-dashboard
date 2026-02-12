@@ -171,7 +171,13 @@ from .source import (
     TestConnectionResponse,
 )
 from .validation import (
+    ExceptionInfoSchema,
+    ExceptionSummarySchema,
     IssueSeverity,
+    ReportStatistics,
+    ResultFormatLevel,
+    SkippedValidatorInfo,
+    ValidationDetailResult,
     ValidationIssue,
     ValidationListItem,
     ValidationListResponse,
@@ -179,6 +185,7 @@ from .validation import (
     ValidationRunRequest,
     ValidationStatus,
     ValidationSummary,
+    ValidatorExecutionSummary,
 )
 # Reports
 from .reports import (

@@ -1,6 +1,11 @@
 """Validation-related Pydantic schemas.
 
 This module defines schemas for validation API operations.
+Supports truthound 1.3.0+ features including:
+- PHASE 1: ResultFormat system (boolean_only/basic/summary/complete)
+- PHASE 2: Structured validation results (ValidationDetail, ReportStatistics)
+- PHASE 4: DAG execution info (ValidatorExecutionSummary)
+- PHASE 5: Exception isolation & auto-retry (ExceptionInfo, ExceptionSummary)
 """
 
 from __future__ import annotations
@@ -8,7 +13,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from .base import BaseSchema, IDMixin, ListResponseWrapper
 from .validators import ValidatorConfig
@@ -19,13 +24,103 @@ ValidationStatus = Literal["pending", "running", "success", "failed", "error"]
 # Issue severity types
 IssueSeverity = Literal["critical", "high", "medium", "low"]
 
+# Result format levels (PHASE 1)
+ResultFormatLevel = Literal["boolean_only", "basic", "summary", "complete"]
+
+
+# ---------------------------------------------------------------------------
+# PHASE 2: Structured validation detail
+# ---------------------------------------------------------------------------
+
+class ValidationDetailResult(BaseSchema):
+    """Structured validation result detail (PHASE 2).
+
+    Maps to truthound's ValidationDetail dataclass.
+    Fields are populated selectively based on the result_format level.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    # Always populated
+    element_count: int = Field(default=0, description="Total row count")
+    missing_count: int = Field(default=0, description="Null row count")
+
+    # BASIC+
+    observed_value: Any | None = Field(default=None, description="Observed metric value")
+    unexpected_count: int = Field(default=0, description="Failed row count")
+    unexpected_percent: float = Field(default=0.0, description="Failure rate (total)")
+    unexpected_percent_nonmissing: float = Field(
+        default=0.0, description="Failure rate (excl. nulls)"
+    )
+    partial_unexpected_list: list[Any] | None = Field(
+        default=None, description="Sample of failed values"
+    )
+
+    # SUMMARY+
+    partial_unexpected_counts: list[dict[str, Any]] | None = Field(
+        default=None, description="Failed value frequencies [{value, count}, ...]"
+    )
+    partial_unexpected_index_list: list[int] | None = Field(
+        default=None, description="Sample of failed row indices"
+    )
+
+    # COMPLETE
+    unexpected_list: list[Any] | None = Field(
+        default=None, description="Full list of failed values"
+    )
+    unexpected_index_list: list[int] | None = Field(
+        default=None, description="Full list of failed row indices"
+    )
+    unexpected_rows: list[dict[str, Any]] | None = Field(
+        default=None, description="Failed rows as dicts (COMPLETE mode)"
+    )
+    debug_query: str | None = Field(
+        default=None, description="Reproducible query for failed rows (COMPLETE mode)"
+    )
+
+
+# ---------------------------------------------------------------------------
+# PHASE 5: Exception information
+# ---------------------------------------------------------------------------
+
+class ExceptionInfoSchema(BaseSchema):
+    """Individual validation exception info (PHASE 5).
+
+    Maps to truthound's ExceptionInfo dataclass.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    exception_type: str | None = Field(default=None, description="Exception class name")
+    exception_message: str | None = Field(default=None, description="Exception message")
+    retry_count: int = Field(default=0, description="Number of retries attempted")
+    max_retries: int = Field(default=0, description="Maximum retries configured")
+    is_retryable: bool = Field(default=False, description="Whether error is retryable")
+    failure_category: str = Field(
+        default="unknown",
+        description="Failure classification: transient|permanent|configuration|data",
+    )
+    validator_name: str | None = Field(default=None)
+    column: str | None = Field(default=None)
+
+
+# ---------------------------------------------------------------------------
+# Core: ValidationIssue (extended for PHASE 1-5)
+# ---------------------------------------------------------------------------
 
 class ValidationIssue(BaseSchema):
     """Single validation issue.
 
     Represents one issue found during validation, mapping to
     truthound's ValidationIssue dataclass.
+
+    Extended in truthound 1.3.0+ with:
+    - result: Structured detail (PHASE 2)
+    - validator_name, success: Metadata (PHASE 2)
+    - exception_info: Error context (PHASE 5)
     """
+
+    model_config = ConfigDict(extra="ignore")
 
     column: str = Field(..., description="Column where issue was found")
     issue_type: str = Field(
@@ -39,6 +134,21 @@ class ValidationIssue(BaseSchema):
     sample_values: list[Any] | None = Field(
         default=None,
         description="Sample problematic values",
+    )
+
+    # PHASE 2: Structured result & metadata
+    validator_name: str | None = Field(
+        default=None, description="Validator that generated this issue"
+    )
+    success: bool = Field(default=False, description="Whether this check passed")
+    result: ValidationDetailResult | None = Field(
+        default=None, description="Structured detail (BASIC+ result_format)"
+    )
+
+    # PHASE 5: Exception context
+    exception_info: ExceptionInfoSchema | None = Field(
+        default=None,
+        description="Exception info if this issue was generated from a system error",
     )
 
 
@@ -126,6 +236,116 @@ class ValidationRunRequest(BaseSchema):
         description="Enable query pushdown optimization for SQL data sources. None uses auto-detection.",
     )
 
+    # PHASE 1: Result format control
+    result_format: ResultFormatLevel | None = Field(
+        default=None,
+        description=(
+            "Controls detail level of validation results. "
+            "'boolean_only': pass/fail only. 'basic': + counts and samples. "
+            "'summary': + value frequency counts (default). "
+            "'complete': + full failure rows and debug queries."
+        ),
+        examples=["summary", "complete"],
+    )
+    include_unexpected_rows: bool = Field(
+        default=False,
+        description="Include failure row data in SUMMARY or higher results.",
+    )
+    max_unexpected_rows: int | None = Field(
+        default=None,
+        ge=1,
+        le=10000,
+        description="Maximum number of failure rows to return when include_unexpected_rows=True.",
+    )
+
+    # PHASE 5: Exception control
+    catch_exceptions: bool = Field(
+        default=True,
+        description=(
+            "If True (default), validator errors are caught and included in the report. "
+            "If False (strict mode), the first validator error aborts the entire validation."
+        ),
+    )
+    max_retries: int = Field(
+        default=3,
+        ge=0,
+        le=10,
+        description=(
+            "Maximum retry attempts for transient errors (timeout, connection). "
+            "Only applies when catch_exceptions=True."
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# PHASE 2: Report statistics
+# ---------------------------------------------------------------------------
+
+class ReportStatistics(BaseSchema):
+    """Aggregated validation report statistics (PHASE 2).
+
+    Maps to truthound's ReportStatistics dataclass.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    total_validations: int = Field(default=0, description="Total validations performed")
+    successful_validations: int = Field(default=0, description="Passed validations")
+    unsuccessful_validations: int = Field(default=0, description="Failed validations")
+    success_percent: float = Field(default=0.0, description="Success rate %")
+    issues_by_severity: dict[str, int] = Field(default_factory=dict)
+    issues_by_column: dict[str, int] = Field(default_factory=dict)
+    issues_by_validator: dict[str, int] = Field(default_factory=dict)
+    issues_by_type: dict[str, int] = Field(default_factory=dict)
+    most_problematic_columns: list[list[Any]] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# PHASE 4: Validator execution summary
+# ---------------------------------------------------------------------------
+
+class SkippedValidatorInfo(BaseSchema):
+    """Info about a skipped validator (PHASE 4)."""
+
+    validator_name: str = Field(..., description="Validator name")
+    reason: str | None = Field(default=None, description="Skip reason")
+
+
+class ValidatorExecutionSummary(BaseSchema):
+    """Validator execution summary from DAG execution (PHASE 4)."""
+
+    total_validators: int = Field(default=0, description="Total validators")
+    executed: int = Field(default=0, description="Executed validators")
+    skipped: int = Field(default=0, description="Skipped validators")
+    failed: int = Field(default=0, description="Failed validators")
+    skipped_details: list[SkippedValidatorInfo] | None = Field(
+        default=None, description="Details of skipped validators"
+    )
+
+
+# ---------------------------------------------------------------------------
+# PHASE 5: Exception summary
+# ---------------------------------------------------------------------------
+
+class ExceptionSummarySchema(BaseSchema):
+    """Session-level exception summary (PHASE 5).
+
+    Maps to truthound's ExceptionSummary dataclass.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    total_exceptions: int = Field(default=0, description="Total exception count")
+    total_retries: int = Field(default=0, description="Total retry attempts")
+    exceptions_by_type: dict[str, int] = Field(default_factory=dict)
+    exceptions_by_category: dict[str, int] = Field(default_factory=dict)
+    exceptions_by_validator: dict[str, int] = Field(default_factory=dict)
+    retryable_count: int = Field(default=0, description="Number of retryable errors")
+
+
+# ---------------------------------------------------------------------------
+# Core: Summary & Response
+# ---------------------------------------------------------------------------
 
 class ValidationSummary(BaseSchema):
     """Summary statistics for a validation run."""
@@ -176,9 +396,32 @@ class ValidationResponse(IDMixin, ValidationSummary):
     )
     created_at: datetime = Field(..., description="Record creation timestamp")
 
+    # PHASE 1: Result format used
+    result_format: str | None = Field(
+        default=None, description="Result format level used for this validation"
+    )
+
+    # PHASE 2: Report statistics
+    statistics: ReportStatistics | None = Field(
+        default=None, description="Aggregated validation statistics"
+    )
+
+    # PHASE 4: Execution summary
+    validator_execution_summary: ValidatorExecutionSummary | None = Field(
+        default=None, description="Validator execution summary (parallel/DAG mode)"
+    )
+
+    # PHASE 5: Exception summary
+    exception_summary: ExceptionSummarySchema | None = Field(
+        default=None, description="Session-level exception summary"
+    )
+
     @classmethod
     def from_model(cls, validation: Any) -> ValidationResponse:
         """Create response from model.
+
+        Handles both legacy DB records (without PHASE 1-5 fields) and
+        new records with full structured data.
 
         Args:
             validation: Validation model instance.
@@ -186,11 +429,52 @@ class ValidationResponse(IDMixin, ValidationSummary):
         Returns:
             ValidationResponse instance.
         """
-        issues = []
-        if validation.result_json and "issues" in validation.result_json:
-            issues = [
-                ValidationIssue(**issue) for issue in validation.result_json["issues"]
-            ]
+        issues: list[ValidationIssue] = []
+        result_json = validation.result_json or {}
+
+        if "issues" in result_json:
+            for issue_data in result_json["issues"]:
+                try:
+                    issues.append(ValidationIssue(**issue_data))
+                except Exception:
+                    # Fallback for legacy DB records missing new fields
+                    issues.append(ValidationIssue(
+                        column=issue_data.get("column", ""),
+                        issue_type=issue_data.get("issue_type", "unknown"),
+                        count=issue_data.get("count", 0),
+                        severity=issue_data.get("severity", "medium"),
+                        details=issue_data.get("details"),
+                        expected=issue_data.get("expected"),
+                        actual=issue_data.get("actual"),
+                        sample_values=issue_data.get("sample_values"),
+                    ))
+
+        # PHASE 2: statistics
+        statistics = None
+        raw_stats = result_json.get("statistics")
+        if raw_stats and isinstance(raw_stats, dict):
+            try:
+                statistics = ReportStatistics(**raw_stats)
+            except Exception:
+                pass
+
+        # PHASE 4: execution summary
+        exec_summary = None
+        raw_exec = result_json.get("validator_execution_summary")
+        if raw_exec and isinstance(raw_exec, dict):
+            try:
+                exec_summary = ValidatorExecutionSummary(**raw_exec)
+            except Exception:
+                pass
+
+        # PHASE 5: exception summary
+        exc_summary = None
+        raw_exc = result_json.get("exception_summary")
+        if raw_exc and isinstance(raw_exc, dict):
+            try:
+                exc_summary = ExceptionSummarySchema(**raw_exc)
+            except Exception:
+                pass
 
         return cls(
             id=validation.id,
@@ -212,6 +496,10 @@ class ValidationResponse(IDMixin, ValidationSummary):
             started_at=validation.started_at,
             completed_at=validation.completed_at,
             created_at=validation.created_at,
+            result_format=result_json.get("result_format"),
+            statistics=statistics,
+            validator_execution_summary=exec_summary,
+            exception_summary=exc_summary,
         )
 
 
