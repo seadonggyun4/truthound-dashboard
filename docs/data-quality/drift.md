@@ -1,35 +1,37 @@
 # Drift Detection
 
-The Drift Detection module enables comparison of data distributions between baseline and current datasets to identify statistical changes that may indicate data quality degradation or upstream process modifications.
+The Drift Detection module provides systematic comparison of data distributions between baseline and current datasets, facilitating the identification of statistical changes that may be indicative of data quality degradation or modifications to upstream processes.
 
 ## Overview
 
-Data drift occurs when the statistical properties of data change over time. The Drift Detection module implements multiple statistical methods to quantify distribution differences between a reference (baseline) dataset and a comparison (current) dataset, providing actionable insights into data evolution.
+Data drift is observed when the statistical properties of a dataset undergo transformation over time. The Drift Detection module implements multiple statistical methods to quantify distribution differences between a reference (baseline) dataset and a comparison (current) dataset, thereby providing actionable insights into the temporal evolution of data characteristics.
 
-## Drift Comparison Interface
+## Drift Comparison Interface Specifications
 
 ### Initiating a Comparison
 
-1. Click the **New Comparison** button
-2. Select the **Baseline Source**: The reference dataset representing expected data characteristics
-3. Select the **Current Source**: The dataset to compare against the baseline
-4. Configure detection parameters
-5. Execute the comparison
+The following procedural steps are to be followed when initiating a drift comparison:
+
+1. The **New Comparison** button is to be selected
+2. The **Baseline Source** is designated: this constitutes the reference dataset representing the expected data characteristics
+3. The **Current Source** is designated: this constitutes the dataset to be compared against the baseline
+4. Detection parameters are configured according to analytical requirements
+5. The comparison is executed
 
 #### Source Selection Constraint
 
-The system enforces that the baseline source and the current source must be different datasets. When the same data source is selected for both, the following safeguards are applied:
+A constraint is enforced by the system whereby the baseline source and the current source must constitute distinct datasets. When an identical data source is selected for both, the following safeguards are applied:
 
-- The **Compare** button is disabled, preventing submission of an invalid comparison request
-- An inline validation message is displayed beneath the Current Source selector, indicating that distinct sources must be chosen
+- The **Compare** button is rendered inactive, thereby preventing the submission of an invalid comparison request
+- An inline validation message is displayed beneath the Current Source selector, indicating that distinct sources must be selected
 
-This constraint exists because drift detection is defined as a comparison between two distinct data distributions. Comparing a dataset against itself yields no meaningful statistical information and would trivially return zero drift across all columns and metrics.
+This constraint is imposed because drift detection is defined as a comparison between two distinct data distributions. A comparison of a dataset against itself would yield no meaningful statistical information and would trivially return zero drift across all columns and metrics.
 
 ### Configuration Parameters
 
 #### Detection Method
 
-The system supports multiple statistical methods for drift detection:
+Multiple statistical methods for drift detection are supported by the system:
 
 | Method | Description | Best For | Column Type |
 |--------|-------------|----------|-------------|
@@ -52,201 +54,201 @@ The system supports multiple statistical methods for drift detection:
 
 #### Threshold Override
 
-Configure the sensitivity of drift detection:
+The sensitivity of drift detection may be configured as follows:
 
-- Lower thresholds increase sensitivity (more drift detected)
-- Higher thresholds decrease sensitivity (only significant drift detected)
-- Default threshold varies by method
+- Lower thresholds result in increased sensitivity (a greater number of drift instances are detected)
+- Higher thresholds result in decreased sensitivity (only statistically significant drift is detected)
+- The default threshold is determined by the selected method
 
 #### Column Selection
 
-Optionally restrict comparison to specific columns:
+The comparison may optionally be restricted to a specified subset of columns:
 
-- By default, all common columns are compared
-- Select specific columns when focusing on critical attributes
-- Column selection is based on the source schema
+- By default, all common columns are included in the comparison
+- Specific columns may be selected when the analysis is focused on critical attributes
+- Column selection is determined by the source schema
 
-## Comparison Results
+## Comparative Analysis Results
 
 ### Summary Statistics
 
-Upon completion, the comparison displays:
+Upon completion of the comparison, the following summary statistics are presented:
 
 | Metric | Description |
 |--------|-------------|
 | **Total Columns Compared** | Number of columns included in the analysis |
 | **Drifted Columns** | Number of columns exhibiting statistically significant drift |
 | **Drift Percentage** | Proportion of columns with detected drift |
-| **Detection Method** | The statistical method used for comparison |
+| **Detection Method** | The statistical method employed for the comparison |
 
 ### Drift Status Indicators
 
 | Status | Description |
 |--------|-------------|
-| **High Drift** | Significant distribution changes detected |
-| **Drift Detected** | Moderate distribution changes detected |
-| **No Drift** | Distributions are statistically similar |
+| **High Drift** | Significant distribution changes have been detected |
+| **Drift Detected** | Moderate distribution changes have been detected |
+| **No Drift** | Distributions are determined to be statistically similar |
 
 ### Column-Level Details
 
-For each column compared, the results include:
+For each column subjected to comparison, the following results are reported:
 
 | Attribute | Description |
 |-----------|-------------|
 | **Column Name** | The column identifier |
 | **Drift Detected** | Boolean indicator of drift presence |
-| **Method** | Statistical method applied to this column |
+| **Method** | Statistical method applied to the given column |
 | **Drift Level** | Quantitative measure of drift magnitude |
-| **P-Value** | Statistical significance of the drift (where applicable) |
+| **P-Value** | Statistical significance of the observed drift (where applicable) |
 
 ## Comparison History
 
-The Drift page maintains a history of executed comparisons:
+A persistent history of executed comparisons is maintained on the Drift page:
 
-- View past comparisons with their results
-- Compare different time periods by reviewing historical comparisons
-- Track drift evolution over time
+- Previously executed comparisons and their associated results may be reviewed
+- Different temporal periods may be compared through examination of historical comparisons
+- The evolution of drift over time may be tracked and analyzed
 
-## Statistical Methods Reference
+## Statistical Methodology Reference
 
 ### Kolmogorov-Smirnov (KS) Test
 
-The KS test measures the maximum difference between cumulative distribution functions:
+The KS test is employed to measure the maximum difference between cumulative distribution functions:
 
-- **Null Hypothesis**: Samples are drawn from the same distribution
+- **Null Hypothesis**: The samples are drawn from the same underlying distribution
 - **Statistic**: Maximum absolute difference between CDFs
-- **Interpretation**: Higher values indicate greater distribution difference
+- **Interpretation**: Higher values are indicative of greater distribution divergence
 
 ### Population Stability Index (PSI)
 
-PSI quantifies distribution shift commonly used in credit risk:
+The PSI is utilized to quantify distribution shift and is commonly employed in credit risk assessment:
 
 - **Formula**: PSI = Σ (Actual% - Expected%) × ln(Actual% / Expected%)
 - **Thresholds**: PSI < 0.1 (no significant shift), 0.1-0.25 (moderate shift), > 0.25 (significant shift)
-- **Use Case**: Model monitoring, scorecard stability
+- **Application**: Model monitoring and scorecard stability assessment
 
 ### Chi-Squared Test
 
-Chi-squared test compares observed vs expected frequencies:
+The Chi-squared test is applied to compare observed versus expected frequencies:
 
 - **Application**: Categorical variables
-- **Null Hypothesis**: Observed frequencies match expected frequencies
-- **Interpretation**: Higher chi-squared values indicate greater divergence
+- **Null Hypothesis**: Observed frequencies conform to expected frequencies
+- **Interpretation**: Higher chi-squared values are indicative of greater divergence between distributions
 
 ### Jensen-Shannon Divergence
 
-JS divergence is a symmetric measure of distribution similarity:
+The JS divergence constitutes a symmetric measure of distributional similarity:
 
 - **Range**: 0 (identical) to 1 (maximally different)
 - **Properties**: Symmetric, always finite
-- **Interpretation**: Lower values indicate more similar distributions
+- **Interpretation**: Lower values are indicative of greater distributional similarity
 
 ### Kullback-Leibler Divergence
 
-KL divergence measures information loss when approximating one distribution with another:
+The KL divergence quantifies the information loss incurred when one distribution is approximated by another:
 
 - **Range**: 0 to infinity
 - **Properties**: Asymmetric (KL(P||Q) ≠ KL(Q||P))
-- **Interpretation**: Lower values indicate better approximation
-- **Tip**: Use `method="js"` for a symmetric variant
+- **Interpretation**: Lower values are indicative of a more accurate approximation
+- **Note**: The `method="js"` parameter may be employed to obtain a symmetric variant
 
 ### Wasserstein Distance
 
-Also known as Earth Mover's Distance, measures the minimum cost of transforming one distribution into another:
+The Wasserstein distance, also referred to as the Earth Mover's Distance, measures the minimum cost of transforming one distribution into another:
 
-- **Interpretation**: Accounts for distance between distribution supports
-- **Use Case**: Distributions with different supports or shifted means
-- **Properties**: Intuitive physical interpretation, normalized by baseline std
+- **Interpretation**: The distance between distribution supports is accounted for
+- **Application**: Distributions characterized by different supports or shifted means
+- **Properties**: Intuitive physical interpretation, normalized by baseline standard deviation
 
 ### Cramér-von Mises Test
 
-The CvM test is more sensitive to differences in the tails than the KS test:
+The CvM test exhibits greater sensitivity to differences in the tails of distributions than the KS test:
 
-- **Properties**: Integrates squared differences between CDFs
-- **Use Case**: When tail behavior is important
-- **Interpretation**: Lower p-values indicate greater distribution difference
+- **Properties**: Squared differences between CDFs are integrated
+- **Application**: Scenarios in which tail behavior is of particular importance
+- **Interpretation**: Lower p-values are indicative of greater distributional divergence
 
 ### Anderson-Darling Test
 
-The AD test is the most sensitive to tail differences:
+The AD test is regarded as the most sensitive to differences in distribution tails:
 
-- **Properties**: Weights tail differences more heavily than center
-- **Use Case**: Detecting subtle changes in distribution tails
-- **Interpretation**: Higher statistic values indicate greater difference
+- **Properties**: Tail differences are weighted more heavily than those in the center of the distribution
+- **Application**: Detection of subtle changes in distribution tails
+- **Interpretation**: Higher statistic values are indicative of greater distributional difference
 
 ### Hellinger Distance
 
-Hellinger distance is a bounded metric for comparing probability distributions:
+The Hellinger distance constitutes a bounded metric for the comparison of probability distributions:
 
 - **Range**: 0 (identical) to 1 (no overlap)
 - **Properties**: Symmetric, satisfies triangle inequality, true metric
 - **Formula**: H(P,Q) = (1/√2) × √(Σ(√p_i - √q_i)²)
-- **Use Case**: When you need a proper metric with bounded range
+- **Application**: Scenarios requiring a proper metric with a bounded range
 
 ### Bhattacharyya Distance
 
-Measures overlap between two probability distributions:
+The Bhattacharyya distance is employed to measure the overlap between two probability distributions:
 
 - **Range**: 0 to ∞ (0 = identical)
 - **Properties**: Related to classification error bounds
 - **Formula**: D_B = -ln(Σ√(p_i × q_i))
-- **Use Case**: Classification problems, measuring distribution overlap
+- **Application**: Classification problems and the measurement of distributional overlap
 
 ### Total Variation Distance
 
-Measures the maximum probability difference between distributions:
+The Total Variation distance quantifies the maximum probability difference between distributions:
 
 - **Range**: 0 (identical) to 1 (completely different)
 - **Properties**: Symmetric, bounded, triangle inequality
 - **Formula**: TV(P,Q) = (1/2) × Σ|p_i - q_i|
-- **Use Case**: Simple interpretation - "largest probability difference"
+- **Application**: Contexts requiring straightforward interpretation as the largest probability difference
 
 ### Energy Distance
 
-Measures differences in location and scale of distributions:
+The Energy distance is utilized to measure differences in the location and scale of distributions:
 
 - **Range**: 0 to ∞ (0 = identical)
 - **Properties**: Characterizes distributions, consistent statistical test
 - **Formula**: E(P,Q) = 2E[|X-Y|] - E[|X-X'|] - E[|Y-Y'|]
-- **Use Case**: Detecting shifts in mean or variance
+- **Application**: Detection of shifts in mean or variance
 
 ### Maximum Mean Discrepancy (MMD)
 
-Kernel-based method for comparing distributions:
+The MMD constitutes a kernel-based method for the comparison of distributions:
 
 - **Range**: 0 to ∞ (0 = identical in RKHS)
-- **Properties**: Non-parametric, works in high dimensions
+- **Properties**: Non-parametric, applicable in high-dimensional settings
 - **Kernel**: Gaussian RBF (default), with automatic bandwidth selection
-- **Use Case**: High-dimensional data where density estimation fails
+- **Application**: High-dimensional data where density estimation is intractable
 
-## Use Cases
+## Analytical Application Scenarios
 
 ### Model Monitoring
 
-Monitor input feature distributions to detect when production data diverges from training data:
+Input feature distributions should be monitored to detect instances in which production data diverges from training data:
 
-1. Use training dataset as baseline
-2. Compare periodic production data samples
-3. Alert when drift exceeds thresholds
-4. Investigate root causes before model degradation occurs
+1. The training dataset is designated as the baseline
+2. Periodic production data samples are compared against the baseline
+3. Alerts are generated when drift exceeds established thresholds
+4. Root causes are investigated prior to the onset of model degradation
 
 ### Data Pipeline Validation
 
-Detect upstream changes that affect data characteristics:
+Upstream changes that affect data characteristics may be detected through the following procedure:
 
-1. Establish baseline from validated historical data
-2. Compare new data batches upon arrival
-3. Identify columns with significant changes
-4. Investigate upstream process modifications
+1. A baseline is established from validated historical data
+2. New data batches are compared upon arrival
+3. Columns exhibiting significant changes are identified
+4. Upstream process modifications are investigated
 
 ### Regulatory Compliance
 
-Maintain distribution stability for regulated models:
+Distribution stability for regulated models is maintained through the following methodology:
 
-1. Document baseline distributions
-2. Periodically compare production data
-3. Generate drift reports for audit
-4. Trigger review processes when thresholds exceeded
+1. Baseline distributions are documented
+2. Production data is periodically compared against the baseline
+3. Drift reports are generated for audit purposes
+4. Review processes are triggered when established thresholds are exceeded
 
 ## API Reference
 

@@ -1,22 +1,22 @@
 # Maintenance
 
-The Maintenance module provides configuration and execution controls for system maintenance operations including data retention, database optimization, and cache management.
+The Maintenance module provides configuration and execution controls for system maintenance operations, encompassing data retention policy enforcement, database optimization, and cache management. These capabilities are considered essential for sustaining long-term system reliability and operational efficiency.
 
 ## Overview
 
-Regular maintenance ensures optimal system performance and manages storage consumption. This module enables administrators to configure retention policies, execute cleanup operations, and monitor system health metrics.
+The execution of regular maintenance procedures is fundamental to ensuring optimal system performance and effective management of storage resource consumption. This module enables system administrators to configure retention policies, execute cleanup operations, and monitor key system health metrics in a systematic manner.
 
 ## Maintenance Interface
 
 ### Maintenance Settings
 
-The Maintenance page provides configuration through the MaintenanceSettings component.
+The Maintenance page exposes configuration capabilities through the MaintenanceSettings component, which serves as the primary interface for administrative control of all maintenance-related parameters.
 
 ## Retention Configuration
 
 ### Retention Policies
 
-Configure how long different data types are retained:
+The following table describes the configurable retention policies that govern the duration for which various data categories are preserved within the system:
 
 | Setting | Description | Range |
 |---------|-------------|-------|
@@ -25,6 +25,8 @@ Configure how long different data types are retained:
 | **Notification Log Retention** | Days to keep notification logs | 1-365 days |
 
 ### Configuring Retention
+
+The retention configuration procedure is carried out through the following steps:
 
 1. Access Maintenance settings
 2. Adjust retention values:
@@ -35,17 +37,19 @@ Configure how long different data types are retained:
 
 ### Retention Recommendations
 
+The following recommendations are provided to guide the establishment of appropriate retention periods based on common operational requirements:
+
 | Data Type | Recommended Retention | Rationale |
 |-----------|----------------------|-----------|
 | **Validation Results** | 30-90 days | Balance history with storage |
 | **Profile History** | 10-30 profiles | Track recent trends |
 | **Notification Logs** | 14-30 days | Audit trail requirements |
 
-## Cleanup Operations
+## Cleanup Operation Procedures
 
 ### Manual Cleanup
 
-Execute cleanup operations on demand:
+Manual cleanup operations may be initiated on demand through the following procedure:
 
 1. Click **Run Cleanup**
 2. System identifies expired data
@@ -55,7 +59,7 @@ Execute cleanup operations on demand:
 
 ### Cleanup Scope
 
-Cleanup operations process:
+The scope of cleanup operations encompasses the following data categories and their corresponding behaviors:
 
 | Data Type | Cleanup Behavior |
 |-----------|-----------------|
@@ -67,7 +71,7 @@ Cleanup operations process:
 
 ### Automatic Cleanup
 
-Configure automatic cleanup:
+Automatic cleanup may be configured through the parameters described in the following table. It is recommended that automated scheduling be employed to ensure consistent enforcement of retention policies:
 
 | Setting | Description |
 |---------|-------------|
@@ -75,11 +79,11 @@ Configure automatic cleanup:
 | **Cleanup Schedule** | Cron expression for cleanup timing |
 | **Cleanup Window** | Preferred execution time window |
 
-## Database Optimization
+## Database Optimization Operations
 
 ### VACUUM Operation
 
-SQLite VACUUM reclaims unused space and optimizes database:
+The SQLite VACUUM operation is utilized to reclaim unused storage space and optimize the internal structure of the database. The procedure is executed as follows:
 
 1. Click **Run Vacuum**
 2. System executes VACUUM operation
@@ -87,6 +91,8 @@ SQLite VACUUM reclaims unused space and optimizes database:
 4. Review completion status
 
 ### VACUUM Behavior
+
+The operational characteristics of the VACUUM process are summarized in the following table:
 
 | Aspect | Description |
 |--------|-------------|
@@ -97,13 +103,15 @@ SQLite VACUUM reclaims unused space and optimizes database:
 
 ### Automatic VACUUM
 
-Configure VACUUM with cleanup:
+The VACUUM operation may be configured to execute in conjunction with cleanup operations:
 
 | Setting | Description |
 |---------|-------------|
 | **Run VACUUM on Cleanup** | Execute VACUUM after cleanup |
 
-### VACUUM Recommendations
+### VACUUM Frequency Recommendations
+
+The appropriate frequency of VACUUM execution is determined by the operational characteristics of the deployment environment, as outlined below:
 
 | Frequency | Use Case |
 |-----------|----------|
@@ -111,11 +119,11 @@ Configure VACUUM with cleanup:
 | **Monthly** | Moderate activity systems |
 | **On-Demand** | After large data removals |
 
-## Cache Management
+## Cache Management and Statistics
 
 ### Cache Statistics
 
-View current cache state:
+The current state of the system cache may be observed through the following metrics:
 
 | Metric | Description |
 |--------|-------------|
@@ -126,13 +134,15 @@ View current cache state:
 
 ### Clear Cache
 
-Remove all cached data:
+All cached data may be purged from the system through the following procedure. It should be noted that subsequent requests will incur the overhead of cache reconstruction:
 
 1. Click **Clear Cache**
 2. All cached data is removed
 3. Cache rebuilds on subsequent requests
 
 ### Cache Clearing Use Cases
+
+The following scenarios represent conditions under which cache invalidation is considered appropriate:
 
 | Scenario | Recommendation |
 |----------|----------------|
@@ -145,6 +155,8 @@ Remove all cached data:
 
 ### Full Configuration Options
 
+A comprehensive enumeration of all configurable maintenance parameters is provided in the following table:
+
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `enabled` | Boolean | true | Enable automatic maintenance |
@@ -156,7 +168,7 @@ Remove all cached data:
 
 ### Configuration via API
 
-Update configuration programmatically:
+Maintenance configuration may be updated programmatically through the API by submitting a JSON payload conforming to the following structure:
 
 ```json
 {
@@ -172,7 +184,7 @@ Update configuration programmatically:
 
 ### Status Monitoring
 
-View current maintenance status:
+The current maintenance status of the system may be ascertained through the following observable metrics:
 
 | Metric | Description |
 |--------|-------------|
@@ -184,7 +196,7 @@ View current maintenance status:
 
 ### Maintenance History
 
-View historical maintenance operations:
+A historical record of maintenance operations is maintained and may be reviewed through the following fields:
 
 | Column | Description |
 |--------|-------------|
@@ -198,7 +210,7 @@ View historical maintenance operations:
 
 ### Monitoring Storage
 
-Track storage consumption:
+System storage consumption should be monitored across the following components and their respective locations:
 
 | Component | Location |
 |-----------|----------|
@@ -209,6 +221,8 @@ Track storage consumption:
 
 ### Storage Optimization
 
+The following practices are recommended for the ongoing optimization of storage utilization:
+
 | Practice | Recommendation |
 |----------|----------------|
 | **Regular Cleanup** | Execute cleanup weekly minimum |
@@ -216,9 +230,11 @@ Track storage consumption:
 | **Report Management** | Delete unnecessary reports |
 | **VACUUM Scheduling** | Schedule regular VACUUM operations |
 
-## Best Practices
+## Recommended Operational Practices
 
 ### Retention Policy Design
+
+The design of retention policies should be informed by the following considerations, which collectively ensure alignment between data governance requirements and system resource constraints:
 
 | Consideration | Recommendation |
 |--------------|----------------|
@@ -229,6 +245,8 @@ Track storage consumption:
 
 ### Maintenance Scheduling
 
+The following scheduling practices are recommended to ensure that maintenance operations are conducted reliably and with minimal disruption to normal system operations:
+
 | Practice | Recommendation |
 |----------|----------------|
 | **Off-Peak** | Schedule during low-activity periods |
@@ -238,15 +256,19 @@ Track storage consumption:
 
 ### Emergency Maintenance
 
+In the event that exceptional conditions arise, the following corrective actions should be undertaken in accordance with the nature of the observed anomaly:
+
 | Situation | Action |
 |-----------|--------|
 | **High Storage** | Execute immediate cleanup |
 | **Slow Performance** | Clear cache and run VACUUM |
 | **Database Corruption** | Restore from backup |
 
-## Troubleshooting
+## Diagnostic and Troubleshooting Procedures
 
 ### Common Issues
+
+The following table enumerates frequently encountered issues and their corresponding resolutions. These diagnostic procedures should be consulted prior to escalation:
 
 | Issue | Resolution |
 |-------|------------|
@@ -257,7 +279,7 @@ Track storage consumption:
 
 ### Database Recovery
 
-If database issues occur:
+In the event that database integrity issues are detected, the following recovery procedure should be executed in sequential order:
 
 1. Stop the Truthound Dashboard
 2. Backup current database file
@@ -266,6 +288,8 @@ If database issues occur:
 5. Restart the dashboard
 
 ## API Reference
+
+The following API endpoints are provided for programmatic interaction with the maintenance subsystem:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|

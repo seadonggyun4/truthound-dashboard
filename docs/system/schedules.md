@@ -1,16 +1,16 @@
-# Schedules
+# Automated Validation Scheduling
 
-The Schedules module enables automated execution of data validation tasks through flexible scheduling mechanisms, supporting cron expressions, interval-based timing, data change triggers, and composite scheduling strategies.
+The Schedules module facilitates the automated execution of data validation tasks through configurable scheduling mechanisms. Support is provided for cron expressions, interval-based timing, data change triggers, and composite scheduling strategies.
 
-## Overview
+## Conceptual Overview
 
-Scheduled validation automates the data quality monitoring process, ensuring consistent and timely verification of data sources without manual intervention. The module supports multiple trigger types to accommodate diverse operational requirements.
+Scheduled validation serves to automate the data quality monitoring process, thereby ensuring consistent and timely verification of data sources in the absence of manual intervention. Multiple trigger types are supported to accommodate the heterogeneous operational requirements commonly encountered in production environments.
 
 ## Schedules Interface
 
-### Schedule Listing
+### Schedule Enumeration
 
-The main Schedules page displays all configured schedules:
+The primary Schedules interface presents a tabular listing of all configured schedules:
 
 | Column | Description |
 |--------|-------------|
@@ -30,15 +30,15 @@ The main Schedules page displays all configured schedules:
 | **Paused** | Yellow | Schedule temporarily suspended |
 | **Error** | Red | Schedule encountered execution errors |
 
-## Creating a Schedule
+## Schedule Registration
 
-### Schedule Creation Dialog
+### Schedule Registration Dialog
 
-The creation dialog presents a multi-tab interface:
+The registration dialog is organized as a multi-tab interface to facilitate structured configuration.
 
 #### Basic Tab
 
-Configure fundamental schedule properties:
+Fundamental schedule properties are configured within this tab:
 
 | Field | Description |
 |-------|-------------|
@@ -49,7 +49,7 @@ Configure fundamental schedule properties:
 
 #### Preset Schedules
 
-Quick configuration options:
+A set of predefined scheduling configurations is provided for expedient setup:
 
 | Preset | Cron Expression | Description |
 |--------|-----------------|-------------|
@@ -61,14 +61,14 @@ Quick configuration options:
 
 #### Advanced Trigger Activation
 
-The Trigger tab is accessible only when the **Use advanced trigger options** toggle is enabled in the Basic tab. This design separates simple cron-based scheduling from advanced trigger configurations, reducing interface complexity for standard use cases.
+The Trigger tab is rendered accessible only when the **Use advanced trigger options** toggle has been enabled within the Basic tab. This architectural decision separates simple cron-based scheduling from advanced trigger configurations, thereby reducing interface complexity for standard use cases.
 
 | Toggle State | Behavior |
 |--------------|----------|
 | **Disabled** (default) | Simple cron preset and expression input displayed directly in the Basic tab. The Trigger tab is disabled. |
 | **Enabled** | Cron input is replaced with a guidance message directing the user to the Trigger tab, which becomes active. |
 
-When advanced triggers are enabled, the system automatically derives a compatible cron expression for backend scheduling. The conversion rules are as follows:
+When advanced triggers are enabled, a compatible cron expression is automatically derived for backend scheduling. The conversion rules are specified as follows:
 
 | Trigger Type | Derived Cron Expression | Example |
 |--------------|------------------------|---------|
@@ -80,11 +80,11 @@ When advanced triggers are enabled, the system automatically derives a compatibl
 
 #### Trigger Tab
 
-Configure the execution trigger mechanism:
+The execution trigger mechanism is configured within this tab.
 
 ##### Cron Trigger
 
-Standard cron-based scheduling:
+Standard cron-based scheduling is supported:
 
 | Component | Values | Description |
 |-----------|--------|-------------|
@@ -94,7 +94,7 @@ Standard cron-based scheduling:
 | **Month** | 1-12 | Month of the year |
 | **Day of Week** | 0-6 | Day of the week (0 = Sunday) |
 
-**Cron Expression Examples:**
+**Illustrative Cron Expressions:**
 
 | Expression | Meaning |
 |------------|---------|
@@ -106,7 +106,7 @@ Standard cron-based scheduling:
 
 ##### Interval Trigger
 
-Fixed interval between executions:
+A fixed interval between successive executions may be specified:
 
 | Parameter | Description |
 |-----------|-------------|
@@ -116,7 +116,7 @@ Fixed interval between executions:
 
 ##### Data Change Trigger
 
-Execute when source data changes:
+Execution is initiated upon detection of modifications to the source data:
 
 | Parameter | Description |
 |-----------|-------------|
@@ -126,7 +126,7 @@ Execute when source data changes:
 
 ##### Composite Trigger
 
-Combine multiple trigger conditions:
+Multiple trigger conditions may be combined using logical operators:
 
 | Operator | Description |
 |----------|-------------|
@@ -135,7 +135,7 @@ Combine multiple trigger conditions:
 
 ##### Event Trigger
 
-Execute in response to system events:
+Execution is initiated in response to designated system events:
 
 | Event Type | Description |
 |------------|-------------|
@@ -146,24 +146,24 @@ Execute in response to system events:
 
 ##### Manual Trigger
 
-Schedule exists but only executes on demand:
+A schedule may be configured to execute exclusively on demand:
 
-- No automatic execution
-- Use "Run Now" to execute manually
-- Useful for on-demand validation templates
+- No automatic execution is performed
+- The "Run Now" action is employed to initiate manual execution
+- This configuration is intended for on-demand validation templates
 
 #### Validators Tab
 
-Configure which validators execute:
+The selection and configuration of validators for scheduled execution is performed within this tab:
 
-1. View available validators (150+ options)
-2. Select validators to include
-3. Configure validator-specific parameters
-4. Set severity overrides if needed
+1. Available validators are enumerated (150+ options)
+2. Validators to be included are selected
+3. Validator-specific parameters are configured
+4. Severity overrides are applied as appropriate
 
 ##### Validator Configuration
 
-For each selected validator:
+The following settings are available for each selected validator:
 
 | Setting | Description |
 |---------|-------------|
@@ -181,11 +181,11 @@ For each selected validator:
 | **Schema Only** | Schema validation validators |
 | **Data Quality** | Comprehensive quality validators |
 
-## Schedule Management
+## Schedule Lifecycle Management
 
-### Run Now
+### Immediate Execution
 
-Execute a schedule immediately:
+A schedule may be executed immediately, irrespective of its configured timing:
 
 1. Click **Run Now** on the schedule
 2. Validation executes with configured settings
@@ -199,58 +199,58 @@ Upon completion, the system provides differentiated visual feedback:
 | **Passed** | Default (neutral) | All validators passed without issues |
 | **Failed** | Destructive (red) | One or more validators reported issues |
 
-This distinction ensures operators can immediately identify whether manual intervention is required following an ad-hoc execution.
+This distinction ensures that operators are able to immediately identify whether manual intervention is required following an ad-hoc execution.
 
-### Pause
+### Suspension
 
-Temporarily suspend schedule execution:
+Schedule execution may be temporarily suspended:
 
 1. Click **Pause** on the schedule
 2. Schedule status changes to "Paused"
 3. No automatic executions occur
 4. Use **Resume** to reactivate
 
-### Resume
+### Resumption
 
-Reactivate a paused schedule:
+A previously suspended schedule may be reactivated:
 
 1. Click **Resume** on the paused schedule
 2. Schedule status changes to "Active"
 3. Next execution calculated from current time
 4. Automatic executions continue
 
-### Edit
+### Modification
 
-Modify schedule configuration:
+Schedule configuration may be modified at any time:
 
 1. Click **Edit** on the schedule
 2. Update configuration in the dialog
 3. Save changes
 4. Updated schedule takes effect immediately
 
-### Delete
+### Removal
 
-Remove a schedule:
+A schedule may be permanently removed from the system:
 
 1. Click **Delete** on the schedule
 2. Confirm deletion
 3. Schedule and configuration are removed
 4. Historical execution records are preserved
 
-## Schedule Notifications
+## Notification Configuration
 
-### Configuring Notifications
+### Establishing Notification Policies
 
-Enable notifications for schedule events:
+Notifications may be enabled for schedule-related events through the following procedure:
 
-1. In the schedule configuration, enable notifications
-2. Configure notification triggers:
+1. Within the schedule configuration, notification delivery is enabled
+2. Notification triggers are configured:
    - On validation failure
    - On validation success
    - On schedule error
-3. Select notification channels
+3. Appropriate notification channels are selected
 
-### Notification Events
+### Notification Event Taxonomy
 
 | Event | Description |
 |-------|-------------|
@@ -259,21 +259,21 @@ Enable notifications for schedule events:
 | **Schedule Error** | Schedule execution encountered error |
 | **Timeout** | Validation exceeded time limit |
 
-## Schedule Execution History
+## Execution History and Audit Trail
 
-### Viewing History
+### Accessing Execution Records
 
-Access execution history for a schedule:
+The execution history for a given schedule is accessed as follows:
 
 1. Click on the schedule name
-2. View historical executions:
+2. Historical executions are presented, including:
    - Execution timestamp
    - Duration
    - Status (success/failure)
    - Issues found
    - Link to results
 
-### Execution Details
+### Execution Record Attributes
 
 | Attribute | Description |
 |-----------|-------------|
@@ -284,11 +284,11 @@ Access execution history for a schedule:
 | **Issues Found** | Count of issues identified |
 | **Triggered By** | Automatic or manual |
 
-## Truthound Integration
+## Truthound Core Library Integration
 
-The Schedules module leverages truthound's native trigger system from `truthound.checkpoint.triggers`:
+The Schedules module is built upon truthound's native trigger system, as provided by `truthound.checkpoint.triggers`:
 
-### Core Trigger Types
+### Core Trigger Type Specifications
 
 | Trigger Type | Truthound Module | Description |
 |--------------|------------------|-------------|
@@ -299,7 +299,7 @@ The Schedules module leverages truthound's native trigger system from `truthound
 
 ### ScheduleTrigger
 
-The `ScheduleTrigger` provides flexible interval-based scheduling:
+The `ScheduleTrigger` provides configurable interval-based scheduling:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -313,7 +313,7 @@ The `ScheduleTrigger` provides flexible interval-based scheduling:
 
 ### CronTrigger
 
-The `CronTrigger` supports standard cron expressions with optional seconds field:
+The `CronTrigger` supports standard cron expressions, with an optional seconds field:
 
 | Format | Fields | Example |
 |--------|--------|---------|
@@ -322,7 +322,7 @@ The `CronTrigger` supports standard cron expressions with optional seconds field
 
 ### EventTrigger
 
-The `EventTrigger` enables event-driven execution with filtering and batching:
+The `EventTrigger` enables event-driven execution with support for filtering and batching:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -334,7 +334,7 @@ The `EventTrigger` enables event-driven execution with filtering and batching:
 
 ### FileWatchTrigger
 
-The `FileWatchTrigger` monitors file system changes:
+The `FileWatchTrigger` provides file system change monitoring capabilities:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -346,9 +346,9 @@ The `FileWatchTrigger` monitors file system changes:
 | hash_check | Content-based change detection | true |
 | poll_interval_seconds | Polling frequency | 5 |
 
-### Trigger Configuration
+### Common Trigger Configuration Parameters
 
-Common configuration options for all triggers:
+The following configuration options are applicable to all trigger types:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -358,9 +358,9 @@ Common configuration options for all triggers:
 | catch_up | Execute missed runs | false |
 | max_concurrent | Maximum parallel executions | 1 |
 
-## Best Practices
+## Recommended Operational Practices
 
-### Schedule Design
+### Schedule Design Considerations
 
 | Consideration | Recommendation |
 |--------------|----------------|
@@ -369,7 +369,7 @@ Common configuration options for all triggers:
 | **Dependencies** | Consider upstream data refresh schedules |
 | **Overlap** | Avoid concurrent schedules on same source |
 
-### Validator Selection
+### Validator Selection Guidelines
 
 | Scenario | Recommended Validators |
 |----------|----------------------|
@@ -378,7 +378,7 @@ Common configuration options for all triggers:
 | **Weekly** | Comprehensive validation suite |
 | **On-Demand** | Full validator set |
 
-### Error Handling
+### Error Handling Strategies
 
 | Situation | Recommended Action |
 |-----------|-------------------|

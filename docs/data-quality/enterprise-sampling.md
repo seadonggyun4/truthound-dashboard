@@ -1,14 +1,14 @@
 # Enterprise Sampling
 
-Enterprise-scale sampling capabilities for datasets from 100M to billions of rows, powered by truthound 1.2.10.
+This document presents enterprise-scale sampling capabilities for datasets ranging from 100 million to billions of rows, as implemented in truthound version 1.2.10.
 
 ## Overview
 
-When working with massive datasets (100M+ rows), full data scans become impractical due to time and memory constraints. Enterprise Sampling provides intelligent sampling strategies that maintain statistical validity while dramatically reducing processing time.
+When operating upon massive datasets comprising 100 million or more rows, exhaustive data scans become computationally impractical due to temporal and memory constraints. The Enterprise Sampling subsystem provides a suite of intelligent sampling strategies that are designed to preserve statistical validity while substantially reducing processing time.
 
-## Scale Categories
+## Dataset Scale Classification
 
-The system automatically classifies datasets by scale and recommends appropriate strategies:
+Datasets are automatically classified by scale, and an appropriate strategy is recommended accordingly:
 
 | Category | Row Count | Recommended Strategy | Description |
 |----------|-----------|---------------------|-------------|
@@ -18,13 +18,13 @@ The system automatically classifies datasets by scale and recommends appropriate
 | XLarge | 100M - 1B | Multi-Stage | Hierarchical multi-pass sampling |
 | XXLarge | > 1B | Multi-Stage + Sketches | Probabilistic data structures |
 
-## Sampling Strategies
+## Sampling Strategy Taxonomy
 
 ### Block Sampling
 
-Best for: **10M - 100M rows**
+Recommended application domain: **10M - 100M rows**
 
-Divides data into fixed-size blocks and samples proportionally from each block. Ensures even coverage across the dataset.
+In this approach, the dataset is partitioned into fixed-size blocks, from which samples are drawn proportionally. This mechanism ensures uniform coverage across the entirety of the dataset.
 
 **Configuration:**
 ```json
@@ -50,9 +50,9 @@ Divides data into fixed-size blocks and samples proportionally from each block. 
 
 ### Multi-Stage Sampling
 
-Best for: **100M - 1B rows**
+Recommended application domain: **100M - 1B rows**
 
-Progressively reduces data in multiple stages. Each stage reduces by factor `(total_rows / target)^(1/stages)`.
+This strategy progressively reduces the dataset through multiple successive stages. Each stage applies a reduction factor computed as `(total_rows / target)^(1/stages)`.
 
 **Configuration:**
 ```json
@@ -74,9 +74,9 @@ Progressively reduces data in multiple stages. Each stage reduces by factor `(to
 
 ### Column-Aware Sampling
 
-Best for: **Mixed column types**
+Recommended application domain: **Mixed column types**
 
-Adjusts sample size based on column type complexity:
+The sample size is adjusted based on the complexity of the column types present in the dataset:
 - **Strings**: 2x multiplier (high cardinality)
 - **Categoricals**: 0.5x multiplier (low cardinality)
 - **Complex types**: 3x multiplier (List/Struct)
@@ -97,9 +97,9 @@ Adjusts sample size based on column type complexity:
 
 ### Progressive Sampling
 
-Best for: **Exploratory analysis, early stopping**
+Recommended application domain: **Exploratory analysis, early stopping**
 
-Iteratively increases sample size until estimates converge within threshold.
+The sample size is iteratively increased until the resulting estimates converge within a predefined threshold. This approach is particularly well-suited to scenarios in which the requisite sample size is not known a priori.
 
 **Configuration:**
 ```json
@@ -121,9 +121,9 @@ Iteratively increases sample size until estimates converge within threshold.
 | initial_sample_ratio | 0.01 | Start with 1% of data |
 | growth_factor | 2.0 | Double sample size per stage |
 
-## Quality Presets
+## Quality Preset Configurations
 
-Pre-configured quality levels for common use cases:
+A set of pre-configured quality levels has been established to address common use cases:
 
 | Preset | Target Rows | Confidence | Margin of Error | Use Case |
 |--------|-------------|------------|-----------------|----------|
@@ -133,9 +133,9 @@ Pre-configured quality levels for common use cases:
 | High | 500K | 99% | 3% | High accuracy |
 | Exact | Full | 100% | 0% | Full scan |
 
-## Probabilistic Data Structures
+## Probabilistic Data Structure Integration
 
-For datasets exceeding 10B rows, probabilistic data structures provide O(1) memory aggregations.
+For datasets exceeding 10 billion rows, probabilistic data structures are employed to provide O(1) memory aggregation operations.
 
 ### Truthound Integration
 
@@ -147,14 +147,14 @@ The dashboard leverages truthound's native probabilistic data structure implemen
 | Count-Min Sketch | `truthound.profiler.sketches.CountMinSketch` | Frequency estimation |
 | Bloom Filter | `truthound.profiler.sketches.BloomFilter` | Membership testing |
 
-These implementations provide:
-- **O(1) Memory**: Constant memory regardless of data size
-- **Mergeable**: Results can be combined across distributed partitions
-- **Configurable Precision**: Trade-off between accuracy and memory usage
+These implementations exhibit the following properties:
+- **O(1) Memory**: Constant memory consumption is maintained regardless of dataset size
+- **Mergeable**: Intermediate results may be combined across distributed partitions
+- **Configurable Precision**: A deliberate trade-off between estimation accuracy and memory utilization is supported
 
 ### HyperLogLog
 
-Cardinality estimation (distinct count) with configurable precision. Higher precision yields lower error but uses more memory.
+Cardinality estimation (distinct count) is performed with configurable precision. Higher precision values yield lower standard error at the cost of increased memory consumption.
 
 | Precision | Memory | Standard Error |
 |-----------|--------|----------------|
@@ -175,7 +175,7 @@ Cardinality estimation (distinct count) with configurable precision. Higher prec
 
 ### Count-Min Sketch
 
-Frequency estimation for heavy hitters detection. Width and depth parameters control the trade-off between accuracy and memory.
+Frequency estimation is utilized for heavy hitters detection. The width and depth parameters govern the trade-off between estimation accuracy and memory consumption.
 
 | Parameter | Effect |
 |-----------|--------|
@@ -194,7 +194,7 @@ Frequency estimation for heavy hitters detection. Width and depth parameters con
 
 ### Bloom Filter
 
-Probabilistic membership testing with configurable false positive rate. No false negatives - if the filter says an item is not present, it is definitively not present.
+Probabilistic membership testing is conducted with a configurable false positive rate. It should be noted that no false negatives are produced -- if the filter indicates that an item is not present, this determination is definitive.
 
 ```json
 {
@@ -336,7 +336,7 @@ GET /api/v1/sampling/scale-categories
 
 ## Memory Budget Configuration
 
-Control memory usage during sampling operations:
+Memory utilization during sampling operations may be controlled through the following configuration parameters:
 
 ```json
 {
@@ -356,9 +356,9 @@ Control memory usage during sampling operations:
 | gc_threshold_mb | null | GC trigger (default: 75% of max) |
 | backpressure_enabled | true | Slow down when memory high |
 
-## Sample Size Formula
+## Statistical Sample Size Determination
 
-Sample size is calculated using Cochran's formula with finite population correction:
+The requisite sample size is computed using Cochran's formula with finite population correction:
 
 ```
 n₀ = (Z² × p × (1-p)) / e²
@@ -371,9 +371,9 @@ Where:
 - **e** = Margin of error (0.05 for 5%)
 - **N** = Population size
 
-## UI Components
+## User Interface Components
 
-The Enterprise Sampling configuration UI provides:
+The Enterprise Sampling configuration interface is organized into the following panels:
 
 1. **Basic Tab**
    - Quality preset selection
@@ -382,25 +382,25 @@ The Enterprise Sampling configuration UI provides:
    - Margin of error slider
 
 2. **Strategy Tab**
-   - Strategy selection with recommendations
-   - Strategy-specific settings (block size, stages, multipliers)
+   - Strategy selection with contextual recommendations
+   - Strategy-specific parameter configuration (block size, number of stages, type multipliers)
 
 3. **Advanced Tab**
    - Memory budget configuration
    - Backpressure toggle
-   - Random seed for reproducibility
+   - Random seed specification for reproducibility
 
-## Best Practices
+## Recommended Operational Practices
 
-1. **Start with Adaptive**: Let the system auto-select the best strategy
-2. **Use Quality Presets**: Start with Standard, adjust as needed
-3. **Enable Backpressure**: Prevents OOM errors on constrained systems
-4. **Set Reproducible Seeds**: Use fixed seeds for reproducible results
-5. **Monitor Job Progress**: Check job status for long-running operations
+1. **Employ Adaptive Strategy Selection**: It is recommended that the system be permitted to auto-select the most appropriate strategy based on dataset characteristics.
+2. **Utilize Quality Presets**: The Standard preset is recommended as an initial configuration, with subsequent adjustments made as warranted by empirical observation.
+3. **Enable Backpressure**: Activation of the backpressure mechanism is advised to prevent out-of-memory errors on resource-constrained systems.
+4. **Specify Reproducible Seeds**: Fixed random seeds should be employed when reproducibility of results is required.
+5. **Monitor Job Progress**: For long-running operations, periodic inspection of job status is recommended.
 
-## Performance Benchmarks
+## Empirical Performance Characteristics
 
-Typical performance characteristics (varies by hardware):
+The following table presents typical performance observations (results are subject to variation depending on hardware configuration):
 
 | Dataset Size | Strategy | Time | Speedup |
 |-------------|----------|------|---------|

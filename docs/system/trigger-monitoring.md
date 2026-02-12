@@ -1,16 +1,16 @@
 # Trigger Monitoring
 
-The Trigger Monitoring module provides real-time visibility into the execution state of all configured triggers within the scheduling system. It enables operators to observe trigger health, track cooldown states, inspect execution history, and manage webhook endpoints for external system integration.
+The Trigger Monitoring module provides real-time observability into the execution state of all configured triggers within the scheduling subsystem. It is designed to afford operators comprehensive visibility into trigger health, facilitate the inspection of cooldown states and execution histories, and support the administration of webhook endpoints for external system integration.
 
-## Overview
+## Introduction and Scope
 
-Truthound Dashboard's scheduling system supports six distinct trigger types that determine when and how validations are executed. While the [Schedules](./schedules.md) module is concerned with creating and configuring triggers, the Trigger Monitoring module focuses on their operational state—whether they are firing correctly, in cooldown, failing, or awaiting external input.
+The scheduling subsystem of Truthound Dashboard accommodates six distinct trigger types, each governing the conditions under which validations are initiated. Whereas the [Schedules](./schedules.md) module is concerned with the creation and configuration of triggers, the Trigger Monitoring module is devoted exclusively to their operational state — namely, whether triggers are firing as expected, residing in cooldown, encountering failures, or awaiting external stimuli.
 
-This separation of concerns follows the principle that configuration and monitoring are distinct operational activities, each requiring a purpose-built interface.
+This architectural separation is predicated on the principle that configuration and monitoring constitute distinct operational concerns, each necessitating a purpose-built interface.
 
-## Trigger Types
+## Taxonomy of Trigger Types
 
-The scheduling system supports the following trigger types, each with distinct monitoring characteristics:
+The scheduling subsystem supports the following trigger types, each exhibiting distinct monitoring characteristics:
 
 | Trigger Type | Description | Monitoring Focus |
 |--------------|-------------|------------------|
@@ -22,9 +22,9 @@ The scheduling system supports the following trigger types, each with distinct m
 | **Event** | Fires in response to internal system events | Event queue, matching rules |
 | **Manual** | Triggered only through explicit API/UI action | Last manual execution |
 
-### Visual Identification
+### Visual Classification Scheme
 
-Each trigger type is assigned a distinct color for quick visual identification in the monitoring interface:
+Each trigger type is assigned a distinct color to facilitate rapid visual identification within the monitoring interface:
 
 | Type | Color | Badge |
 |------|-------|-------|
@@ -36,11 +36,11 @@ Each trigger type is assigned a distinct color for quick visual identification i
 | Event | Cyan | `event` |
 | Manual | Gray | `manual` |
 
-## Trigger Monitoring Interface
+## Monitoring Interface Components
 
-### Summary Statistics
+### Aggregate Health Metrics
 
-Four aggregated metrics provide an at-a-glance view of trigger system health:
+Four aggregated metrics are presented to provide an immediate assessment of overall trigger system health:
 
 | Card | Description |
 |------|-------------|
@@ -49,9 +49,9 @@ Four aggregated metrics provide an at-a-glance view of trigger system health:
 | **Failed Triggers** | Number of triggers whose last execution resulted in failure |
 | **In Cooldown** | Number of triggers currently in cooldown period |
 
-### Trigger Status Table
+### Operational State Table
 
-The primary monitoring view is a detailed table displaying the operational state of each trigger:
+The primary monitoring view is rendered as a detailed tabular display of the operational state associated with each configured trigger:
 
 | Column | Description |
 |--------|-------------|
@@ -63,7 +63,7 @@ The primary monitoring view is a detailed table displaying the operational state
 | **Last Status** | Result of the most recent execution (success/failed) |
 | **Next Check** | Scheduled time for the next trigger evaluation |
 
-### Status Indicators
+### Status Indicator Iconography
 
 | Icon | Status | Description |
 |------|--------|-------------|
@@ -74,9 +74,9 @@ The primary monitoring view is a detailed table displaying the operational state
 
 ## Cooldown Mechanism
 
-The cooldown system prevents triggers from firing too frequently, which could overwhelm downstream systems or generate excessive notifications.
+The cooldown mechanism serves to prevent triggers from firing at excessive frequency, thereby mitigating the risk of overwhelming downstream systems or generating superfluous notifications.
 
-### How Cooldown Works
+### Operational Semantics of Cooldown
 
 1. A trigger fires and begins execution
 2. Upon completion (success or failure), the cooldown timer starts
@@ -84,7 +84,7 @@ The cooldown system prevents triggers from firing too frequently, which could ov
 4. The monitoring interface displays the remaining cooldown time in real-time
 5. Once the cooldown expires, the trigger resumes normal evaluation
 
-### Cooldown Configuration
+### Cooldown Configuration Parameters
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -94,9 +94,9 @@ The cooldown system prevents triggers from firing too frequently, which could ov
 
 ## Data Change Triggers
 
-Data change triggers represent a specialized trigger type that monitors data profiles for significant changes. The monitoring interface provides additional detail for these triggers:
+Data change triggers constitute a specialized trigger type that monitors data profiles for statistically significant changes. The monitoring interface provides supplementary detail for this category of triggers.
 
-### Change Detection Process
+### Change Detection Procedure
 
 1. The trigger generates a current data profile at each evaluation interval
 2. The current profile is compared against the baseline profile
@@ -114,18 +114,18 @@ Data change triggers represent a specialized trigger type that monitors data pro
 
 ## Composite Triggers
 
-Composite triggers combine multiple sub-triggers using boolean logic. The monitoring interface displays the evaluation state of each sub-trigger:
+Composite triggers aggregate multiple sub-triggers through the application of boolean logic. The monitoring interface renders the evaluation state of each constituent sub-trigger.
 
-### Composite Logic
+### Boolean Composition Logic
 
 | Mode | Behavior |
 |------|----------|
 | **AND** | All sub-triggers must be in a "fired" state for the composite to fire |
 | **OR** | Any sub-trigger in a "fired" state causes the composite to fire |
 
-### Monitoring Composite Triggers
+### Observability of Composite Triggers
 
-The monitoring interface displays:
+The monitoring interface presents the following information for composite triggers:
 
 - Overall composite trigger state (fired / not fired)
 - Individual sub-trigger states with their last evaluation results
@@ -133,9 +133,9 @@ The monitoring interface displays:
 
 ## Webhook Triggers
 
-Webhook triggers expose HTTP endpoints that external systems can invoke to trigger validation runs. The monitoring interface provides:
+Webhook triggers expose HTTP endpoints that may be invoked by external systems to initiate validation runs. The monitoring interface provides the following administrative capabilities:
 
-### Webhook Management
+### Webhook Administration
 
 | Feature | Description |
 |---------|-------------|
@@ -144,7 +144,7 @@ Webhook triggers expose HTTP endpoints that external systems can invoke to trigg
 | **Recent Invocations** | History of incoming webhook requests |
 | **Authentication** | Token-based authentication for webhook security |
 
-### Webhook Endpoint Format
+### Webhook Endpoint Specification
 
 ```
 POST /api/v1/triggers/webhook/{trigger_id}
@@ -163,7 +163,7 @@ External systems (CI/CD pipelines, orchestrators, monitoring tools) send POST re
 
 ## Execution History
 
-The Trigger Monitoring module maintains a history of trigger executions for each trigger:
+The Trigger Monitoring module maintains a persistent record of trigger executions for each configured trigger:
 
 | Field | Description |
 |-------|-------------|
@@ -173,7 +173,7 @@ The Trigger Monitoring module maintains a history of trigger executions for each
 | **Duration** | Execution duration |
 | **Details** | Additional context (error message for failures) |
 
-## Best Practices
+## Recommended Operational Practices
 
 | Practice | Recommendation |
 |----------|----------------|
@@ -184,9 +184,9 @@ The Trigger Monitoring module maintains a history of trigger executions for each
 | **Review Execution History** | Periodically audit trigger execution patterns for anomalies |
 | **Refresh Regularly** | Use the refresh button to get the latest trigger states |
 
-## Troubleshooting
+## Diagnostic Procedures and Troubleshooting
 
-### Common Issues
+### Common Failure Scenarios
 
 | Issue | Possible Cause | Resolution |
 |-------|---------------|------------|
@@ -218,7 +218,7 @@ The Trigger Monitoring module maintains a history of trigger executions for each
 | `source_id` | string | Filter by associated source |
 | `limit` | integer | Maximum results to return |
 
-## Glossary
+## Glossary of Terms
 
 | Term | Definition |
 |------|------------|

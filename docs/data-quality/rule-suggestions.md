@@ -1,12 +1,12 @@
 # Rule Suggestions
 
-The Rule Suggestions module provides automated generation of validation rules by analyzing the statistical profile of a data source. This capability reduces the manual effort required to define comprehensive validation configurations and ensures that rules are empirically grounded in observed data characteristics.
+The Rule Suggestions module implements automated generation of validation rules by analyzing the statistical profile of a data source. This capability is designed to reduce the manual effort otherwise required to define comprehensive validation configurations, thereby ensuring that the resulting rules are empirically grounded in observed data characteristics.
 
 ## Overview
 
-Rule suggestion operates as a profile-driven inference engine. The system examines column-level statistics—including null ratios, uniqueness measures, value distributions, and detected patterns—to propose validation rules with associated confidence scores. Users review, adjust, and selectively apply the generated rules to their data sources.
+Rule suggestion is operationalized as a profile-driven inference engine. The system examines column-level statistics—including null ratios, uniqueness measures, value distributions, and detected patterns—to propose validation rules with associated confidence scores. Generated rules are subsequently reviewed, adjusted, and selectively applied by the user to their respective data sources.
 
-## Generation Workflow
+## Rule Generation Workflow
 
 ### Initiating Rule Generation
 
@@ -26,7 +26,7 @@ The **Settings** tab within the dialog provides fine-grained control over the ge
 | **Minimum Confidence** | `0–100%` | Excludes rules whose confidence score falls below this threshold |
 | **Categories** | Multi-select | Restricts generation to specific rule categories (schema, completeness, uniqueness, distribution, stats, pattern) |
 
-After adjusting settings, click **Generate Rules** to regenerate the entire suggestion set with the updated parameters. Each generation replaces the previous suggestion list in its entirety; rules are not incrementally appended.
+Upon adjustment of the settings, the **Generate Rules** button must be activated to regenerate the entire suggestion set with the updated parameters. It should be noted that each generation operation replaces the previous suggestion list in its entirety; rules are not incrementally appended.
 
 ### API Endpoint
 
@@ -45,11 +45,11 @@ Request body parameters correspond to the dialog settings:
 }
 ```
 
-## Suggestion Review
+## Suggestion Review and Selection
 
 ### Suggestions Tab
 
-Generated rules are displayed as a filterable list in the **Suggestions** tab:
+Generated rules are presented as a filterable list within the **Suggestions** tab:
 
 | Element | Description |
 |---------|-------------|
@@ -61,42 +61,42 @@ Generated rules are displayed as a filterable list in the **Suggestions** tab:
 
 ### Automatic Pre-Selection
 
-Upon generation, rules with a confidence score of **0.85 or higher** are automatically selected for application. This behavior is designed to streamline the review process by pre-selecting rules that exhibit strong statistical support. Users may manually adjust the selection before applying.
+Upon generation, rules exhibiting a confidence score of **0.85 or higher** are automatically selected for application. This behavior has been designed to streamline the review process by pre-selecting rules that demonstrate strong statistical support. Users may manually adjust the selection prior to application.
 
-When no suggestions are present (e.g., prior to generation or during loading), the selection state is cleared and the **Apply Rules** button is disabled.
+When no suggestions are present (e.g., prior to generation or during loading), the selection state is cleared and the **Apply Rules** button is rendered inactive.
 
 ### Filtering and Search
 
-The suggestion list supports:
+The suggestion list supports the following filtering mechanisms:
 
-- **Text search**: Filters by validator name, column name, or reason text
-- **Category filter**: Restricts the visible list to a specific rule category
+- **Text search**: Filtering is performed by validator name, column name, or reason text
+- **Category filter**: The visible list may be restricted to a specific rule category
 
-## Applying Rules
+## Rule Application Procedure
 
 1. Review and adjust the selection checkboxes in the Suggestions tab
 2. Click **Apply Rules (N)** where N reflects the current selection count
 3. The selected rules are submitted to the backend for persistent association with the data source
-4. Applied rules become part of the source's active validation configuration
+4. Applied rules are thereby incorporated into the source's active validation configuration
 
-The Apply button is disabled when no rules are selected (`selectedIds.size === 0`).
+The Apply button is disabled when no rules have been selected (`selectedIds.size === 0`).
 
-## Export Capabilities
+## Export and Serialization Capabilities
 
-Selected rules can be exported in multiple formats for external use:
+Selected rules may be exported in multiple formats for external utilization:
 
 | Format | Description |
 |--------|-------------|
 | **YAML** | Structured configuration suitable for version control |
 | **JSON** | Machine-readable format for programmatic consumption |
 
-Export and clipboard copy operations are available only when at least one rule is selected.
+It should be noted that export and clipboard copy operations are made available only when at least one rule has been selected.
 
-## Integration with Profiling
+## Profiling Integration Dependencies
 
-Rule suggestion depends on prior profiling data. The quality and comprehensiveness of suggested rules is directly proportional to the richness of the underlying profile. Advanced profiling options—such as pattern detection, distribution analysis, and correlation computation—yield more diverse and precise rule suggestions.
+Rule suggestion is contingent upon prior profiling data. The quality and comprehensiveness of suggested rules is directly proportional to the richness of the underlying profile. Advanced profiling options—such as pattern detection, distribution analysis, and correlation computation—have been observed to yield more diverse and precise rule suggestions.
 
-For optimal results, consider running advanced profiling with the following configuration before generating rules:
+For optimal results, it is recommended that advanced profiling be executed with the following configuration prior to rule generation:
 
 | Setting | Recommended Value | Impact |
 |---------|-------------------|--------|

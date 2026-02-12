@@ -2,15 +2,15 @@
 
 The Activity Feed provides a chronological timeline of system events and user actions, enabling audit trail visibility and operational awareness across the platform.
 
-## Overview
+## Conceptual Overview
 
-The Activity Feed aggregates events from glossary term management, catalog asset operations, and collaboration activities into a unified timeline. This centralized view supports compliance auditing, change tracking, and operational monitoring.
+The Activity Feed aggregates events from glossary term management, catalog asset operations, and collaboration activities into a unified timeline. This centralized view is designed to support compliance auditing, change tracking, and operational monitoring by consolidating disparate event streams into a single, coherent chronological record.
 
-## Activity Interface
+## User Interface and Presentation
 
-### Timeline Display
+### Chronological Timeline Rendering
 
-The Activity page presents events in reverse chronological order:
+The Activity page presents events in reverse chronological order. Each entry within the timeline is composed of the following structural elements:
 
 | Element | Description |
 |---------|-------------|
@@ -20,7 +20,9 @@ The Activity page presents events in reverse chronological order:
 | **Resource** | Entity affected by the activity |
 | **Details** | Additional context about the activity |
 
-### Activity Types
+### Taxonomy of Activity Types
+
+All recorded activities are classified according to the following typological categories:
 
 | Activity Type | Description |
 |--------------|-------------|
@@ -31,11 +33,11 @@ The Activity page presents events in reverse chronological order:
 | **Status Change** | Resource status was modified |
 | **Relationship Change** | Resource relationships were modified |
 
-## Filtering Capabilities
+## Filtering and Query Mechanisms
 
-### Resource Type Filter
+### Resource Type Filtering
 
-Filter activities by the type of resource affected:
+Activities may be filtered by the type of resource affected. The following resource type classifications are supported:
 
 | Resource Type | Description |
 |--------------|-------------|
@@ -43,18 +45,20 @@ Filter activities by the type of resource affected:
 | **Asset** | Data catalog asset activities |
 | **Column** | Column metadata activities |
 
-### Using Filters
+### Application of Filters
+
+The filtering workflow is executed through the following procedure:
 
 1. Click the **Resource Type** filter dropdown
 2. Select the desired resource type
 3. Activity feed updates to show matching events
 4. Clear filter to view all activities
 
-## Activity Details
+## Activity Record Specification
 
-### Activity Record Structure
+### Record Schema and Field Definitions
 
-Each activity record contains:
+Each discrete activity record is persisted with the following set of fields:
 
 | Field | Description |
 |-------|-------------|
@@ -67,9 +71,9 @@ Each activity record contains:
 | **Changes** | Detailed change information (for updates) |
 | **Timestamp** | When the activity occurred |
 
-### Change Details
+### Granular Change Documentation
 
-For update activities, change details include:
+For activities classified as updates, supplementary change details are recorded. Each modification is represented by the following fields:
 
 | Field | Description |
 |-------|-------------|
@@ -77,58 +81,58 @@ For update activities, change details include:
 | **Old Value** | Previous value before change |
 | **New Value** | Updated value after change |
 
-## Pagination
+## Pagination and Progressive Data Retrieval
 
-### Loading Activities
+### Data Loading Strategy
 
-The Activity Feed implements pagination for performance:
+The Activity Feed employs a paginated retrieval model to ensure acceptable performance characteristics under high-volume conditions:
 
 1. Initial load displays recent activities
 2. Click **Load More** to retrieve additional activities
 3. Activities continue loading in batches
 4. Scroll position is preserved during loading
 
-### Pagination Parameters
+### Pagination Configuration Parameters
 
 | Parameter | Description |
 |-----------|-------------|
 | **Skip** | Number of activities to skip |
 | **Limit** | Number of activities per batch |
 
-## Use Cases
+## Representative Use Cases
 
-### Audit Compliance
+### Regulatory Audit Compliance
 
-Track changes for regulatory requirements:
+The Activity Feed may be utilized to satisfy regulatory change-tracking requirements through the following methodology:
 
 1. Filter by relevant resource type
 2. Review activities within audit period
 3. Identify all modifications and actors
 4. Export activity data for audit documentation
 
-### Change Investigation
+### Forensic Change Investigation
 
-Investigate unexpected changes:
+In circumstances where unexpected or unauthorized modifications are suspected, the following investigative procedure is recommended:
 
 1. Identify the timeframe of concern
 2. Filter activities to narrow scope
 3. Trace modifications to specific actors
 4. Review change details for context
 
-### Collaboration Awareness
+### Collaborative Awareness and Team Coordination
 
-Monitor team activity:
+The Activity Feed serves as a mechanism for maintaining situational awareness of team operations:
 
 1. View recent activities across resources
 2. Identify active areas of work
 3. Review comments and discussions
 4. Stay informed of colleague contributions
 
-## Activity Sources
+## Event Source Classification
 
-### Glossary Activities
+### Glossary-Originated Activities
 
-Activities generated by glossary operations:
+The following activities are generated as a consequence of glossary management operations:
 
 | Action | Description |
 |--------|-------------|
@@ -139,9 +143,9 @@ Activities generated by glossary operations:
 | **Relationship Added** | Synonym or related term linked |
 | **Relationship Removed** | Term relationship unlinked |
 
-### Catalog Activities
+### Catalog-Originated Activities
 
-Activities generated by catalog operations:
+The following activities are generated as a consequence of data catalog operations:
 
 | Action | Description |
 |--------|-------------|
@@ -155,9 +159,9 @@ Activities generated by catalog operations:
 | **Tag Added** | Classification tag applied |
 | **Tag Removed** | Classification tag removed |
 
-### Collaboration Activities
+### Collaboration-Originated Activities
 
-Activities generated by collaboration features:
+The following activities are generated through the use of collaborative annotation features:
 
 | Action | Description |
 |--------|-------------|
@@ -165,41 +169,41 @@ Activities generated by collaboration features:
 | **Comment Updated** | Existing comment modified |
 | **Comment Deleted** | Comment removed |
 
-## Activity Retention
+## Data Retention and Lifecycle Management
 
-### Data Retention
+### Retention Policy
 
-Activity records are retained according to system configuration:
+Activity records are retained in accordance with the system's configured retention policies:
 
 - Default retention period applies to all activities
 - Retention can be configured in Maintenance settings
 - Older activities are purged during maintenance cycles
 
-### Archival
+### Archival Procedures
 
-For long-term audit requirements:
+For organizations subject to long-term audit retention requirements, the following archival procedure is recommended:
 
 1. Export activity data before retention period expires
 2. Store exports in external archive system
 3. Reference archived data for historical audits
 
-## Integration with Other Modules
+## Cross-Module Integration
 
-### Glossary Integration
+### Glossary Module Integration
 
 - Term activities link to glossary term detail pages
 - Click resource name to navigate to the term
 - View full term history in the term detail History tab
 
-### Catalog Integration
+### Catalog Module Integration
 
 - Asset activities link to catalog asset detail pages
 - Click resource name to navigate to the asset
 - View asset-specific activities in asset context
 
-### Notification Integration
+### Notification Subsystem Integration
 
-Configure notifications for specific activities:
+Notifications may be configured in conjunction with specific activity types to facilitate proactive operational awareness:
 
 - Alert on critical resource modifications
 - Notify owners when their resources change

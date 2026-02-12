@@ -1,16 +1,16 @@
-# Notifications
+# Multi-Channel Notification Framework
 
 The Notifications module provides enterprise-grade alert delivery capabilities built upon the truthound library's checkpoint notification infrastructure. This document presents the architectural foundations, channel implementations, and operational guidelines for configuring multi-channel notification delivery.
 
-## 1. Introduction
+## 1. Introduction and Theoretical Foundations
 
-### 1.1 Overview
+### 1.1 System Overview
 
-The notification system serves as the communication layer between data quality events and operational teams. It transforms validation results, drift detections, and schema changes into actionable alerts delivered through preferred communication channels.
+The notification system serves as the communication abstraction layer mediating between data quality events and operational teams. It is responsible for transforming validation results, drift detections, and schema changes into actionable alerts that are delivered through designated communication channels.
 
-### 1.2 Architecture Foundation
+### 1.2 Architectural Foundation
 
-The notification system is built on truthound's `checkpoint.actions` module, which provides battle-tested implementations for various notification channels:
+The notification system is constructed upon truthound's `checkpoint.actions` module, which provides rigorously validated implementations for a variety of notification channels:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -35,7 +35,7 @@ The notification system is built on truthound's `checkpoint.actions` module, whi
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 1.3 Key Design Principles
+### 1.3 Governing Design Principles
 
 | Principle | Description |
 |-----------|-------------|
@@ -46,11 +46,11 @@ The notification system is built on truthound's `checkpoint.actions` module, whi
 
 ---
 
-## 2. Notification Channels
+## 2. Notification Channel Taxonomy
 
 ### 2.1 Supported Channels
 
-The dashboard supports nine notification channels, each backed by a corresponding truthound action class:
+The dashboard supports nine notification channels, each of which is underpinned by a corresponding truthound action class:
 
 | Channel | truthound Action Class | Protocol | Primary Use Case |
 |---------|------------------------|----------|------------------|
@@ -64,11 +64,11 @@ The dashboard supports nine notification channels, each backed by a correspondin
 | **Webhook** | `WebhookAction` | HTTP POST | Custom integrations |
 | **GitHub** | `GitHubAction` | Issues API | Development workflow |
 
-### 2.2 Channel Classification
+### 2.2 Channel Classification Schema
 
-Channels can be classified by their operational characteristics:
+Channels may be classified according to their operational characteristics, as described in the following subsections.
 
-#### 2.2.1 By Delivery Semantics
+#### 2.2.1 Classification by Delivery Semantics
 
 | Category | Channels | Characteristics |
 |----------|----------|-----------------|
@@ -77,7 +77,7 @@ Channels can be classified by their operational characteristics:
 | **Record-based** | Email, GitHub | Persistent, searchable, auditable |
 | **Integration** | Webhook | Customizable, system-to-system |
 
-#### 2.2.2 By Urgency Model
+#### 2.2.2 Classification by Urgency Model
 
 | Urgency Level | Recommended Channels | Rationale |
 |---------------|----------------------|-----------|
@@ -88,11 +88,11 @@ Channels can be classified by their operational characteristics:
 
 ---
 
-## 3. Channel Configuration
+## 3. Channel Configuration Specifications
 
-### 3.1 Slack Channel
+### 3.1 Slack Channel Configuration
 
-Slack integration uses the Incoming Webhook mechanism for message delivery.
+Slack integration employs the Incoming Webhook mechanism for message delivery.
 
 #### Configuration Parameters
 
@@ -104,9 +104,9 @@ Slack integration uses the Incoming Webhook mechanism for message delivery.
 | `icon_emoji` | string | No | Bot icon emoji (e.g., `:bar_chart:`) |
 | `mention_on_failure` | array | No | User IDs to mention on failure events |
 
-#### Message Format
+#### Message Format Specification
 
-Slack messages are delivered in Block Kit format providing rich, interactive content:
+Slack messages are delivered in Block Kit format, thereby providing rich, interactive content:
 
 | Section | Content |
 |---------|---------|
@@ -115,16 +115,16 @@ Slack messages are delivered in Block Kit format providing rich, interactive con
 | **Statistics** | Issue counts by severity, pass rate |
 | **Details** | Issue summary (when enabled) |
 
-#### Webhook URL Acquisition
+#### Webhook URL Acquisition Procedure
 
 1. Navigate to Slack workspace settings
 2. Access **Apps** → **Incoming Webhooks**
 3. Create new webhook for target channel
 4. Copy the generated URL
 
-### 3.2 Email Channel
+### 3.2 Email Channel Configuration
 
-Email notifications support three provider backends: SMTP, SendGrid, and AWS SES.
+Email notifications are supported through three provider backends: SMTP, SendGrid, and AWS SES.
 
 #### Configuration Parameters
 
@@ -142,7 +142,7 @@ Email notifications support three provider backends: SMTP, SendGrid, and AWS SES
 | `provider` | string | No | Provider: smtp, sendgrid, ses (default: smtp) |
 | `api_key` | string | Conditional | API key for SendGrid/SES providers |
 
-#### Provider Selection
+#### Provider Selection Criteria
 
 | Provider | Use Case | Requirements |
 |----------|----------|--------------|
@@ -150,16 +150,16 @@ Email notifications support three provider backends: SMTP, SendGrid, and AWS SES
 | **SendGrid** | Cloud-based, high volume | SendGrid API key |
 | **AWS SES** | AWS infrastructure integration | AWS credentials (env/IAM) |
 
-#### Message Format
+#### Message Format Specification
 
-Email notifications include HTML formatting with:
-- Styled header with severity indicator
-- Tabular issue summary
-- Deep links to dashboard views
+Email notifications are rendered with HTML formatting that includes:
+- A styled header incorporating a severity indicator
+- A tabular issue summary
+- Deep links to corresponding dashboard views
 
-### 3.3 Microsoft Teams Channel
+### 3.3 Microsoft Teams Channel Configuration
 
-Teams integration uses Adaptive Cards for rich message formatting.
+Teams integration utilizes Adaptive Cards for rich message formatting.
 
 #### Configuration Parameters
 
@@ -169,7 +169,7 @@ Teams integration uses Adaptive Cards for rich message formatting.
 | `channel` | string | No | Channel name for display purposes |
 | `include_details` | boolean | No | Include detailed statistics (default: true) |
 
-#### Webhook Configuration
+#### Webhook Configuration Procedure
 
 1. Open Teams channel settings
 2. Navigate to **Connectors**
@@ -177,9 +177,9 @@ Teams integration uses Adaptive Cards for rich message formatting.
 4. Configure name and icon
 5. Copy generated URL
 
-### 3.4 Discord Channel
+### 3.4 Discord Channel Configuration
 
-Discord integration delivers embedded messages through webhooks.
+Discord integration facilitates the delivery of embedded messages through webhooks.
 
 #### Configuration Parameters
 
@@ -191,9 +191,9 @@ Discord integration delivers embedded messages through webhooks.
 | `embed_color` | integer | No | Embed color as hex integer (auto-calculated based on severity) |
 | `include_mentions` | array | No | Mentions to include (@here, role IDs) |
 
-### 3.5 Telegram Channel
+### 3.5 Telegram Channel Configuration
 
-Telegram notifications are delivered via the Bot API.
+Telegram notifications are dispatched via the Bot API.
 
 #### Configuration Parameters
 
@@ -204,7 +204,7 @@ Telegram notifications are delivered via the Bot API.
 | `parse_mode` | string | No | Parse mode: Markdown or HTML (default: Markdown) |
 | `disable_notification` | boolean | No | Send silently (default: false) |
 
-#### Bot Setup
+#### Bot Provisioning Procedure
 
 1. Contact @BotFather on Telegram
 2. Create new bot with `/newbot`
@@ -212,7 +212,7 @@ Telegram notifications are delivered via the Bot API.
 4. Add bot to target chat/channel
 5. Obtain chat ID via bot API
 
-### 3.6 PagerDuty Channel
+### 3.6 PagerDuty Channel Configuration
 
 PagerDuty integration creates incidents through the Events API v2.
 
@@ -227,7 +227,7 @@ PagerDuty integration creates incidents through the Events API v2.
 | `class_type` | string | No | Alert class/type classification |
 | `custom_details` | object | No | Additional custom details |
 
-#### Severity Mapping
+#### Severity Mapping Correspondence
 
 | Dashboard Severity | PagerDuty Severity | Behavior |
 |-------------------|-------------------|----------|
@@ -236,9 +236,9 @@ PagerDuty integration creates incidents through the Events API v2.
 | Medium | warning | Low-urgency notification |
 | Low | info | Informational |
 
-### 3.7 OpsGenie Channel
+### 3.7 OpsGenie Channel Configuration
 
-OpsGenie integration creates and manages alerts through the REST API.
+OpsGenie integration is responsible for the creation and management of alerts through the REST API.
 
 #### Configuration Parameters
 
@@ -251,9 +251,9 @@ OpsGenie integration creates and manages alerts through the REST API.
 | `tags` | array | No | Alert tags |
 | `auto_close_on_success` | boolean | No | Auto-close on validation success (default: true) |
 
-#### Auto-Priority Mapping
+#### Automated Priority Mapping
 
-When `auto_priority` is enabled:
+When `auto_priority` is enabled, the following correspondence is applied:
 
 | Validation Result | OpsGenie Priority |
 |-------------------|-------------------|
@@ -263,9 +263,9 @@ When `auto_priority` is enabled:
 | Low issues | P4 |
 | Info only | P5 |
 
-### 3.8 Webhook Channel
+### 3.8 Webhook Channel Configuration
 
-Generic webhook integration for custom system-to-system communication.
+The generic webhook integration facilitates custom system-to-system communication.
 
 #### Configuration Parameters
 
@@ -277,9 +277,9 @@ Generic webhook integration for custom system-to-system communication.
 | `timeout` | integer | No | Request timeout in seconds (default: 30) |
 | `include_result` | boolean | No | Include full checkpoint result (default: true) |
 
-#### Payload Format
+#### Payload Format Specification
 
-Webhook payloads follow a standardized JSON structure:
+Webhook payloads conform to a standardized JSON structure:
 
 ```json
 {
@@ -300,9 +300,9 @@ Webhook payloads follow a standardized JSON structure:
 }
 ```
 
-### 3.9 GitHub Channel
+### 3.9 GitHub Channel Configuration
 
-GitHub integration creates issues or check runs for data quality events.
+GitHub integration is employed to create issues or check runs in response to data quality events.
 
 #### Configuration Parameters
 
@@ -315,22 +315,22 @@ GitHub integration creates issues or check runs for data quality events.
 | `assignees` | array | No | Issue assignees |
 | `create_check_run` | boolean | No | Create check run instead of issue (default: false) |
 
-#### Token Permissions
+#### Required Token Permission Scopes
 
-Required token scopes:
+The following token scopes are required:
 - `repo` - Full repository access
-- `issues:write` - Issue creation (if using issues)
-- `checks:write` - Check run creation (if using check runs)
+- `issues:write` - Issue creation (if utilizing issues)
+- `checks:write` - Check run creation (if utilizing check runs)
 
 ---
 
-## 4. Notification Rules
+## 4. Notification Rule Configuration
 
 ### 4.1 Rule Fundamentals
 
-Notification rules define the conditions under which notifications are dispatched and to which channels.
+Notification rules define the conditions under which notifications are dispatched and the channels to which they are directed.
 
-#### Rule Components
+#### Rule Component Definitions
 
 | Component | Description |
 |-----------|-------------|
@@ -340,9 +340,9 @@ Notification rules define the conditions under which notifications are dispatche
 | **Source Filter** | Optional restriction to specific data sources |
 | **Status** | Active or inactive |
 
-### 4.2 Trigger Conditions
+### 4.2 Trigger Condition Definitions
 
-Available trigger conditions align with dashboard event types:
+The available trigger conditions are aligned with dashboard event types:
 
 | Condition | Event Type | Description |
 |-----------|------------|-------------|
@@ -354,9 +354,9 @@ Available trigger conditions align with dashboard event types:
 | `schema_changed` | `SchemaChangedEvent` | Source schema modification |
 | `breaking_schema_change` | `SchemaChangedEvent` | Breaking schema changes detected |
 
-### 4.3 Rule Evaluation
+### 4.3 Rule Evaluation Process
 
-Rules are evaluated against incoming events:
+Rules are evaluated against incoming events according to the following decision process:
 
 ```
 Event arrives
@@ -376,7 +376,7 @@ Event arrives
     │     └─► Condition not matched: Skip rule
 ```
 
-### 4.4 Rule Design Guidelines
+### 4.4 Rule Design Principles
 
 | Guideline | Rationale |
 |-----------|-----------|
@@ -387,11 +387,11 @@ Event arrives
 
 ---
 
-## 5. Notification Logs
+## 5. Notification Log Architecture
 
-### 5.1 Log Structure
+### 5.1 Log Entry Structure
 
-Each notification delivery attempt creates a log entry:
+Each notification delivery attempt results in the creation of a log entry with the following schema:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -406,7 +406,7 @@ Each notification delivery attempt creates a log entry:
 | `created_at` | datetime | Log creation timestamp |
 | `sent_at` | datetime | Successful delivery timestamp |
 
-### 5.2 Delivery Status
+### 5.2 Delivery Status Definitions
 
 | Status | Description | Action |
 |--------|-------------|--------|
@@ -414,9 +414,9 @@ Each notification delivery attempt creates a log entry:
 | **failed** | Delivery failed | Review error, fix configuration |
 | **pending** | Awaiting delivery | Check channel availability |
 
-### 5.3 Statistics
+### 5.3 Delivery Statistics and Metrics
 
-The statistics dashboard provides delivery metrics:
+The statistics dashboard provides the following delivery metrics:
 
 | Metric | Calculation | Target |
 |--------|-------------|--------|
@@ -427,13 +427,13 @@ The statistics dashboard provides delivery metrics:
 
 ---
 
-## 6. Integration with Advanced Notifications
+## 6. Integration with the Advanced Notification Subsystem
 
-The basic notification system integrates seamlessly with the Advanced Notifications module (see [Advanced Notifications](./notifications-advanced.md)):
+The foundational notification system is designed to integrate seamlessly with the Advanced Notifications module (see [Advanced Notifications](./notifications-advanced.md)):
 
 ### 6.1 Processing Pipeline Integration
 
-When Advanced Notifications are enabled:
+When Advanced Notifications are enabled, the following processing pipeline is invoked:
 
 ```
 Event → Dispatcher (use_truthound=True)
@@ -451,7 +451,7 @@ Event → Dispatcher (use_truthound=True)
 
 ### 6.2 Fallback Behavior
 
-When Advanced Notifications are disabled or not configured:
+When Advanced Notifications are disabled or have not been configured, the following fallback pipeline is employed:
 
 ```
 Event → Dispatcher (use_truthound=False)
@@ -463,11 +463,11 @@ Event → Dispatcher (use_truthound=False)
 
 ---
 
-## 7. Operational Guidelines
+## 7. Recommended Operational Practices
 
-### 7.1 Channel Testing
+### 7.1 Channel Verification Protocol
 
-Before relying on notification channels in production:
+Prior to relying upon notification channels in production environments, the following verification procedure should be observed:
 
 1. **Create channel** with complete configuration
 2. **Send test notification** via "Test" button
@@ -475,7 +475,7 @@ Before relying on notification channels in production:
 4. **Review formatting** for readability
 5. **Activate channel** only after successful test
 
-### 7.2 Credential Management
+### 7.2 Credential Management Practices
 
 | Practice | Recommendation |
 |----------|----------------|
@@ -484,7 +484,7 @@ Before relying on notification channels in production:
 | **Minimal permissions** | Request only required scopes |
 | **Audit access** | Review who has access to credentials |
 
-### 7.3 Alert Fatigue Prevention
+### 7.3 Alert Fatigue Mitigation Strategies
 
 | Strategy | Implementation |
 |----------|----------------|
@@ -494,7 +494,7 @@ Before relying on notification channels in production:
 | **Rule specificity** | Narrow rules to relevant conditions |
 | **Regular review** | Audit and cleanup unused rules monthly |
 
-### 7.4 Troubleshooting Failed Notifications
+### 7.4 Diagnostic Procedures for Failed Notifications
 
 | Symptom | Possible Cause | Resolution |
 |---------|----------------|------------|
@@ -506,9 +506,9 @@ Before relying on notification channels in production:
 
 ---
 
-## 8. API Reference
+## 8. Application Programming Interface Reference
 
-### 8.1 Channels API
+### 8.1 Channels API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -520,7 +520,7 @@ Before relying on notification channels in production:
 | `/notifications/channels/{id}` | DELETE | Delete channel |
 | `/notifications/channels/{id}/test` | POST | Send test notification |
 
-### 8.2 Rules API
+### 8.2 Rules API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -531,7 +531,7 @@ Before relying on notification channels in production:
 | `/notifications/rules/{id}` | PUT | Update rule |
 | `/notifications/rules/{id}` | DELETE | Delete rule |
 
-### 8.3 Logs API
+### 8.3 Logs API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -541,7 +541,7 @@ Before relying on notification channels in production:
 
 ---
 
-## 9. References
+## 9. References and Further Reading
 
 1. truthound Documentation - Checkpoint Actions. https://truthound.readthedocs.io/checkpoint/actions/
 2. Slack API - Incoming Webhooks. https://api.slack.com/messaging/webhooks

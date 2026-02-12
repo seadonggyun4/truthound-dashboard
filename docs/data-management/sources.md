@@ -1,39 +1,39 @@
 # Data Sources
 
-The Data Sources module provides comprehensive management capabilities for connecting to, configuring, and validating data sources within Truthound Dashboard.
+The Data Sources module provides systematic management capabilities for connecting to, configuring, and validating data sources within Truthound Dashboard.
 
 ## Overview
 
-Data sources represent the fundamental entities upon which all validation, profiling, and quality monitoring operations are performed. The system supports a diverse range of data source types, including file-based sources (CSV, Parquet, JSON) and database connections (PostgreSQL, MySQL, Snowflake, BigQuery).
+Data sources constitute the fundamental entities upon which all validation, profiling, and quality monitoring operations are conducted. The system accommodates a diverse range of data source types, encompassing file-based sources (CSV, Parquet, JSON) and database connections (PostgreSQL, MySQL, Snowflake, BigQuery).
 
-## Sources List Interface
+## Source Listing Interface
 
 ### Source Listing
 
-The main Sources page displays all registered data sources in a card-based layout. Each source card presents:
+The primary Sources page renders all registered data sources in a card-based layout. Each source card presents the following informational elements:
 
 | Element | Description |
 |---------|-------------|
 | **Source Name** | User-defined identifier for the data source |
 | **Type Badge** | Visual indicator of the connection type |
-| **Description** | Optional descriptive text explaining the source's purpose |
+| **Description** | Optional descriptive text clarifying the source's purpose |
 | **Last Validation** | Timestamp of the most recent validation execution |
 | **Status Indicator** | Color-coded badge reflecting validation status |
 
 ### Available Actions
 
-From the source listing, users may perform the following operations:
+From the source listing, practitioners may execute the following operations:
 
 - **Add Source**: Opens a dialog for registering a new data source
-- **Validate**: Executes validation using default validator configuration
+- **Validate**: Initiates validation using the default validator configuration
 - **Delete**: Removes the source and all associated metadata (with confirmation)
-- **View Details**: Navigates to the comprehensive Source Detail page
+- **View Details**: Navigates to the comprehensive Source Detail Management page
 
-## Adding a Data Source
+## Data Source Registration
 
 ### Source Creation Dialog
 
-The source creation workflow collects the following information:
+The source registration workflow collects the following information:
 
 1. **Source Name** (required): A unique identifier for the data source
 2. **Source Type** (required): Selection from supported connection types
@@ -73,23 +73,23 @@ The source creation workflow collects the following information:
 }
 ```
 
-## Source Detail Interface
+## Source Detail Management Interface
 
-The Source Detail page provides comprehensive management and monitoring capabilities for individual data sources.
+The Source Detail Management page provides systematic management and monitoring capabilities for individual data sources.
 
 ### Information Tabs
 
 #### Connection Info Tab
 
-Displays the source configuration with appropriate security measures:
+This tab displays the source configuration with appropriate security measures applied:
 
 - Sensitive fields (passwords, tokens, API keys) are masked by default
-- Toggle visibility option for authorized review
-- Connection type and configuration summary
+- A toggle visibility option is provided for authorized review
+- Connection type and configuration summary are presented
 
 #### Validation History Tab
 
-Presents a chronological record of all validation executions:
+A chronological record of all validation executions is presented in tabular form:
 
 | Column | Description |
 |--------|-------------|
@@ -101,57 +101,57 @@ Presents a chronological record of all validation executions:
 
 #### Schema Tab
 
-Displays the current schema definition for the source:
+The current schema definition for the source is displayed, comprising:
 
 - Column names and data types
 - Nullable constraints
 - Unique constraints
 - Value constraints (min/max, allowed values)
 
-### Available Operations
+### Supported Operations
 
 #### Test Connection
 
-Verifies connectivity to the data source without executing validation:
+Connectivity to the data source is verified without executing validation:
 
 1. Click the **Test Connection** button
-2. System attempts to establish connection using stored credentials
-3. Success or failure notification is displayed
-4. For failures, error details assist in troubleshooting
+2. The system attempts to establish a connection using stored credentials
+3. A success or failure notification is displayed
+4. For failures, error details are provided to assist in troubleshooting
 
 All registered source types support connection testing. For file-based sources (`csv`, `parquet`, `json`, `ndjson`, `jsonl`), the test verifies that the specified file path exists and reports the file size. For database and external service sources, the test establishes a live connection and retrieves metadata including column count and row count.
 
 #### Learn Schema
 
-Automatically generates a schema definition by analyzing the data source:
+A schema definition is automatically generated by analyzing the data source:
 
 1. Click the **Learn Schema** button
-2. System samples the data source to infer column types and constraints
-3. Generated schema is displayed for review
-4. Schema can be modified manually if required
+2. The system samples the data source to infer column types and constraints
+3. The generated schema is displayed for review
+4. The schema may be modified manually if required
 
 #### Quick Validate
 
-Executes validation using the default validator configuration:
+Validation is executed using the default validator configuration:
 
 1. Click the **Quick Validate** button
-2. System runs all applicable validators
+2. The system executes all applicable validators
 3. Results are displayed upon completion
-4. Validation record is added to history
+4. A validation record is appended to the history
 
 #### Configure & Run Validation
 
-Provides granular control over validation execution:
+Granular control over the validation execution process is provided:
 
 1. Click the **Configure & Run** button
 2. Select validators to execute from the validator registry (150+ available)
 3. Configure validator-specific parameters (thresholds, columns, etc.)
-4. Execute validation with custom configuration
-5. Review results with detailed issue breakdown
+4. Execute validation with the custom configuration
+5. Review results with a detailed issue breakdown
 
 ### Preset Templates
 
-The validator configuration dialog offers preset templates for common use cases:
+The validator configuration dialog offers preset templates for commonly encountered use cases:
 
 | Template | Description |
 |----------|-------------|
@@ -162,12 +162,12 @@ The validator configuration dialog offers preset templates for common use cases:
 
 ### Edit Source
 
-Modify source configuration:
+Source configuration may be modified as follows:
 
 1. Click the **Edit** button
-2. Update source name, description, or configuration
+2. Update the source name, description, or configuration
 3. Save changes
-4. Re-test connection if configuration was modified
+4. Re-test the connection if the configuration was modified
 
 ## Validation Status Indicators
 
@@ -178,15 +178,15 @@ Modify source configuration:
 | **Warning** | Yellow | Validation completed with medium or low-severity issues |
 | **Pending** | Gray | No validation has been executed |
 
-## Security Considerations
+## Security Architecture
 
 ### Credential Storage
 
-Connection credentials are encrypted using Fernet symmetric encryption before storage. The encryption key is automatically generated and stored with restricted file permissions in the Truthound data directory.
+Connection credentials are encrypted using Fernet symmetric encryption prior to storage. The encryption key is automatically generated and stored with restricted file permissions within the Truthound data directory.
 
 ### Credential Display
 
-Sensitive configuration fields are masked in the user interface by default. Users must explicitly toggle visibility to view credential values, providing protection against shoulder-surfing attacks.
+Sensitive configuration fields are masked within the user interface by default. Practitioners must explicitly toggle visibility to inspect credential values, thereby providing protection against shoulder-surfing attacks.
 
 ## API Reference
 
@@ -208,13 +208,13 @@ Sensitive configuration fields are masked in the user interface by default. User
 | `/masks/sources/{id}/mask` | POST | Mask sensitive data |
 | `/drift/compare` | POST | Compare two sources for drift |
 
-## Dashboard Extended API Parameters
+## Extended API Parameter Specifications
 
-The Dashboard extends the core Truthound library functions with additional parameters for enhanced flexibility. These extensions are available through the REST API.
+The Dashboard extends the core Truthound library functions with additional parameters to facilitate enhanced flexibility. These extensions are made available through the REST API.
 
 ### Schema Learning (`/sources/{id}/learn`)
 
-Wraps `th.learn()` for automatic schema generation.
+This endpoint wraps `th.learn()` for automatic schema generation.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -231,7 +231,7 @@ Wraps `th.learn()` for automatic schema generation.
 
 ### Validation (`/validations/sources/{id}/validate`)
 
-Wraps `th.check()` for data validation with configurable parameters.
+This endpoint wraps `th.check()` for data validation with configurable parameters.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -260,10 +260,10 @@ Wraps `th.check()` for data validation with configurable parameters.
 
 ### PII Scanning (`/scans/sources/{id}/scan`)
 
-Wraps `th.scan()` for PII detection.
+This endpoint wraps `th.scan()` for PII detection.
 
 > **Note**: truthound's `th.scan()` does not support configuration parameters.
-> The scan automatically runs on all columns with default settings, detecting all supported PII types.
+> The scan is automatically executed on all columns with default settings, detecting all supported PII types.
 
 **Example Request:**
 ```json
@@ -272,7 +272,7 @@ Wraps `th.scan()` for PII detection.
 
 ### Data Masking (`/masks/sources/{id}/mask`)
 
-Wraps `th.mask()` for data protection.
+This endpoint wraps `th.mask()` for data protection.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -280,7 +280,7 @@ Wraps `th.mask()` for data protection.
 | `strategy` | `str` | `"redact"` | Masking strategy (redact/hash/fake) |
 
 > **Note**: truthound's `th.mask()` does not support output format selection.
-> The output is always generated in CSV format.
+> The output is invariably generated in CSV format.
 
 **Example Request:**
 ```json
@@ -292,7 +292,7 @@ Wraps `th.mask()` for data protection.
 
 ### Data Profiling (`/sources/{id}/profile`)
 
-Wraps `th.profile()` for basic data profiling with default settings.
+This endpoint wraps `th.profile()` for basic data profiling with default settings.
 
 **Example Request:**
 ```json
@@ -301,15 +301,15 @@ Wraps `th.profile()` for basic data profiling with default settings.
 
 #### Result Persistence and Automatic Retrieval
 
-Every profiling execution—whether basic or advanced—is automatically persisted to the database upon completion. This design ensures that profile results are durable across user sessions and browser navigation events.
+Every profiling execution -- whether basic or advanced -- is automatically persisted to the database upon completion. This architectural design ensures that profile results remain durable across user sessions and browser navigation events.
 
-When the Profile page is loaded, the system automatically retrieves the most recently stored profile via `GET /sources/{id}/profile/latest`. Consequently, users observe the last profiling result immediately upon page entry without requiring re-execution. If no prior profile exists for the source, the page renders in its initial empty state, prompting the user to initiate profiling.
+When the Profile page is loaded, the system automatically retrieves the most recently stored profile via `GET /sources/{id}/profile/latest`. Consequently, practitioners observe the last profiling result immediately upon page entry without requiring re-execution. If no prior profile exists for the given source, the page is rendered in its initial empty state, prompting the practitioner to initiate profiling.
 
 The profile history is independently accessible through `GET /sources/{id}/profiles`, which returns a paginated list of all stored profile summaries ordered by creation timestamp in descending order.
 
 ### Advanced Data Profiling (`/sources/{id}/profile/advanced`)
 
-Uses truthound's `ProfilerConfig` for fine-grained control over profiling behavior.
+This endpoint utilizes truthound's `ProfilerConfig` for fine-grained control over profiling behavior.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -336,20 +336,20 @@ Uses truthound's `ProfilerConfig` for fine-grained control over profiling behavi
 }
 ```
 
-> **Note**: Advanced profiling requires truthound with ProfilerConfig support. If not available, the API returns a 501 error.
+> **Note**: Advanced profiling requires truthound with ProfilerConfig support. If this capability is not available, the API returns a 501 error.
 
-The profile response includes:
+The profile response encompasses:
 - Column types and inferred semantic types
 - Null and unique value percentages
 - Statistical measures (min, max, mean, std, median, quartiles)
 - String length statistics
 - Detected patterns (email, phone, UUID, etc.)
 - Value distribution histograms
-- Column correlations (when `include_correlations` is true)
+- Column correlations (when `include_correlations` is set to true)
 
 ### Drift Detection (`/drift/compare`)
 
-Wraps `th.compare()` for distribution comparison between datasets.
+This endpoint wraps `th.compare()` for distribution comparison between datasets.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -371,7 +371,7 @@ Wraps `th.compare()` for distribution comparison between datasets.
 | `js` | Jensen-Shannon divergence | Any distribution |
 | `kl` | Kullback-Leibler divergence | Information-theoretic |
 | `wasserstein` | Wasserstein distance | Distribution shape |
-| `cvm` | Cramér-von Mises test | Continuous distributions |
+| `cvm` | Cramer-von Mises test | Continuous distributions |
 | `anderson` | Anderson-Darling test | Tail-sensitive detection |
 | `hellinger` | Hellinger distance | Bounded metric |
 | `bhattacharyya` | Bhattacharyya distance | Classification bounds |
@@ -388,3 +388,4 @@ Wraps `th.compare()` for distribution comparison between datasets.
   "method": "psi",
   "sample_size": 10000
 }
+```

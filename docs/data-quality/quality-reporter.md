@@ -1,46 +1,46 @@
 # Quality Reporter
 
-Quality Reporter는 검증 규칙의 품질을 정량적으로 평가하고 다양한 형식의 리포트를 생성하는 모듈입니다.
+The Quality Reporter is a module designed to quantitatively assess the quality of validation rules and generate reports in a variety of formats.
 
-## 개요
+## Overview
 
-Quality Reporter는 truthound의 품질 평가 시스템을 기반으로 검증 규칙의 정확도를 측정합니다. 혼동 행렬(Confusion Matrix) 기반의 F1 Score, Precision, Recall, Accuracy 메트릭을 계산하여 규칙의 품질 수준을 분류합니다.
+The Quality Reporter measures the accuracy of validation rules through the quality assessment framework provided by truthound. It computes confusion matrix-based metrics, including F1 Score, Precision, Recall, and Accuracy, to classify each rule into a corresponding quality level.
 
-### 품질 평가 메트릭
+### Quality Assessment Metrics
 
-| 메트릭 | 정의 | 계산식 |
-|--------|------|--------|
-| **F1 Score** | Precision과 Recall의 조화 평균 | 2 × (Precision × Recall) / (Precision + Recall) |
-| **Precision** | 예측된 양성 중 실제 양성의 비율 | TP / (TP + FP) |
-| **Recall** | 실제 양성 중 예측된 양성의 비율 | TP / (TP + FN) |
-| **Accuracy** | 전체 예측 중 정확한 예측의 비율 | (TP + TN) / (TP + TN + FP + FN) |
+| Metric | Definition | Formula |
+|--------|------------|---------|
+| **F1 Score** | Harmonic mean of Precision and Recall | 2 × (Precision × Recall) / (Precision + Recall) |
+| **Precision** | Proportion of true positives among all predicted positives | TP / (TP + FP) |
+| **Recall** | Proportion of true positives among all actual positives | TP / (TP + FN) |
+| **Accuracy** | Proportion of correct predictions among all predictions | (TP + TN) / (TP + TN + FP + FN) |
 
-### 혼동 행렬
+### Confusion Matrix
 
-품질 메트릭은 혼동 행렬의 네 가지 요소로부터 계산됩니다:
+Quality metrics are derived from the four fundamental elements of the confusion matrix:
 
-| 요소 | 정의 |
-|------|------|
-| **TP (True Positive)** | 규칙이 정상 데이터를 정상으로 올바르게 판정 |
-| **TN (True Negative)** | 규칙이 이상 데이터를 이상으로 올바르게 판정 |
-| **FP (False Positive)** | 규칙이 정상 데이터를 이상으로 잘못 판정 (오탐) |
-| **FN (False Negative)** | 규칙이 이상 데이터를 정상으로 잘못 판정 (미탐) |
+| Element | Definition |
+|---------|------------|
+| **TP (True Positive)** | The rule correctly identifies conforming data as conforming |
+| **TN (True Negative)** | The rule correctly identifies anomalous data as anomalous |
+| **FP (False Positive)** | The rule incorrectly classifies conforming data as anomalous (false alarm) |
+| **FN (False Negative)** | The rule incorrectly classifies anomalous data as conforming (missed detection) |
 
-## 품질 수준 분류
+## Quality Level Classification
 
-F1 Score를 기준으로 규칙의 품질 수준을 분류합니다:
+Rules are classified into quality levels based on their F1 Score:
 
-| 수준 | F1 Score 범위 | 설명 |
-|------|---------------|------|
-| **Excellent** | ≥ 0.9 | 우수한 품질, 운영 환경에 적합 |
-| **Good** | 0.7 ~ 0.9 | 양호한 품질, 대부분의 환경에 적합 |
-| **Acceptable** | 0.5 ~ 0.7 | 허용 가능한 품질, 개선 권장 |
-| **Poor** | 0.3 ~ 0.5 | 미흡한 품질, 규칙 재검토 필요 |
-| **Unacceptable** | < 0.3 | 부적합, 즉시 수정 필요 |
+| Level | F1 Score Range | Description |
+|-------|----------------|-------------|
+| **Excellent** | >= 0.9 | Superior quality; suitable for production environments |
+| **Good** | 0.7 -- 0.9 | Satisfactory quality; appropriate for most operational contexts |
+| **Acceptable** | 0.5 -- 0.7 | Tolerable quality; improvement is recommended |
+| **Poor** | 0.3 -- 0.5 | Insufficient quality; rule revision is required |
+| **Unacceptable** | < 0.3 | Inadequate; immediate remediation is necessary |
 
-### 품질 임계값 설정
+### Quality Threshold Configuration
 
-기본 임계값은 사용자 정의가 가능합니다:
+The default threshold values may be customized by the user:
 
 ```json
 {
@@ -53,116 +53,116 @@ F1 Score를 기준으로 규칙의 품질 수준을 분류합니다:
 }
 ```
 
-## 품질 점수 산정
+## Quality Score Calculation
 
-### 점수 산정 설정
+### Score Calculation Settings
 
-| 설정 | 설명 | 기본값 | 범위 |
-|------|------|--------|------|
-| **sample_size** | 평가에 사용할 데이터 샘플 크기 | 10,000 | 100 ~ 1,000,000 |
-| **rule_names** | 평가할 특정 규칙 목록 (선택) | 전체 규칙 | - |
+| Setting | Description | Default | Range |
+|---------|-------------|---------|-------|
+| **sample_size** | Number of data samples used for evaluation | 10,000 | 100 -- 1,000,000 |
+| **rule_names** | Specific list of rules to evaluate (optional) | All rules | -- |
 
-### 점수 산정 결과
+### Score Calculation Results
 
-점수 산정 후 다음 정보가 제공됩니다:
+Upon completion of score calculation, the following information is provided:
 
-| 항목 | 내용 |
-|------|------|
-| **scores** | 개별 규칙의 품질 점수 목록 |
-| **statistics** | 전체 통계 (평균, 최소, 최대 F1 등) |
-| **level_distribution** | 품질 수준별 규칙 분포 |
+| Field | Description |
+|-------|-------------|
+| **scores** | List of quality scores for individual rules |
+| **statistics** | Aggregate statistics (mean, minimum, and maximum F1, etc.) |
+| **level_distribution** | Distribution of rules across quality levels |
 
-## 리포트 생성
+## Report Generation
 
-### 지원 형식
+### Supported Formats
 
-| 형식 | 확장자 | 용도 |
-|------|--------|------|
-| **Console** | .txt | 터미널 출력, 로깅 |
-| **JSON** | .json | API 연동, 자동화 |
-| **HTML** | .html | 대시보드, 문서화 |
-| **Markdown** | .md | Git 저장소, 위키 |
-| **JUnit** | .xml | CI/CD 파이프라인 |
+| Format | Extension | Intended Use |
+|--------|-----------|--------------|
+| **Console** | .txt | Terminal output, logging |
+| **JSON** | .json | API integration, automation |
+| **HTML** | .html | Dashboards, documentation |
+| **Markdown** | .md | Git repositories, wikis |
+| **JUnit** | .xml | CI/CD pipelines |
 
-### 리포트 설정
+### Report Configuration
 
-| 설정 | 설명 | 기본값 |
-|------|------|--------|
-| **title** | 리포트 제목 | - |
-| **description** | 리포트 설명 | - |
-| **include_metrics** | 상세 메트릭 포함 | true |
-| **include_confusion_matrix** | 혼동 행렬 포함 | false |
-| **include_recommendations** | 권장사항 포함 | true |
-| **include_statistics** | 통계 섹션 포함 | true |
-| **include_summary** | 요약 섹션 포함 | true |
-| **include_charts** | 차트 포함 (HTML만 해당) | true |
-| **sort_order** | 정렬 기준 | f1_desc |
-| **max_scores** | 포함할 최대 점수 수 | 전체 |
-| **theme** | HTML 테마 | professional |
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **title** | Report title | -- |
+| **description** | Report description | -- |
+| **include_metrics** | Include detailed metrics | true |
+| **include_confusion_matrix** | Include confusion matrix | false |
+| **include_recommendations** | Include recommendations | true |
+| **include_statistics** | Include statistics section | true |
+| **include_summary** | Include summary section | true |
+| **include_charts** | Include charts (HTML format only) | true |
+| **sort_order** | Sorting criterion | f1_desc |
+| **max_scores** | Maximum number of scores to include | All |
+| **theme** | HTML theme | professional |
 
-### 정렬 옵션
+### Sorting Options
 
-| 옵션 | 설명 |
-|------|------|
-| **f1_desc** | F1 Score 내림차순 |
-| **f1_asc** | F1 Score 오름차순 |
-| **precision_desc** | Precision 내림차순 |
-| **recall_desc** | Recall 내림차순 |
-| **name_asc** | 규칙 이름 오름차순 |
-| **name_desc** | 규칙 이름 내림차순 |
+| Option | Description |
+|--------|-------------|
+| **f1_desc** | F1 Score, descending |
+| **f1_asc** | F1 Score, ascending |
+| **precision_desc** | Precision, descending |
+| **recall_desc** | Recall, descending |
+| **name_asc** | Rule name, ascending |
+| **name_desc** | Rule name, descending |
 
-### HTML 테마
+### HTML Themes
 
-| 테마 | 설명 |
-|------|------|
-| **light** | 밝은 배경 테마 |
-| **dark** | 어두운 배경 테마 |
-| **professional** | 전문적인 비즈니스 테마 |
+| Theme | Description |
+|-------|-------------|
+| **light** | Light background theme |
+| **dark** | Dark background theme |
+| **professional** | Professional business theme |
 
-## 점수 필터링
+## Score Filtering
 
-### 필터 옵션
+### Filter Options
 
-| 필터 | 설명 | 예시 |
-|------|------|------|
-| **min_level** | 최소 품질 수준 | good |
-| **max_level** | 최대 품질 수준 | excellent |
-| **min_f1** | 최소 F1 Score | 0.7 |
-| **max_f1** | 최대 F1 Score | 0.95 |
-| **min_confidence** | 최소 신뢰도 | 0.8 |
-| **should_use_only** | 사용 권장 규칙만 | true |
-| **include_columns** | 포함할 컬럼 | ["email", "phone"] |
-| **exclude_columns** | 제외할 컬럼 | ["internal_id"] |
-| **rule_types** | 규칙 유형 | ["not_null", "unique"] |
+| Filter | Description | Example |
+|--------|-------------|---------|
+| **min_level** | Minimum quality level | good |
+| **max_level** | Maximum quality level | excellent |
+| **min_f1** | Minimum F1 Score | 0.7 |
+| **max_f1** | Maximum F1 Score | 0.95 |
+| **min_confidence** | Minimum confidence score | 0.8 |
+| **should_use_only** | Include only recommended rules | true |
+| **include_columns** | Columns to include | ["email", "phone"] |
+| **exclude_columns** | Columns to exclude | ["internal_id"] |
+| **rule_types** | Rule types | ["not_null", "unique"] |
 
-## 점수 비교
+## Score Comparison
 
-여러 소스의 품질 점수를 비교할 수 있습니다:
+Quality scores from multiple sources may be compared using the following configuration:
 
-| 설정 | 설명 |
-|------|------|
-| **source_ids** | 비교할 소스 ID 목록 |
-| **sort_by** | 정렬 기준 (f1_score, precision, recall, confidence) |
-| **descending** | 내림차순 정렬 여부 |
-| **group_by** | 그룹화 기준 (column, level, rule_type) |
-| **max_results** | 최대 결과 수 |
+| Setting | Description |
+|---------|-------------|
+| **source_ids** | List of source IDs to compare |
+| **sort_by** | Sorting criterion (f1_score, precision, recall, confidence) |
+| **descending** | Whether to sort in descending order |
+| **group_by** | Grouping criterion (column, level, rule_type) |
+| **max_results** | Maximum number of results |
 
-## API 참조
+## API Reference
 
-| 엔드포인트 | 메서드 | 설명 |
-|------------|--------|------|
-| `/quality/formats` | GET | 사용 가능한 형식 및 옵션 조회 |
-| `/quality/sources/{id}/score` | POST | 품질 점수 산정 |
-| `/quality/sources/{id}/report` | POST | 리포트 생성 |
-| `/quality/sources/{id}/report/download` | GET | 리포트 다운로드 |
-| `/quality/sources/{id}/report/preview` | GET | 리포트 미리보기 |
-| `/quality/sources/{id}/summary` | GET | 품질 요약 조회 |
-| `/quality/compare` | POST | 소스간 점수 비교 |
-| `/quality/filter` | POST | 점수 필터링 |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/quality/formats` | GET | Retrieve available formats and options |
+| `/quality/sources/{id}/score` | POST | Calculate quality scores |
+| `/quality/sources/{id}/report` | POST | Generate a report |
+| `/quality/sources/{id}/report/download` | GET | Download a report |
+| `/quality/sources/{id}/report/preview` | GET | Preview a report |
+| `/quality/sources/{id}/summary` | GET | Retrieve quality summary |
+| `/quality/compare` | POST | Compare scores across sources |
+| `/quality/filter` | POST | Filter scores |
 
-### 요청 예시
+### Request Examples
 
-#### 품질 점수 산정
+#### Quality Score Calculation
 
 ```json
 POST /api/v1/quality/sources/{source_id}/score
@@ -178,7 +178,7 @@ POST /api/v1/quality/sources/{source_id}/score
 }
 ```
 
-#### 리포트 생성
+#### Report Generation
 
 ```json
 POST /api/v1/quality/sources/{source_id}/report
@@ -196,7 +196,7 @@ POST /api/v1/quality/sources/{source_id}/report
 }
 ```
 
-#### 점수 필터링
+#### Score Filtering
 
 ```json
 POST /api/v1/quality/filter?source_id={source_id}
@@ -208,55 +208,55 @@ POST /api/v1/quality/filter?source_id={source_id}
 }
 ```
 
-## 권장 사용 지침
+## Recommended Operational Guidelines
 
-### 품질 수준별 권장 조치
+### Recommended Actions by Quality Level
 
-| 품질 수준 | 권장 조치 |
-|-----------|----------|
-| **Excellent** | 운영 환경에 배포 가능 |
-| **Good** | 대부분의 환경에 사용 가능, 모니터링 권장 |
-| **Acceptable** | 개발/테스트 환경에서 사용, 개선 계획 수립 |
-| **Poor** | 규칙 로직 재검토 필요 |
-| **Unacceptable** | 즉시 수정 또는 비활성화 |
+| Quality Level | Recommended Action |
+|---------------|--------------------|
+| **Excellent** | Suitable for deployment to production environments |
+| **Good** | Appropriate for most environments; ongoing monitoring is recommended |
+| **Acceptable** | Suitable for development and testing environments; an improvement plan should be established |
+| **Poor** | Rule logic requires thorough review |
+| **Unacceptable** | Immediate remediation or deactivation is required |
 
-### 리포트 형식별 권장 대상
+### Recommended Report Formats by Audience
 
-| 대상 | 권장 형식 |
-|------|----------|
-| **경영진** | HTML (요약 포함) |
-| **데이터 엔지니어** | JSON (자동화용) |
-| **QA 팀** | Markdown |
-| **CI/CD 시스템** | JUnit XML |
+| Audience | Recommended Format |
+|----------|--------------------|
+| **Executive leadership** | HTML (with summary included) |
+| **Data engineers** | JSON (for automation purposes) |
+| **QA teams** | Markdown |
+| **CI/CD systems** | JUnit XML |
 
-### 샘플 크기 가이드라인
+### Sample Size Guidelines
 
-| 데이터셋 크기 | 권장 샘플 크기 | 비고 |
-|--------------|---------------|------|
-| < 10,000 rows | 전체 데이터 | 샘플링 불필요 |
-| 10,000 ~ 100,000 rows | 10,000 | 기본값 적합 |
-| 100,000 ~ 1M rows | 50,000 | 통계적 유의성 확보 |
-| > 1M rows | 100,000+ | 대표성 확보 필요 |
+| Dataset Size | Recommended Sample Size | Remarks |
+|--------------|-------------------------|---------|
+| < 10,000 rows | Entire dataset | Sampling is unnecessary |
+| 10,000 -- 100,000 rows | 10,000 | Default value is appropriate |
+| 100,000 -- 1M rows | 50,000 | Ensures statistical significance |
+| > 1M rows | 100,000+ | Required to ensure representativeness |
 
-## 문제 해결
+## Troubleshooting
 
-| 문제 | 원인 | 해결 방법 |
-|------|------|----------|
-| 점수가 반환되지 않음 | 검증 결과 없음 | 먼저 검증 실행 필요 |
-| F1 점수가 낮음 | 규칙이 너무 엄격/느슨함 | 규칙 임계값 조정 |
-| 리포트 생성 실패 | 잘못된 형식 지정 | format 파라미터 확인 |
-| 빈 리포트 | 필터 조건에 맞는 점수 없음 | 필터 조건 완화 |
+| Issue | Cause | Resolution |
+|-------|-------|------------|
+| No scores are returned | No validation results available | Execute validation prior to scoring |
+| F1 Score is low | Rule is overly strict or overly permissive | Adjust rule threshold parameters |
+| Report generation fails | Invalid format specification | Verify the format parameter |
+| Report is empty | No scores match the filter criteria | Relax the filter conditions |
 
-## 제한 사항
+## Known Limitations
 
-현재 버전에서 다음 기능은 지원되지 않습니다:
+The following features are not supported in the current version:
 
-| 기능 | 상태 | 비고 |
-|------|------|------|
-| Cross-validation folds 설정 | 미지원 | truthound 기본 scorer 사용 |
-| Chart type 커스터마이징 | 미지원 | HTML 기본 차트만 제공 |
-| Display mode 설정 | 미지원 | 기본 모드만 제공 |
-| Confidence interval 표시 | 미지원 | 메트릭만 표시 |
-| Trend analysis | 미지원 | 현재 스냅샷만 제공 |
+| Feature | Status | Remarks |
+|---------|--------|---------|
+| Cross-validation fold configuration | Not supported | Uses the default truthound scorer |
+| Chart type customization | Not supported | Only default HTML charts are provided |
+| Display mode configuration | Not supported | Only the default mode is available |
+| Confidence interval display | Not supported | Only metric values are displayed |
+| Trend analysis | Not supported | Only point-in-time snapshots are provided |
 
-향후 truthound 라이브러리 업데이트에 따라 지원 범위가 확대될 수 있습니다.
+Support for these features may be extended in future updates to the truthound library.

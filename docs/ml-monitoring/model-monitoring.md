@@ -1,21 +1,21 @@
 # Model Monitoring
 
-The Model Monitoring module provides comprehensive lifecycle monitoring for machine learning models in production environments. This module integrates with the **truthound.ml.monitoring** framework to deliver enterprise-grade performance tracking, drift detection, quality metrics, and intelligent alerting capabilities.
+The Model Monitoring module implements comprehensive lifecycle monitoring for machine learning models deployed in production environments. This module is integrated with the **truthound.ml.monitoring** framework to provide enterprise-grade performance tracking, drift detection, quality metrics computation, and intelligent alerting capabilities.
 
 ## Overview
 
-Machine learning models require continuous monitoring to ensure they maintain performance over time. Unlike traditional software systems, ML models can degrade silently due to data drift, concept drift, or changes in the underlying data distribution. This module addresses these challenges by providing:
+Machine learning models necessitate continuous monitoring to ensure that predictive performance is sustained over time. In contrast to traditional software systems, ML models are susceptible to silent degradation resulting from data drift, concept drift, or alterations in the underlying data distribution. These challenges are addressed by the present module through the provision of:
 
-- **Performance Metrics Collection**: Latency, throughput, and error rate tracking
-- **Drift Detection**: Statistical methods for detecting distribution changes
-- **Quality Metrics**: Classification and regression performance measurement
-- **Intelligent Alerting**: Threshold, statistical, and trend-based alert rules
+- **Performance Metrics Collection**: Systematic tracking of latency, throughput, and error rate measurements
+- **Drift Detection**: Application of statistical methods for the identification of distribution changes
+- **Quality Metrics**: Quantitative assessment of classification and regression model performance
+- **Intelligent Alerting**: Implementation of threshold-based, statistical, and trend-based alert rule evaluation
 
 ## Theoretical Foundation
 
-### Data Drift
+### Statistical Characterization of Data Drift
 
-Data drift occurs when the statistical properties of the input data change over time. The module employs multiple statistical tests from the truthound framework:
+Data drift is observed when the statistical properties of input data undergo temporal change. Multiple statistical tests derived from the truthound framework are employed by this module:
 
 | Method | Mathematical Basis | Interpretation |
 |--------|-------------------|----------------|
@@ -24,32 +24,32 @@ Data drift occurs when the statistical properties of the input data change over 
 | **JS** (Jensen-Shannon) | $JS(P \| Q) = \frac{1}{2}KL(P \| M) + \frac{1}{2}KL(Q \| M)$ | Bounded [0,1], symmetric divergence |
 | **Wasserstein** | $W_p(P, Q) = \left(\inf_{\gamma \in \Gamma(P,Q)} \int \|x-y\|^p d\gamma(x,y)\right)^{1/p}$ | Earth Mover's Distance |
 
-### Concept Drift
+### Concept Drift Detection Methodologies
 
-Concept drift occurs when the relationship between input features and target variable changes. The module supports detection methods including:
+Concept drift is characterized by a temporal change in the relationship between input features and the target variable. The module incorporates the following detection methods:
 
-- **DDM** (Drift Detection Method): Monitors error rate with warning and drift thresholds
-- **ADWIN** (Adaptive Windowing): Automatically adjusts window size based on change detection
-- **Page-Hinkley**: Cumulative sum test for detecting gradual changes
+- **DDM** (Drift Detection Method): Error rate is monitored against warning and drift thresholds
+- **ADWIN** (Adaptive Windowing): Window size is automatically adjusted based on change detection outcomes
+- **Page-Hinkley**: A cumulative sum test is applied for the detection of gradual distributional changes
 
-### Quality Metrics
+### Quality Metrics Definitions
 
-For **classification** models:
+For **classification** models, the following metrics are computed:
 - **Accuracy**: $\frac{TP + TN}{TP + TN + FP + FN}$
 - **Precision**: $\frac{TP}{TP + FP}$
 - **Recall**: $\frac{TP}{TP + FN}$
 - **F1 Score**: $2 \times \frac{Precision \times Recall}{Precision + Recall}$
 
-For **regression** models:
+For **regression** models, the following metrics are computed:
 - **MAE**: $\frac{1}{n}\sum_{i=1}^{n}|y_i - \hat{y}_i|$
 - **MSE**: $\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2$
 - **RMSE**: $\sqrt{MSE}$
 
 ## Model Monitoring Interface
 
-### Statistics Dashboard
+### Aggregate Statistics Dashboard
 
-The interface displays aggregate model monitoring metrics:
+The interface presents aggregate model monitoring metrics as summarized below:
 
 | Metric | Description |
 |--------|-------------|
@@ -61,14 +61,14 @@ The interface displays aggregate model monitoring metrics:
 | **Models with Drift** | Models where input/output drift detected |
 | **Average Latency** | Mean inference latency across models |
 
-## Model Registration
+## Model Registration and Version Management
 
-### Registering a New Model
+### Registration of a New Model
 
 1. Click **Register Model**
 2. Complete the registration form across three tabs:
 
-#### Basic Info Tab
+#### Basic Information Tab
 
 | Field | Description | Required |
 |-------|-------------|----------|
@@ -79,7 +79,7 @@ The interface displays aggregate model monitoring metrics:
 
 #### Configuration Tab
 
-The configuration maps directly to the truthound `MonitorConfig` parameters:
+The configuration parameters correspond directly to the truthound `MonitorConfig` specification:
 
 **Feature Toggles**
 
@@ -89,24 +89,24 @@ The configuration maps directly to the truthound `MonitorConfig` parameters:
 | **Enable Drift Detection** | Monitor distribution changes using `th.compare()` | Enabled |
 | **Enable Quality Metrics** | Track accuracy, precision, recall, F1 (requires actual values) | Enabled |
 
-**Drift Detection Settings** (when enabled)
+**Drift Detection Parameters** (when enabled)
 
 | Setting | Description | Default |
 |---------|-------------|---------|
 | **Drift Method** | Statistical method for drift detection | Auto |
 | **Drift Threshold** | Score threshold for triggering alerts | 10% |
 
-Available drift methods:
-- **Auto**: Automatically selects optimal method based on column type
+Available drift methods are enumerated below:
+- **Auto**: The optimal method is automatically selected based on column type
 - **PSI**: Population Stability Index (recommended for tabular data)
 - **KS**: Kolmogorov-Smirnov test (distribution comparison)
 - **JS**: Jensen-Shannon divergence (symmetric, bounded)
 - **Wasserstein**: Earth Mover's Distance (geometry-aware)
-- **Chi-squared**: For categorical features
+- **Chi-squared**: Applicable to categorical features
 - **KL**: Kullback-Leibler divergence
 - **Hellinger**: Bounded distance metric
 
-**Collection Settings**
+**Collection Parameters**
 
 | Setting | Description | Default | Range |
 |---------|-------------|---------|-------|
@@ -117,12 +117,12 @@ Available drift methods:
 
 #### Alerts Tab
 
-Displays default alert rules that will be created:
+The default alert rules that are automatically instantiated upon model registration are displayed:
 - High Latency Alert (P95 > 500ms)
 - Drift Detection Alert (exceeds configured threshold)
 - Error Rate Alert (> 5%)
 
-### Model Types
+### Supported Model Types
 
 | Type | Description | Key Metrics |
 |------|-------------|-------------|
@@ -130,9 +130,9 @@ Displays default alert rules that will be created:
 | **Regression** | Continuous value prediction | MAE, MSE, RMSE |
 | **Ranking** | Ordered list generation | NDCG, MAP, MRR |
 
-## Metrics Tab
+## Metrics Inspection Tab
 
-### Viewing Model Metrics
+### Examination of Model Metrics
 
 1. Select a model from the dropdown
 2. Choose time range (1h, 6h, 24h, 7d)
@@ -163,11 +163,11 @@ Displays default alert rules that will be created:
 
 ## Drift Detection
 
-### Using truthound th.compare()
+### Application of truthound th.compare()
 
-The drift detection feature leverages truthound's `th.compare()` function to detect distribution changes between reference and current datasets.
+The drift detection capability is implemented through truthound's `th.compare()` function, which is employed to identify distribution changes between reference and current datasets.
 
-**Workflow**:
+**Operational Workflow**:
 1. Select reference data source (baseline distribution)
 2. Select current data source (production distribution)
 3. Choose drift detection method
@@ -181,32 +181,32 @@ The drift detection feature leverages truthound's `th.compare()` function to det
 | 0.10 - 0.25 | Slight drift | Investigate root cause |
 | > 0.25 | Significant drift | Consider model retraining |
 
-### Drift Alert Generation
+### Drift Alert Generation Mechanism
 
-When drift score exceeds the configured threshold:
-1. System creates an alert with severity based on score magnitude
-2. Alert includes drifted columns and individual scores
-3. Model status may transition to "Degraded" if score > 0.3
+When the drift score exceeds the configured threshold, the following sequence is initiated:
+1. An alert is created by the system with severity determined by score magnitude
+2. The alert includes identification of drifted columns and their individual scores
+3. The model status may be transitioned to "Degraded" if the score exceeds 0.3
 
-## Quality Metrics
+## Quality Metrics Assessment
 
-### Computing Quality Metrics
+### Computation of Quality Metrics
 
-Quality metrics are computed from predictions that have associated actual (ground truth) values.
+Quality metrics are derived from predictions for which associated actual (ground truth) values have been recorded.
 
 **For Classification Models**:
-- Automatically detects binary vs. multi-class classification
-- Computes accuracy for all classification types
-- Computes precision, recall, F1 for binary classification
+- Binary versus multi-class classification is automatically detected
+- Accuracy is computed for all classification types
+- Precision, recall, and F1 are computed for binary classification
 
 **For Regression Models**:
-- Computes MAE (Mean Absolute Error)
-- Computes MSE (Mean Squared Error)
-- Computes RMSE (Root Mean Squared Error)
+- MAE (Mean Absolute Error) is computed
+- MSE (Mean Squared Error) is computed
+- RMSE (Root Mean Squared Error) is computed
 
-### Recording Predictions with Actuals
+### Recording Predictions with Ground Truth Values
 
-To enable quality metrics, record predictions with the `actual` field:
+To enable quality metrics computation, predictions must be recorded with the `actual` field:
 
 ```json
 POST /model-monitoring/models/{id}/predictions
@@ -218,36 +218,36 @@ POST /model-monitoring/models/{id}/predictions
 }
 ```
 
-## Alert Rules Tab
+## Alert Rule Configuration
 
-### Alert Rule Types
+### Classification of Alert Rule Types
 
-The module supports three rule types mapping to truthound's alerting framework:
+The module supports three distinct rule types, each corresponding to components within truthound's alerting framework:
 
-#### Threshold Rules
+#### Threshold-Based Rules
 
-Simple threshold-based alerting:
-- **Metric Name**: Target metric to monitor
+Threshold-based alerting is configured through the following parameters:
+- **Metric Name**: Target metric to be monitored
 - **Threshold**: Trigger value
 - **Comparison**: gt, lt, gte, lte, eq
-- **Duration**: Time condition must persist
+- **Duration**: Time period over which the condition must persist
 
-#### Statistical Rules (Anomaly Rules)
+#### Statistical Rules (Anomaly Detection Rules)
 
-Anomaly-based alerting using statistical methods:
-- **Window Size**: Sample size for statistics
-- **Std Devs**: Number of standard deviations for threshold
-- Triggers when metric exceeds expected range
+Anomaly-based alerting is performed using statistical methods:
+- **Window Size**: Sample size utilized for statistical computation
+- **Std Devs**: Number of standard deviations defining the threshold boundary
+- An alert is triggered when the metric value exceeds the expected statistical range
 
-#### Trend Rules
+#### Trend-Based Rules
 
-Trend-based alerting for gradual changes:
+Trend-based alerting is designed for the detection of gradual changes:
 - **Direction**: "increasing" or "decreasing"
-- **Slope Threshold**: Minimum rate of change
-- **Lookback Minutes**: Time window for trend calculation
-- Uses linear regression to detect degradation trends
+- **Slope Threshold**: Minimum rate of change required for activation
+- **Lookback Minutes**: Time window employed for trend calculation
+- Linear regression is utilized to detect degradation trends
 
-### Rule Examples
+### Exemplary Rule Configurations
 
 | Rule | Type | Metric | Condition | Severity |
 |------|------|--------|-----------|----------|
@@ -257,11 +257,11 @@ Trend-based alerting for gradual changes:
 | Drift Detected | threshold | drift_score | > 0.1 | High |
 | Degrading Performance | trend | accuracy | decreasing, slope > 0.01 | Warning |
 
-## Alert Handlers Tab
+## Alert Handler Configuration Tab
 
-### Handler Types
+### Supported Handler Types
 
-The module supports handlers mapping to truthound's alert handler framework:
+The module supports handlers that correspond to truthound's alert handler framework:
 
 | Handler | truthound Mapping | Use Case |
 |---------|-------------------|----------|
@@ -270,7 +270,7 @@ The module supports handlers mapping to truthound's alert handler framework:
 | **Email** | - | Stakeholder notifications |
 | **PagerDuty** | PagerDutyAlertHandler | On-call escalation |
 
-### Handler Configuration
+### Handler Configuration Parameters
 
 #### Slack Handler
 
@@ -297,7 +297,7 @@ The module supports handlers mapping to truthound's alert handler framework:
 
 ## Model Lifecycle Management
 
-### Status Transitions
+### Status Transition Model
 
 | Status | Color | Description | Automatic Transition |
 |--------|-------|-------------|---------------------|
@@ -306,17 +306,17 @@ The module supports handlers mapping to truthound's alert handler framework:
 | **Degraded** | Yellow | Performance below threshold | When drift_score > 0.3 |
 | **Error** | Red | Experiencing errors | On repeated failures |
 
-### Health Score Calculation
+### Health Score Computation
 
-The health score (0-100) is computed based on:
+The health score (0-100) is computed as a weighted composite of the following factors:
 - Drift score contribution (weighted)
 - Error rate contribution
 - Latency threshold violations
 - Active alert count
 
-## Integration with truthound
+## Integration with the truthound Framework
 
-### Framework Mapping
+### Component Mapping
 
 | Dashboard Feature | truthound Component |
 |------------------|---------------------|
@@ -350,7 +350,7 @@ The health score (0-100) is computed based on:
 
 ## API Reference
 
-### Model Management
+### Model Management Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -362,7 +362,7 @@ The health score (0-100) is computed based on:
 | `/model-monitoring/models/{id}/pause` | POST | Pause monitoring |
 | `/model-monitoring/models/{id}/resume` | POST | Resume monitoring |
 
-### Metrics & Analysis
+### Metrics and Analysis Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -371,7 +371,7 @@ The health score (0-100) is computed based on:
 | `/model-monitoring/models/{id}/detect-drift` | POST | Run drift detection |
 | `/model-monitoring/models/{id}/predictions` | POST | Record prediction |
 
-### Alerts & Rules
+### Alert and Rule Management Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -386,35 +386,39 @@ The health score (0-100) is computed based on:
 | `/model-monitoring/handlers` | POST | Create alert handler |
 | `/model-monitoring/handlers/{id}/test` | POST | Test alert handler |
 
-### Dashboard
+### Dashboard Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/model-monitoring/overview` | GET | Retrieve monitoring overview |
 | `/model-monitoring/models/{id}/dashboard` | GET | Model-specific dashboard |
 
-## Best Practices
+## Recommended Operational Practices
 
 ### Monitoring Strategy
 
-1. **Start with baseline**: Establish reference metrics before production deployment
-2. **Configure appropriate thresholds**: Based on business requirements and historical data
-3. **Enable drift detection**: Essential for detecting silent model degradation
-4. **Set up alerting**: Configure handlers for timely notification of issues
+1. **Establish a baseline**: Reference metrics should be established prior to production deployment
+2. **Configure appropriate thresholds**: Thresholds should be determined based on business requirements and historical data analysis
+3. **Enable drift detection**: Drift detection is considered essential for identifying silent model degradation
+4. **Implement alerting**: Alert handlers should be configured to ensure timely notification of operational issues
 
 ### Drift Detection
 
-1. **Choose appropriate method**: PSI for general use, KS for distribution sensitivity
-2. **Set reasonable thresholds**: Start conservative (0.1) and adjust based on observed drift
-3. **Monitor per-column**: Identify specific features causing drift
-4. **Correlate with performance**: Not all drift impacts model performance equally
+1. **Select an appropriate method**: PSI is recommended for general use; KS is preferred when distributional sensitivity is required
+2. **Define reasonable thresholds**: It is advisable to begin with conservative thresholds (0.1) and adjust based on observed drift patterns
+3. **Monitor at the per-column level**: Individual features contributing to drift should be identified
+4. **Correlate with performance metrics**: It should be noted that not all drift impacts model performance with equal magnitude
 
 ### Alert Configuration
 
-1. **Prioritize critical metrics**: Focus alerts on metrics that impact business outcomes
-2. **Avoid alert fatigue**: Set thresholds that minimize false positives
-3. **Use trend rules**: Catch gradual degradation before it becomes critical
-4. **Configure escalation**: Route critical alerts to appropriate channels
+1. **Prioritize critical metrics**: Alerting should be focused on metrics that directly impact business outcomes
+2. **Mitigate alert fatigue**: Thresholds should be calibrated to minimize false positive rates
+3. **Employ trend-based rules**: Trend rules are recommended for detecting gradual degradation before it reaches a critical state
+4. **Configure escalation pathways**: Critical alerts should be routed to the appropriate operational channels
+
+## Diagnostic and Troubleshooting Procedures
+
+*This section is reserved for the documentation of common diagnostic procedures, known failure modes, and their corresponding resolution strategies. Practitioners are advised to consult the truthound ML Module Documentation for framework-level troubleshooting guidance.*
 
 ## References
 

@@ -1,10 +1,10 @@
 # Internationalization Guide
 
-This document provides a comprehensive guide to the internationalization (i18n) system implemented in Truthound Dashboard using the Intlayer framework.
+This document presents a comprehensive technical reference for the internationalization (i18n) system implemented within the Truthound Dashboard, utilizing the Intlayer framework as its foundational infrastructure.
 
 ## Overview
 
-Truthound Dashboard employs [Intlayer](https://intlayer.org) as its internationalization framework, providing type-safe translations with compile-time validation. The system supports English and Korean as built-in languages, with extensibility to additional languages through an AI-powered translation CLI.
+Internationalization constitutes a critical concern in modern software engineering, enabling applications to serve heterogeneous user populations across linguistic and cultural boundaries. Truthound Dashboard leverages [Intlayer](https://intlayer.org) as its internationalization framework, furnishing type-safe translations with compile-time validation guarantees. The system incorporates English and Korean as its natively supported locales, while maintaining extensibility to additional languages through an AI-assisted translation pipeline.
 
 | Attribute | Specification |
 |-----------|---------------|
@@ -16,9 +16,9 @@ Truthound Dashboard employs [Intlayer](https://intlayer.org) as its internationa
 | Built-in Languages | English (en), Korean (ko) |
 | Extensibility | AI Translation CLI (15+ languages) |
 
-## Content File Architecture
+## Translation Content Architecture
 
-Translation content is organized by feature domain within the `content` directory:
+Translation content is organized according to feature domain boundaries within the `content` directory. This domain-driven partitioning ensures that each content module encapsulates the translation strings pertinent to a discrete functional area of the application:
 
 ```
 frontend/src/content/
@@ -40,9 +40,9 @@ frontend/src/content/
 └── ...
 ```
 
-## Content File Specification
+## Content File Type Specification
 
-Each content file exports a dictionary object conforming to the Intlayer `Dictionary` type:
+Each content file exports a dictionary object that conforms to the Intlayer `Dictionary` type contract. The following example illustrates the canonical structure of a content definition module:
 
 ```typescript
 // frontend/src/content/common.content.ts
@@ -65,15 +65,15 @@ export default commonContent;
 
 ### Key Structural Elements
 
-- **key**: Unique identifier for the content dictionary, used as the parameter to `useIntlayer()`
-- **content**: Object containing translated strings wrapped in the `t()` function
-- **t()**: Translation function accepting an object with locale codes as keys
+- **key**: A unique identifier for the content dictionary, serving as the lookup parameter supplied to `useIntlayer()`
+- **content**: An object encapsulating translated strings, each wrapped within the `t()` translation function
+- **t()**: The translation function, which accepts an object whose keys correspond to locale codes and whose values represent the localized string variants
 
-## Component Integration
+## Component-Level Integration Patterns
 
 ### Basic Usage
 
-The `useIntlayer` hook retrieves translated content by dictionary key:
+The `useIntlayer` hook facilitates the retrieval of translated content by referencing the appropriate dictionary key. This mechanism provides a declarative interface for accessing localized strings within React component hierarchies:
 
 ```typescript
 import { useIntlayer } from "react-intlayer";
@@ -94,7 +94,7 @@ function MyComponent() {
 
 ### String Extraction Utility
 
-The `useIntlayer()` hook returns `IntlayerNode` objects rather than primitive strings. For contexts requiring plain strings (such as toast notifications, ARIA labels, or HTML attributes), a utility function is necessary:
+It is important to note that the `useIntlayer()` hook returns `IntlayerNode` objects rather than primitive strings. Consequently, for contexts that necessitate plain string values -- such as toast notifications, ARIA accessibility labels, or HTML element attributes -- a dedicated utility function must be employed to perform the requisite type coercion:
 
 ```typescript
 import { str } from "@/lib/intlayer-utils";
@@ -126,9 +126,11 @@ function MyComponent() {
 }
 ```
 
-## Locale Management
+## Locale State Management
 
 ### Programmatic Locale Switching
+
+The Intlayer framework exposes a `useLocale` hook that provides both read access to the current locale state and a mutation function for programmatic locale transitions. The following example demonstrates the construction of a locale selection component:
 
 ```typescript
 import { useLocale } from "react-intlayer";
@@ -150,11 +152,13 @@ function LanguageSelector() {
 
 ### Locale Persistence
 
-The current locale is persisted in browser local storage using the key `truthound-locale`, ensuring consistency across sessions.
+The active locale selection is persisted within the browser's local storage subsystem under the key `truthound-locale`. This persistence mechanism ensures that the user's language preference is maintained across browser sessions, thereby providing a consistent and uninterrupted multilingual experience.
 
 ## Configuration
 
 ### Intlayer Configuration
+
+The following configuration module defines the supported locale set, the default locale, and the content file discovery parameters that govern the Intlayer build pipeline:
 
 ```typescript
 // frontend/intlayer.config.ts
@@ -176,6 +180,8 @@ export default config;
 
 ### Vite Integration
 
+The Intlayer framework integrates with the Vite build system through a dedicated plugin, which orchestrates content file compilation and type generation during the build process:
+
 ```typescript
 // frontend/vite.config.ts
 import { defineConfig } from 'vite'
@@ -190,6 +196,8 @@ export default defineConfig({
 
 ### Provider Configuration
 
+The provider configuration module establishes the canonical set of supported locales, the associated TypeScript type definitions, and the storage key employed for locale persistence:
+
 ```typescript
 // frontend/src/providers/intlayer/config.ts
 import { Locales } from 'intlayer'
@@ -202,6 +210,8 @@ export const LOCALE_STORAGE_KEY = 'truthound-locale'
 ```
 
 ### Application Entry Point
+
+The Intlayer provider must encapsulate the entire React component tree at the application root to ensure that locale context is universally accessible throughout the rendering hierarchy:
 
 ```typescript
 // frontend/src/main.tsx
@@ -218,9 +228,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 ```
 
-## AI-Powered Translation CLI
+## AI-Assisted Translation Pipeline
 
-Truthound Dashboard includes a CLI tool for automated translation using various AI providers.
+Truthound Dashboard incorporates a command-line interface tool that automates the generation of translation content through integration with various AI language model providers. This pipeline significantly reduces the manual effort required to extend locale support beyond the built-in English and Korean translations.
 
 ### Basic Usage
 
@@ -262,7 +272,7 @@ Options:
 
 ### Supported Language Codes
 
-The translation CLI supports ISO 639-1 language codes including:
+The translation pipeline supports the ISO 639-1 standard for language identification. The following table enumerates the currently supported language codes:
 
 | Code | Language | Code | Language |
 |------|----------|------|----------|
@@ -275,27 +285,27 @@ The translation CLI supports ISO 639-1 language codes including:
 | th | Thai | vi | Vietnamese |
 | id | Indonesian | ms | Malay |
 
-## Best Practices
+## Implementation Guidelines and Best Practices
 
 ### Content Organization
 
-1. **Domain Separation**: Maintain separate content files for each feature domain
-2. **Key Naming**: Use descriptive, hierarchical keys (e.g., `form.validation.required`)
-3. **Consistency**: Maintain consistent terminology across all translations
+1. **Domain Separation**: Each feature domain should maintain its own dedicated content file to ensure clear modularity and minimize coupling between translation modules
+2. **Key Naming Conventions**: Employ descriptive, hierarchically structured keys that reflect the semantic context of the translated string (e.g., `form.validation.required`)
+3. **Terminological Consistency**: Maintain uniform terminology across all supported locales to ensure a coherent user experience and to facilitate translation quality assurance
 
 ### Performance Considerations
 
-1. **Lazy Loading**: Content dictionaries are loaded on-demand by the Intlayer runtime
-2. **Bundle Size**: Only imported dictionaries are included in the production bundle
-3. **Caching**: Intlayer caches resolved translations for optimal performance
+1. **Lazy Loading**: Content dictionaries are resolved on-demand by the Intlayer runtime, thereby avoiding the upfront cost of loading all translation resources at application initialization
+2. **Bundle Size Optimization**: Only those dictionaries that are explicitly imported within the application source are included in the production bundle, minimizing the impact on client-side payload size
+3. **Translation Caching**: The Intlayer runtime employs an internal caching mechanism for resolved translations, ensuring that repeated lookups incur negligible overhead
 
 ### Type Safety
 
-The Intlayer framework provides compile-time type checking for:
+The Intlayer framework provides robust compile-time type checking capabilities that encompass the following verification domains:
 
-- Dictionary key existence
-- Content property access
-- Locale code validity
+- Dictionary key existence validation
+- Content property access verification
+- Locale code validity enforcement
 
 ```typescript
 // TypeScript will report errors for:

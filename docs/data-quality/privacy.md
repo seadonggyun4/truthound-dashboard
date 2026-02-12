@@ -1,24 +1,24 @@
-# Privacy & PII Management
+# Privacy and PII Management
 
-The Privacy module provides capabilities for detecting Personally Identifiable Information (PII) within data sources and applying masking strategies to protect sensitive data while maintaining analytical utility.
+The Privacy module implements systematic capabilities for detecting Personally Identifiable Information (PII) within data sources and applying masking strategies to safeguard sensitive data while preserving analytical utility.
 
 ## Overview
 
-Privacy management is essential for regulatory compliance and data protection. This module implements PII detection through pattern recognition and classification, followed by configurable masking strategies that transform sensitive data for safe downstream use.
+Privacy management is regarded as a fundamental requirement for achieving regulatory compliance and ensuring comprehensive data protection. This module facilitates PII detection through pattern recognition and classification methodologies, followed by the application of configurable masking strategies through which sensitive data is transformed for safe downstream consumption.
 
-## Privacy Interface
+## Privacy Interface Specifications
 
 ### Source Selection
 
-The Privacy interface begins with source selection:
+The Privacy interface is initiated through a source selection procedure:
 
-1. Select a data source from the dropdown
-2. Sources display PII column count badges indicating previously detected sensitive columns
-3. Upon selection, the interface displays source-specific privacy information
+1. A data source is selected from the dropdown control
+2. PII column count badges are displayed for each source, indicating previously detected sensitive columns
+3. Upon selection, source-specific privacy information is rendered within the interface
 
 ### Statistics Dashboard
 
-The interface displays aggregate privacy metrics:
+Aggregate privacy metrics are presented through the following statistical indicators:
 
 | Metric | Description |
 |--------|-------------|
@@ -31,28 +31,30 @@ The interface displays aggregate privacy metrics:
 
 ### Executing a PII Scan
 
-1. Select the target data source
-2. Click **Run PII Scan**
-3. Review results upon completion
+The following procedure is employed to initiate a PII scan:
 
-> **Note**: truthound's `th.scan()` does not support configuration parameters.
-> The scan automatically runs on all columns with default settings, detecting
-> all supported PII types across all applicable regulations.
+1. The target data source is selected
+2. The **Run PII Scan** action is invoked
+3. Results are reviewed upon completion of the scanning process
+
+> **Note**: It should be observed that truthound's `th.scan()` does not accept configuration parameters.
+> The scan is executed automatically across all columns with default settings, whereby
+> all supported PII types are detected across all applicable regulatory frameworks.
 
 ### Supported Regulatory Frameworks
 
-The system automatically checks against multiple regulatory frameworks:
+Compliance is assessed automatically against multiple regulatory frameworks, as enumerated below:
 
 | Regulation | Description | PII Categories |
 |------------|-------------|----------------|
 | **GDPR** | EU General Data Protection Regulation | Name, email, address, phone, IP, financial, health |
 | **CCPA** | California Consumer Privacy Act | Personal identifiers, commercial information, biometric |
-| **LGPD** | Brazil's Lei Geral de Proteção de Dados | Similar to GDPR with Brazil-specific requirements |
+| **LGPD** | Brazil's Lei Geral de Protecao de Dados | Similar to GDPR with Brazil-specific requirements |
 | **HIPAA** | Health Insurance Portability and Accountability Act | Protected health information (PHI) |
 
 ### Scan Results
 
-Upon completion, scan results display:
+Upon completion of the scanning process, the following result categories are presented:
 
 #### Column-Level Findings
 
@@ -81,16 +83,20 @@ Upon completion, scan results display:
 
 ### Executing Data Masking
 
-1. Select the target data source
-2. Select columns to mask (typically columns identified in PII scan)
-3. Choose masking strategy
-4. Click **Run Mask**
-5. Download masked data file (CSV format)
+The data masking procedure is conducted through the following sequential steps:
 
-> **Note**: truthound's `th.mask()` does not support output format selection.
-> The output is always generated in CSV format.
+1. The target data source is selected
+2. Columns to be masked are designated (typically those identified during the PII scan)
+3. An appropriate masking strategy is chosen
+4. The **Run Mask** operation is executed
+5. The masked data file is downloaded (CSV format)
+
+> **Note**: It is noted that truthound's `th.mask()` does not support output format selection.
+> The output is invariably generated in CSV format.
 
 ### Masking Strategy Selection
+
+Three masking strategies are provided, each suited to distinct operational requirements:
 
 | Strategy | Description | Use Case |
 |----------|-------------|----------|
@@ -101,36 +107,36 @@ Upon completion, scan results display:
 #### Strategy Details
 
 **Redact**:
-- Replaces all values with a consistent placeholder
-- Completely removes original information
-- Suitable when original values are not needed
+- All values are replaced with a consistent placeholder string
+- Original information is completely removed from the output
+- This strategy is deemed suitable when original values are not required for downstream processing
 
 **Hash**:
-- Applies SHA-256 hash transformation
-- Same input produces same output (deterministic)
-- Preserves referential integrity across tables
-- Original value cannot be recovered
+- A SHA-256 hash transformation is applied to each value
+- Identical inputs produce identical outputs (deterministic behavior is guaranteed)
+- Referential integrity across tables is preserved through consistent hashing
+- The original value cannot be recovered from the hash output
 
 **Fake**:
-- Generates synthetic data matching original pattern
-- Maintains statistical properties
-- Produces realistic-looking but fictional values
-- Suitable for development and testing
+- Synthetic data is generated to match the pattern of the original values
+- Statistical properties of the original distribution are maintained
+- Realistic but entirely fictional values are produced
+- This strategy is considered appropriate for development and testing environments
 
 ### Download Masked Data
 
-Upon completion:
+Upon completion of the masking operation, the following workflow is observed:
 
-1. Masking operation generates output file
-2. Download link becomes available
-3. Click to download masked dataset
-4. Original data remains unchanged
+1. The masking operation generates an output file
+2. A download link is made available to the user
+3. The masked dataset is obtained via the download mechanism
+4. The original data source remains unmodified throughout the process
 
 ## History Tab
 
 ### Scan History
 
-View historical PII scans:
+Historical PII scan records are maintained and may be reviewed through the following attributes:
 
 | Attribute | Description |
 |-----------|-------------|
@@ -141,7 +147,7 @@ View historical PII scans:
 
 ### Mask History
 
-View historical masking operations:
+Historical masking operation records are similarly maintained and may be examined:
 
 | Attribute | Description |
 |-----------|-------------|
@@ -150,17 +156,19 @@ View historical masking operations:
 | **Columns** | Columns that were masked |
 | **Strategy** | Masking strategy applied |
 
-## Compliance Workflow
+## Compliance Workflow Methodology
 
 ### Recommended Process
 
-1. **Discovery**: Execute PII scan across data sources
-2. **Classification**: Review and validate PII findings
-3. **Assessment**: Evaluate compliance requirements
-4. **Protection**: Apply appropriate masking strategies
-5. **Verification**: Confirm masked data meets requirements
-6. **Documentation**: Generate compliance reports
-7. **Monitoring**: Periodic rescanning for new PII
+A systematic compliance workflow is recommended, consisting of the following ordered phases:
+
+1. **Discovery**: PII scans are executed across all relevant data sources
+2. **Classification**: PII findings are reviewed and validated by designated personnel
+3. **Assessment**: Applicable compliance requirements are evaluated against findings
+4. **Protection**: Appropriate masking strategies are applied to identified PII columns
+5. **Verification**: Masked data is confirmed to satisfy stated requirements
+6. **Documentation**: Compliance reports are generated for audit and record-keeping purposes
+7. **Monitoring**: Periodic rescanning is conducted to detect newly introduced PII
 
 ### Regulatory Mapping
 
@@ -181,19 +189,19 @@ View historical masking operations:
 | Delete personal info | Data masking/redaction |
 | Opt-out of sale | Data masking for shared data |
 
-## Integration with Other Modules
+## Cross-Module Integration Architecture
 
 ### Data Catalog Integration
 
-- PII findings can be linked to catalog asset columns
-- Sensitivity levels can be updated based on scan results
-- Column metadata enriched with PII classification
+- PII findings may be linked to corresponding catalog asset columns
+- Sensitivity levels are updated based on scan results as they become available
+- Column metadata is enriched with PII classification information derived from scan outputs
 
 ### Notification Integration
 
-- Configure alerts for new PII detection
-- Notify stakeholders when sensitive data is found
-- Automate compliance reporting workflows
+- Alerts may be configured for the detection of new PII instances
+- Relevant stakeholders are notified when sensitive data is identified
+- Compliance reporting workflows may be automated through the notification subsystem
 
 ## API Reference
 

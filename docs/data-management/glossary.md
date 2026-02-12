@@ -1,268 +1,268 @@
 # Business Glossary
 
-The Business Glossary module provides a standardized repository for defining, managing, and governing business terminology across the organization.
+The Business Glossary module implements a standardized terminological repository for the definition, management, and governance of business terminology across the organization.
 
 ## Overview
 
-The Business Glossary establishes a common vocabulary by defining business terms with their authoritative definitions, relationships, and lifecycle status. This shared understanding bridges the gap between technical data representations and business concepts, facilitating communication between data engineers and business stakeholders.
+The Business Glossary establishes a controlled vocabulary through the formal definition of business terms, accompanied by their authoritative descriptions, semantic relationships, and lifecycle status designations. This shared conceptual framework establishes a semantic bridge between technical data representations and business domain concepts, thereby facilitating effective discourse between data engineering practitioners and business stakeholders.
 
-## Glossary Interface
+## Glossary Interface Specifications
 
 ### Term Listing
 
-The main Glossary page displays all business terms in a card-based layout. Each term card presents:
+The primary Glossary page renders all registered business terms in a card-based layout. Each term card presents the following informational elements:
 
 | Element | Description |
 |---------|-------------|
 | **Term Name** | The official business term identifier |
-| **Definition Preview** | Truncated definition text for quick scanning |
-| **Category Badge** | Classification category for the term |
+| **Definition Preview** | Truncated definition text for rapid assessment |
+| **Category Badge** | Classification category assigned to the term |
 | **Status Badge** | Lifecycle status indicator |
-| **Owner** | Responsible party for term governance |
+| **Owner** | Designated party responsible for term governance |
 
 ### Status Indicators
 
-Terms progress through a defined lifecycle reflected by status badges:
+Terms are advanced through a formally defined lifecycle, as reflected by status badge designations:
 
 | Status | Color | Description |
 |--------|-------|-------------|
-| **Draft** | Gray | Term is under development, not yet approved for use |
-| **Approved** | Green | Term has been reviewed and approved for organizational use |
-| **Deprecated** | Red | Term is no longer recommended, being phased out |
+| **Draft** | Gray | The term is under development and has not yet been approved for organizational use |
+| **Approved** | Green | The term has been reviewed and formally approved for organizational use |
+| **Deprecated** | Red | The term is no longer recommended and is being systematically phased out |
 
 ### Filtering Capabilities
 
 #### Search
-Free-text search across term names and definitions.
+Free-text search is provided across term names and definitions.
 
 #### Category Filter
-Filter by organizational category to narrow the term list.
+Terms may be filtered by organizational category to refine the displayed term listing.
 
 #### Status Filter
-Filter by lifecycle status (draft, approved, deprecated).
+Terms may be filtered by lifecycle status (draft, approved, deprecated).
 
 ### Category Hierarchy Breadcrumb
 
-When terms are assigned to categories with parent-child relationships, the term listing displays a breadcrumb showing the full category path:
+When terms are assigned to categories that participate in parent-child relationships, the term listing renders a breadcrumb indicating the complete category path:
 
 ```
 Root Category > Parent Category > Current Category
 ```
 
-This hierarchical display helps users understand the term's organizational context at a glance.
+This hierarchical representation enables users to ascertain the term's organizational context upon initial inspection.
 
 ## Tabs Navigation
 
-The Glossary page provides two main tabs:
+The Glossary page is organized into two principal tabs:
 
 | Tab | Description |
 |-----|-------------|
-| **Terms** | List and manage business terms |
-| **Categories** | Manage category hierarchy with tree visualization |
+| **Terms** | Enumerate and manage registered business terms |
+| **Categories** | Administer category hierarchy with tree-based visualization |
 
-## Term Creation
+## Term Registration
 
 ### Adding a New Term
 
 1. Click the **Add Term** button
 2. Complete the term definition form:
    - **Term Name** (required): The official business term
-   - **Definition** (required): Authoritative description of the term's meaning
-   - **Category** (optional): Organizational classification
-   - **Status** (required): Initial lifecycle status
-   - **Owner** (optional): Responsible party for governance
-   - **Synonyms** (optional): Alternative names for the same concept
-   - **Related Terms** (optional): Associated terms in the glossary
+   - **Definition** (required): Authoritative description of the term's semantic meaning
+   - **Category** (optional): Organizational classification designation
+   - **Status** (required): Initial lifecycle status assignment
+   - **Owner** (optional): Designated party responsible for governance
+   - **Synonyms** (optional): Alternative lexical representations for the same concept
+   - **Related Terms** (optional): Associated terms within the glossary
 3. Submit to create the term record
 
-### Definition Best Practices
+### Definition Authoring Best Practices
 
-When crafting term definitions:
+The following guidelines should be observed when formulating term definitions:
 
-- Use clear, unambiguous language accessible to business users
-- Avoid circular definitions that reference the term being defined
-- Include context about when and how the term is used
-- Reference authoritative sources where applicable
-- Distinguish from similar or related terms
+- Clear, unambiguous language accessible to business users should be employed
+- Circular definitions that reference the term being defined must be avoided
+- Contextual information regarding the circumstances and manner in which the term is applied should be included
+- Authoritative sources should be referenced where applicable
+- Disambiguation from similar or related terms should be provided
 
-## Term Detail Interface
+## Term Detail Management Interface
 
-The Term Detail page provides comprehensive term management through a tabbed interface.
+The Term Detail page provides comprehensive term management capabilities through a tabbed interface paradigm.
 
 ### Overview Tab
 
-Displays fundamental term information:
+The fundamental term information is displayed as follows:
 
 - **Definition**: Complete authoritative definition
-- **Category**: Organizational classification
-- **Owner**: Responsible party for governance
+- **Category**: Organizational classification designation
+- **Owner**: Designated party responsible for governance
 - **Status**: Current lifecycle status
-- **Related Terms Preview**: Quick view of associated terms
+- **Related Terms Preview**: Abbreviated view of associated terms
 
 ### Relationships Tab
 
-The Relationships tab provides a comprehensive interface for managing all types of semantic relationships between terms. Relationships are grouped by type and displayed in a 2x2 grid layout.
+The Relationships tab furnishes a comprehensive interface for the management of all semantic relationship types between terms. Relationships are organized by type and rendered in a 2x2 grid layout.
 
 #### Relationship Types
 
 | Type | Icon | Description |
 |------|------|-------------|
-| **Parent** | ↑ | Broader/higher-level terms that encompass this term |
-| **Child** | ↓ | Narrower/more specific terms under this term |
-| **Synonym** | ⇆ | Alternative names for the same concept |
-| **Related** | ↔ | Conceptually connected but not hierarchical |
+| **Parent** | ↑ | Broader or superordinate terms that encompass this term |
+| **Child** | ↓ | Narrower or subordinate terms classified under this term |
+| **Synonym** | ⇆ | Alternative lexical representations for the same concept |
+| **Related** | ↔ | Conceptually associated terms without hierarchical dependency |
 
 #### Adding Relationships
 
 1. Click the **Add Relationship** button
 2. Select the relationship type (Parent, Child, Synonym, or Related)
-3. Choose the target term from the dropdown
-4. Preview the relationship before saving
-5. Click **Save** to create the relationship
+3. Designate the target term from the dropdown
+4. Preview the relationship prior to persistence
+5. Click **Save** to instantiate the relationship
 
 #### Relationship Validation
 
-The system prevents:
-- **Self-reference**: A term cannot have a relationship with itself
-- **Duplicates**: The same relationship cannot be created twice
+The system enforces the following constraints:
+- **Self-reference prevention**: A term is prohibited from establishing a relationship with itself
+- **Duplicate prevention**: Identical relationships cannot be instantiated more than once
 
 #### Managing Relationships
 
-Each relationship card displays:
-- Relationship type badge with color coding
-- Target term name (clickable link to navigate)
-- Delete button to remove the relationship
+Each relationship card displays the following elements:
+- Relationship type badge with color-coded designation
+- Target term name (presented as a navigable hyperlink)
+- Delete button for the removal of the relationship
 
 #### Parent/Child Hierarchy
 
-Parent and Child relationships enable building term hierarchies:
+Parent and Child relationships facilitate the construction of term hierarchies:
 
-- **Parent terms**: Broader concepts (e.g., "Financial Metric" is parent of "Revenue")
-- **Child terms**: More specific concepts (e.g., "Monthly Revenue" is child of "Revenue")
+- **Parent terms**: Broader, superordinate concepts (e.g., "Financial Metric" serves as parent of "Revenue")
+- **Child terms**: More specific, subordinate concepts (e.g., "Monthly Revenue" serves as child of "Revenue")
 
-This hierarchy complements the category system by providing semantic relationships between terms themselves.
+This hierarchical structure complements the category system by establishing semantic relationships between the terms themselves.
 
 #### Synonyms
-Terms that represent the same concept with different names:
+Terms that denote the same concept through differing lexical representations:
 
-- View all synonym relationships
-- Click synonym links to navigate to related terms
-- Synonyms are bidirectional: if A is synonym of B, then B is synonym of A
+- All synonym relationships may be viewed
+- Synonym links may be navigated to access related term detail pages
+- Synonyms are bidirectional in nature: if A is designated as a synonym of B, then B is correspondingly designated as a synonym of A
 
 #### Related Terms
-Terms that are conceptually connected but not synonymous:
+Terms that are conceptually associated but not semantically equivalent:
 
-- View all related term relationships
-- Click related term links to navigate
-- Related term relationships indicate conceptual proximity
+- All related term relationships may be viewed
+- Related term links may be navigated to access corresponding detail pages
+- Related term relationships are indicative of conceptual proximity
 
 ### History Tab
 
-Provides complete audit trail of term modifications:
+A comprehensive audit trail of term modifications is maintained:
 
 | Column | Description |
 |--------|-------------|
-| **Timestamp** | Date and time of the modification |
-| **Field** | The attribute that was modified |
-| **Old Value** | Previous value before modification |
-| **New Value** | Updated value after modification |
-| **Actor** | User who performed the modification |
+| **Timestamp** | Date and time at which the modification was recorded |
+| **Field** | The attribute that was subject to modification |
+| **Old Value** | The value prior to modification |
+| **New Value** | The value subsequent to modification |
+| **Actor** | The user who performed the modification |
 
-The history tab enables:
+The history tab enables the following governance functions:
 
-- Compliance auditing for governance requirements
-- Understanding how term definitions have evolved
-- Identifying who made specific changes
-- Reverting to previous definitions if needed
+- Compliance auditing in accordance with governance requirements
+- Examination of how term definitions have evolved over time
+- Identification of the parties responsible for specific modifications
+- Reversion to previous definitions when deemed necessary
 
 ### Comments Tab
 
-Provides collaborative discussion capabilities:
+Collaborative discussion capabilities are provided:
 
-- View existing comments from team members
-- Add new comments for discussion or clarification
-- Comments include author information and timestamps
-- Use comments to propose definition changes or raise questions
+- Existing comments from team members may be reviewed
+- New comments may be contributed for discussion or clarification purposes
+- Comments are annotated with author information and timestamps
+- Comments may be utilized to propose definition modifications or to raise substantive questions
 
-## Term Management Operations
+## Term Lifecycle Management
 
 ### Edit Term
 
-Modify term metadata:
+Term metadata may be modified as follows:
 
 1. Click the **Edit** button on the term detail page
-2. Update relevant fields (definition, category, status, etc.)
-3. Save changes
-4. Modification is recorded in the history tab
+2. Update the relevant fields (definition, category, status, etc.)
+3. Persist the changes
+4. The modification is recorded in the history tab
 
 ### Delete Term
 
-Remove a term from the glossary:
+A term may be removed from the glossary through the following procedure:
 
 1. Click the **Delete** button
 2. Confirm the deletion in the confirmation dialog
 3. The term and all associated metadata are permanently removed
 
-Note: Deleting a term removes any column mappings in the Data Catalog that reference this term.
+Note: Deletion of a term results in the removal of any column mappings in the Data Catalog that reference the affected term.
 
 ### Deprecate Term
 
-Mark a term as deprecated:
+A term may be designated as deprecated through the following procedure:
 
 1. Edit the term
-2. Change status to "Deprecated"
-3. Save changes
-4. The term remains visible but is marked as no longer recommended
+2. Change the status to "Deprecated"
+3. Persist the changes
+4. The term remains visible but is formally designated as no longer recommended for use
 
-## Term Relationships
+## Semantic Relationship Management
 
 ### Synonym Management
 
-Synonyms represent equivalent terms:
+Synonyms represent semantically equivalent terms:
 
-- **Purpose**: Accommodate varying terminology across departments
+- **Purpose**: Accommodate varying terminological conventions across organizational departments
 - **Behavior**: Bidirectional relationship
-- **Navigation**: Click any synonym to view its detail page
-- **Use Case**: "Customer" and "Client" may be synonyms in some organizations
+- **Navigation**: Any synonym may be selected to access its detail page
+- **Use Case**: "Customer" and "Client" may be designated as synonyms within certain organizational contexts
 
 ### Related Term Management
 
-Related terms represent conceptual connections:
+Related terms represent conceptual associations:
 
-- **Purpose**: Document term associations for discovery
-- **Behavior**: Relationship indicates proximity, not equivalence
-- **Navigation**: Click any related term to view its detail page
-- **Use Case**: "Order" may be related to "Customer" and "Product"
+- **Purpose**: Document inter-term associations for purposes of discovery and navigation
+- **Behavior**: The relationship is indicative of semantic proximity, not equivalence
+- **Navigation**: Any related term may be selected to access its detail page
+- **Use Case**: "Order" may be associated with "Customer" and "Product" as related terms
 
-## Category Management
+## Hierarchical Category Management
 
-The Categories tab provides a dedicated interface for managing the category hierarchy.
+The Categories tab provides a dedicated interface for the administration of the category hierarchy.
 
 ### Category Tree Visualization
 
-Categories are displayed in an expandable tree structure:
+Categories are rendered in an expandable tree structure:
 
-- **Folder icons** indicate category nodes
-- **Expand/Collapse buttons** control visibility of child categories
-- **Term count badges** show how many terms belong to each category
-- **Subcategory count badges** show the number of child categories
+- **Folder icons** denote category nodes
+- **Expand/Collapse controls** govern the visibility of child categories
+- **Term count badges** indicate the number of terms assigned to each category
+- **Subcategory count badges** indicate the number of child categories
 
 ### Tree Controls
 
 | Control | Action |
 |---------|--------|
-| **Expand** | Show all categories at once |
-| **Collapse** | Hide all nested categories |
-| **Add Category** | Create a new category (root or child) |
+| **Expand** | Display all categories simultaneously |
+| **Collapse** | Conceal all nested categories |
+| **Add Category** | Instantiate a new category (root or child level) |
 
 ### Category Operations
 
 #### Creating Categories
 
-1. Click **Add Category** button
+1. Click the **Add Category** button
 2. Enter the category name (required)
-3. Add an optional description
-4. Select a parent category (or leave as "No parent" for root level)
+3. Provide an optional description
+4. Select a parent category (or designate as "No parent" for root-level placement)
 5. Click **Save**
 
 #### Editing Categories
@@ -270,28 +270,28 @@ Categories are displayed in an expandable tree structure:
 1. Hover over a category row to reveal the action menu
 2. Click the menu icon (⋮)
 3. Select **Edit Category**
-4. Modify name, description, or parent
+4. Modify the name, description, or parent designation
 5. Click **Save**
 
-Note: The system prevents circular references when changing parent categories.
+Note: The system enforces prevention of circular references when modifying parent category assignments.
 
 #### Deleting Categories
 
-1. Access the action menu for a category
+1. Access the action menu for the target category
 2. Select **Delete Category**
 3. Confirm in the dialog
 
-**Warning**: Deleting a category will set all terms in that category to uncategorized. Child categories will also need to be handled separately.
+**Warning**: Deletion of a category will result in all terms within that category being reclassified as uncategorized. Child categories must be addressed through separate administrative action.
 
 #### Creating Subcategories
 
-To add a category as a child of an existing category:
+To instantiate a category as a child of an existing category:
 
-1. Hover over the parent category
+1. Hover over the intended parent category
 2. Click the action menu (⋮)
 3. Select **Add Category**
 4. The parent is automatically pre-selected
-5. Enter the subcategory details and save
+5. Enter the subcategory details and persist
 
 ### Hierarchical Organization
 
@@ -310,37 +310,37 @@ Business Terms
     └── Pricing
 ```
 
-Each level in the hierarchy helps organize terms into logical groupings that reflect your organization's taxonomy.
+Each level within the hierarchy serves to organize terms into logically coherent groupings that reflect the organization's taxonomic structure.
 
-## Integration with Data Catalog
+## Data Catalog Integration Architecture
 
-The Business Glossary integrates with the Data Catalog through column-term mappings:
+The Business Glossary is integrated with the Data Catalog through column-to-term mapping mechanisms:
 
-1. **Column Mapping**: Technical columns in the catalog can be mapped to glossary terms
-2. **Semantic Bridge**: Mappings connect technical names (e.g., `cust_id`) to business terms (e.g., "Customer Identifier")
-3. **Bidirectional Navigation**: Navigate from terms to mapped columns and vice versa
-4. **Impact Analysis**: Understand which data assets are affected by term changes
+1. **Column Mapping**: Technical columns within the catalog may be mapped to corresponding glossary terms
+2. **Semantic Bridge**: Mappings establish a formal correspondence between technical identifiers (e.g., `cust_id`) and their business term counterparts (e.g., "Customer Identifier")
+3. **Bidirectional Navigation**: Navigation is supported from terms to their mapped columns and conversely
+4. **Impact Analysis**: The downstream effects upon data assets resulting from term modifications may be systematically assessed
 
-## Governance Workflow
+## Governance Workflow Methodology
 
 ### Recommended Term Lifecycle
 
-1. **Draft Creation**: Subject matter expert creates initial term definition
-2. **Review Process**: Data governance committee reviews definition
-3. **Approval**: Term is approved and status changed to "Approved"
-4. **Usage**: Term is mapped to catalog columns and used in documentation
-5. **Maintenance**: Periodic review ensures definitions remain current
-6. **Deprecation**: Outdated terms are marked deprecated with migration guidance
+1. **Draft Creation**: A subject matter expert authors the initial term definition
+2. **Review Process**: The data governance committee conducts a formal review of the definition
+3. **Approval**: The term is approved and its status is transitioned to "Approved"
+4. **Usage**: The term is mapped to catalog columns and incorporated into organizational documentation
+5. **Maintenance**: Periodic reviews are conducted to ensure that definitions remain current and accurate
+6. **Deprecation**: Outdated terms are designated as deprecated, accompanied by migration guidance
 
 ### Change Management
 
-When term definitions require modification:
+When term definitions necessitate modification, the following procedure should be observed:
 
-1. Document the rationale in comments
-2. Make the modification
-3. Review the history tab to verify changes
-4. Notify stakeholders of significant definition changes
-5. Update any dependent documentation or mappings
+1. Document the rationale in the comments section
+2. Execute the modification
+3. Review the history tab to verify that changes have been recorded accurately
+4. Notify relevant stakeholders of significant definition changes
+5. Update any dependent documentation or column mappings accordingly
 
 ## API Reference
 
@@ -361,7 +361,7 @@ When term definitions require modification:
 | `/glossary/categories/{id}` | PUT | Update category |
 | `/glossary/categories/{id}` | DELETE | Delete category |
 
-### Term Creation Request
+### Term Registration Request
 
 ```json
 {
@@ -387,9 +387,9 @@ When term definitions require modification:
 
 | Status | Description |
 |--------|-------------|
-| `draft` | Term is under development, not yet approved |
-| `approved` | Term has been reviewed and approved for use |
-| `deprecated` | Term is being phased out, avoid new usage |
+| `draft` | The term is under development and has not yet been approved |
+| `approved` | The term has been reviewed and formally approved for use |
+| `deprecated` | The term is being phased out; new usage should be avoided |
 
 ### Category with Hierarchy
 
@@ -403,7 +403,7 @@ Categories support parent-child relationships for hierarchical organization:
 }
 ```
 
-The `full_path` field in category responses shows the complete hierarchy path (e.g., "Business Metrics > Financial Metrics").
+The `full_path` field in category responses conveys the complete hierarchy path (e.g., "Business Metrics > Financial Metrics").
 
 ### Relationship Creation Request
 
@@ -419,7 +419,7 @@ The `full_path` field in category responses shows the complete hierarchy path (e
 
 | Type | Description |
 |------|-------------|
-| `synonym` | Terms represent the same concept |
-| `related` | Terms are conceptually connected |
-| `parent` | Target term is a broader concept |
-| `child` | Target term is a narrower concept |
+| `synonym` | Terms that denote the same concept |
+| `related` | Terms that are conceptually associated |
+| `parent` | The target term represents a broader concept |
+| `child` | The target term represents a narrower concept |

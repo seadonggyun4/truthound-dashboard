@@ -1,8 +1,8 @@
 # Getting Started
 
-This guide describes how to install Truthound Dashboard and run your first data validation.
+This guide describes the procedures for installing Truthound Dashboard and executing initial data validation operations.
 
-## Requirements
+## System Requirements
 
 - Python 3.11 or higher
 - pip (Python package manager)
@@ -15,7 +15,7 @@ This guide describes how to install Truthound Dashboard and run your first data 
 pip install truthound-dashboard
 ```
 
-This command automatically installs [truthound](https://github.com/seadonggyun4/truthound) as a dependency.
+This command automatically installs [truthound](https://github.com/seadonggyun4/truthound) as a transitive dependency.
 
 ### Install Development Version
 
@@ -27,7 +27,7 @@ pip install -e ".[dev]"
 
 ## Quick Start
 
-### 1. Start the Dashboard
+### 1. Launch the Dashboard
 
 ```bash
 truthound serve
@@ -35,23 +35,23 @@ truthound serve
 
 The browser opens automatically and the dashboard is accessible at `http://localhost:8765`.
 
-### 2. Add a Data Source
+### 2. Register a Data Source
 
-1. Click **Data Sources** in the left menu
+1. Select **Data Sources** from the navigation menu
 2. Click the **Add Source** button
-3. Enter source information:
-   - **Name**: Source name (e.g., "Sales Data")
-   - **Type**: Select file or database type
-   - **Config**: Enter connection details
+3. Provide the required source information:
+   - **Name**: A unique identifier for the data source (e.g., "Sales Data")
+   - **Type**: Select the file or database type
+   - **Config**: Enter type-specific connection parameters
 
-**File Source Example:**
+**File Source Configuration Example:**
 ```json
 {
   "path": "/path/to/your/data.csv"
 }
 ```
 
-**PostgreSQL Example:**
+**PostgreSQL Configuration Example:**
 ```json
 {
   "host": "localhost",
@@ -65,49 +65,57 @@ The browser opens automatically and the dashboard is accessible at `http://local
 
 ### 3. Generate Schema Automatically
 
-1. Click the **Schema** tab for the created source
+1. Navigate to the **Schema** tab for the registered source
 2. Click the **Learn Schema** button
-3. The schema is generated automatically by analyzing the data
+3. The system analyzes the data source and generates a schema definition
 
 The generated schema includes:
 - Column data types
-- Nullable status
+- Nullable constraints
 - Unique constraints
-- Min/max values for numeric columns
+- Min/max value ranges for numeric columns
 - Allowed values for low-cardinality columns
 
-### 4. Run Validation
+### 4. Execute Validation
 
 1. Click the **Validate** button on the source detail page
-2. Review the results after validation completes
+2. Optionally expand **Advanced Options** to configure:
+   - **Result Format**: Controls diagnostic detail level (`boolean_only`, `basic`, `summary`, `complete`)
+   - **Include Unexpected Rows**: Attaches failure row data to results (for `summary` or higher)
+   - **Catch Exceptions**: Enables fault-tolerant execution (errors are captured rather than aborting)
+   - **Max Retries**: Number of automatic retry attempts for transient errors
+3. Review the results upon completion
 
 **Validation Result Fields:**
-- **passed**: Whether validation passed
-- **total_issues**: Total number of issues found
-- **has_critical**: Whether critical severity issues exist
-- **has_high**: Whether high severity issues exist
-- **issues**: Detailed issue list
+- **passed**: Boolean indicating overall pass/fail status
+- **total_issues**: Aggregate count of detected issues
+- **has_critical**: Presence of critical-severity issues
+- **has_high**: Presence of high-severity issues
+- **issues**: Detailed issue listing with per-column breakdown
+- **statistics**: Aggregate validation statistics with multi-dimensional breakdowns (PHASE 2)
+- **validator_execution_summary**: Validator execution states including skip reasons (PHASE 4)
+- **exception_summary**: System error statistics with retry and recovery metrics (PHASE 5)
 
 ### 5. Configure Schedules (Optional)
 
-To run validations periodically:
+To establish periodic validation execution:
 
 1. Navigate to the **Schedules** menu
 2. Click **Add Schedule**
-3. Set the schedule using a cron expression
+3. Define the schedule using a cron expression
 
 **Cron Expression Examples:**
-- `0 9 * * *` - Daily at 9 AM
-- `0 */6 * * *` - Every 6 hours
-- `0 0 * * 1` - Every Monday at midnight
+- `0 9 * * *` — Daily at 09:00
+- `0 */6 * * *` — Every 6 hours
+- `0 0 * * 1` — Weekly on Monday at midnight
 
 ### 6. Configure Notifications (Optional)
 
-To receive alerts when validation fails:
+To receive alerts upon validation failure:
 
 1. Navigate to the **Notifications** menu
-2. Click **Add Channel** to add a Slack/Email/Webhook channel
-3. Click **Add Rule** to configure notification rules
+2. Click **Add Channel** to register a Slack, Email, or Webhook channel
+3. Click **Add Rule** to configure notification trigger rules
 
 ## CLI Options
 
@@ -118,13 +126,13 @@ truthound serve
 # Custom port
 truthound serve --port 9000
 
-# Allow external access
+# Allow external network access
 truthound serve --host 0.0.0.0
 
-# Disable automatic browser opening
+# Suppress automatic browser invocation
 truthound serve --no-browser
 
-# Development mode (hot reload)
+# Development mode (hot module replacement)
 truthound serve --reload
 
 # Specify data directory
@@ -133,7 +141,7 @@ truthound serve --data-dir /path/to/data
 
 ## Data Directory
 
-Truthound Dashboard stores data in `~/.truthound` by default:
+Truthound Dashboard stores persistent data in `~/.truthound` by default:
 
 ```
 ~/.truthound/
@@ -144,9 +152,9 @@ Truthound Dashboard stores data in `~/.truthound` by default:
 
 ## Next Steps
 
-- [Features](./features.md) - Explore all features
-- [API Reference](./api.md) - Use the REST API
-- [Configuration](./configuration.md) - Detailed configuration options
+- [Features](./features.md) — Explore all capabilities
+- [API Reference](./api.md) — Utilize the REST API
+- [Configuration](./configuration.md) — Detailed configuration options
 
 ## Troubleshooting
 

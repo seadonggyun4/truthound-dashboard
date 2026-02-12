@@ -1,16 +1,16 @@
 # Drift Monitoring
 
-The Drift Monitoring module provides automated, continuous drift detection with alerting capabilities, root cause analysis, and remediation guidance.
+The Drift Monitoring module implements automated, continuous drift surveillance with alerting capabilities, root cause analysis, and remediation guidance.
 
 ## Overview
 
-While ad-hoc drift comparisons provide point-in-time analysis, Drift Monitoring establishes persistent monitoring configurations that execute automatically, generate alerts when drift is detected, and provide analytical tools to understand and address distribution changes.
+Whereas ad-hoc drift comparisons yield point-in-time analyses, the Drift Monitoring subsystem establishes persistent monitoring configurations that are executed automatically, generates alerts upon drift detection, and furnishes analytical instrumentation for the comprehension and remediation of distribution changes.
 
-## Drift Monitor Management
+## Drift Monitor Lifecycle Management
 
 ### Monitor Statistics Dashboard
 
-The monitoring interface displays aggregate statistics:
+The monitoring interface presents aggregate statistics as enumerated below:
 
 | Metric | Description |
 |--------|-------------|
@@ -24,16 +24,18 @@ The monitoring interface displays aggregate statistics:
 
 ### Creating a Drift Monitor
 
-1. Click the **Create Monitor** button
-2. Configure the monitor parameters:
-   - **Name**: Descriptive identifier for the monitor
-   - **Baseline Source**: Reference dataset for comparison
-   - **Current Source**: Dataset to monitor for drift
-   - **Detection Method**: Statistical method for drift detection
-   - **Threshold**: Sensitivity threshold for drift detection
-   - **Schedule**: Execution frequency (cron expression or interval)
-   - **Columns**: Specific columns to monitor (optional)
-3. Save the monitor configuration
+The following procedure is employed to instantiate a new drift monitor:
+
+1. The **Create Monitor** button is selected
+2. The monitor parameters are configured as follows:
+   - **Name**: A descriptive identifier assigned to the monitor
+   - **Baseline Source**: The reference dataset against which comparisons are conducted
+   - **Current Source**: The dataset to be monitored for distributional drift
+   - **Detection Method**: The statistical method employed for drift detection
+   - **Threshold**: The sensitivity threshold governing drift detection
+   - **Schedule**: The execution frequency, expressed as a cron expression or interval
+   - **Columns**: Specific columns designated for monitoring (optional)
+3. The monitor configuration is persisted
 
 ### Monitor Lifecycle Operations
 
@@ -49,7 +51,7 @@ The monitoring interface displays aggregate statistics:
 
 ### Alert Listing
 
-The Alerts tab displays all drift-related alerts with filtering capabilities:
+The Alerts tab enumerates all drift-related alerts and provides the following filtering capabilities:
 
 #### Filter Options
 
@@ -78,12 +80,12 @@ The Alerts tab displays all drift-related alerts with filtering capabilities:
 
 ### Historical Drift Analysis
 
-The Trends tab provides visualization of drift evolution over time:
+The Trends tab provides temporal visualization of drift evolution. The following analytical workflow is prescribed:
 
-1. Select a monitor from the dropdown
-2. View the time-series chart of drift percentage
-3. Identify patterns and trends in drift behavior
-4. Correlate drift events with external factors
+1. A monitor is selected from the dropdown
+2. The time-series chart of drift percentage is examined
+3. Patterns and trends in drift behavior are identified
+4. Drift events are correlated with external factors
 
 ### Trend Visualization
 
@@ -96,11 +98,11 @@ The Trends tab provides visualization of drift evolution over time:
 
 ### Column-Level Analysis
 
-Access detailed column-level drift information:
+Detailed column-level drift information may be accessed through the following procedure:
 
-1. Click on a monitor or alert to view details
-2. Access the column drilldown panel
-3. Review per-column drift statistics:
+1. A monitor or alert is selected to view its details
+2. The column drilldown panel is accessed
+3. Per-column drift statistics are reviewed:
    - Column name
    - Drift detected (boolean)
    - Drift magnitude
@@ -109,24 +111,24 @@ Access detailed column-level drift information:
 
 ### Column Comparison
 
-For each drifted column, examine:
+For each column exhibiting drift, the following diagnostic artifacts are examined:
 
 - Distribution histograms (baseline vs current)
 - Statistical summary (mean, median, std, percentiles)
 - Drift direction (increase/decrease)
 
-## Root Cause Analysis
+## Root Cause Analysis Framework
 
 ### ML-Based Root Cause Identification
 
-The system provides automated root cause analysis for drift events:
+Automated root cause analysis is provided for drift events through the following methodology:
 
-1. Navigate to a specific monitor run with detected drift
-2. Access the Root Cause Analysis panel
-3. Review identified contributing factors:
-   - Columns with highest drift contribution
-   - Correlation patterns between drifted columns
-   - Potential upstream causes
+1. Navigation is performed to a specific monitor run in which drift was detected
+2. The Root Cause Analysis panel is accessed
+3. The identified contributing factors are reviewed:
+   - Columns exhibiting the highest drift contribution
+   - Correlation patterns observed between drifted columns
+   - Potential upstream causal factors
    - Temporal patterns
 
 ### Root Cause Report
@@ -138,11 +140,11 @@ The system provides automated root cause analysis for drift events:
 | **Temporal Patterns** | Time-based drift characteristics |
 | **Recommended Actions** | Suggested investigation paths |
 
-## Remediation Panel
+## Remediation Guidance Framework
 
 ### Suggested Actions
 
-The Remediation Panel provides actionable guidance:
+The Remediation Guidance Framework furnishes actionable recommendations as categorized below:
 
 | Recommendation Type | Description |
 |--------------------|-------------|
@@ -153,40 +155,44 @@ The Remediation Panel provides actionable guidance:
 
 ### Remediation Workflow
 
-1. Review drift alert and root cause analysis
-2. Access remediation suggestions
-3. Implement appropriate actions
-4. Verify drift resolution in subsequent runs
-5. Resolve the alert
+The prescribed remediation workflow is conducted as follows:
+
+1. The drift alert and root cause analysis are reviewed
+2. Remediation suggestions are accessed
+3. Appropriate corrective actions are implemented
+4. Drift resolution is verified in subsequent monitoring runs
+5. The alert is resolved upon confirmation
 
 ## Related Alerts
 
 ### Alert Correlation
 
-The system identifies correlations between drift alerts and other alert types:
+Correlations between drift alerts and other alert types are identified by the system:
 
-- **Anomaly Alerts**: Concurrent anomaly detections that may relate to drift
+- **Anomaly Alerts**: Concurrent anomaly detections that may be related to drift
 - **Validation Alerts**: Data quality issues that correlate with drift
-- **Cross-Source Correlations**: Drift in related data sources
+- **Cross-Source Correlations**: Drift observed in related data sources
 
 ### Correlation Analysis
 
-1. View a drift alert
-2. Access the Related Alerts section
-3. Review correlated alerts from other modules
-4. Investigate common root causes
+The following procedure is employed to investigate correlated alerts:
 
-## Auto-Trigger Configuration
+1. A drift alert is viewed
+2. The Related Alerts section is accessed
+3. Correlated alerts from other modules are reviewed
+4. Common root causes are investigated
 
-The Auto-Trigger system enables cross-feature automation between drift detection and anomaly detection modules. When an event is detected in one module, the system can automatically initiate checks in the other, creating a bidirectional monitoring loop.
+## Cross-Feature Auto-Trigger Configuration
+
+The Auto-Trigger system facilitates cross-feature automation between the drift detection and anomaly detection modules. When an event is detected within one module, the system is capable of automatically initiating diagnostic checks in the complementary module, thereby establishing a bidirectional monitoring loop.
 
 ### Accessing the Configuration Panel
 
-Click the **Configure** button in the Drift Monitoring toolbar to open the Auto-Trigger Configuration dialog. The dialog is scrollable, ensuring all settings remain accessible regardless of viewport dimensions.
+The **Configure** button in the Drift Monitoring toolbar is selected to open the Auto-Trigger Configuration dialog. The dialog is implemented with scrollable behavior, ensuring that all settings remain accessible regardless of viewport dimensions.
 
 ### Trigger Directions
 
-The system supports two independent trigger directions, each independently enabled or disabled:
+Two independent trigger directions are supported, each of which may be independently enabled or disabled:
 
 | Trigger Direction | Description |
 |-------------------|-------------|
@@ -195,7 +201,7 @@ The system supports two independent trigger directions, each independently enabl
 
 ### Trigger Thresholds
 
-Thresholds define the minimum conditions that must be met before a cross-feature trigger is activated. These parameters prevent unnecessary trigger cascades during minor fluctuations:
+Thresholds define the minimum conditions that must be satisfied before a cross-feature trigger is activated. These parameters are designed to prevent unnecessary trigger cascades during minor fluctuations:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -215,16 +221,16 @@ Thresholds define the minimum conditions that must be met before a cross-feature
 
 The Auto-Trigger configuration supports two levels of scope:
 
-- **Global Configuration**: Applies to all data sources by default
-- **Source-Specific Configuration**: Overrides global settings for a particular data source, allowing fine-grained control
+- **Global Configuration**: Applied to all data sources by default
+- **Source-Specific Configuration**: Overrides global settings for a particular data source, thereby permitting fine-grained control
 
-When no configuration has been explicitly saved, the system returns default values. Configuration is persisted to the database upon first save.
+In the absence of explicitly saved configuration, the system returns default values. Configuration is persisted to the database upon the initial save operation.
 
-## Monitor Configuration Reference
+## Monitor Configuration Specifications
 
 ### Alert Threshold Configuration (Dashboard Feature)
 
-> **Note**: The following alert threshold settings are **dashboard-specific features**, not truthound library parameters. These settings control how the dashboard generates and categorizes alerts based on drift detection results from `th.compare()`.
+> **Note**: The following alert threshold settings are **dashboard-specific features**, not truthound library parameters. These settings govern how the dashboard generates and categorizes alerts based on drift detection results obtained from `th.compare()`.
 
 | Parameter | Description | Default | Range |
 |-----------|-------------|---------|-------|
@@ -232,14 +238,14 @@ When no configuration has been explicitly saved, the system returns default valu
 | **Critical Threshold** | Drift percentage threshold for critical severity alerts | 0.5 (50%) | 0.0-1.0 |
 | **High Threshold** | Drift percentage threshold for high severity alerts | 0.3 (30%) | 0.0-1.0 |
 
-These thresholds determine alert severity based on the drift percentage returned by truthound:
+Alert severity is determined by these thresholds based on the drift percentage returned by truthound:
 - **Critical**: Drift percentage ≥ Critical Threshold
 - **High**: Drift percentage ≥ High Threshold (but < Critical)
 - **Medium**: Drift detected but below High Threshold
 
 ### Schedule Configuration
 
-Monitors support multiple scheduling approaches:
+Multiple scheduling approaches are supported by the monitoring subsystem:
 
 | Schedule Type | Example | Description |
 |--------------|---------|-------------|
@@ -249,7 +255,7 @@ Monitors support multiple scheduling approaches:
 
 ### Detection Method Selection
 
-Choose detection method based on data characteristics (14 methods available in truthound v1.2.9+):
+The detection method should be selected based on the characteristics of the data under examination (14 methods are available in truthound v1.2.9+):
 
 | Data Type | Recommended Methods |
 |-----------|-------------------|
@@ -259,7 +265,7 @@ Choose detection method based on data characteristics (14 methods available in t
 | High-dimensional | mmd, js, kl |
 | Bounded metric needed | hellinger, tv (both 0-1 range) |
 
-> **Note**: See [Drift Detection](drift.md) for detailed descriptions of all 14 statistical methods.
+> **Note**: Refer to [Drift Detection](drift.md) for comprehensive descriptions of all 14 statistical methods.
 
 ## API Reference
 

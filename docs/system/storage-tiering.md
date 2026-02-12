@@ -1,14 +1,14 @@
 # Storage Tiering
 
-The Storage Tiering module enables intelligent data lifecycle management by automatically moving data between storage tiers (Hot, Warm, Cold, Archive) based on configurable policies. This feature leverages the truthound library's storage tiering capabilities (truthound 1.2.10+) through a well-defined adapter pattern.
+The Storage Tiering module facilitates intelligent data lifecycle management through the automated migration of data across hierarchically organized storage tiers (Hot, Warm, Cold, Archive) in accordance with configurable policy specifications. This capability is realized through integration with the truthound library's storage tiering subsystem (truthound 1.2.10+) via a well-defined adapter pattern.
 
-## Overview
+## Introduction and Scope
 
-Storage tiering optimizes storage costs and performance by placing data on appropriate storage tiers based on access patterns, age, or size. Data that is accessed frequently remains on fast, expensive storage (Hot tier), while older or less frequently accessed data migrates to cheaper, slower storage (Cold/Archive tiers).
+Storage tiering is employed to optimize the balance between storage expenditure and access performance by placing data on storage tiers commensurate with observed access patterns, temporal age, or volumetric characteristics. Data that is accessed with high frequency is retained on performant, higher-cost storage media (Hot tier), whereas data exhibiting lower access frequency or greater temporal age is progressively migrated to more economical, higher-latency storage media (Cold/Archive tiers).
 
-## Architecture
+## Architectural Overview
 
-The Storage Tiering system follows a layered architecture that promotes loose coupling and high extensibility:
+The Storage Tiering system is organized according to a layered architecture that promotes loose coupling and high extensibility:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -51,7 +51,7 @@ The Storage Tiering system follows a layered architecture that promotes loose co
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Design Principles
+### Governing Design Principles
 
 | Principle | Implementation |
 |-----------|----------------|
@@ -60,9 +60,9 @@ The Storage Tiering system follows a layered architecture that promotes loose co
 | **Protocol-based Interfaces** | Loose coupling through Python Protocol classes |
 | **Separation of Concerns** | Clear boundaries between UI, API, Service, and Adapter layers |
 
-## Key Concepts
+## Fundamental Concepts
 
-### Storage Tiers
+### Storage Tier Architecture
 
 | Tier | Description | Use Case |
 |------|-------------|----------|
@@ -71,20 +71,20 @@ The Storage Tiering system follows a layered architecture that promotes loose co
 | **Cold** | Slow, rarely accessed, cheap | Compliance archives |
 | **Archive** | Very slow, cheapest | Long-term retention |
 
-### Migration Directions
+### Migration Directionality
 
 | Direction | Description |
 |-----------|-------------|
 | **Demote** | Move to cheaper/slower tier (e.g., Hot → Cold) |
 | **Promote** | Move to faster/more expensive tier (e.g., Cold → Hot) |
 
-## Storage Tiering Interface
+## Storage Tiering User Interface
 
-The Storage Tiering page is divided into four main sections accessible via tabs:
+The Storage Tiering page is organized into four principal sections, each accessible through a dedicated tab interface:
 
-### 1. Storage Tiers Tab
+### 1. Storage Tiers Management Tab
 
-Manage storage tier definitions and configurations.
+This tab is provided for the administration of storage tier definitions and their associated configurations.
 
 | Field | Description |
 |-------|-------------|
@@ -96,11 +96,11 @@ Manage storage tier definitions and configurations.
 | **Retrieval Time (ms)** | Expected data access latency |
 | **Active** | Enable/disable the tier |
 
-### 2. Tier Policies Tab
+### 2. Tier Policies Management Tab
 
-Create and manage migration policies that define when and how data moves between tiers.
+This tab facilitates the creation and management of migration policies that govern the conditions under which data is transferred between tiers.
 
-#### Policy Types
+#### Policy Type Taxonomy
 
 | Type | Description | Configuration |
 |------|-------------|---------------|
@@ -111,16 +111,16 @@ Create and manage migration policies that define when and how data moves between
 | **Composite** | Combine multiple policies | `require_all` (AND/OR logic) |
 | **Custom** | Custom predicate expression | `predicate_expression` |
 
-#### Composite Policies (AND/OR Logic)
+#### Composite Policy Specification (Conjunctive and Disjunctive Logic)
 
-Composite policies enable complex migration rules by combining multiple child policies:
+Composite policies enable the construction of complex migration rules through the combination of multiple subordinate (child) policies:
 
 | Logic | Description |
 |-------|-------------|
 | **AND (require_all: true)** | All child policies must match for migration |
 | **OR (require_all: false)** | Any child policy match triggers migration |
 
-**Creating a Composite Policy:**
+**Procedure for Composite Policy Construction:**
 
 1. Select "Composite" as the policy type
 2. Choose AND or OR logic mode
@@ -128,14 +128,14 @@ Composite policies enable complex migration rules by combining multiple child po
 4. Child policies can be any type except composite
 5. The composite policy triggers based on the combined logic
 
-**Example Use Cases:**
+**Illustrative Use Cases:**
 
 - **AND Logic**: Migrate only if data is >30 days old AND >1GB in size
 - **OR Logic**: Migrate if data is >90 days old OR has <5 accesses in 30 days
 
-### 3. Configurations Tab
+### 3. Global Configuration Tab
 
-Define global tiering settings that control how the tiering system operates.
+This tab is designated for the definition of global tiering parameters that govern the operational behavior of the tiering subsystem.
 
 | Setting | Description | Default |
 |---------|-------------|---------|
@@ -147,9 +147,9 @@ Define global tiering settings that control how the tiering system operates.
 | **Enable Parallel Migration** | Process multiple items concurrently | false |
 | **Max Parallel Migrations** | Maximum concurrent migrations | 4 |
 
-### 4. Migration History Tab
+### 4. Migration History and Audit Tab
 
-View historical migration operations with status tracking.
+This tab provides a chronological record of historical migration operations along with their associated status indicators.
 
 | Field | Description |
 |-------|-------------|
@@ -161,7 +161,7 @@ View historical migration operations with status tracking.
 | **Duration** | Time taken for migration |
 | **Started At** | Timestamp of migration start |
 
-## Policy Configuration Examples
+## Policy Configuration Specifications
 
 ### Age-Based Policy
 
@@ -210,7 +210,7 @@ View historical migration operations with status tracking.
 }
 ```
 
-### Composite Policy (AND Logic)
+### Composite Policy (Conjunctive Logic)
 
 ```json
 {
@@ -225,7 +225,7 @@ View historical migration operations with status tracking.
 }
 ```
 
-Child policies are then linked via `parent_id` field.
+Child policies are subsequently associated via the `parent_id` field.
 
 ### Scheduled Policy
 
@@ -244,42 +244,42 @@ Child policies are then linked via `parent_id` field.
 }
 ```
 
-## Policy Execution
+## Policy Execution Framework
 
-The Storage Tiering system supports both manual and automated policy execution, enabling operators to control when and how data migrations occur.
+The Storage Tiering system accommodates both manual and automated policy execution paradigms, thereby affording operators comprehensive control over the timing and methodology of data migrations.
 
 ### Manual Execution
 
-Operators can manually trigger policy execution through the dashboard or API. This is useful for:
+Operators may manually initiate policy execution through the dashboard interface or the REST API. This operational mode is particularly suited to the following scenarios:
 
-- **On-demand migrations**: Moving data immediately without waiting for scheduled checks
-- **Testing policies**: Verifying policy behavior before enabling automated execution
-- **Emergency operations**: Quickly migrating data during incidents or capacity issues
+- **On-demand migrations**: Effecting immediate data movement without awaiting scheduled evaluation cycles
+- **Policy verification**: Validating policy behavior prior to the enablement of automated execution
+- **Emergency operations**: Expeditiously migrating data during incidents or capacity constraint events
 
-#### Execution Modes
+#### Execution Modalities
 
 | Mode | Description | Use Case |
 |------|-------------|----------|
 | **Execute** | Performs actual data migration | Production migrations |
 | **Dry Run** | Simulates migration without moving data | Policy testing and impact analysis |
 
-#### Dry Run (Simulation)
+#### Dry Run Simulation
 
-The dry run feature enables policy testing without affecting actual data. When executed in dry run mode:
+The dry run capability enables policy validation without affecting the state of actual data. When a policy is executed in dry run mode, the following sequence is observed:
 
 1. The system evaluates all items against the policy criteria
 2. Items that would be migrated are identified and counted
 3. No actual data movement occurs
 4. Results include item counts, estimated sizes, and migration paths
 
-This capability is essential for:
-- Validating policy configurations before production deployment
-- Estimating migration impact on system resources
-- Identifying unexpected items that match policy criteria
+This capability is considered essential for the following purposes:
+- Validating policy configurations prior to production deployment
+- Estimating the resource impact of proposed migrations
+- Identifying items that unexpectedly satisfy policy criteria
 
 ### Automated Execution
 
-The background scheduler automatically evaluates and executes active policies based on configured intervals.
+The background scheduler is responsible for the automatic evaluation and execution of active policies at configured intervals.
 
 #### Scheduler Integration
 
@@ -289,7 +289,7 @@ The background scheduler automatically evaluates and executes active policies ba
 | **Batch Processing** | Items processed per execution cycle | Configurable |
 | **Error Handling** | Automatic retry with exponential backoff | Enabled |
 
-The scheduler runs as part of the dashboard's background task system (APScheduler), ensuring consistent policy evaluation without manual intervention.
+The scheduler operates as a constituent component of the dashboard's background task infrastructure (APScheduler), thereby ensuring consistent policy evaluation without necessitating manual intervention.
 
 #### Execution Flow
 
@@ -334,26 +334,26 @@ The scheduler runs as part of the dashboard's background task system (APSchedule
 └──────────────────────────────────────────────────────────────┘
 ```
 
-## Intelligent Tiering with Access Tracking
+## Intelligent Tiering via Access Pattern Analysis
 
-The system supports intelligent tiering decisions based on actual data access patterns. This requires explicit access tracking, which can be enabled for applications that want promotion capabilities.
+The system supports intelligent tiering decisions informed by observed data access patterns. This functionality requires the explicit enablement of access tracking, which may be configured for applications that necessitate promotion capabilities.
 
-### Access Tracking
+### Access Event Recording
 
-When data is accessed, applications can record the access event:
+When data is accessed, applications may record the access event through the designated endpoint:
 
 ```
 POST /tiering/items/{item_id}/access
 ```
 
-This updates:
-- **Last access timestamp**: When the item was last accessed
-- **Access count**: Cumulative number of accesses
-- **Access frequency**: Calculated metric for policy evaluation
+This operation updates the following metrics:
+- **Last access timestamp**: The temporal coordinate of the most recent access event
+- **Access count**: The cumulative total of access events recorded
+- **Access frequency**: A derived metric employed in policy evaluation
 
 ### Promotion Criteria
 
-Items can be promoted (moved to faster tiers) when:
+Items may be promoted (i.e., migrated to a higher-performance tier) when the following criteria are satisfied:
 
 | Criterion | Description |
 |-----------|-------------|
@@ -361,7 +361,7 @@ Items can be promoted (moved to faster tiers) when:
 | **Recency** | Recent access after period of inactivity |
 | **Frequency** | High access frequency in observation window |
 
-### Configuration
+### Promotion Configuration Parameters
 
 | Setting | Description |
 |---------|-------------|
@@ -371,7 +371,7 @@ Items can be promoted (moved to faster tiers) when:
 
 ## System Status and Health Monitoring
 
-The system provides comprehensive status information for operational monitoring.
+The system provides comprehensive status telemetry for the purposes of operational monitoring and diagnostics.
 
 ### Status Endpoint
 
@@ -379,7 +379,7 @@ The system provides comprehensive status information for operational monitoring.
 GET /tiering/status
 ```
 
-Returns:
+The following fields are returned:
 
 | Field | Description |
 |-------|-------------|
@@ -391,7 +391,7 @@ Returns:
 | `active_migrations` | Currently running migration count |
 | `migrations_24h` | Migration count in last 24 hours |
 
-### Operational States
+### Operational State Classification
 
 | State | Description | Indicator |
 |-------|-------------|-----------|
@@ -402,14 +402,14 @@ Returns:
 
 ### Status Banner
 
-The dashboard displays a status banner indicating the current operational state:
+The dashboard renders a status banner that communicates the current operational state of the tiering subsystem:
 
-- **truthound Connected**: Full integration with truthound storage tiering
-- **Using Fallback Mode**: Operating with built-in fallback implementations
+- **truthound Connected**: Full integration with truthound storage tiering is established
+- **Using Fallback Mode**: The system is operating with built-in fallback implementations
 
-## Statistics Dashboard
+## Statistical Monitoring Dashboard
 
-The Storage Tiering page displays real-time statistics:
+The Storage Tiering page presents the following real-time statistical indicators:
 
 | Metric | Description |
 |--------|-------------|
@@ -423,9 +423,9 @@ The Storage Tiering page displays real-time statistics:
 | **Total Bytes Migrated** | Data volume transferred |
 | **Migrations (24h)** | Recent migration activity |
 
-## Best Practices
+## Recommended Operational Practices
 
-### Tier Design
+### Tier Design Considerations
 
 | Practice | Recommendation |
 |----------|----------------|
@@ -434,7 +434,7 @@ The Storage Tiering page displays real-time statistics:
 | **Monitor Costs** | Track cost_per_gb for optimization |
 | **Set Priorities** | Use priority for conflict resolution |
 
-### Policy Design
+### Policy Design Considerations
 
 | Practice | Recommendation |
 |----------|----------------|
@@ -443,7 +443,7 @@ The Storage Tiering page displays real-time statistics:
 | **Monitor Migrations** | Watch for failed migrations |
 | **Schedule Off-Peak** | Run migrations during low-activity periods |
 
-### Performance Optimization
+### Performance Optimization Considerations
 
 | Practice | Recommendation |
 |----------|----------------|
@@ -451,9 +451,9 @@ The Storage Tiering page displays real-time statistics:
 | **Parallel Migration** | Enable for high-throughput systems |
 | **Check Interval** | Balance frequency with system load |
 
-## Troubleshooting
+## Troubleshooting and Diagnostics
 
-### Common Issues
+### Commonly Encountered Issues
 
 | Issue | Resolution |
 |-------|------------|
@@ -462,19 +462,19 @@ The Storage Tiering page displays real-time statistics:
 | **Slow Migrations** | Enable parallel migration, increase batch size |
 | **Unexpected Demotions** | Review policy configurations and priorities |
 
-### Migration Failures
+### Migration Failure Resolution Procedure
 
-When migrations fail:
+When migration failures are encountered, the following diagnostic procedure is recommended:
 
-1. Check the error message in Migration History
-2. Verify source and destination tiers are accessible
-3. Confirm sufficient storage capacity in destination tier
-4. Check network connectivity for remote storage
-5. Review application logs for detailed errors
+1. Examine the error message recorded in the Migration History
+2. Verify that both source and destination tiers are accessible
+3. Confirm that sufficient storage capacity exists in the destination tier
+4. Validate network connectivity for remote storage backends
+5. Consult application logs for detailed error diagnostics
 
 ## API Reference
 
-### Storage Tiers
+### Storage Tier Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -484,7 +484,7 @@ When migrations fail:
 | `/tiering/tiers/{id}` | PUT | Update tier |
 | `/tiering/tiers/{id}` | DELETE | Delete tier |
 
-### Tier Policies
+### Tier Policy Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -496,7 +496,7 @@ When migrations fail:
 | `/tiering/policies/{id}` | DELETE | Delete policy |
 | `/tiering/policies/{id}/tree` | GET | Get composite policy tree |
 
-### Configurations
+### Configuration Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -506,20 +506,20 @@ When migrations fail:
 | `/tiering/configs/{id}` | PUT | Update configuration |
 | `/tiering/configs/{id}` | DELETE | Delete configuration |
 
-### Migration History
+### Migration History Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/tiering/migrations` | GET | List migration history |
 | `/tiering/migrations/{id}` | GET | Get migration details |
 
-### Statistics
+### Statistical Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/tiering/stats` | GET | Get tiering statistics |
 
-### Policy Execution
+### Policy Execution Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -534,7 +534,7 @@ When migrations fail:
 | `dry_run` | boolean | Simulate without actual migration |
 | `batch_size` | integer | Items per batch (default: 100) |
 
-**Execution Response:**
+**Execution Response Schema:**
 
 | Field | Description |
 |-------|-------------|
@@ -545,27 +545,27 @@ When migrations fail:
 | `dry_run` | Whether this was a simulation |
 | `errors` | List of error messages |
 
-### Access Tracking
+### Access Tracking Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/tiering/items/{id}/access` | POST | Record item access |
 | `/tiering/items/{id}/migrate` | POST | Manually migrate item |
 
-## truthound Integration
+## truthound Library Integration
 
-The Storage Tiering module integrates with truthound's storage tiering capabilities through the `TieringAdapter` class. This adapter provides:
+The Storage Tiering module is integrated with the truthound library's storage tiering capabilities through the `TieringAdapter` class. The adapter provides the following functionality:
 
-### When truthound is Available
+### Behavior When truthound Is Available
 
 - **Full Feature Access**: All truthound tiering capabilities are utilized
 - **Native Store Support**: S3, GCS, Azure Blob, file system stores
 - **Advanced Policies**: Complex policy evaluation and composite logic
 - **Optimized Migrations**: Efficient data transfer mechanisms
 
-### When truthound is Unavailable
+### Graceful Degradation When truthound Is Unavailable
 
-The system gracefully degrades to fallback implementations:
+The system degrades gracefully to fallback implementations in the absence of the truthound library:
 
 | Component | Fallback Behavior |
 |-----------|-------------------|
@@ -575,13 +575,13 @@ The system gracefully degrades to fallback implementations:
 | **MetadataStore** | Dictionary-based item tracking |
 | **CompositePolicy** | AND/OR logic evaluation |
 
-This ensures the dashboard remains functional for demonstration, testing, and development purposes even when truthound is not installed.
+This design ensures that the dashboard remains fully functional for demonstration, testing, and development purposes even in environments where the truthound library has not been installed.
 
-## Use Cases
+## Representative Use Cases
 
 ### Cost Optimization
 
-Automatically migrate aging data to cheaper storage tiers:
+The following procedure illustrates the automated migration of aging data to lower-cost storage tiers:
 
 1. Configure Hot tier for active data (SSD, high IOPS)
 2. Configure Cold tier for archives (Object storage, low cost)
@@ -590,9 +590,9 @@ Automatically migrate aging data to cheaper storage tiers:
 
 **Expected Outcome**: 40-60% reduction in storage costs for data older than 90 days.
 
-### Compliance and Retention
+### Regulatory Compliance and Data Retention
 
-Ensure data retention policies are enforced:
+The following procedure ensures the enforcement of data retention policies:
 
 1. Configure Archive tier with write-once storage
 2. Create scheduled policy: archive on first day of month
@@ -603,7 +603,7 @@ Ensure data retention policies are enforced:
 
 ### Performance Optimization
 
-Keep frequently accessed data on fast storage:
+The following procedure ensures that frequently accessed data is maintained on high-performance storage:
 
 1. Enable access tracking in applications
 2. Configure promotion threshold: 50 accesses
@@ -621,7 +621,7 @@ Keep frequently accessed data on fast storage:
 | **Encryption** | Use encrypted storage backends for sensitive data |
 | **Network Security** | Ensure secure connections to remote storage |
 
-## Glossary
+## Glossary of Terms
 
 | Term | Definition |
 |------|------------|

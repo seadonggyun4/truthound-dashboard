@@ -1,14 +1,14 @@
-# Dashboard Alerts
+# Unified Alert Management System
 
-The Dashboard Alerts module provides a centralized dashboard for managing alerts from all dashboard monitoring components, including validation failures, drift detection, anomaly detection, and model monitoring.
+The Dashboard Alerts module provides a centralized interface for the management of alerts originating from all dashboard monitoring components, including validation failure detection, distribution drift analysis, anomaly identification, and model performance monitoring.
 
-> **Note**: Dashboard Alerts is a dashboard-level aggregation system that collects alerts from various monitoring subsystems within the truthound-dashboard application. It is distinct from the truthound library's checkpoint alert system, which provides lower-level programmatic alerting capabilities.
+> **Note**: The Dashboard Alerts system constitutes a dashboard-level aggregation framework that collects alerts from various monitoring subsystems within the truthound-dashboard application. It is to be distinguished from the truthound library's checkpoint alert system, which provides lower-level programmatic alerting capabilities.
 
-## Overview
+## System Overview
 
-The alert system aggregates notifications from multiple sources into a single interface, enabling efficient triage, acknowledgment, and resolution workflows. This unified approach eliminates the need to monitor multiple alert sources independently.
+The alert system aggregates notifications from multiple heterogeneous sources into a unified interface, thereby enabling efficient triage, acknowledgment, and resolution workflows. This consolidated approach obviates the necessity of monitoring multiple alert sources independently.
 
-### Architecture
+### Architectural Design
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -35,11 +35,11 @@ The alert system aggregates notifications from multiple sources into a single in
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Alerts Interface
+## Alert Interface Specifications
 
 ### Summary Dashboard
 
-The interface displays aggregate alert statistics:
+The interface presents aggregate alert statistics as follows:
 
 | Metric | Description |
 |--------|-------------|
@@ -53,7 +53,7 @@ The interface displays aggregate alert statistics:
 
 ### Alert Listing
 
-The main alert list displays all alerts with filtering capabilities:
+The primary alert listing presents all alerts with comprehensive filtering capabilities:
 
 | Column | Description |
 |--------|-------------|
@@ -65,7 +65,7 @@ The main alert list displays all alerts with filtering capabilities:
 | **Created At** | Alert generation timestamp |
 | **Actions** | Available operations |
 
-## Alert Sources
+## Alert Source Classification
 
 ### Source Types
 
@@ -76,15 +76,15 @@ The main alert list displays all alerts with filtering capabilities:
 | **Anomaly** | Anomaly detection alerts |
 | **Model** | ML model performance alerts |
 
-### Source Filter
+### Source Filtering
 
-Filter alerts by origin:
+Alerts may be filtered by their originating source through the following procedure:
 
 1. Click the **Source** filter dropdown
 2. Select one or more sources
 3. Alert list updates to show matching alerts
 
-## Severity Levels
+## Severity Level Taxonomy
 
 ### Severity Classifications
 
@@ -96,17 +96,17 @@ Filter alerts by origin:
 | **Low** | Blue | Minor issue for awareness |
 | **Info** | Gray | Informational notification |
 
-### Severity Filter
+### Severity Filtering
 
-Filter alerts by severity:
+Alerts may be filtered by severity level through the following procedure:
 
 1. Click the **Severity** filter dropdown
 2. Select one or more severity levels
 3. Alert list updates to show matching alerts
 
-## Alert Status
+## Alert Status Model
 
-### Status States
+### Status State Definitions
 
 | Status | Description |
 |--------|-------------|
@@ -115,21 +115,21 @@ Filter alerts by severity:
 | **Resolved** | Alert addressed and closed |
 | **Ignored** | Alert dismissed as non-actionable |
 
-### Status Filter
+### Status Filtering
 
-Filter alerts by status:
+Alerts may be filtered by their current status through the following procedure:
 
 1. Click the **Status** filter dropdown
 2. Select one or more statuses
 3. Alert list updates to show matching alerts
 
-## Alert Actions
+## Alert Lifecycle Operations
 
-### Individual Alert Actions
+### Individual Alert Operations
 
-#### Acknowledge
+#### Acknowledgment
 
-Mark an alert as under investigation:
+An alert is marked as being under active investigation through the following procedure:
 
 1. Click **Acknowledge** on the alert
 2. Enter optional acknowledgment details:
@@ -138,9 +138,9 @@ Mark an alert as under investigation:
 3. Confirm acknowledgment
 4. Alert status changes to "Acknowledged"
 
-#### Resolve
+#### Resolution
 
-Mark an alert as addressed:
+An alert is marked as having been addressed through the following procedure:
 
 1. Click **Resolve** on the alert
 2. Enter resolution details:
@@ -149,9 +149,9 @@ Mark an alert as addressed:
 3. Confirm resolution
 4. Alert status changes to "Resolved"
 
-#### View Details
+#### Detailed Inspection
 
-Access comprehensive alert information:
+Comprehensive alert information may be accessed through the following procedure:
 
 1. Click **View Details** on the alert
 2. Review full alert data:
@@ -161,31 +161,31 @@ Access comprehensive alert information:
    - Actor information
    - Related data
 
-### Bulk Actions
+### Bulk Operations
 
-#### Bulk Acknowledge
+#### Bulk Acknowledgment
 
-Acknowledge multiple alerts simultaneously:
+Multiple alerts may be acknowledged simultaneously through the following procedure:
 
 1. Select alerts using checkboxes
 2. Click **Bulk Acknowledge**
 3. Enter acknowledgment details
 4. Confirm to acknowledge all selected alerts
 
-#### Bulk Resolve
+#### Bulk Resolution
 
-Resolve multiple alerts simultaneously:
+Multiple alerts may be resolved simultaneously through the following procedure:
 
 1. Select alerts using checkboxes
 2. Click **Bulk Resolve**
 3. Enter resolution details
 4. Confirm to resolve all selected alerts
 
-## Alert Details Sheet
+## Alert Detail Inspection Panel
 
 ### Accessing Alert Details
 
-Click **View Details** to open the alert details sheet:
+The alert details panel is accessed by clicking **View Details**:
 
 | Section | Content |
 |---------|---------|
@@ -196,11 +196,11 @@ Click **View Details** to open the alert details sheet:
 | **Source Details** | Data source, validation, or model information |
 | **Related Data** | Context-specific information |
 
-## Alert Correlations
+## Alert Correlation Analysis
 
 ### Viewing Correlations
 
-The system identifies related alerts:
+The system is designed to identify related alerts through correlation analysis:
 
 1. Click **View Correlations** on an alert
 2. Review correlated alerts:
@@ -209,7 +209,7 @@ The system identifies related alerts:
    - Related failure patterns
    - Cross-module correlations
 
-### Correlation Analysis
+### Correlation Type Classification
 
 | Correlation Type | Description |
 |-----------------|-------------|
@@ -218,15 +218,15 @@ The system identifies related alerts:
 | **Causal** | Alerts that may share root cause |
 | **Cross-module** | Drift correlating with anomalies |
 
-## Cross-Alert System
+## Cross-Alert Correlation System
 
 ### Overview
 
-The Cross-Alert system provides persistent correlation between different alert types across the dashboard. This feature enables automatic detection of relationships between anomaly and drift alerts.
+The Cross-Alert system provides persistent correlation capabilities between disparate alert types across the dashboard. This subsystem enables the automatic detection of relationships between anomaly alerts and drift alerts, thereby facilitating root cause analysis.
 
-### Database-Backed Storage
+### Database-Backed Persistence Layer
 
-All cross-alert configurations, correlations, and trigger events are stored in the database:
+All cross-alert configurations, correlations, and trigger events are persisted in the database:
 
 | Table | Description |
 |-------|-------------|
@@ -234,7 +234,7 @@ All cross-alert configurations, correlations, and trigger events are stored in t
 | **CrossAlertCorrelation** | Recorded correlation relationships between alerts |
 | **CrossAlertTriggerEvent** | Auto-trigger event history and status |
 
-### Configuration Options
+### Configuration Parameters
 
 | Setting | Description | Default |
 |---------|-------------|---------|
@@ -245,9 +245,9 @@ All cross-alert configurations, correlations, and trigger events are stored in t
 | **drift_percentage_threshold** | Minimum drift percentage to trigger correlation | 0.1 |
 | **cooldown_seconds** | Time between auto-triggers for same source | 300 |
 
-### Correlation Strength
+### Correlation Strength Classification
 
-Correlations are classified by strength:
+Correlations are classified according to their computed strength:
 
 | Strength | Criteria |
 |----------|----------|
@@ -255,17 +255,17 @@ Correlations are classified by strength:
 | **Moderate** | Medium confidence score, reasonable time delta |
 | **Weak** | Low confidence score, large time delta, few common elements |
 
-### Data Persistence
+### Data Persistence Guarantees
 
-Cross-alert data persists across server restarts:
+Cross-alert data is maintained across server restarts through the following mechanisms:
 
 - Configuration settings are stored in `CrossAlertConfig`
 - Historical correlations are preserved in `CrossAlertCorrelation`
 - Trigger events and their status are logged in `CrossAlertTriggerEvent`
 
-## Alert Workflow
+## Alert Triage Workflow
 
-### Recommended Triage Process
+### Recommended Triage Procedure
 
 1. **Review**: Scan new alerts prioritized by severity
 2. **Acknowledge**: Mark alerts under investigation
@@ -274,7 +274,7 @@ Cross-alert data persists across server restarts:
 5. **Resolve**: Close alerts with resolution notes
 6. **Review**: Analyze patterns for prevention
 
-### Best Practices
+### Recommended Operational Practices
 
 | Practice | Description |
 |----------|-------------|
@@ -283,7 +283,7 @@ Cross-alert data persists across server restarts:
 | **Root Cause Analysis** | Investigate patterns across related alerts |
 | **Automation** | Configure notification rules for critical alerts |
 
-## Alert Statistics
+## Alert Statistical Analysis
 
 ### Summary Cards
 
@@ -299,45 +299,45 @@ Cross-alert data persists across server restarts:
 
 ### Trend Analysis
 
-Review alert patterns:
+Alert patterns may be reviewed across the following dimensions:
 
 - Daily/weekly/monthly volumes
 - Severity distribution changes
 - Source-based patterns
 - Resolution time metrics
 
-## Integration with Other Modules
+## Integration with Adjacent Modules
 
-### Validation Integration
+### Validation Module Integration
 
-Validation failures generate alerts with:
+Validation failures generate alerts containing the following metadata:
 
 - Validation ID reference
 - Failed validator details
 - Issue summary
 - Link to validation results
 
-### Drift Monitoring Integration
+### Drift Monitoring Module Integration
 
-Drift detection generates alerts with:
+Drift detection generates alerts containing the following metadata:
 
 - Monitor configuration reference
 - Drift magnitude
 - Affected columns
 - Link to drift details
 
-### Anomaly Detection Integration
+### Anomaly Detection Module Integration
 
-Anomaly detection generates alerts with:
+Anomaly detection generates alerts containing the following metadata:
 
 - Detection results reference
 - Anomaly count and rate
 - Algorithm used
 - Link to anomaly details
 
-### Model Monitoring Integration
+### Model Monitoring Module Integration
 
-Model performance issues generate alerts with:
+Model performance degradation generates alerts containing the following metadata:
 
 - Model reference
 - Affected metric
@@ -358,7 +358,7 @@ Model performance issues generate alerts with:
 | `/alerts/bulk/resolve` | POST | Bulk resolve alerts |
 | `/alerts/count` | GET | Get alert count by status |
 
-### Cross-Alert API
+### Cross-Alert API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|

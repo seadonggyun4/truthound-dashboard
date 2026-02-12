@@ -1,16 +1,16 @@
 # Data Lineage
 
-The Data Lineage module provides visualization and analysis of data flow relationships, enabling users to understand how data moves through systems and assess the impact of changes.
+The Data Lineage module implements comprehensive visualization and analytical capabilities for data flow relationships, enabling practitioners to ascertain how data traverses through systems and to evaluate the implications of proposed modifications.
 
 ## Overview
 
-Data lineage tracks the origin, movement, and transformation of data across systems. This module renders lineage graphs showing upstream sources and downstream consumers, with integrated anomaly visualization and multi-engine rendering support.
+Data lineage is concerned with the tracking of data provenance, movement, and transformation across heterogeneous systems. This module is responsible for rendering lineage graphs that depict upstream sources and downstream consumers, augmented with integrated anomaly visualization and multi-engine rendering support.
 
-## Lineage Interface
+## Lineage Interface Specifications
 
 ### Graph Visualization
 
-The lineage interface centers on an interactive graph visualization:
+The lineage interface is centered upon an interactive graph visualization component:
 
 | Element | Description |
 |---------|-------------|
@@ -35,9 +35,9 @@ The lineage interface centers on an interactive graph visualization:
 | **joins_with** | Join relationship between data assets |
 | **filters_from** | Filtered subset of source data |
 
-## Renderer Selection
+## Rendering Engine Selection
 
-The system supports three rendering engines, each optimized for different use cases. Select a renderer from the dropdown menu at the top of the lineage page.
+The system accommodates three rendering engines, each of which has been optimized for distinct use cases. A renderer may be selected from the dropdown menu situated at the top of the lineage page.
 
 ### Renderer Comparison
 
@@ -49,7 +49,7 @@ The system supports three rendering engines, each optimized for different use ca
 
 ### React Flow (Default)
 
-The default renderer provides the richest interactive experience:
+The default renderer is designed to furnish the most comprehensive interactive experience:
 
 - Drag-and-drop node repositioning
 - Zoom and pan navigation
@@ -58,7 +58,7 @@ The default renderer provides the richest interactive experience:
 
 ### Cytoscape
 
-A high-performance canvas-based renderer designed for large lineage graphs:
+A high-performance canvas-based renderer has been engineered for the visualization of large-scale lineage graphs:
 
 **Layout Options:**
 
@@ -81,7 +81,7 @@ A high-performance canvas-based renderer designed for large lineage graphs:
 
 ### Mermaid
 
-An SVG-based renderer optimized for diagram export and documentation embedding. The Mermaid renderer exclusively uses the **simple** style for clean, readable output.
+An SVG-based renderer has been optimized for diagram export and documentation embedding purposes. The Mermaid renderer exclusively employs the **simple** style to ensure clean, readable output.
 
 **Direction Options:**
 
@@ -94,11 +94,11 @@ An SVG-based renderer optimized for diagram export and documentation embedding. 
 
 **Node Click Interaction:**
 
-Clicking a node in the Mermaid diagram opens the Node Details panel on the right side, identical to the behavior of other renderers. The system matches clicked SVG elements to lineage nodes using multiple ID-matching strategies.
+When a node within the Mermaid diagram is clicked, the Node Details panel is opened on the right side, in a manner identical to the behavior exhibited by other renderers. The system resolves clicked SVG elements to their corresponding lineage nodes through the application of multiple ID-matching strategies.
 
 ## Node Details Panel
 
-Clicking any node in the lineage graph opens a details panel on the right side of the interface.
+Selection of any node within the lineage graph results in the presentation of a details panel on the right side of the interface.
 
 ### Panel Contents
 
@@ -111,40 +111,40 @@ Clicking any node in the lineage graph opens a details panel on the right side o
 | **Impact Analysis** | Button to trigger impact analysis from this node |
 | **Timestamps** | Creation and last update timestamps |
 
-## Node Management
+## Node Lifecycle Management
 
 ### Adding Nodes
 
-1. Click the **Add Node** button
-2. Configure node properties:
+1. The **Add Node** button is to be clicked
+2. Node properties are to be configured as follows:
    - **Name**: Identifier for the node
    - **Type**: Classification (source, transform, sink)
    - **Source Reference**: Optional link to a data source
    - **Description**: Documentation text
-3. Save to add the node to the graph
+3. Upon saving, the node is appended to the graph
 
 ### Deleting Nodes
 
-1. Select the target node
-2. Click the **Delete** button in the details panel
-3. Confirm deletion
-4. The node and all associated edges are removed
+1. The target node is to be selected
+2. The **Delete** button in the details panel is to be clicked
+3. Deletion must be confirmed
+4. The node and all associated edges are subsequently removed
 
-## Impact Analysis
+## Impact Analysis Framework
 
 ### Overview
 
-Impact Analysis evaluates which nodes are affected when a selected node undergoes changes. It leverages the truthound library's `ImpactAnalyzer` for downstream traversal and the dashboard's internal graph traversal for upstream analysis.
+The Impact Analysis Framework is employed to evaluate which nodes are affected when a selected node undergoes modifications. It leverages the truthound library's `ImpactAnalyzer` for downstream traversal and utilizes the dashboard's internal graph traversal mechanism for upstream analysis.
 
 ### Initiating Impact Analysis
 
-1. Select a node in the lineage graph
-2. In the Node Details panel, click **Impact Analysis**
-3. The system analyzes both upstream and downstream dependencies
+1. A node is to be selected within the lineage graph
+2. Within the Node Details panel, the **Impact Analysis** button is to be clicked
+3. The system subsequently analyzes both upstream and downstream dependencies
 
 ### Impact Analysis Results
 
-The results panel displays:
+The results panel is structured to display:
 
 | Section | Description |
 |---------|-------------|
@@ -153,7 +153,7 @@ The results panel displays:
 | **Downstream Nodes** | Nodes that consume data from the selected node |
 | **High Impact Warning** | Displayed when more than 5 nodes are affected |
 
-Each affected node appears as a badge with color-coded type indicators.
+Each affected node is rendered as a badge with color-coded type indicators.
 
 ### Severity Indicators
 
@@ -165,21 +165,21 @@ Each affected node appears as a badge with color-coded type indicators.
 ### Use Cases
 
 **Change Impact Assessment:**
-- Before modifying a table schema, identify all downstream consumers
-- Before deprecating a data source, understand the blast radius
-- Before changing transformation logic, verify affected outputs
+- Prior to modifying a table schema, all downstream consumers should be identified
+- Prior to deprecating a data source, the blast radius must be understood
+- Prior to altering transformation logic, affected outputs should be verified
 
 **Root Cause Analysis:**
-- When data quality issues are detected, trace back to the originating source
-- When downstream systems report failures, identify the upstream breakpoint
+- When data quality issues are detected, the originating source should be traced
+- When downstream systems report failures, the upstream breakpoint should be identified
 
-## Anomaly Overlay
+## Anomaly Visualization Overlay
 
 ### Enabling Anomaly Visualization
 
-1. Click the **Anomaly Overlay** toggle button
-2. Nodes are colored based on anomaly status
-3. Use the status filter to highlight specific states
+1. The **Anomaly Overlay** toggle button is to be activated
+2. Nodes are subsequently colored based on their anomaly status
+3. The status filter may be utilized to highlight specific states
 
 ### Anomaly Status Indicators
 
@@ -190,11 +190,11 @@ Each affected node appears as a badge with color-coded type indicators.
 | **Critical** | Red | Significant anomalies detected |
 | **Unknown** | Gray | No anomaly data available |
 
-## Export Capabilities
+## Export and Serialization Capabilities
 
 ### Export Panel
 
-Access the Export panel from the top-right menu to generate lineage artifacts in various formats.
+The Export panel is accessible from the top-right menu and is utilized to generate lineage artifacts in various formats.
 
 ### Supported Formats
 
@@ -217,12 +217,12 @@ Access the Export panel from the top-right menu to generate lineage artifacts in
 
 ### Copy to Clipboard
 
-- **Mermaid Code**: Copy the generated Mermaid diagram source to the clipboard
-- **JSON**: Copy the raw lineage graph data as JSON
+- **Mermaid Code**: The generated Mermaid diagram source may be copied to the clipboard
+- **JSON**: The raw lineage graph data may be copied as JSON
 
-## Performance Optimization
+## Performance Optimization Strategies
 
-For large lineage graphs (500+ nodes), the system provides performance optimizations:
+For large lineage graphs comprising 500 or more nodes, the system incorporates the following performance optimization strategies:
 
 | Technique | Description |
 |-----------|-------------|
@@ -240,28 +240,28 @@ For large lineage graphs (500+ nodes), the system provides performance optimizat
 | 500–1,000 nodes | Cytoscape with Dagre layout |
 | 1,000+ nodes | Cytoscape with sub-graph filtering |
 
-## Integration with Other Modules
+## Cross-Module Integration Architecture
 
 ### Data Catalog Integration
 
-- Lineage nodes link to catalog assets
-- Impact analysis considers catalog relationships
+- Lineage nodes are linked to their corresponding catalog assets
+- Impact analysis takes into consideration catalog relationships
 
 ### Anomaly Detection Integration
 
-- Anomaly status overlaid on lineage nodes
-- Correlated alerts visible in node details
-- Impact propagation analysis for anomalies
+- Anomaly status is overlaid upon lineage nodes
+- Correlated alerts are made visible within node details
+- Impact propagation analysis is conducted for detected anomalies
 
 ### Drift Monitoring Integration
 
-- Drift status can be visualized on lineage nodes
-- Impact analysis considers drift propagation
+- Drift status may be visualized upon lineage nodes
+- Impact analysis accounts for drift propagation
 - Root cause analysis incorporates lineage context
 
-## Truthound Library Integration
+## truthound Library Integration Architecture
 
-The Data Lineage module integrates with truthound's native lineage tracking capabilities from `truthound.lineage`.
+The Data Lineage module is integrated with truthound's native lineage tracking capabilities as provided by `truthound.lineage`.
 
 ### Core Components
 
@@ -273,7 +273,7 @@ The Data Lineage module integrates with truthound's native lineage tracking capa
 
 ### Type Mapping
 
-The dashboard maintains its own simplified node/edge types that are mapped to truthound's enum types at runtime:
+The dashboard maintains its own simplified node and edge type taxonomy, which is mapped to truthound's enumeration types at runtime:
 
 **Node Types:**
 
@@ -294,7 +294,7 @@ The dashboard maintains its own simplified node/edge types that are mapped to tr
 
 ### ImpactAnalyzer
 
-The `ImpactAnalyzer` accepts a `LineageGraph` and performs **downstream-only** traversal to determine affected nodes.
+The `ImpactAnalyzer` accepts a `LineageGraph` instance and performs **downstream-only** traversal to determine the set of affected nodes.
 
 **Parameters:**
 
@@ -314,11 +314,11 @@ The `ImpactAnalyzer` accepts a `LineageGraph` and performs **downstream-only** t
 | `max_depth` | `int` | Maximum depth reached |
 | `analysis_time_ms` | `float` | Execution time in milliseconds |
 
-> **Note:** For upstream analysis, the dashboard uses its own SQL-based graph traversal since truthound's `ImpactAnalyzer` only provides downstream impact.
+> **Note:** For upstream analysis, the dashboard employs its own SQL-based graph traversal, as truthound's `ImpactAnalyzer` is limited to downstream impact computation.
 
 ### OpenLineage Support
 
-The module supports the [OpenLineage](https://openlineage.io/) specification (v1.0.5) for interoperability with external lineage systems. OpenLineage defines a standard event model for tracking data pipeline execution, enabling cross-platform lineage integration regardless of the orchestration framework in use.
+The module supports the [OpenLineage](https://openlineage.io/) specification (v1.0.5) for interoperability with external lineage systems. OpenLineage defines a standard event model for the tracking of data pipeline execution, thereby enabling cross-platform lineage integration irrespective of the orchestration framework employed.
 
 #### Event Model
 
@@ -332,7 +332,7 @@ OpenLineage represents data pipeline execution as a sequence of run events. Each
 
 #### Compatible Systems
 
-Truthound Dashboard generates OpenLineage-compliant events that can be consumed by:
+Truthound Dashboard generates OpenLineage-compliant events that may be consumed by the following systems:
 
 | System | Integration Method | Description |
 |--------|-------------------|-------------|
@@ -367,15 +367,15 @@ File-based export generates OpenLineage events as a downloadable file in one of 
 
 **Workflow:**
 
-1. Configure export settings (namespace, job name, schema inclusion, granularity)
-2. Select the desired format (JSON or NDJSON)
-3. Click **Preview** to generate and inspect the events before downloading
-4. Review the preview summary (event count, dataset count, job count) and the first event payload
-5. Click **Download** to save the file locally
+1. Export settings are to be configured (namespace, job name, schema inclusion, granularity)
+2. The desired format (JSON or NDJSON) is to be selected
+3. The **Preview** button is to be clicked to generate and inspect events prior to downloading
+4. The preview summary (event count, dataset count, job count) and the first event payload are to be reviewed
+5. The **Download** button is to be clicked to save the file locally
 
 #### Emit Mode
 
-Direct emission sends OpenLineage events to an HTTP endpoint via POST requests, suitable for real-time integration with lineage consumers.
+Direct emission transmits OpenLineage events to an HTTP endpoint via POST requests, and is suitable for real-time integration with lineage consumers.
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
@@ -383,11 +383,11 @@ Direct emission sends OpenLineage events to an HTTP endpoint via POST requests, 
 | **API Key** | No | Bearer token appended to the `Authorization` header for authenticated endpoints. |
 | **Batch Size** | No (default: 100) | Number of events sent per HTTP request. Larger batches reduce network overhead; smaller batches provide more granular error handling. |
 
-The emission process sends events sequentially in batches and reports the total number of successfully transmitted events upon completion.
+The emission process transmits events sequentially in batches and reports the total number of successfully delivered events upon completion.
 
 ### OpenLineage Webhooks
 
-Webhook configurations define persistent connections to external OpenLineage consumers. Unlike the one-time emission in Export mode, webhooks enable continuous event forwarding for ongoing lineage synchronization.
+Webhook configurations define persistent connections to external OpenLineage consumers. In contrast to the one-time emission afforded by Export mode, webhooks facilitate continuous event forwarding for ongoing lineage synchronization.
 
 #### Webhook Management
 
@@ -412,7 +412,7 @@ Webhook configurations define persistent connections to external OpenLineage con
 
 #### Connectivity Testing
 
-The **Test** button sends a probe event to the configured endpoint and reports:
+The **Test** button transmits a probe event to the configured endpoint and reports:
 
 | Field | Description |
 |-------|-------------|
@@ -421,7 +421,7 @@ The **Test** button sends a probe event to the configured endpoint and reports:
 | **Status Code** | HTTP status code returned by the endpoint |
 | **Error Message** | Diagnostic information if the test fails |
 
-Test events include a special header to distinguish them from production lineage events, allowing receiving systems to discard or flag them appropriately.
+Test events include a special header to distinguish them from production lineage events, thereby allowing receiving systems to discard or flag them appropriately.
 
 ## API Reference
 
@@ -447,16 +447,16 @@ Test events include a special header to distinguish them from production lineage
 | `/lineage/openlineage/webhooks/{id}` | DELETE | Delete a webhook configuration |
 | `/lineage/openlineage/webhooks/test` | POST | Test webhook endpoint connectivity |
 
-## Best Practices
+## Recommended Operational Practices
 
 ### Lineage Documentation
 
-1. **Completeness**: Ensure all data flows are documented with appropriate node types
-2. **Accuracy**: Validate lineage relationships periodically using auto-discovery
-3. **Maintenance**: Update lineage when systems change or data sources are added
-4. **Export**: Regularly export lineage diagrams for offline documentation
+1. **Completeness**: It is imperative that all data flows are documented with appropriate node types
+2. **Accuracy**: Lineage relationships should be validated periodically through the utilization of auto-discovery
+3. **Maintenance**: Lineage must be updated when systems are modified or data sources are introduced
+4. **Export**: Lineage diagrams should be exported regularly for offline documentation purposes
 
-### Renderer Selection Guidelines
+### Rendering Engine Selection Guidelines
 
 | Scenario | Recommended Renderer |
 |----------|---------------------|

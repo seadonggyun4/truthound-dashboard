@@ -1,16 +1,16 @@
 # Profile Comparison
 
-The Profile Comparison module enables longitudinal analysis of data profiles by comparing statistical summaries of a data source across different points in time. This capability is essential for detecting gradual data drift, monitoring data volume trends, and establishing quantitative baselines for data quality expectations.
+The Profile Comparison module provides systematic longitudinal analysis of data profiles by comparing statistical summaries of a data source across different points in time. This capability is considered essential for the detection of gradual data drift, the monitoring of data volume trends, and the establishment of quantitative baselines for data quality expectations.
 
 ## Overview
 
-Data profiling produces a statistical summary of a dataset—row counts, null percentages, unique value counts, cardinality, average string lengths, and other descriptive metrics. While a single profile provides a useful snapshot, the true analytical value emerges when profiles are compared over time. Profile Comparison transforms isolated snapshots into a continuous quality signal by computing deltas, identifying trends, and highlighting columns whose characteristics have shifted.
+Data profiling produces a statistical summary of a dataset -- row counts, null percentages, unique value counts, cardinality, average string lengths, and other descriptive metrics. While an individual profile yields a useful snapshot, the substantive analytical value is realized when profiles are compared over time. Profile Comparison transforms isolated snapshots into a continuous quality signal through the computation of deltas, the identification of trends, and the highlighting of columns whose characteristics have undergone measurable shifts.
 
-## Core Concepts
+## Foundational Concepts
 
 ### Data Profile
 
-A data profile is a statistical summary captured at a specific point in time. Profiles are generated through the `th.profile()` function and stored in the dashboard database. Each profile contains:
+A data profile is defined as a statistical summary captured at a specific point in time. Profiles are generated through the `th.profile()` function and are persisted in the dashboard database. Each profile is composed of the following attributes:
 
 | Attribute | Description |
 |-----------|-------------|
@@ -22,7 +22,7 @@ A data profile is a statistical summary captured at a specific point in time. Pr
 
 ### Per-Column Metrics
 
-Each column in a profile includes the following statistical measures:
+Each column within a profile is characterized by the following statistical measures:
 
 | Metric | Description | Applicable Types |
 |--------|-------------|------------------|
@@ -36,7 +36,7 @@ Each column in a profile includes the following statistical measures:
 
 ### Delta Computation
 
-When two profiles are compared, the system computes the delta (difference) for each metric. Deltas are expressed both as absolute values and as percentages, enabling analysts to quickly assess the magnitude and direction of change.
+When two profiles are subjected to comparison, the system computes the delta (difference) for each metric. Deltas are expressed both as absolute values and as percentages, thereby enabling analysts to rapidly assess the magnitude and direction of change.
 
 | Delta Direction | Indicator | Interpretation |
 |-----------------|-----------|----------------|
@@ -44,13 +44,13 @@ When two profiles are compared, the system computes the delta (difference) for e
 | **Decrease** | ↓ (red or green depending on metric) | Metric value has declined |
 | **Stable** | — | No significant change detected |
 
-The color interpretation is context-dependent. For example, an increase in null percentage is typically negative (red), while an increase in row count is typically positive (green).
+It should be noted that the color interpretation is context-dependent. For instance, an increase in null percentage is generally considered negative (red), whereas an increase in row count is typically regarded as positive (green).
 
-## Profile Comparison Interface
+## Profile Comparison Interface Specifications
 
 ### Selection Controls
 
-The interface provides the following controls for defining the comparison scope:
+The interface provides the following controls for the definition of the comparison scope:
 
 | Control | Description |
 |---------|-------------|
@@ -62,7 +62,7 @@ The interface provides the following controls for defining the comparison scope:
 
 ### Summary Statistics Cards
 
-Four summary cards display the current profile's key metrics alongside change indicators:
+Four summary cards are presented, displaying the current profile's key metrics alongside change indicators:
 
 | Card | Metric | Change Indicator |
 |------|--------|------------------|
@@ -75,12 +75,12 @@ Four summary cards display the current profile's key metrics alongside change in
 
 The trend visualization section displays time-series charts of key metrics:
 
-1. **Row Count Trend**: Line/area chart showing row count over time, enabling identification of data volume patterns (growth, drops, seasonality)
-2. **Quality Metrics Trend**: Composite chart tracking null percentage, unique percentage, and other quality indicators over time
+1. **Row Count Trend**: A line/area chart depicting row count over time is rendered, facilitating the identification of data volume patterns (growth, drops, seasonality).
+2. **Quality Metrics Trend**: A composite chart is provided, tracking null percentage, unique percentage, and other quality indicators over time.
 
 ### Column Comparison Table
 
-A detailed table presents per-column comparison results:
+A detailed table is presented containing per-column comparison results:
 
 | Column | Description |
 |--------|-------------|
@@ -91,42 +91,42 @@ A detailed table presents per-column comparison results:
 | **Cardinality** | Distinct value count with delta |
 | **Change Magnitude** | Overall degree of change for the column |
 
-## Analytical Applications
+## Analytical Application Scenarios
 
 ### Data Volume Monitoring
 
-Profile comparison reveals trends in data volume that may indicate upstream pipeline issues:
+Profile comparison is observed to reveal trends in data volume that may be indicative of upstream pipeline issues:
 
-- **Sudden drops** in row count may indicate failed ingestion jobs
-- **Unexpected growth** may indicate duplicate ingestion or scope changes
-- **Plateaus** may indicate stale data sources that are no longer being updated
+- **Sudden drops** in row count may be indicative of failed ingestion jobs
+- **Unexpected growth** may be indicative of duplicate ingestion or scope changes
+- **Plateaus** may be indicative of stale data sources that are no longer being updated
 
 ### Quality Trend Analysis
 
-By tracking null percentages and uniqueness over time, analysts can identify gradual quality degradation before it reaches critical thresholds:
+Through the tracking of null percentages and uniqueness over time, analysts are enabled to identify gradual quality degradation before critical thresholds are reached:
 
-1. Select a 90-day period for broad trend visibility
-2. Monitor the null percentage trend for upward drift
-3. Monitor uniqueness percentages for columns expected to have high cardinality
-4. Investigate any column showing sustained movement in quality metrics
+1. A 90-day period should be selected for broad trend visibility
+2. The null percentage trend should be monitored for upward drift
+3. Uniqueness percentages should be monitored for columns expected to exhibit high cardinality
+4. Any column demonstrating sustained movement in quality metrics warrants further investigation
 
 ### Baseline Establishment
 
-Profile comparison supports the establishment of quantitative baselines for data quality expectations:
+Profile comparison facilitates the establishment of quantitative baselines for data quality expectations:
 
-1. Generate profiles at regular intervals (daily or weekly)
-2. Identify stable metric ranges over a sufficient observation period
-3. Use the established baselines to configure [anomaly detection](../ml-monitoring/anomaly.md) thresholds
-4. Monitor deviations from baseline using the trend charts
+1. Profiles should be generated at regular intervals (daily or weekly)
+2. Stable metric ranges should be identified over a sufficient observation period
+3. The established baselines may then be utilized to configure [anomaly detection](../ml-monitoring/anomaly.md) thresholds
+4. Deviations from baseline should be monitored using the trend charts
 
 ### Pre/Post Change Validation
 
-When significant changes are made to data pipelines or source systems, profile comparison provides a mechanism for validating that the change had the intended effect without introducing regressions:
+When significant changes are introduced to data pipelines or source systems, profile comparison provides a rigorous mechanism for validating that the change produced the intended effect without introducing regressions:
 
-1. Generate a profile immediately before the change (baseline)
-2. Implement the change
-3. Generate a new profile
-4. Compare the two profiles to verify expected differences and identify unintended side effects
+1. A profile should be generated immediately before the change (baseline)
+2. The change should be implemented
+3. A new profile should be generated
+4. The two profiles should be compared to verify expected differences and to identify unintended side effects
 
 ## Integration Points
 
@@ -137,15 +137,15 @@ When significant changes are made to data pipelines or source systems, profile c
 | **[Schema Evolution](./schema-evolution.md)** | Column count changes in profiles may correlate with schema evolution events |
 | **[Validation History](./validations.md)** | Quality trends from profile comparison complement pass/fail trends from validation history |
 
-## Best Practices
+## Recommended Operational Practices
 
 | Practice | Recommendation |
 |----------|----------------|
-| **Regular Profiling** | Generate profiles at consistent intervals for meaningful trend analysis |
-| **Use Appropriate Periods** | Select longer periods (90 days) for trend identification; shorter periods (7 days) for recent change detection |
+| **Regular Profiling** | Profiles should be generated at consistent intervals to ensure meaningful trend analysis |
+| **Use Appropriate Periods** | Longer periods (90 days) are recommended for trend identification; shorter periods (7 days) are recommended for recent change detection |
 | **Investigate Anomalies** | Any unexpected delta warrants investigation, even if validation continues to pass |
-| **Combine with Drift Detection** | Use profile comparison for broad monitoring and drift detection for statistically rigorous change detection |
-| **Document Baselines** | Record expected metric ranges in the Business Glossary for organizational knowledge |
+| **Combine with Drift Detection** | Profile comparison should be employed for broad monitoring, while drift detection should be reserved for statistically rigorous change detection |
+| **Document Baselines** | Expected metric ranges should be recorded in the Business Glossary for organizational knowledge retention |
 
 ## API Reference
 

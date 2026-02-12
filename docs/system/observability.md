@@ -1,10 +1,10 @@
 # Observability
 
-The Observability module provides comprehensive system monitoring capabilities through three interconnected pillars: Audit Logging, Metrics Collection, and Distributed Tracing. This feature leverages truthound's store observability infrastructure to deliver enterprise-grade visibility into system operations.
+The Observability module provides comprehensive system monitoring capabilities through three interconnected pillars: Audit Logging, Metrics Collection, and Distributed Tracing. This facility leverages the observability infrastructure native to truthound's store layer, thereby furnishing enterprise-grade visibility into the operational behavior of the system.
 
-## Overview
+## General Overview
 
-Observability in modern data quality systems extends beyond traditional monitoring by providing deep insights into system behavior, performance characteristics, and operational patterns. The Truthound Dashboard implements the three pillars of observability to enable administrators to understand not just *what* happened, but *why* it happened.
+Observability within contemporary data quality systems transcends the scope of traditional monitoring by affording deep insight into system behavior, performance characteristics, and operational patterns. The Truthound Dashboard implements the three canonical pillars of observability, enabling administrators to ascertain not merely *what* transpired, but *why* it transpired.
 
 ### The Three Pillars of Observability
 
@@ -14,15 +14,15 @@ Observability in modern data quality systems extends beyond traditional monitori
 | **Metrics** | Quantitative measurements over time | How is the system performing? What are the trends? |
 | **Tracing** | Request flow across components | Where are bottlenecks? How do operations flow? |
 
-## Theoretical Foundation
+## Theoretical Foundations
 
 ### Audit Logging
 
-Audit logging provides a chronological, immutable record of all significant operations within the system. Unlike application logs designed for debugging, audit logs serve compliance, security, and operational analysis purposes.
+Audit logging furnishes a chronological, immutable record of all significant operations performed within the system. In contrast to application logs, which are designed primarily for debugging purposes, audit logs are intended to serve compliance, security, and operational analysis objectives.
 
 #### Audit Event Model
 
-Each audit event captures contextual information following the W5 principle:
+Each audit event captures contextual information in accordance with the W5 principle:
 
 | Dimension | Field | Description |
 |-----------|-------|-------------|
@@ -32,7 +32,7 @@ Each audit event captures contextual information following the W5 principle:
 | **Where** | `store_id`, `item_id` | Target of the operation |
 | **Why/Result** | `status`, `error_message` | Outcome and context |
 
-#### Event Types
+#### Event Type Taxonomy
 
 | Category | Event Types | Description |
 |----------|-------------|-------------|
@@ -55,9 +55,9 @@ Each audit event captures contextual information following the W5 principle:
 
 ### Metrics Collection
 
-Metrics provide quantitative measurements that enable trend analysis, capacity planning, and performance optimization. The system collects four metric types following the RED and USE methodologies.
+Metrics provide quantitative measurements that facilitate trend analysis, capacity planning, and performance optimization. The system collects four distinct metric types in accordance with the RED and USE methodologies.
 
-#### Metric Types
+#### Metric Type Definitions
 
 | Type | Description | Example |
 |------|-------------|---------|
@@ -66,7 +66,7 @@ Metrics provide quantitative measurements that enable trend analysis, capacity p
 | **Histogram** | Distribution of values | Request latency distribution |
 | **Summary** | Statistical summary with quantiles | Response time percentiles |
 
-#### Store Metrics
+#### Store-Level Metrics
 
 | Metric Category | Metrics | Purpose |
 |-----------------|---------|---------|
@@ -77,9 +77,9 @@ Metrics provide quantitative measurements that enable trend analysis, capacity p
 | **Errors** | errors_total, errors_by_type | Reliability analysis |
 | **Latency** | avg_operation_duration_ms | Performance tracking |
 
-#### Cache Hit Rate Analysis
+#### Cache Hit Rate Interpretation
 
-The cache hit rate is a critical metric for understanding system efficiency:
+The cache hit rate is regarded as a critical indicator for evaluating system efficiency:
 
 | Hit Rate | Interpretation | Recommended Action |
 |----------|----------------|-------------------|
@@ -90,9 +90,9 @@ The cache hit rate is a critical metric for understanding system efficiency:
 
 ### Distributed Tracing
 
-Distributed tracing provides visibility into request flows across system components, enabling identification of latency bottlenecks and failure points.
+Distributed tracing provides visibility into the flow of requests across system components, thereby enabling the identification of latency bottlenecks and failure points within the execution path.
 
-#### Tracing Concepts
+#### Fundamental Tracing Concepts
 
 | Concept | Description |
 |---------|-------------|
@@ -101,7 +101,7 @@ Distributed tracing provides visibility into request flows across system compone
 | **Context** | Propagated metadata (trace_id, span_id) |
 | **Parent Span** | The span that initiated the current span |
 
-#### Span Types (SpanKind)
+#### Span Classification (SpanKind)
 
 | Kind | Description | Use Case |
 |------|-------------|----------|
@@ -111,13 +111,13 @@ Distributed tracing provides visibility into request flows across system compone
 | **Producer** | Message producer | Async message sending |
 | **Consumer** | Message consumer | Async message processing |
 
-## Observability Interface
+## Observability Interface Specification
 
-The Observability page provides a unified view organized into five tabs.
+The Observability page presents a unified view organized into five distinct tabs, each of which is described in the subsections that follow.
 
 ### 1. Overview Tab
 
-Displays key statistics from all three observability pillars:
+This tab displays key summary statistics drawn from all three observability pillars:
 
 | Card | Metrics | Purpose |
 |------|---------|---------|
@@ -128,9 +128,9 @@ Displays key statistics from all three observability pillars:
 
 ### 2. Audit Tab
 
-Provides audit event exploration with filtering capabilities.
+This tab provides audit event exploration with comprehensive filtering capabilities.
 
-#### Filter Options
+#### Available Filter Options
 
 | Filter | Description |
 |--------|-------------|
@@ -139,7 +139,7 @@ Provides audit event exploration with filtering capabilities.
 | **Time Range** | Filter by start and end time |
 | **Item ID** | Filter by specific data item |
 
-#### Audit Table Columns
+#### Audit Table Column Definitions
 
 | Column | Description |
 |--------|-------------|
@@ -152,7 +152,7 @@ Provides audit event exploration with filtering capabilities.
 
 ### 3. Metrics Tab
 
-Displays store-level metrics organized by category.
+This tab displays store-level metrics, organized by category as detailed below.
 
 #### Operations Metrics
 
@@ -185,7 +185,7 @@ Displays store-level metrics organized by category.
 
 ### 4. Tracing Tab
 
-Displays distributed tracing statistics when tracing is enabled.
+This tab displays distributed tracing statistics when tracing has been enabled in the system configuration.
 
 | Metric | Description |
 |--------|-------------|
@@ -196,11 +196,11 @@ Displays distributed tracing statistics when tracing is enabled.
 | **Error Rate** | Percentage of failed spans |
 | **By Service** | Breakdown by service name |
 
-### 5. Config Tab
+### 5. Configuration Tab
 
-Enables configuration of observability features.
+This tab enables the configuration of observability features through the following parameters.
 
-#### Configuration Options
+#### Configuration Parameters
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
@@ -215,13 +215,13 @@ Enables configuration of observability features.
 | **Tracing Service Name** | String | "dashboard" | Service identifier in traces |
 | **Tracing Endpoint** | String | null | OpenTelemetry collector endpoint |
 
-## Data Privacy and Redaction
+## Data Privacy and Field-Level Redaction
 
-The observability system supports field-level redaction to protect sensitive data in audit logs.
+The observability system incorporates field-level redaction mechanisms to ensure that sensitive data is appropriately protected within audit logs.
 
 ### Redaction Configuration
 
-Configure fields to be automatically redacted:
+The following field types may be configured for automatic redaction:
 
 | Field Type | Example Fields | Redaction Behavior |
 |------------|----------------|-------------------|
@@ -229,7 +229,7 @@ Configure fields to be automatically redacted:
 | **PII** | ssn, email, phone | Replace with `[REDACTED]` |
 | **Financial** | credit_card, account_number | Replace with `[REDACTED]` |
 
-### Redaction Best Practices
+### Redaction Guidelines
 
 | Practice | Recommendation |
 |----------|----------------|
@@ -237,7 +237,7 @@ Configure fields to be automatically redacted:
 | **Audit Review** | Periodically review logs for data leakage |
 | **Compliance Alignment** | Match redaction to regulatory requirements |
 
-## Operational Best Practices
+## Recommended Operational Practices
 
 ### Audit Log Management
 
@@ -266,13 +266,13 @@ Configure fields to be automatically redacted:
 | **Span Naming** | Use consistent, descriptive span names |
 | **Error Tagging** | Tag spans with error information |
 
-## Integration with truthound
+## Integration with the Truthound Core Library
 
-The Observability module integrates with truthound's store observability infrastructure:
+The Observability module is integrated with truthound's store observability infrastructure, as described in the following subsections.
 
 ### Store Manager Integration
 
-The dashboard's `StoreManager` provides layered observability:
+The dashboard's `StoreManager` component provides layered observability through the following architectural stack:
 
 | Layer | Component | Function |
 |-------|-----------|----------|
@@ -284,7 +284,7 @@ The dashboard's `StoreManager` provides layered observability:
 
 ### Audit Logger
 
-The truthound `AuditLogger` automatically captures:
+The truthound `AuditLogger` is responsible for automatically capturing:
 
 - All store CRUD operations
 - Operation timing and duration
@@ -293,16 +293,16 @@ The truthound `AuditLogger` automatically captures:
 
 ### Metrics Collector
 
-The truthound metrics system provides:
+The truthound metrics subsystem provides the following capabilities:
 
 - Automatic metric instrumentation
 - Prometheus-compatible metric format
 - Histogram buckets for latency distribution
 - Label-based metric dimensions
 
-## Troubleshooting
+## Diagnostic and Troubleshooting Procedures
 
-### Common Issues
+### Common Issues and Resolutions
 
 | Issue | Resolution |
 |-------|------------|
@@ -321,34 +321,34 @@ The truthound metrics system provides:
 
 ## API Reference
 
-### Configuration
+### Configuration Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/observability/config` | GET | Retrieve observability configuration |
 | `/observability/config` | PUT | Update observability configuration |
 
-### Statistics
+### Statistics Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/observability/stats` | GET | Get combined observability statistics |
 
-### Audit
+### Audit Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/observability/audit/events` | GET | List audit events with filters |
 | `/observability/audit/stats` | GET | Get audit statistics |
 
-### Metrics
+### Metrics Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/observability/metrics` | GET | Get all metrics |
 | `/observability/metrics/store` | GET | Get store-specific metrics |
 
-### Tracing
+### Tracing Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|

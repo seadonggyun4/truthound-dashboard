@@ -1,18 +1,18 @@
 # Anomaly Detection
 
-The Anomaly Detection module provides machine learning-based identification of unusual patterns and outliers within data sources, supporting multiple detection algorithms and batch processing capabilities.
+The Anomaly Detection module implements machine learning-based identification of unusual patterns and outliers within data sources, supporting multiple detection algorithms and batch processing capabilities.
 
 ## Overview
 
-Anomaly detection identifies data points, records, or patterns that deviate significantly from expected behavior. This module implements multiple ML algorithms to detect various types of anomalies, enabling users to select the most appropriate method for their data characteristics.
+Anomaly detection is concerned with the identification of data points, records, or patterns that deviate significantly from expected behavior. This module implements multiple ML algorithms to detect various types of anomalies, thereby enabling practitioners to select the most appropriate method for their data characteristics.
 
-> **Technical Note**: The dashboard uses `truthound.datasources.get_datasource()` to load data from various source types (files, databases, etc.) for anomaly detection.
+> **Technical Note**: The dashboard employs `truthound.datasources.get_datasource()` to load data from various source types (files, databases, etc.) for anomaly detection.
 
 ## Anomaly Detection Interface
 
-### Statistics Dashboard
+### Statistical Summary Dashboard
 
-The interface displays aggregate anomaly metrics:
+The interface presents aggregate anomaly metrics as follows:
 
 | Metric | Description |
 |--------|-------------|
@@ -25,14 +25,16 @@ The interface displays aggregate anomaly metrics:
 
 ### Executing Anomaly Detection
 
-1. Select a data source from the dropdown
-2. Choose a detection algorithm
-3. Configure algorithm-specific parameters
-4. Set sensitivity level
-5. Click **Run Detection**
-6. Review results with visualization
+The following procedure is employed to initiate detection on a single data source:
 
-### Detection Algorithms
+1. A data source is selected from the dropdown
+2. A detection algorithm is chosen
+3. Algorithm-specific parameters are configured
+4. The sensitivity level is set
+5. **Run Detection** is invoked
+6. Results are reviewed with the accompanying visualization
+
+### Detection Algorithm Taxonomy
 
 | Algorithm | Description | Best For |
 |-----------|-------------|----------|
@@ -93,17 +95,17 @@ The interface displays aggregate anomaly metrics:
 
 ### Sensitivity Configuration
 
-Sensitivity level affects detection threshold:
+The sensitivity level governs the detection threshold and is specified as follows:
 
 | Level | Description | Effect |
 |-------|-------------|--------|
-| **Low** | Conservative detection | Fewer anomalies, higher confidence |
-| **Medium** | Balanced detection | Standard threshold |
-| **High** | Aggressive detection | More anomalies, lower confidence |
+| **Low** | Conservative detection | Fewer anomalies are identified, with higher confidence |
+| **Medium** | Balanced detection | Standard threshold is applied |
+| **High** | Aggressive detection | More anomalies are identified, with lower confidence |
 
 ### Detection Results
 
-Upon completion, results display:
+Upon completion of the detection process, results are presented as described below.
 
 #### Summary Statistics
 
@@ -118,26 +120,28 @@ Upon completion, results display:
 
 | Attribute | Description |
 |-----------|-------------|
-| **Record ID** | Identifier of anomalous record |
+| **Record ID** | Identifier of the anomalous record |
 | **Anomaly Score** | Quantitative anomaly measure |
 | **Contributing Columns** | Columns driving the anomaly classification |
-| **Visualization** | Graphical representation of anomaly |
+| **Visualization** | Graphical representation of the anomaly |
 
 ## Streaming Tab
 
 ### Real-Time Anomaly Detection
 
-The Streaming tab provides real-time anomaly detection for continuous data streams. Unlike batch detection, which operates on static datasets, streaming detection applies online learning algorithms to data points as they arrive, enabling immediate identification of anomalous observations.
+The Streaming tab facilitates real-time anomaly detection for continuous data streams. In contrast to batch detection, which operates on static datasets, streaming detection applies online learning algorithms to data points as they arrive, thereby enabling immediate identification of anomalous observations.
 
 #### Operational Workflow
 
-1. Select a data source to associate with the streaming session
-2. Choose a streaming detection algorithm
-3. Configure window size and detection threshold
-4. Click **Start Streaming** to create and activate a session
-5. Push data points via the API, WebSocket, or the dashboard interface
-6. Monitor anomalies and alerts in real time
-7. Click **Stop** to terminate the session
+The following procedure is employed to establish and operate a streaming detection session:
+
+1. A data source is selected to associate with the streaming session
+2. A streaming detection algorithm is chosen
+3. Window size and detection threshold are configured
+4. **Start Streaming** is invoked to create and activate a session
+5. Data points are pushed via the API, WebSocket, or the dashboard interface
+6. Anomalies and alerts are monitored in real time
+7. **Stop** is invoked to terminate the session
 
 ### Streaming Algorithms
 
@@ -159,7 +163,7 @@ The Streaming tab provides real-time anomaly detection for continuous data strea
 
 ### Session Lifecycle
 
-Streaming sessions follow a defined state machine:
+Streaming sessions adhere to a defined state machine, whose transitions are enumerated below:
 
 | State | Description | Transitions |
 |-------|-------------|-------------|
@@ -171,20 +175,20 @@ Streaming sessions follow a defined state machine:
 
 ### Session Lifecycle Management and Automatic Cleanup
 
-Streaming sessions are maintained in server memory for the duration of their use. Since sessions are ephemeral and not persisted to the database, a TTL (Time-To-Live) based automatic cleanup mechanism prevents orphaned sessions from accumulating and consuming memory indefinitely.
+Streaming sessions are maintained in server memory for the duration of their use. Since sessions are ephemeral and are not persisted to the database, a TTL (Time-To-Live) based automatic cleanup mechanism is employed to prevent orphaned sessions from accumulating and consuming memory indefinitely.
 
 #### Cleanup Policy Architecture
 
-The cleanup system employs a **strategy pattern**, allowing the cleanup behavior to be defined, composed, and extended independently of the detection logic.
+The cleanup system employs a **strategy pattern**, whereby cleanup behavior is defined, composed, and extended independently of the detection logic.
 
 | Policy | Description |
 |--------|-------------|
-| **IdleTTLPolicy** | Removes sessions that have been idle (no data pushed, no API interaction) beyond a configurable TTL. Supports per-status TTL configuration. |
-| **CompositeCleanupPolicy** | Combines multiple policies using AND or OR logic, enabling complex cleanup rules. |
+| **IdleTTLPolicy** | Removes sessions that have been idle (no data pushed, no API interaction) beyond a configurable TTL. Per-status TTL configuration is supported. |
+| **CompositeCleanupPolicy** | Combines multiple policies using AND or OR logic, thereby enabling the construction of complex cleanup rules. |
 
 #### Per-Status TTL Defaults
 
-Different session states have different idle tolerances, reflecting their expected usage patterns:
+Different session states are assigned different idle tolerances, reflecting their expected usage patterns:
 
 | Session Status | Default TTL | Rationale |
 |----------------|-------------|-----------|
@@ -196,27 +200,27 @@ Different session states have different idle tolerances, reflecting their expect
 
 #### Activity Tracking
 
-Each session maintains a `last_active_at` timestamp that is updated whenever the session receives data (`push_data_point`, `push_batch`) or transitions state (`start_session`). The cleanup policy evaluates the elapsed time since this timestamp to determine expiration.
+Each session maintains a `last_active_at` timestamp that is updated whenever the session receives data (`push_data_point`, `push_batch`) or transitions state (`start_session`). The cleanup policy evaluates the elapsed time since this timestamp to determine whether expiration has occurred.
 
 #### Background Cleanup Process
 
-A background asyncio task runs at a configurable interval (default: 60 seconds), iterating over all sessions and removing those that satisfy the active cleanup policy. The cleanup process is integrated into the application lifecycle:
+A background asyncio task is executed at a configurable interval (default: 60 seconds), iterating over all sessions and removing those that satisfy the active cleanup policy. The cleanup process is integrated into the application lifecycle as follows:
 
-- **Startup**: The cleanup task is started automatically when the server starts.
+- **Startup**: The cleanup task is initiated automatically when the server starts.
 - **Shutdown**: The cleanup task is gracefully cancelled during server shutdown.
 
 #### Extending Cleanup Policies
 
-Custom cleanup policies can be implemented by extending the `SessionCleanupPolicy` interface. For example:
+Custom cleanup policies may be implemented by extending the `SessionCleanupPolicy` interface. Illustrative examples include:
 
-- **MaxSessionsPolicy**: Enforce a maximum number of concurrent sessions by evicting the least recently active sessions.
-- **MaxBufferSizePolicy**: Evict sessions whose internal buffer exceeds a memory threshold.
+- **MaxSessionsPolicy**: Enforces a maximum number of concurrent sessions by evicting the least recently active sessions.
+- **MaxBufferSizePolicy**: Evicts sessions whose internal buffer exceeds a specified memory threshold.
 
-Multiple policies can be combined using `CompositeCleanupPolicy` with either AND (all policies must agree) or OR (any policy is sufficient) semantics.
+Multiple policies may be combined using `CompositeCleanupPolicy` with either AND (all policies must agree) or OR (any single policy is sufficient) semantics.
 
 ### WebSocket Real-Time Interface
 
-For low-latency streaming, a WebSocket endpoint is available per session:
+For low-latency streaming, a WebSocket endpoint is made available on a per-session basis:
 
 | Message Type (Client → Server) | Payload | Description |
 |-------------------------------|---------|-------------|
@@ -231,29 +235,29 @@ For low-latency streaming, a WebSocket endpoint is available per session:
 
 ## Batch Detection Tab
 
-### Multi-Source Batch Processing
+### Multi-Source Batch Processing Framework
 
-Execute anomaly detection across multiple sources simultaneously:
+Anomaly detection may be executed across multiple sources simultaneously through the following procedure:
 
-1. Click **Run Batch Detection**
-2. Select target sources
-3. Choose detection algorithm
-4. Configure common parameters
-5. Submit batch job
-6. Monitor progress
+1. **Run Batch Detection** is invoked
+2. Target sources are selected
+3. A detection algorithm is chosen
+4. Common parameters are configured
+5. The batch job is submitted
+6. Progress is monitored
 
 ### Batch Configuration
 
 | Parameter | Description |
 |-----------|-------------|
-| **Sources** | List of data sources to process |
-| **Algorithm** | Detection algorithm to apply |
+| **Sources** | List of data sources to be processed |
+| **Algorithm** | Detection algorithm to be applied |
 | **Parameters** | Algorithm-specific configuration |
 | **Parallel Jobs** | Number of concurrent executions |
 
 ### Batch Progress
 
-Monitor batch job progress:
+The progress of a batch job may be monitored through the following attributes:
 
 | Attribute | Description |
 |-----------|-------------|
@@ -265,7 +269,7 @@ Monitor batch job progress:
 
 ### Batch Results
 
-View completed batch results:
+Completed batch results are presented with the following attributes:
 
 | Attribute | Description |
 |-----------|-------------|
@@ -277,9 +281,9 @@ View completed batch results:
 
 ## Batch History
 
-### Historical Batch Jobs
+### Historical Batch Job Records
 
-View all batch job executions:
+All batch job executions are recorded and may be reviewed through the following interface:
 
 | Column | Description |
 |--------|-------------|
@@ -291,7 +295,7 @@ View all batch job executions:
 
 ### Viewing Batch Results
 
-To inspect the detailed results of a completed batch job:
+To inspect the detailed results of a completed batch job, the following procedure is followed:
 
 1. Navigate to the **History** tab within the Anomaly Detection page
 2. Click on a batch job entry in the list
@@ -301,37 +305,37 @@ To inspect the detailed results of a completed batch job:
    - High anomaly rate warnings
    - Navigation links to individual source detection details
 
-Clicking **View Details** on a specific source result transitions to the **Single** tab, pre-selecting the corresponding source for in-depth analysis.
+Clicking **View Details** on a specific source result transitions to the **Single** tab, with the corresponding source pre-selected for in-depth analysis.
 
-> **Note**: Batch results are state-driven and do not support direct URL access (deep linking). Navigation must occur through the History tab interaction.
+> **Note**: Batch results are state-driven and do not support direct URL access (deep linking). Navigation must be performed through the History tab interaction.
 
 ## Algorithm Comparison
 
-### Comparing Detection Methods
+### Comparative Detection Algorithm Taxonomy
 
-Compare multiple algorithms on the same dataset:
+Multiple algorithms may be compared on the same dataset through the following procedure:
 
-1. Click **Compare Algorithms**
-2. Select data source
-3. Choose algorithms to compare
-4. Execute comparison
-5. Review comparative results
+1. **Compare Algorithms** is invoked
+2. A data source is selected
+3. Algorithms to be compared are chosen
+4. The comparison is executed
+5. Comparative results are reviewed
 
-### Comparison Results
+### Comparison Results Interface Specifications
 
 | Metric | Description |
 |--------|-------------|
 | **Algorithm** | Detection method name |
 | **Anomalies Detected** | Count per algorithm |
 | **Detection Time** | Execution duration |
-| **Precision** | Accuracy if ground truth available |
+| **Precision** | Accuracy if ground truth is available |
 | **Agreement** | Overlap with other algorithms |
 
 ## Related Alerts
 
 ### Alert Correlation
 
-View drift alerts that may correlate with anomaly detections:
+Drift alerts that may correlate with anomaly detections are presented, including:
 
 - Drift alerts from the same time period
 - Drift in columns where anomalies were detected
@@ -339,20 +343,20 @@ View drift alerts that may correlate with anomaly detections:
 
 ## Auto-Trigger Configuration
 
-### Automated Actions
+### Automated Response Actions
 
-Configure automated responses to anomaly detection:
+Automated responses to anomaly detection may be configured as follows:
 
 | Trigger | Description |
 |---------|-------------|
-| **Alert Generation** | Create alert when anomalies exceed threshold |
-| **Notification** | Send notifications to configured channels |
-| **Validation Trigger** | Execute validation on affected source |
-| **Report Generation** | Generate anomaly report |
+| **Alert Generation** | An alert is created when anomalies exceed the specified threshold |
+| **Notification** | Notifications are sent to configured channels |
+| **Validation Trigger** | Validation is executed on the affected source |
+| **Report Generation** | An anomaly report is generated |
 
 ## Algorithm Selection Guide
 
-### Choosing the Right Algorithm
+### Recommended Operational Practices
 
 | Scenario | Recommended Algorithm |
 |----------|----------------------|
@@ -363,24 +367,24 @@ Configure automated responses to anomaly detection:
 | Simple univariate data | Statistical |
 | Complex temporal patterns | Autoencoder |
 
-### Data Considerations
+### Analytical Application Scenarios
 
 | Data Characteristic | Implication |
 |--------------------|-------------|
-| High dimensionality | Isolation Forest performs well |
-| Sparse data | DBSCAN may struggle |
-| Time series | Autoencoder or Statistical |
-| Categorical heavy | Statistical methods preferred |
+| High dimensionality | Isolation Forest is observed to perform well |
+| Sparse data | DBSCAN may exhibit degraded performance |
+| Time series | Autoencoder or Statistical methods are recommended |
+| Categorical heavy | Statistical methods are preferred |
 
 ## Technical Notes
 
 ### Data Loading
 
-The dashboard uses `truthound.datasources.get_datasource()` to load data from various source types (CSV, Parquet, JSON, databases, etc.) for anomaly detection. This provides a unified interface for accessing data regardless of the underlying storage format.
+The dashboard employs `truthound.datasources.get_datasource()` to load data from various source types (CSV, Parquet, JSON, databases, etc.) for anomaly detection. This mechanism provides a unified interface for accessing data regardless of the underlying storage format.
 
 ### Truthound Integration
 
-The anomaly detection algorithms in the dashboard leverage truthound's ML module (`truthound.ml.anomaly_models`):
+The anomaly detection algorithms implemented in the dashboard are built upon truthound's ML module (`truthound.ml.anomaly_models`):
 
 | Algorithm | Truthound Implementation |
 |-----------|--------------------------|
@@ -390,7 +394,7 @@ The anomaly detection algorithms in the dashboard leverage truthound's ML module
 
 #### Statistical Anomaly Detector
 
-The `StatisticalAnomalyDetector` provides configurable methods for detecting point anomalies:
+The `StatisticalAnomalyDetector` provides configurable methods for the detection of point anomalies:
 
 | Method | Description | Configuration |
 |--------|-------------|---------------|
@@ -400,7 +404,7 @@ The `StatisticalAnomalyDetector` provides configurable methods for detecting poi
 
 #### Isolation Forest Detector
 
-The `IsolationForestDetector` implements the isolation forest algorithm optimized for high-dimensional data:
+The `IsolationForestDetector` implements the isolation forest algorithm, optimized for high-dimensional data:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -411,27 +415,27 @@ The `IsolationForestDetector` implements the isolation forest algorithm optimize
 
 #### Ensemble Anomaly Detector
 
-The `EnsembleAnomalyDetector` combines multiple detection methods with configurable voting:
+The `EnsembleAnomalyDetector` combines multiple detection methods with configurable voting strategies:
 
 | Voting Mode | Description |
 |-------------|-------------|
-| majority | Anomaly if majority of detectors agree |
-| unanimous | Anomaly only if all detectors agree |
-| any | Anomaly if any detector flags it |
-| weighted | Weighted combination of detector scores |
+| majority | An anomaly is flagged if a majority of detectors agree |
+| unanimous | An anomaly is flagged only if all detectors agree |
+| any | An anomaly is flagged if any detector identifies it |
+| weighted | A weighted combination of detector scores is computed |
 
-### Anomaly Types
+### Anomaly Type Classification
 
-Truthound classifies anomalies into the following types:
+Truthound classifies anomalies into the following taxonomic categories:
 
 | Type | Description |
 |------|-------------|
-| POINT | Single point anomaly - individual outlier |
-| CONTEXTUAL | Anomaly in context - normal value at wrong time/place |
-| COLLECTIVE | Group of related anomalies |
-| PATTERN | Pattern violation - sequence deviates from learned pattern |
-| TREND | Trend deviation - unexpected direction change |
-| SEASONAL | Seasonal violation - deviates from expected periodicity |
+| POINT | Single point anomaly — an individual outlier |
+| CONTEXTUAL | Contextual anomaly — a value that is normal in isolation but anomalous in its temporal or spatial context |
+| COLLECTIVE | A group of related anomalies exhibiting collective behavior |
+| PATTERN | Pattern violation — a sequence that deviates from a learned pattern |
+| TREND | Trend deviation — an unexpected directional change |
+| SEASONAL | Seasonal violation — deviation from expected periodicity |
 
 ### Performance Characteristics
 
@@ -444,7 +448,7 @@ Truthound classifies anomalies into the following types:
 
 ### Thread Safety
 
-All anomaly detection models use `threading.RLock()` for concurrent access, enabling safe use in multi-threaded environments like the dashboard's async API handlers.
+All anomaly detection models employ `threading.RLock()` for concurrent access, thereby enabling safe utilization in multi-threaded environments such as the dashboard's async API handlers.
 
 ## API Reference
 
@@ -454,17 +458,17 @@ All anomaly detection models use `threading.RLock()` for concurrent access, enab
 |----------|--------|-------------|
 | `/sources/{source_id}/anomaly/detect` | POST | Execute anomaly detection on a source |
 | `/sources/{source_id}/anomaly/detections` | GET | Retrieve detection history for a source |
-| `/sources/{source_id}/anomaly/latest` | GET | Get the latest detection result |
-| `/anomaly/detection/{detection_id}` | GET | Get a specific detection result |
+| `/sources/{source_id}/anomaly/latest` | GET | Retrieve the latest detection result |
+| `/anomaly/detection/{detection_id}` | GET | Retrieve a specific detection result |
 
 ### Batch Detection Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/anomaly/batch` | POST | Create batch detection job |
+| `/anomaly/batch` | POST | Create a batch detection job |
 | `/anomaly/batch` | GET | List all batch jobs |
 | `/anomaly/batch/{batch_id}` | GET | Retrieve batch job details |
-| `/anomaly/batch/{batch_id}/results` | GET | Get detailed results for each source |
+| `/anomaly/batch/{batch_id}/results` | GET | Retrieve detailed results for each source |
 | `/anomaly/batch/{batch_id}/cancel` | POST | Cancel a running batch job |
 | `/anomaly/batch/{batch_id}` | DELETE | Delete a batch job |
 
@@ -480,20 +484,20 @@ All anomaly detection models use `threading.RLock()` for concurrent access, enab
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/anomaly/detection/{detection_id}/explain` | POST | Generate SHAP/LIME explanations |
-| `/anomaly/detection/{detection_id}/explanations` | GET | Get cached explanations |
+| `/anomaly/detection/{detection_id}/explanations` | GET | Retrieve cached explanations |
 
 ### Streaming Detection Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/anomaly/streaming/start` | POST | Start a streaming detection session |
+| `/anomaly/streaming/start` | POST | Initiate a streaming detection session |
 | `/anomaly/streaming/sessions` | GET | List all streaming sessions |
 | `/anomaly/streaming/algorithms` | GET | List available streaming algorithms |
-| `/anomaly/streaming/{session_id}/data` | POST | Push data point for detection |
-| `/anomaly/streaming/{session_id}/batch` | POST | Push batch of data points |
-| `/anomaly/streaming/{session_id}/status` | GET | Get session status and statistics |
+| `/anomaly/streaming/{session_id}/data` | POST | Push a data point for detection |
+| `/anomaly/streaming/{session_id}/batch` | POST | Push a batch of data points |
+| `/anomaly/streaming/{session_id}/status` | GET | Retrieve session status and statistics |
 | `/anomaly/streaming/{session_id}/alerts` | GET | List session alerts |
-| `/anomaly/streaming/{session_id}/data` | GET | Get recent data points |
+| `/anomaly/streaming/{session_id}/data` | GET | Retrieve recent data points |
 | `/anomaly/streaming/{session_id}/stop` | POST | Stop a streaming session |
 | `/anomaly/streaming/{session_id}` | DELETE | Delete a streaming session |
 | `/anomaly/streaming/{session_id}/ws` | WebSocket | Real-time streaming connection |

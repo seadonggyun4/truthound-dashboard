@@ -1,12 +1,12 @@
-# Advanced Notifications
+# Advanced Notification Orchestration
 
-The Advanced Notifications module provides sophisticated notification orchestration features including content-based routing, deduplication, rate limiting, and multi-level escalation policies. This document presents the theoretical foundations, algorithmic approaches, and practical implementation guidelines for enterprise-scale notification management.
+The Advanced Notifications module provides a comprehensive notification orchestration framework encompassing content-based routing, deduplication, rate limiting, and multi-level escalation policies. This document presents the theoretical foundations, algorithmic formulations, and practical implementation guidelines that underpin enterprise-scale notification management.
 
 ## 1. Introduction
 
 ### 1.1 Problem Statement
 
-Modern data quality monitoring systems generate substantial volumes of alerts. Without proper orchestration, organizations face several challenges:
+Contemporary data quality monitoring systems are observed to generate substantial volumes of alerts during routine operation. In the absence of appropriate orchestration mechanisms, organizations are subjected to a number of well-documented operational challenges:
 
 | Challenge | Impact |
 |-----------|--------|
@@ -17,7 +17,7 @@ Modern data quality monitoring systems generate substantial volumes of alerts. W
 
 ### 1.2 Solution Architecture
 
-The Advanced Notifications module addresses these challenges through four complementary subsystems, each backed by the truthound library's checkpoint modules:
+The aforementioned challenges are addressed through the provision of four complementary subsystems, each of which is supported by a corresponding module within the truthound library's checkpoint infrastructure:
 
 | Component | Truthound Module | Purpose |
 |-----------|------------------|---------|
@@ -66,19 +66,19 @@ The Advanced Notifications module addresses these challenges through four comple
 
 ---
 
-## 2. Routing Engine
+## 2. Routing Engine Architecture
 
 ### 2.1 Theoretical Foundation
 
-Content-based routing (CBR) is a message distribution paradigm where routing decisions are made based on message content rather than predetermined destinations. The truthound routing engine implements a rule-based CBR system with the following characteristics:
+Content-based routing (CBR) is a well-established message distribution paradigm in which routing decisions are determined by the content of messages rather than by predetermined destination addresses. The truthound routing engine implements a rule-based CBR system that is characterized by the following properties:
 
-- **Declarative Rules**: Rules are specified as predicates over event attributes
-- **Priority-Ordered Evaluation**: Rules are evaluated in priority order
-- **Composable Conditions**: Rules can be combined using logical operators
+- **Declarative Rules**: Routing rules are specified as predicates evaluated over event attributes
+- **Priority-Ordered Evaluation**: Rules are evaluated in strict priority order to ensure deterministic behavior
+- **Composable Conditions**: Rules may be combined through the application of standard logical operators
 
-### 2.2 Rule Types
+### 2.2 Rule Taxonomy
 
-The truthound `ActionRouter` provides 11 built-in rule types and 3 combinators:
+The truthound `ActionRouter` provides 11 built-in rule types and 3 combinators, which are enumerated below.
 
 #### 2.2.1 Primitive Rules
 
@@ -96,7 +96,7 @@ The truthound `ActionRouter` provides 11 built-in rule types and 3 combinators:
 | `PassRateRule` | `min_rate`, `max_rate` | Matches by validation pass rate |
 | `ErrorRule` | `pattern`, `negate` | Matches by error message pattern |
 
-#### 2.2.2 Combinators
+#### 2.2.2 Logical Combinators
 
 | Combinator | Semantics | Example Use Case |
 |------------|-----------|------------------|
@@ -104,9 +104,9 @@ The truthound `ActionRouter` provides 11 built-in rule types and 3 combinators:
 | `AnyOf` | Logical disjunction (OR) | Critical OR Error |
 | `NotRule` | Logical negation (NOT) | NOT Development environment |
 
-### 2.3 Routing Modes
+### 2.3 Evaluation Modes
 
-The `ActionRouter` supports three evaluation modes:
+The `ActionRouter` supports three distinct evaluation modes, each of which is suited to particular operational requirements:
 
 | Mode | Behavior | Use Case |
 |------|----------|----------|
@@ -114,9 +114,9 @@ The `ActionRouter` supports three evaluation modes:
 | `ALL_MATCHES` | Execute all matching routes | Multi-channel broadcast |
 | `PRIORITY_GROUP` | Execute all routes in the highest priority group | Tiered response |
 
-### 2.4 Route Context
+### 2.4 Route Context Specification
 
-The `RouteContext` data class encapsulates all attributes available for rule evaluation:
+The `RouteContext` data class encapsulates the complete set of attributes that are made available for rule evaluation:
 
 ```python
 @dataclass(frozen=True)
@@ -141,11 +141,11 @@ class RouteContext:
 
 ### 2.5 Implementation Guidelines
 
-#### Creating Effective Routing Rules
+#### Principles for Effective Route Construction
 
-1. **Specificity Principle**: More specific rules should have lower priority numbers
-2. **Default Route**: Always configure a catch-all route with `AlwaysRule`
-3. **Testing**: Validate rules using the `/notifications/routing/rules/test` endpoint
+1. **Specificity Principle**: It is recommended that more specific rules be assigned lower priority numbers to ensure preferential evaluation
+2. **Default Route Provision**: A catch-all route configured with `AlwaysRule` should always be included to guarantee notification delivery
+3. **Pre-Deployment Validation**: Rules should be validated using the `/notifications/routing/rules/test` endpoint prior to production deployment
 
 #### Example Configuration
 
@@ -182,28 +182,28 @@ routes:
 
 ---
 
-## 3. Deduplication Engine
+## 3. Deduplication Engine Architecture
 
 ### 3.1 Theoretical Foundation
 
-Notification deduplication addresses the problem of redundant alert generation. The approach employs **fingerprint-based duplicate detection** within sliding time windows. This technique is analogous to content-addressable storage systems and bloom filter applications in distributed systems.
+Notification deduplication is concerned with the elimination of redundant alert generation. The approach employed herein is based on **fingerprint-based duplicate detection** within sliding time windows. This technique is analogous to content-addressable storage systems and bears similarity to bloom filter applications that have been widely studied in the context of distributed systems.
 
 #### 3.1.1 Fingerprint Generation
 
-A notification fingerprint is a unique identifier derived from notification attributes:
+A notification fingerprint is defined as a unique identifier derived from a specified subset of notification attributes:
 
 ```
 fingerprint = hash(checkpoint_name || action_type || severity || data_asset)
 ```
 
-The fingerprint function must satisfy:
-- **Determinism**: Same input produces same output
-- **Collision Resistance**: Different notifications should produce different fingerprints
-- **Efficiency**: O(1) computation time
+The fingerprint function is required to satisfy the following properties:
+- **Determinism**: Identical inputs must produce identical outputs across all invocations
+- **Collision Resistance**: Distinct notifications should yield distinct fingerprints with high probability
+- **Computational Efficiency**: Generation must be achievable in O(1) time complexity
 
 ### 3.2 Deduplication Policies
 
-The truthound `NotificationDeduplicator` supports five policies with increasing specificity:
+The truthound `NotificationDeduplicator` supports five policies, arranged in order of increasing specificity:
 
 | Policy | Fingerprint Components | Use Case |
 |--------|------------------------|----------|
@@ -213,13 +213,13 @@ The truthound `NotificationDeduplicator` supports five policies with increasing 
 | `ISSUE_BASED` | SEVERITY + issue_types | Differentiate by issue categories |
 | `STRICT` | Full notification hash | Maximum differentiation |
 
-### 3.3 Window Strategies
+### 3.3 Windowing Strategies
 
-Four time-based windowing strategies are available:
+Four time-based windowing strategies are provided, each of which exhibits distinct temporal characteristics.
 
 #### 3.3.1 Sliding Window Strategy
 
-The sliding window maintains a fixed-duration window that "slides" with time:
+The sliding window approach maintains a fixed-duration window that advances continuously with time:
 
 ```
 Time: ─────────────────────────────────────────────►
@@ -231,13 +231,13 @@ Time: ────────────────────────�
 ```
 
 **Characteristics**:
-- Window starts from each notification
-- Simple implementation
-- Memory efficient
+- The window is initiated from each notification event
+- The implementation is straightforward in nature
+- Memory consumption is considered efficient
 
 #### 3.3.2 Tumbling Window Strategy
 
-Non-overlapping fixed buckets:
+This strategy employs non-overlapping fixed-duration buckets:
 
 ```
 Time: ─────────────────────────────────────────────►
@@ -249,13 +249,13 @@ Time: ────────────────────────�
 ```
 
 **Characteristics**:
-- Fixed bucket boundaries
-- Predictable suppression behavior
-- Potential edge effects at boundaries
+- Bucket boundaries are fixed and predetermined
+- Suppression behavior is predictable and deterministic
+- Potential edge effects may be observed at bucket boundaries
 
 #### 3.3.3 Session Window Strategy
 
-Event-driven sessions with gap-based expiration:
+This approach employs event-driven sessions with gap-based expiration semantics:
 
 ```
 Time: ─────────────────────────────────────────────►
@@ -266,13 +266,13 @@ Time: ────────────────────────�
 ```
 
 **Characteristics**:
-- Dynamic window based on activity
-- Suitable for bursty notifications
-- Higher memory usage
+- Window duration is dynamically determined based on notification activity
+- This strategy is particularly well-suited to bursty notification patterns
+- Elevated memory consumption may be observed relative to other strategies
 
 ### 3.4 Implementation Guidelines
 
-#### Configuring Deduplication
+#### Configuration Parameters
 
 | Parameter | Recommended Value | Rationale |
 |-----------|-------------------|-----------|
@@ -280,7 +280,7 @@ Time: ────────────────────────�
 | Policy | `SEVERITY` | Good balance of differentiation |
 | Strategy | `sliding` | Simplest, most predictable behavior |
 
-#### Monitoring Metrics
+#### Observational Metrics
 
 | Metric | Formula | Target Range |
 |--------|---------|--------------|
@@ -289,17 +289,17 @@ Time: ────────────────────────�
 
 ---
 
-## 4. Throttling Engine
+## 4. Throttling Engine Architecture
 
 ### 4.1 Theoretical Foundation
 
-Rate limiting is a fundamental technique for protecting systems from overload. The truthound throttling engine implements the **Token Bucket Algorithm**, a well-established approach used in network traffic shaping and API rate limiting.
+Rate limiting constitutes a fundamental technique for the protection of systems against overload conditions. The truthound throttling engine implements the **Token Bucket Algorithm**, a well-established approach that has been extensively studied and deployed in the domains of network traffic shaping and API rate limiting.
 
 #### 4.1.1 Token Bucket Algorithm
 
-The token bucket maintains a bucket with maximum capacity `B` tokens. Tokens are added at rate `r` tokens per second. Each notification consumes one token. If no tokens are available, the notification is throttled.
+The token bucket model maintains a bucket with a maximum capacity of `B` tokens. Tokens are replenished at a rate of `r` tokens per second. Each notification consumes exactly one token upon processing. In the event that no tokens are available, the notification is subjected to throttling.
 
-**Mathematical Model**:
+**Mathematical Formulation**:
 ```
 tokens(t) = min(B, tokens(t-1) + r × Δt)
 ```
@@ -307,9 +307,9 @@ tokens(t) = min(B, tokens(t-1) + r × Δt)
 Where:
 - `B` = burst capacity
 - `r` = token replenishment rate
-- `Δt` = time since last update
+- `Δt` = time elapsed since the last state update
 
-**Algorithm Behavior**:
+**Algorithmic Behavior**:
 ```
 Tokens: ████████████ (12 tokens, capacity)
         ─────────────────────────────────────►
@@ -318,9 +318,9 @@ Tokens: ████████████ (12 tokens, capacity)
         │         │         │ +0.5/sec │  (replenishment)
 ```
 
-### 4.2 Throttler Types
+### 4.2 Throttler Implementations
 
-The truthound library provides five throttler implementations:
+Five throttler implementations are provided within the truthound library, each based on a distinct algorithmic approach:
 
 | Throttler | Algorithm | Characteristics |
 |-----------|-----------|-----------------|
@@ -332,7 +332,7 @@ The truthound library provides five throttler implementations:
 
 ### 4.3 Rate Limit Scopes
 
-Rate limits can be applied at different granularities:
+Rate limits may be applied at varying levels of granularity, as enumerated in the following table:
 
 | Scope | Bucket Key | Use Case |
 |-------|------------|----------|
@@ -343,9 +343,9 @@ Rate limits can be applied at different granularities:
 | `PER_SEVERITY` | severity | Severity-based limits |
 | `PER_DATA_ASSET` | data_asset | Asset-specific limits |
 
-### 4.4 Multi-Level Rate Limiting
+### 4.4 Hierarchical Multi-Level Rate Limiting
 
-The `CompositeThrottler` enables hierarchical rate limits:
+The `CompositeThrottler` facilitates the construction of hierarchical rate limit configurations:
 
 ```yaml
 throttling:
@@ -373,7 +373,7 @@ Request arrives
 
 ### 4.5 Implementation Guidelines
 
-#### Recommended Configuration
+#### Recommended Configuration Parameters
 
 | Channel Type | per_minute | per_hour | per_day | Rationale |
 |--------------|------------|----------|---------|-----------|
@@ -381,28 +381,28 @@ Request arrives
 | Slack | 20 | 200 | 1000 | Chat noise reduction |
 | Email | 5 | 50 | 200 | Inbox management |
 
-#### Priority Bypass
+#### Priority Bypass Mechanism
 
-Critical notifications can bypass throttling:
+It is possible to configure critical notifications to bypass throttling constraints entirely:
 
 ```yaml
 priority_bypass: true
 priority_threshold: critical
 ```
 
-When enabled, notifications with `severity=critical` bypass all rate limits.
+When this mechanism is enabled, notifications bearing `severity=critical` are permitted to bypass all rate limits.
 
 ---
 
-## 5. Escalation Engine
+## 5. Escalation Engine Architecture
 
 ### 5.1 Theoretical Foundation
 
-Escalation management implements a **Finite State Machine (FSM)** for incident lifecycle tracking. This approach is derived from incident management frameworks such as ITIL and modern SRE practices.
+Escalation management is implemented through a **Finite State Machine (FSM)** that governs the lifecycle of incident tracking. This approach is derived from established incident management frameworks, including ITIL, as well as contemporary Site Reliability Engineering (SRE) practices.
 
-#### 5.1.1 State Machine Definition
+#### 5.1.1 Formal State Machine Definition
 
-The escalation state machine is defined as:
+The escalation state machine is formally defined as follows:
 ```
 FSM = (S, Σ, δ, s₀, F)
 
@@ -444,7 +444,7 @@ Where:
 
 ### 5.2 Escalation Level Configuration
 
-Each escalation level defines:
+Each escalation level is defined by the following parameter set:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -456,9 +456,9 @@ Each escalation level defines:
 | `require_ack` | bool | Whether acknowledgment is required |
 | `auto_resolve_minutes` | int | Auto-resolve timeout (0 = disabled) |
 
-### 5.3 Target Types
+### 5.3 Target Type Classification
 
-Escalation targets represent notification recipients:
+Escalation targets represent the notification recipients to which alerts are dispatched:
 
 | Target Type | Identifier Format | Description |
 |-------------|-------------------|-------------|
@@ -470,9 +470,9 @@ Escalation targets represent notification recipients:
 | `email` | Email address | Direct email |
 | `phone` | Phone number | SMS/voice call |
 
-### 5.4 Trigger Conditions
+### 5.4 Trigger Condition Taxonomy
 
-Escalation can be triggered by various conditions:
+Escalation may be initiated by a variety of conditions, which are categorized as follows:
 
 | Trigger | Description |
 |---------|-------------|
@@ -484,9 +484,9 @@ Escalation can be triggered by various conditions:
 | `MANUAL` | Manual trigger by operator |
 | `SCHEDULED` | Time-based trigger |
 
-### 5.5 Auto-Escalation by Event Severity
+### 5.5 Automated Escalation by Event Severity
 
-The `NotificationDispatcher` automatically triggers escalation for high-severity events:
+The `NotificationDispatcher` is configured to automatically initiate escalation procedures for events of elevated severity:
 
 | Event Type | Condition | Escalation Policy |
 |------------|-----------|-------------------|
@@ -498,7 +498,7 @@ The `NotificationDispatcher` automatically triggers escalation for high-severity
 
 ### 5.6 Implementation Guidelines
 
-#### Designing Escalation Policies
+#### Principles for Escalation Policy Design
 
 | Principle | Recommendation |
 |-----------|----------------|
@@ -558,11 +558,11 @@ escalation_policies:
 
 ---
 
-## 6. Notification Channels
+## 6. Notification Channel Integration
 
 ### 6.1 Supported Channels
 
-The dashboard integrates with truthound's notification actions:
+The dashboard is integrated with the following notification action implementations provided by the truthound library:
 
 | Channel | Truthound Action | Protocol |
 |---------|------------------|----------|
@@ -576,9 +576,9 @@ The dashboard integrates with truthound's notification actions:
 | **Webhook** | `WebhookAction` | HTTP POST |
 | **GitHub** | `GitHubAction` | Issues API |
 
-### 6.2 Channel Configuration
+### 6.2 Channel Configuration Specifications
 
-Each channel type has specific configuration requirements:
+Each channel type is associated with specific configuration requirements, as detailed below.
 
 #### Slack Configuration
 
@@ -602,11 +602,11 @@ Each channel type has specific configuration requirements:
 
 ---
 
-## 7. Statistics and Monitoring
+## 7. Statistical Monitoring and Observability
 
 ### 7.1 Metric Categories
 
-The Advanced Notifications system exposes two categories of metrics:
+The Advanced Notifications system exposes two distinct categories of operational metrics:
 
 | Category | Source | Description |
 |----------|--------|-------------|
@@ -663,17 +663,17 @@ Response:
 
 ## 8. Configuration Management
 
-### 8.1 Export Configuration
+### 8.1 Configuration Export
 
-Export all Advanced Notification configurations:
+All Advanced Notification configurations may be exported via the following endpoint:
 
 ```
 GET /notifications/config/export?include_routing_rules=true&include_deduplication=true&include_throttling=true&include_escalation=true
 ```
 
-### 8.2 Import Configuration
+### 8.2 Configuration Import
 
-Import configurations with conflict resolution:
+Configurations may be imported with configurable conflict resolution semantics:
 
 ```
 POST /notifications/config/import
@@ -702,11 +702,11 @@ Content-Type: application/json
 
 ## 9. Template Library
 
-The Template Library provides a curated registry of pre-built notification configurations, enabling rapid deployment of proven orchestration patterns without manual parameter tuning.
+The Template Library constitutes a curated registry of pre-built notification configurations, thereby enabling the rapid deployment of proven orchestration patterns without the necessity for manual parameter tuning.
 
 ### 9.1 Overview
 
-Each template encapsulates a complete configuration for one of the four notification subsystems. Templates are categorized by their target subsystem and tagged with descriptive metadata to facilitate discovery.
+Each template encapsulates a complete configuration for one of the four notification subsystems. Templates are organized by their target subsystem and are annotated with descriptive metadata to facilitate efficient discovery.
 
 | Attribute | Description |
 |-----------|-------------|
@@ -727,19 +727,19 @@ Each template encapsulates a complete configuration for one of the four notifica
 
 ### 9.3 Template Selection Workflow
 
-The Template Library implements an integrated workflow that bridges template selection with configuration editing:
+The Template Library implements an integrated workflow that bridges template selection with configuration editing. The process is conducted as follows:
 
-1. **Browse and Search**: Open the Template Library panel to browse available templates. Use the search field or category tabs to locate a relevant template.
-2. **Preview**: Review the template's description, tags, and configuration summary before selection.
-3. **Apply**: Select a template to initiate the application process. The system performs the following actions automatically:
-   - **Tab Navigation**: The active tab switches to the subsystem matching the template's category (e.g., selecting a throttling template activates the Throttling tab).
-   - **Dialog Auto-Open**: The corresponding configuration dialog opens with the template's pre-filled values, allowing the user to review and adjust parameters before saving.
+1. **Browse and Search**: The Template Library panel is opened to browse available templates. The search field or category tabs may be employed to locate a relevant template.
+2. **Preview**: The template's description, tags, and configuration summary are reviewed prior to selection.
+3. **Apply**: A template is selected to initiate the application process. The system performs the following actions automatically:
+   - **Tab Navigation**: The active tab is switched to the subsystem matching the template's category (e.g., selecting a throttling template activates the Throttling tab).
+   - **Dialog Auto-Open**: The corresponding configuration dialog is opened with the template's pre-filled values, thereby allowing the user to review and adjust parameters before saving.
    - **Quick Templates Hidden**: When a template is applied from the Template Library, the in-dialog Quick Templates selector is hidden to avoid confusion between the externally applied template and the dialog's built-in presets.
-4. **Save or Discard**: The user may modify the pre-filled values and save, or close the dialog to discard the template application.
+4. **Save or Discard**: The pre-filled values may be modified and saved, or the dialog may be closed to discard the template application.
 
 ### 9.4 Active Template Indicator
 
-When a template is actively applied, the Template Library panel displays an indicator banner containing:
+When a template has been actively applied, the Template Library panel displays an indicator banner comprising the following elements:
 
 | Element | Description |
 |---------|-------------|
@@ -748,11 +748,11 @@ When a template is actively applied, the Template Library panel displays an indi
 | **Category Badge** | Labeled badge showing the target subsystem |
 | **Dismiss Button** | Allows the user to clear the active template selection |
 
-This indicator persists within the current page session. Navigating away from the Advanced Notifications page clears the active template state, as templates serve as ephemeral configuration aids rather than persistent selections.
+This indicator persists for the duration of the current page session. Navigation away from the Advanced Notifications page results in the clearance of the active template state, as templates are designed to serve as ephemeral configuration aids rather than persistent selections.
 
 ### 9.5 Relationship to Quick Templates
 
-Each tab's configuration dialog also provides an independent Quick Templates selector for rapid in-context configuration. The Template Library and Quick Templates serve complementary roles:
+Each tab's configuration dialog also provides an independent Quick Templates selector for rapid in-context configuration. The Template Library and Quick Templates serve complementary roles, as delineated below:
 
 | Feature | Template Library | Quick Templates |
 |---------|-----------------|-----------------|
@@ -817,44 +817,44 @@ Each tab's configuration dialog also provides an independent Quick Templates sel
 
 ---
 
-## 11. Best Practices
+## 11. Recommended Operational Practices
 
-### 11.1 Routing Best Practices
-
-| Practice | Description |
-|----------|-------------|
-| Use specific rules first | Lower priority numbers for more specific conditions |
-| Always have a default | Ensure all notifications have a destination |
-| Test before deploying | Use the test endpoint to validate rules |
-| Document routing logic | Maintain documentation for team reference |
-
-### 11.2 Deduplication Best Practices
+### 11.1 Routing Practices
 
 | Practice | Description |
 |----------|-------------|
-| Start with moderate windows | 5-minute default, adjust based on data |
-| Monitor suppression ratio | 10-40% indicates healthy deduplication |
-| Use SEVERITY policy | Good balance between dedup and visibility |
-| Review active fingerprints | High counts may indicate memory pressure |
+| Prioritize specificity in rule ordering | Lower priority numbers should be assigned to more specific conditions |
+| Ensure provision of a default route | All notifications must be guaranteed a destination |
+| Conduct pre-deployment validation | The test endpoint should be utilized to validate rules prior to deployment |
+| Maintain comprehensive documentation | Routing logic should be documented for team reference and auditability |
 
-### 11.3 Throttling Best Practices
-
-| Practice | Description |
-|----------|-------------|
-| Set conservative initial limits | Easier to relax than tighten |
-| Configure per-channel limits | Different urgency levels need different limits |
-| Enable priority bypass | Critical alerts should not be throttled |
-| Monitor throttle rate | Above 10% may indicate configuration issues |
-
-### 11.4 Escalation Best Practices
+### 11.2 Deduplication Practices
 
 | Practice | Description |
 |----------|-------------|
-| Design for progressive urgency | Later levels should reach higher authority |
-| Use reasonable timeouts | 5-15-30 minute progression works well |
-| Require acknowledgment | Ensures humans are in the loop |
-| Test escalation paths | Regular testing ensures functionality |
-| Configure cooldowns | Prevent escalation storms |
+| Commence with moderate window durations | A 5-minute default is recommended, with subsequent adjustment based on observed data |
+| Monitor the suppression ratio | A ratio of 10-40% is indicative of healthy deduplication behavior |
+| Employ the SEVERITY policy | This policy provides an appropriate balance between deduplication and visibility |
+| Review active fingerprint counts | Elevated counts may be indicative of memory pressure |
+
+### 11.3 Throttling Practices
+
+| Practice | Description |
+|----------|-------------|
+| Establish conservative initial limits | It is considered preferable to relax constraints than to tighten them retrospectively |
+| Configure per-channel limits | Channels of differing urgency levels necessitate distinct limit configurations |
+| Enable the priority bypass mechanism | Critical alerts should not be subjected to throttling |
+| Monitor the throttle rate | A rate exceeding 10% may be indicative of configuration deficiencies |
+
+### 11.4 Escalation Practices
+
+| Practice | Description |
+|----------|-------------|
+| Design for progressive urgency | Subsequent levels should be configured to reach personnel of higher authority |
+| Employ reasonable timeout intervals | A progression of 5-15-30 minutes has been found to be effective in practice |
+| Mandate acknowledgment at all levels | This ensures that human operators remain engaged in the resolution process |
+| Conduct periodic escalation path testing | Regular testing is essential to verify continued operational functionality |
+| Configure appropriate cooldown periods | Cooldowns are necessary to prevent the occurrence of escalation storms |
 
 ---
 
