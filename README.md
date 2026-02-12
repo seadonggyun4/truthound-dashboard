@@ -12,44 +12,59 @@
 [![Powered by Intlayer](https://img.shields.io/badge/Powered%20by-Intlayer-yellow.svg)](https://intlayer.org)
 [![Downloads](https://img.shields.io/pepy/dt/truthound-dashboard?color=brightgreen)](https://pepy.tech/project/truthound-dashboard)
 
-A web-based data quality monitoring dashboard for [truthound](https://github.com/seadonggyun4/truthound).
-
-truthound-dashboard provides a graphical interface for managing data sources, executing validations, tracking historical results, scheduling automated checks, and configuring notifications. It serves as an alternative to commercial data quality platforms.
+Truthound Dashboard is a web-based data quality monitoring platform for the [truthound](https://github.com/seadonggyun4/truthound) validation library. It provides a graphical interface for managing data sources, executing validations, tracking historical results, scheduling automated checks, and configuring notifications. The system is designed as an open-source alternative to commercial data quality platforms, offering equivalent or superior functionality under the Apache 2.0 license.
 
 [Documentation](https://truthound.netlify.app) | [PyPI](https://pypi.org/project/truthound-dashboard/) | [Live Demo](https://truthound-dashboard.vercel.app)
 
-> **Demo Note**: The live demo uses a free-tier backend ([Render](https://render.com)), which enters sleep mode after 15 minutes of inactivity. The first request may take 30–60 seconds to wake up the server.
+> **Demo Note**: The live demo operates on a free-tier backend ([Render](https://render.com)), which enters a dormant state after 15 minutes of inactivity. Initial requests may require 30–60 seconds for server initialization.
 
-## Design Principles
+## Architectural Design Principles
 
-- **Zero-Config**: Works out of the box with sensible defaults
-- **Single Process**: No Redis, Celery, or PostgreSQL required
-- **Local First**: Full functionality without cloud dependencies
-- **GX Cloud Parity**: Match paid features for free
+- **Zero-Configuration**: Operational immediately upon installation with sensible defaults
+- **Single-Process Architecture**: No external dependencies on Redis, Celery, or PostgreSQL
+- **Local-First Design**: Complete functionality without cloud service dependencies
+- **GX Cloud Feature Parity**: Equivalent or superior capabilities to commercial alternatives
 
-## Feature Comparison with GX Cloud
+## Comparative Analysis with GX Cloud
 
-| Feature | GX Cloud (Paid) | truthound-dashboard |
-|---------|-----------------|---------------------|
+| Feature | GX Cloud (Commercial) | Truthound Dashboard |
+|---------|----------------------|---------------------|
 | Data Source Management | Available | Available |
 | Schema Learning | Available | Available |
 | Validation Execution | Available | Available (289+ validators) |
 | Validation History | Available | Available |
 | Scheduled Validations | Available | Available (6 trigger types) |
 | Notifications | Available | Available (9 channels) |
-| Drift Detection | Available | Available (14 methods) |
+| Drift Detection | Available | Available (14 statistical methods) |
 | Data Profiling | Available | Available |
-| PII Scan & Masking | Available | Available (GDPR/CCPA/LGPD) |
+| PII Scan and Masking | Available | Available (GDPR/CCPA/LGPD) |
 | Anomaly Detection | Limited | Available (6 ML algorithms) |
 | Data Lineage | Available | Available (4 renderers) |
 | Model Monitoring | Available | Available |
-| Reports & Export | Available | Available (6 formats) |
+| Reports and Export | Available | Available (6 formats) |
+| Progressive Result Detail | Not Available | Available (4 levels: BOOLEAN_ONLY → COMPLETE) |
+| Exception Isolation and Auto-Retry | Not Available | Available (3-tier fallback, circuit breaker) |
+| DAG-Based Validator Scheduling | Not Available | Available (dependency-driven conditional execution) |
 | Plugin Marketplace | Not Available | Available |
 | Storage Tiering | Not Available | Available |
-| Dark Mode & i18n | Limited | Available (2 languages + AI translation) |
+| Dark Mode and i18n | Limited | Available (2 languages + AI translation) |
 | License | Commercial | Apache 2.0 |
 
-## Requirements
+## Truthound Core Engine Integration
+
+Truthound Dashboard maintains a systematic bidirectional integration with the Truthound core validation engine (v1.3.0), which has undergone a five-phase enhancement programme. Each phase introduced capabilities that are fully propagated through the dashboard's backend adapter, result converter, Pydantic schemas, and frontend TypeScript type declarations.
+
+| Phase | Enhancement | Dashboard Integration |
+|-------|-------------|----------------------|
+| **PHASE 1** | Result Format System | Four-level progressive disclosure (`BOOLEAN_ONLY`, `BASIC`, `SUMMARY`, `COMPLETE`) controlling validation output granularity |
+| **PHASE 2** | Structured Results | `ValidationDetail` per-issue metrics, `ReportStatistics` aggregate analytics, multi-dimensional issue breakdowns |
+| **PHASE 3** | Metric Deduplication | Transparent internal optimisation; improved validation response latency without API surface changes |
+| **PHASE 4** | DAG Execution | Dependency-based conditional validator scheduling; execution summary with skip/dependency tracking |
+| **PHASE 5** | Exception Isolation | Fault-tolerant execution with 3-tier fallback, auto-retry with exponential backoff, circuit breaker, and exception classification |
+
+All integration changes adhere to a strict backward compatibility protocol: new fields are declared as `Optional` with `None` defaults, Pydantic schemas apply `ConfigDict(extra="ignore")`, and the converter employs defensive `getattr()` patterns throughout.
+
+## System Requirements
 
 - Python 3.11 or higher
 - truthound >= 1.2.10
@@ -60,93 +75,93 @@ truthound-dashboard provides a graphical interface for managing data sources, ex
 pip install truthound-dashboard
 ```
 
-This command automatically installs [truthound](https://github.com/seadonggyun4/truthound) as a dependency.
+This command automatically installs [truthound](https://github.com/seadonggyun4/truthound) as a transitive dependency.
 
 ## Usage
 
 ```bash
-# Start the dashboard server (default port: 8765)
+# Launch the dashboard server (default port: 8765)
 truthound serve
 
 # Specify a custom port
 truthound serve --port 9000
 
-# Enable development mode with hot reload
+# Enable development mode with hot module replacement
 truthound serve --reload
 
-# Disable automatic browser opening
+# Suppress automatic browser invocation
 truthound serve --no-browser
 ```
 
 The dashboard interface is accessible at `http://localhost:8765`.
 
-## Features
+## Feature Taxonomy
 
 ### Data Management
 
 | Feature | Description | Documentation |
 |---------|-------------|---------------|
-| **Dashboard** | Overview statistics and quick navigation | [docs/data-management/dashboard.md](./docs/data-management/dashboard.md) |
+| **Dashboard** | Aggregate statistics and navigation overview | [docs/data-management/dashboard.md](./docs/data-management/dashboard.md) |
 | **Data Sources** | CSV, Parquet, JSON, 13 database connectors (PostgreSQL, MySQL, SQLite, BigQuery, Snowflake, etc.) | [docs/data-management/sources.md](./docs/data-management/sources.md) |
-| **Data Catalog** | Asset metadata, column-level management, quality scores, sensitivity classification | [docs/data-management/catalog.md](./docs/data-management/catalog.md) |
-| **Business Glossary** | Term definitions, categories, relationships, lifecycle management | [docs/data-management/glossary.md](./docs/data-management/glossary.md) |
+| **Data Catalog** | Asset metadata repository with column-level management, quality scoring, and sensitivity classification | [docs/data-management/catalog.md](./docs/data-management/catalog.md) |
+| **Business Glossary** | Standardized terminology definitions, hierarchical categories, semantic relationships, and lifecycle governance | [docs/data-management/glossary.md](./docs/data-management/glossary.md) |
 
 ### Data Quality
 
 | Feature | Description | Documentation |
 |---------|-------------|---------------|
-| **Validations** | 289+ validators across 15 categories, per-validator configuration, severity override, parallel execution | [docs/data-quality/validations.md](./docs/data-quality/validations.md) |
-| **Drift Detection** | 14 statistical methods (KS, PSI, Chi2, JS, Wasserstein, etc.), column-level comparison | [docs/data-quality/drift.md](./docs/data-quality/drift.md) |
-| **Drift Monitoring** | Continuous monitoring with alerts, root cause analysis, remediation suggestions | [docs/data-quality/drift-monitoring.md](./docs/data-quality/drift-monitoring.md) |
-| **Schema Evolution** | Change tracking, breaking/warning/safe classification, version timeline | [docs/data-quality/schema-evolution.md](./docs/data-quality/schema-evolution.md) |
-| **Schema Watcher** | Real-time schema change detection, rename detection, alert thresholds | [docs/data-quality/schema-watcher.md](./docs/data-quality/schema-watcher.md) |
-| **Profile Comparison** | Longitudinal profile analysis, delta computation, trend charts | [docs/data-quality/profile-comparison.md](./docs/data-quality/profile-comparison.md) |
-| **Privacy & PII** | PII detection (`th.scan`), data masking (`th.mask`), GDPR/CCPA/LGPD compliance | [docs/data-quality/privacy.md](./docs/data-quality/privacy.md) |
-| **Data Lineage** | Interactive graph visualization (D3/Mermaid/Cytoscape), impact analysis, OpenLineage integration | [docs/data-quality/lineage.md](./docs/data-quality/lineage.md) |
-| **Quality Reporter** | Quality scoring with F1/Precision/Recall metrics, multi-format export | [docs/data-quality/quality-reporter.md](./docs/data-quality/quality-reporter.md) |
-| **Enterprise Sampling** | Block, multi-stage, column-aware, progressive strategies for 100M+ rows | [docs/data-quality/enterprise-sampling.md](./docs/data-quality/enterprise-sampling.md) |
-| **Rule Suggestions** | AI-powered rule generation from data profiles, confidence scoring | [docs/data-quality/rule-suggestions.md](./docs/data-quality/rule-suggestions.md) |
+| **Validations** | 289+ validators across 15 categories with per-validator configuration, severity override, parallel execution, 4-level progressive result format (PHASE 1), structured result analytics (PHASE 2), DAG-based conditional execution (PHASE 4), and fault-tolerant exception isolation with auto-retry (PHASE 5) | [docs/data-quality/validations.md](./docs/data-quality/validations.md) |
+| **Drift Detection** | 14 statistical methods (KS, PSI, Chi2, JS, Wasserstein, etc.) with column-level comparison | [docs/data-quality/drift.md](./docs/data-quality/drift.md) |
+| **Drift Monitoring** | Continuous monitoring with alerting, root cause analysis, and remediation guidance | [docs/data-quality/drift-monitoring.md](./docs/data-quality/drift-monitoring.md) |
+| **Schema Evolution** | Structural change tracking with breaking/warning/safe classification and version timeline | [docs/data-quality/schema-evolution.md](./docs/data-quality/schema-evolution.md) |
+| **Schema Watcher** | Real-time schema monitoring with similarity-based rename detection and alert thresholds | [docs/data-quality/schema-watcher.md](./docs/data-quality/schema-watcher.md) |
+| **Profile Comparison** | Longitudinal profile analysis with delta computation and trend visualization | [docs/data-quality/profile-comparison.md](./docs/data-quality/profile-comparison.md) |
+| **Privacy and PII** | PII detection (`th.scan`), data masking (`th.mask`), GDPR/CCPA/LGPD compliance support | [docs/data-quality/privacy.md](./docs/data-quality/privacy.md) |
+| **Data Lineage** | Interactive graph visualization (D3/Mermaid/Cytoscape) with impact analysis and OpenLineage integration | [docs/data-quality/lineage.md](./docs/data-quality/lineage.md) |
+| **Quality Reporter** | Confusion matrix-based quality scoring (F1/Precision/Recall) with multi-format export | [docs/data-quality/quality-reporter.md](./docs/data-quality/quality-reporter.md) |
+| **Enterprise Sampling** | Block, multi-stage, column-aware, and progressive strategies for datasets exceeding 100M rows | [docs/data-quality/enterprise-sampling.md](./docs/data-quality/enterprise-sampling.md) |
+| **Rule Suggestions** | Profile-driven automated rule generation with confidence scoring | [docs/data-quality/rule-suggestions.md](./docs/data-quality/rule-suggestions.md) |
 
-### ML & Monitoring
+### ML and Monitoring
 
 | Feature | Description | Documentation |
 |---------|-------------|---------------|
-| **Anomaly Detection** | 6 ML algorithms (IsolationForest, Z-Score, IQR, MAD, Ensemble, DistributionDrift), streaming support | [docs/ml-monitoring/anomaly.md](./docs/ml-monitoring/anomaly.md) |
-| **Model Monitoring** | ML model performance tracking, metric monitoring, alert rules, model versioning | [docs/ml-monitoring/model-monitoring.md](./docs/ml-monitoring/model-monitoring.md) |
+| **Anomaly Detection** | 6 ML algorithms (IsolationForest, Z-Score, IQR, MAD, Ensemble, DistributionDrift) with streaming support | [docs/ml-monitoring/anomaly.md](./docs/ml-monitoring/anomaly.md) |
+| **Model Monitoring** | ML model performance tracking with metric monitoring, alert rules, and model versioning | [docs/ml-monitoring/model-monitoring.md](./docs/ml-monitoring/model-monitoring.md) |
 
 ### System
 
 | Feature | Description | Documentation |
 |---------|-------------|---------------|
-| **Unified Alerts** | Cross-feature alert aggregation, severity filtering, correlation and grouping | [docs/system/alerts.md](./docs/system/alerts.md) |
-| **Schedules** | 6 trigger types (cron, interval, data change, composite, event, manual), validator configuration | [docs/system/schedules.md](./docs/system/schedules.md) |
-| **Trigger Monitoring** | Real-time trigger health, cooldown tracking, webhook management, execution history | [docs/system/trigger-monitoring.md](./docs/system/trigger-monitoring.md) |
-| **Activity Feed** | System event timeline, collaboration comments, change tracking | [docs/system/activity.md](./docs/system/activity.md) |
+| **Unified Alerts** | Cross-feature alert aggregation with severity filtering, correlation, and grouping | [docs/system/alerts.md](./docs/system/alerts.md) |
+| **Schedules** | 6 trigger types (cron, interval, data change, composite, event, manual) with validator configuration | [docs/system/schedules.md](./docs/system/schedules.md) |
+| **Trigger Monitoring** | Real-time trigger health surveillance, cooldown tracking, webhook management, and execution history | [docs/system/trigger-monitoring.md](./docs/system/trigger-monitoring.md) |
+| **Activity Feed** | System event timeline with collaboration comments and change tracking | [docs/system/activity.md](./docs/system/activity.md) |
 | **Notifications** | 9 channels (Slack, Email, Webhook, Discord, Telegram, PagerDuty, OpsGenie, Teams, GitHub) | [docs/system/notifications.md](./docs/system/notifications.md) |
 | **Advanced Notifications** | Rule-based routing, deduplication (4 strategies), throttling (5 methods), multi-level escalation | [docs/system/notifications-advanced.md](./docs/system/notifications-advanced.md) |
-| **Reports** | 6 formats (HTML, PDF, CSV, JSON, Excel, Markdown), statistics dashboard, lifecycle management | [docs/system/reports.md](./docs/system/reports.md) |
-| **Plugins** | Marketplace, 4 plugin types, custom validator/reporter creation, security levels | [docs/system/plugins.md](./docs/system/plugins.md) |
-| **Storage Tiering** | Hot/Warm/Cold/Archive tiers, 6 policy types, composite AND/OR logic, migration history | [docs/system/storage-tiering.md](./docs/system/storage-tiering.md) |
-| **Observability** | Audit logging, metrics collection, distributed tracing | [docs/system/observability.md](./docs/system/observability.md) |
-| **Maintenance** | Retention policies, auto-cleanup, database optimization (VACUUM), cache management | [docs/system/maintenance.md](./docs/system/maintenance.md) |
+| **Reports** | 6 formats (HTML, PDF, CSV, JSON, Excel, Markdown) with statistics dashboard and lifecycle management | [docs/system/reports.md](./docs/system/reports.md) |
+| **Plugins** | Marketplace with 4 plugin types, custom validator/reporter creation, and security levels | [docs/system/plugins.md](./docs/system/plugins.md) |
+| **Storage Tiering** | Hot/Warm/Cold/Archive tiers with 6 policy types, composite AND/OR logic, and migration history | [docs/system/storage-tiering.md](./docs/system/storage-tiering.md) |
+| **Observability** | Audit logging, metrics collection, and distributed tracing | [docs/system/observability.md](./docs/system/observability.md) |
+| **Maintenance** | Retention policies, automated cleanup, database optimization (VACUUM), and cache management | [docs/system/maintenance.md](./docs/system/maintenance.md) |
 
 ## Internationalization
 
-truthound-dashboard implements internationalization using [Intlayer](https://intlayer.org), a modern i18n framework that provides type-safe translations with component-level content declaration.
+Truthound Dashboard implements internationalization using [Intlayer](https://intlayer.org), a modern framework that provides type-safe translations with component-level content declaration and compile-time validation.
 
 ### Built-in Languages
 
 The dashboard ships with **2 fully translated languages**:
-- **English (en)** - Complete UI translation
-- **Korean (ko)** - Complete UI translation
+- **English (en)** — Complete UI translation
+- **Korean (ko)** — Complete UI translation
 
-These languages are immediately available without additional configuration or setup.
+These languages are immediately available without additional configuration.
 
 ### Extending Language Support
 
-The dashboard can be extended to support 15+ additional languages using the AI-powered `translate` command. This CLI tool translates all UI content files from the built-in English and Korean to your target language.
+The dashboard can be extended to support 15+ additional languages using the AI-powered `translate` command. This CLI tool translates all UI content files from the built-in languages to the specified targets.
 
-**Note:** Additional languages are not included in the default installation and must be generated using the translation CLI before deployment.
+> **Note:** Additional languages are not included in the default installation and must be generated using the translation CLI prior to deployment.
 
 #### Supported AI Providers
 
@@ -159,61 +174,27 @@ The dashboard can be extended to support 15+ additional languages using the AI-p
 
 #### Configuration
 
-API credentials are configured through environment variables. This approach ensures that sensitive credentials are not exposed in command history or application logs.
-
-**Temporary Session Configuration**
+API credentials are configured through environment variables, ensuring that sensitive credentials are not exposed in command history or application logs.
 
 ```bash
-# OpenAI
 export OPENAI_API_KEY=sk-xxxxxxxxxxxx
 truthound translate -l fr -p openai
-
-# Anthropic
-export ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
-truthound translate -l fr -p anthropic
-
-# Mistral
-export MISTRAL_API_KEY=xxxxxxxxxxxx
-truthound translate -l fr -p mistral
-```
-
-**Persistent Configuration**
-
-```bash
-# Add to shell configuration file (~/.bashrc or ~/.zshrc)
-echo 'export OPENAI_API_KEY=sk-xxxxxxxxxxxx' >> ~/.zshrc
-source ~/.zshrc
-```
-
-**Inline Configuration**
-
-```bash
-OPENAI_API_KEY=sk-xxx truthound translate -l fr -p openai
 ```
 
 #### Usage Examples
 
 ```bash
-# Translate to French using OpenAI
-truthound translate -l fr -p openai
-
-# Translate to multiple languages
+# Translate to multiple languages simultaneously
 truthound translate -l ja,zh,de,fr -p anthropic
 
-# Use local Ollama (no API key required)
+# Local execution via Ollama (no API key required)
 truthound translate -l fr -p ollama
 
 # Auto-detect available provider
 truthound translate -l fr
 
-# Preview files without making changes
+# Preview without file modifications
 truthound translate -l fr --dry-run
-
-# List available providers and their status
-truthound translate --list-providers
-
-# List supported language codes
-truthound translate --list-languages
 ```
 
 #### Security Considerations
@@ -223,13 +204,10 @@ truthound translate --list-languages
 | Network transmission | None | API keys are used locally and transmitted only to the selected provider |
 | Source code exposure | None | Credentials are injected via environment variables |
 | Build artifact inclusion | None | Only translated content is persisted; credentials are not stored |
-| API communication | Standard | Requests are made directly to provider endpoints using user credentials |
 
 #### Supported Languages
 
-The translation system supports 36 languages including: Arabic, Bulgarian, Chinese, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, Greek, Hebrew, Hindi, Hungarian, Indonesian, Italian, Japanese, Korean, Latvian, Lithuanian, Malay, Norwegian, Polish, Portuguese, Romanian, Russian, Slovak, Slovenian, Spanish, Swedish, Thai, Turkish, Ukrainian, and Vietnamese.
-
-Execute `truthound translate --list-languages` to view the complete list with language codes.
+The translation system supports 36 languages. Execute `truthound translate --list-languages` to view the complete list with ISO 639-1 language codes.
 
 ## Technology Stack
 
@@ -253,14 +231,15 @@ Execute `truthound translate --list-languages` to view the complete list with la
 
 Full documentation is available at [https://truthound.netlify.app](https://truthound.netlify.app).
 
-- [Getting Started](./docs/getting-started.md)
-- [Architecture](./docs/architecture.md)
-- [All Documentation](./docs/index.md)
+- [Getting Started](./docs/getting-started.md) — Installation and initial validation workflow
+- [Architecture](./docs/architecture.md) — System design, component specifications, and core engine integration architecture
+- [Validations](./docs/data-quality/validations.md) — Validation execution framework with PHASE 1–5 integration specifications
+- [All Documentation](./docs/index.md) — Comprehensive documentation index
 
 ## Related Projects
 
-- [truthound](https://github.com/seadonggyun4/truthound) - Core data validation library
-- [truthound-orchestration](https://github.com/seadonggyun4/truthound-orchestration) - Pipeline orchestration integration
+- [truthound](https://github.com/seadonggyun4/truthound) — Core data validation library
+- [truthound-orchestration](https://github.com/seadonggyun4/truthound-orchestration) — Pipeline orchestration integration
 
 ## License
 
