@@ -94,6 +94,13 @@ async def run_validation(
             parallel=request.parallel,
             max_workers=request.max_workers,
             pushdown=request.pushdown,
+            # PHASE 1: result format
+            result_format=request.result_format,
+            include_unexpected_rows=request.include_unexpected_rows,
+            max_unexpected_rows=request.max_unexpected_rows,
+            # PHASE 5: exception control
+            catch_exceptions=request.catch_exceptions,
+            max_retries=request.max_retries,
         )
         return ValidationResponse.from_model(validation)
     except ValueError as e:

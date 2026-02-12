@@ -541,6 +541,13 @@ class ValidationService:
         parallel: bool = False,
         max_workers: int | None = None,
         pushdown: bool | None = None,
+        # PHASE 1: result format
+        result_format: str | None = None,
+        include_unexpected_rows: bool = False,
+        max_unexpected_rows: int | None = None,
+        # PHASE 5: exception control
+        catch_exceptions: bool = True,
+        max_retries: int = 3,
     ) -> Validation:
         """Run validation on a source.
 
@@ -567,6 +574,11 @@ class ValidationService:
             parallel: If True, uses DAG-based parallel execution.
             max_workers: Max threads for parallel execution (requires parallel=True).
             pushdown: Enable query pushdown for SQL sources. None uses auto-detection.
+            result_format: Result detail level (boolean_only/basic/summary/complete).
+            include_unexpected_rows: Include failure rows in SUMMARY+ results.
+            max_unexpected_rows: Max failure rows to return.
+            catch_exceptions: If True, catch validator errors gracefully.
+            max_retries: Max retry attempts for transient errors.
 
         Returns:
             Validation record with results.
@@ -605,6 +617,13 @@ class ValidationService:
                 parallel=parallel,
                 max_workers=max_workers,
                 pushdown=pushdown,
+                # PHASE 1
+                result_format=result_format,
+                include_unexpected_rows=include_unexpected_rows,
+                max_unexpected_rows=max_unexpected_rows,
+                # PHASE 5
+                catch_exceptions=catch_exceptions,
+                max_retries=max_retries,
             )
 
             # Run custom validators if specified

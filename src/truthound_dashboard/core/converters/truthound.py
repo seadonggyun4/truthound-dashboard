@@ -50,14 +50,11 @@ class TruthoundResultConverter:
     def convert_check_result(result: Any) -> dict[str, Any]:
         """Convert truthound Report to CheckResult dict.
 
-        The truthound Report contains:
-        - issues: list[ValidationIssue]
-        - source: str
-        - row_count: int
-        - column_count: int
-        - has_issues: bool
-        - has_critical: bool
-        - has_high: bool
+        Supports truthound 1.3.0+ with PHASE 1-5 features:
+        - PHASE 1: result_format level preserved
+        - PHASE 2: ValidationDetail, ReportStatistics, success flag
+        - PHASE 4: validator execution summary (via validator_results)
+        - PHASE 5: ExceptionInfo on issues, ExceptionSummary on report
 
         Args:
             result: Truthound Report object.
@@ -74,7 +71,7 @@ class TruthoundResultConverter:
             if severity in severity_counts:
                 severity_counts[severity] += 1
 
-            converted_issues.append({
+            issue_dict: dict[str, Any] = {
                 "column": getattr(issue, "column", ""),
                 "issue_type": getattr(issue, "issue_type", "unknown"),
                 "count": getattr(issue, "count", 0),
@@ -83,9 +80,35 @@ class TruthoundResultConverter:
                 "expected": getattr(issue, "expected", None),
                 "actual": getattr(issue, "actual", None),
                 "sample_values": getattr(issue, "sample_values", None),
-            })
+                # PHASE 2: metadata
+                "validator_name": getattr(issue, "validator_name", None),
+                "success": getattr(issue, "success", False),
+            }
 
-        return {
+            # PHASE 2: structured ValidationDetail
+            result_detail = getattr(issue, "result", None)
+            if result_detail is not None:
+                issue_dict["result"] = TruthoundResultConverter._convert_validation_detail(
+                    result_detail
+                )
+
+            # PHASE 5: exception info
+            exc_info = getattr(issue, "exception_info", None)
+            if exc_info is not None and getattr(exc_info, "raised_exception", False):
+                issue_dict["exception_info"] = {
+                    "exception_type": getattr(exc_info, "exception_type", None),
+                    "exception_message": getattr(exc_info, "exception_message", None),
+                    "retry_count": getattr(exc_info, "retry_count", 0),
+                    "max_retries": getattr(exc_info, "max_retries", 0),
+                    "is_retryable": getattr(exc_info, "is_retryable", False),
+                    "failure_category": getattr(exc_info, "failure_category", "unknown"),
+                    "validator_name": getattr(exc_info, "validator_name", None),
+                    "column": getattr(exc_info, "column", None),
+                }
+
+            converted_issues.append(issue_dict)
+
+        report_dict: dict[str, Any] = {
             "passed": not getattr(result, "has_issues", len(issues) > 0),
             "has_critical": getattr(result, "has_critical", severity_counts["critical"] > 0),
             "has_high": getattr(result, "has_high", severity_counts["high"] > 0),
@@ -98,6 +121,110 @@ class TruthoundResultConverter:
             "row_count": getattr(result, "row_count", 0),
             "column_count": getattr(result, "column_count", 0),
             "issues": converted_issues,
+        }
+
+        # PHASE 1: result_format
+        raw_rf = getattr(result, "result_format", None)
+        if raw_rf is not None:
+            report_dict["result_format"] = (
+                raw_rf.value if hasattr(raw_rf, "value") else str(raw_rf)
+            )
+
+        # PHASE 2: report statistics
+        raw_stats = getattr(result, "statistics", None)
+        if raw_stats is not None:
+            report_dict["statistics"] = TruthoundResultConverter._convert_report_statistics(
+                raw_stats
+            )
+
+        # PHASE 5: exception summary
+        raw_exc = getattr(result, "exception_summary", None)
+        if raw_exc is not None:
+            report_dict["exception_summary"] = TruthoundResultConverter._convert_exception_summary(
+                raw_exc
+            )
+
+        return report_dict
+
+    @staticmethod
+    def _convert_validation_detail(detail: Any) -> dict[str, Any]:
+        """Convert truthound ValidationDetail to serializable dict.
+
+        Args:
+            detail: truthound ValidationDetail dataclass.
+
+        Returns:
+            Dictionary with non-None fields only.
+        """
+        d: dict[str, Any] = {
+            "element_count": getattr(detail, "element_count", 0),
+            "missing_count": getattr(detail, "missing_count", 0),
+            "unexpected_count": getattr(detail, "unexpected_count", 0),
+            "unexpected_percent": getattr(detail, "unexpected_percent", 0.0),
+            "unexpected_percent_nonmissing": getattr(
+                detail, "unexpected_percent_nonmissing", 0.0
+            ),
+            "observed_value": getattr(detail, "observed_value", None),
+            "partial_unexpected_list": getattr(detail, "partial_unexpected_list", None),
+            "partial_unexpected_counts": getattr(
+                detail, "partial_unexpected_counts", None
+            ),
+            "partial_unexpected_index_list": getattr(
+                detail, "partial_unexpected_index_list", None
+            ),
+        }
+        # COMPLETE-only fields (omit if None to keep payload small)
+        unexpected_list = getattr(detail, "unexpected_list", None)
+        if unexpected_list is not None:
+            d["unexpected_list"] = unexpected_list
+
+        unexpected_index_list = getattr(detail, "unexpected_index_list", None)
+        if unexpected_index_list is not None:
+            d["unexpected_index_list"] = unexpected_index_list
+
+        unexpected_rows = getattr(detail, "unexpected_rows", None)
+        if unexpected_rows is not None:
+            if hasattr(unexpected_rows, "to_dicts"):
+                d["unexpected_rows"] = unexpected_rows.to_dicts()
+            elif isinstance(unexpected_rows, list):
+                d["unexpected_rows"] = unexpected_rows
+
+        debug_query = getattr(detail, "debug_query", None)
+        if debug_query is not None:
+            d["debug_query"] = debug_query
+
+        return d
+
+    @staticmethod
+    def _convert_report_statistics(stats: Any) -> dict[str, Any]:
+        """Convert truthound ReportStatistics to dict (PHASE 2)."""
+        # Convert most_problematic_columns tuples to lists for JSON serialization
+        mpc = getattr(stats, "most_problematic_columns", [])
+        if mpc:
+            mpc = [list(item) if isinstance(item, tuple) else item for item in mpc]
+
+        return {
+            "total_validations": getattr(stats, "total_validations", 0),
+            "successful_validations": getattr(stats, "successful_validations", 0),
+            "unsuccessful_validations": getattr(stats, "unsuccessful_validations", 0),
+            "success_percent": getattr(stats, "success_percent", 0.0),
+            "issues_by_severity": dict(getattr(stats, "issues_by_severity", {})),
+            "issues_by_column": dict(getattr(stats, "issues_by_column", {})),
+            "issues_by_validator": dict(getattr(stats, "issues_by_validator", {})),
+            "issues_by_type": dict(getattr(stats, "issues_by_type", {})),
+            "most_problematic_columns": mpc,
+        }
+
+    @staticmethod
+    def _convert_exception_summary(exc: Any) -> dict[str, Any]:
+        """Convert truthound ExceptionSummary to dict (PHASE 5)."""
+        return {
+            "total_exceptions": getattr(exc, "total_exceptions", 0),
+            "total_retries": getattr(exc, "total_retries", 0),
+            "exceptions_by_type": dict(getattr(exc, "exceptions_by_type", {})),
+            "exceptions_by_category": dict(getattr(exc, "exceptions_by_category", {})),
+            "exceptions_by_validator": dict(getattr(exc, "exceptions_by_validator", {})),
+            "retryable_count": getattr(exc, "retryable_count", 0),
         }
 
     @staticmethod

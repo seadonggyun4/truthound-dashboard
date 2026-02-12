@@ -113,6 +113,18 @@ class CheckResult:
     run_time: Any = None
     _raw_result: Any = None
 
+    # PHASE 1: result_format used
+    result_format: str | None = None
+
+    # PHASE 2: report statistics
+    statistics: dict[str, Any] | None = None
+
+    # PHASE 4: execution summary
+    validator_execution_summary: dict[str, Any] | None = None
+
+    # PHASE 5: exception summary
+    exception_summary: dict[str, Any] | None = None
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
@@ -137,6 +149,18 @@ class CheckResult:
                 if hasattr(self.run_time, "isoformat")
                 else str(self.run_time)
             )
+        # PHASE 1
+        if self.result_format:
+            result["result_format"] = self.result_format
+        # PHASE 2
+        if self.statistics:
+            result["statistics"] = self.statistics
+        # PHASE 4
+        if self.validator_execution_summary:
+            result["validator_execution_summary"] = self.validator_execution_summary
+        # PHASE 5
+        if self.exception_summary:
+            result["exception_summary"] = self.exception_summary
         return result
 
     def to_validation_result(self) -> Any:
@@ -549,6 +573,13 @@ class TruthoundAdapter:
         parallel: bool = False,
         max_workers: int | None = None,
         pushdown: bool | None = None,
+        # PHASE 1: result format control
+        result_format: str | None = None,
+        include_unexpected_rows: bool = False,
+        max_unexpected_rows: int | None = None,
+        # PHASE 5: exception control
+        catch_exceptions: bool = True,
+        max_retries: int = 3,
     ) -> CheckResult:
         """Run data validation asynchronously.
 
@@ -570,6 +601,11 @@ class TruthoundAdapter:
             parallel: If True, uses DAG-based parallel execution.
             max_workers: Max threads for parallel execution.
             pushdown: Enable query pushdown for SQL sources. None uses auto-detection.
+            result_format: Result detail level (boolean_only/basic/summary/complete).
+            include_unexpected_rows: Include failure rows in SUMMARY+ results.
+            max_unexpected_rows: Max failure rows to return.
+            catch_exceptions: If True, catch validator errors gracefully.
+            max_retries: Max retry attempts for transient errors.
 
         Returns:
             CheckResult with validation results.
@@ -607,6 +643,28 @@ class TruthoundAdapter:
             kwargs["max_workers"] = max_workers
         if pushdown is not None:
             kwargs["pushdown"] = pushdown
+
+        # PHASE 1: result_format
+        if result_format is not None:
+            if include_unexpected_rows or max_unexpected_rows is not None:
+                try:
+                    from truthound.types import ResultFormat, ResultFormatConfig
+                    rf_config = ResultFormatConfig(
+                        format=ResultFormat(result_format),
+                        include_unexpected_rows=include_unexpected_rows,
+                        max_unexpected_rows=max_unexpected_rows or 1000,
+                    )
+                    kwargs["result_format"] = rf_config
+                except ImportError:
+                    kwargs["result_format"] = result_format
+            else:
+                kwargs["result_format"] = result_format
+
+        # PHASE 5: exception control
+        if not catch_exceptions:
+            kwargs["catch_exceptions"] = False
+        if max_retries != 3:
+            kwargs["max_retries"] = max_retries
 
         func = partial(th.check, **kwargs)
 
@@ -1365,46 +1423,15 @@ class TruthoundAdapter:
     def _convert_check_result(self, result: Any) -> CheckResult:
         """Convert truthound Report to CheckResult.
 
-        The truthound Report contains:
-        - issues: list[ValidationIssue]
-        - source: str
-        - row_count: int
-        - column_count: int
-        - has_issues: bool
-        - has_critical: bool
-        - has_high: bool
-
-        Also handles truthound 2.x ValidationResult format with:
-        - run_id: str
-        - run_time: datetime
-        - results: list[ValidatorResult]
-        - statistics: ResultStatistics
+        Supports truthound 1.3.0+ with PHASE 1-5 features.
+        Uses TruthoundResultConverter for the heavy lifting, then
+        constructs CheckResult with structured data.
         """
         from datetime import datetime
+        from ..converters.truthound import TruthoundResultConverter
 
-        issues = result.issues
-        severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
-
-        for issue in issues:
-            severity = issue.severity.value.lower()
-            if severity in severity_counts:
-                severity_counts[severity] += 1
-
-        converted_issues = [
-            {
-                "column": issue.column,
-                "issue_type": issue.issue_type,
-                "count": issue.count,
-                "severity": issue.severity.value,
-                "details": getattr(issue, "details", None),
-                "expected": getattr(issue, "expected", None),
-                "actual": getattr(issue, "actual", None),
-                "validator_name": getattr(issue, "validator_name", issue.issue_type),
-                "message": getattr(issue, "message", ""),
-                "sample_values": getattr(issue, "sample_values", None),
-            }
-            for issue in issues
-        ]
+        # Use the centralized converter for full PHASE 1-5 extraction
+        converted = TruthoundResultConverter.convert_check_result(result)
 
         # Extract run_id and run_time if available (truthound 2.x)
         run_id = getattr(result, "run_id", None)
@@ -1413,21 +1440,27 @@ class TruthoundAdapter:
             run_time = datetime.now()
 
         return CheckResult(
-            passed=not result.has_issues,
-            has_critical=result.has_critical,
-            has_high=result.has_high,
-            total_issues=len(issues),
-            critical_issues=severity_counts["critical"],
-            high_issues=severity_counts["high"],
-            medium_issues=severity_counts["medium"],
-            low_issues=severity_counts["low"],
-            source=result.source,
-            row_count=result.row_count,
-            column_count=result.column_count,
-            issues=converted_issues,
+            passed=converted["passed"],
+            has_critical=converted["has_critical"],
+            has_high=converted["has_high"],
+            total_issues=converted["total_issues"],
+            critical_issues=converted["critical_issues"],
+            high_issues=converted["high_issues"],
+            medium_issues=converted["medium_issues"],
+            low_issues=converted["low_issues"],
+            source=converted["source"],
+            row_count=converted["row_count"],
+            column_count=converted["column_count"],
+            issues=converted["issues"],
             run_id=run_id,
             run_time=run_time,
-            _raw_result=result,  # Store raw result for reporter integration
+            _raw_result=result,
+            # PHASE 1
+            result_format=converted.get("result_format"),
+            # PHASE 2
+            statistics=converted.get("statistics"),
+            # PHASE 5
+            exception_summary=converted.get("exception_summary"),
         )
 
     def _convert_learn_result(self, result: Any) -> LearnResult:
