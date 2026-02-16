@@ -7,7 +7,7 @@
  * Also supports custom reporters from the plugin system.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Download, FileText, FileSpreadsheet, FileJson, ChevronDown, Loader2, Globe } from 'lucide-react'
 import { useIntlayer } from '@/providers'
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,7 @@ import {
   type ReportLocale,
   type LocaleInfo,
 } from '@/api/modules/reports'
+import { listCustomReporters, type CustomReporter } from '@/api/modules/plugins'
 import { CustomReporterSection } from './CustomReporterSection'
 
 export interface ReportDownloadButtonProps {
@@ -93,15 +94,23 @@ export function ReportDownloadButton({
   const [isDownloading, setIsDownloading] = useState(false)
   const [locales, setLocales] = useState<LocaleInfo[]>(DEFAULT_LOCALES)
   const [selectedLocale, setSelectedLocale] = useState<ReportLocale>('en')
+  const [customReporters, setCustomReporters] = useState<CustomReporter[]>([])
+  const customReportersLoaded = useRef(false)
 
-  // Fetch available locales on mount
+  // Fetch available locales and custom reporters on mount (before dropdown opens)
   useEffect(() => {
     getReportLocales()
       .then(setLocales)
       .catch(() => {
-        // Use default locales on error
         setLocales(DEFAULT_LOCALES)
       })
+
+    if (!customReportersLoaded.current) {
+      customReportersLoaded.current = true
+      listCustomReporters({ is_enabled: true })
+        .then((result) => setCustomReporters(result.data))
+        .catch(() => {})
+    }
   }, [])
 
   const handleDownload = async (format: ReportFormat, theme?: ReportTheme, locale?: ReportLocale) => {
@@ -233,6 +242,7 @@ export function ReportDownloadButton({
           <CustomReporterSection
             validationId={validationId}
             disabled={disabled || isDownloading}
+            reporters={customReporters}
           />
       </DropdownMenuContent>
     </DropdownMenu>

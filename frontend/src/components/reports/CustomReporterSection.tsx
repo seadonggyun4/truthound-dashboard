@@ -41,7 +41,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { toast } from '@/hooks/use-toast'
 import { Code, Loader2, FileCode } from 'lucide-react'
 import {
-  listCustomReporters,
   downloadCustomReport,
   type CustomReporter,
 } from '@/api/modules/plugins'
@@ -49,6 +48,7 @@ import {
 interface CustomReporterSectionProps {
   validationId: string
   disabled?: boolean
+  reporters?: CustomReporter[]
 }
 
 /**
@@ -281,27 +281,19 @@ function CustomReporterConfigDialog({
 export function CustomReporterSection({
   validationId,
   disabled = false,
+  reporters: reportersProp,
 }: CustomReporterSectionProps) {
-  const [reporters, setReporters] = useState<CustomReporter[]>([])
-  const [loading, setLoading] = useState(true)
+  const [reporters, setReporters] = useState<CustomReporter[]>(reportersProp || [])
   const [selectedReporter, setSelectedReporter] = useState<CustomReporter | null>(null)
   const [selectedFormat, setSelectedFormat] = useState('')
   const [showConfigDialog, setShowConfigDialog] = useState(false)
 
-  // Load custom reporters
+  // Sync with parent prop (no async API call inside dropdown)
   useEffect(() => {
-    async function load() {
-      try {
-        const result = await listCustomReporters({ is_enabled: true })
-        setReporters(result.data)
-      } catch {
-        // Silently fail - custom reporters are optional
-      } finally {
-        setLoading(false)
-      }
+    if (reportersProp) {
+      setReporters(reportersProp)
     }
-    load()
-  }, [])
+  }, [reportersProp])
 
   const handleReporterSelect = useCallback(
     (reporter: CustomReporter, format: string) => {
@@ -333,7 +325,7 @@ export function CustomReporterSection({
   )
 
   // Don't render if no custom reporters
-  if (loading || reporters.length === 0) {
+  if (reporters.length === 0) {
     return null
   }
 

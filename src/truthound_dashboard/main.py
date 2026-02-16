@@ -339,7 +339,16 @@ def mount_static_files(app: FastAPI) -> None:
             return FileResponse(file_path)
 
         # Fall back to index.html for SPA routing
-        return FileResponse(index_file)
+        # Disable caching for index.html so browsers always get the latest version
+        # (asset files use content hashes for cache busting)
+        return FileResponse(
+            index_file,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
 
 
 # Create app instance
