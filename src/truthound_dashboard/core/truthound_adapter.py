@@ -1428,7 +1428,7 @@ class TruthoundAdapter:
         constructs CheckResult with structured data.
         """
         from datetime import datetime
-        from ..converters.truthound import TruthoundResultConverter
+        from .converters.truthound import TruthoundResultConverter
 
         # Use the centralized converter for full PHASE 1-5 extraction
         converted = TruthoundResultConverter.convert_check_result(result)
