@@ -366,14 +366,16 @@ export function CustomReporterSection({
         </DropdownMenuSub>
       ))}
 
-      <CustomReporterConfigDialog
-        open={showConfigDialog}
-        onOpenChange={setShowConfigDialog}
-        reporter={selectedReporter}
-        validationId={validationId}
-        selectedFormat={selectedFormat}
-        onSuccess={handleDownloadSuccess}
-      />
+      {showConfigDialog && (
+        <CustomReporterConfigDialog
+          open={showConfigDialog}
+          onOpenChange={setShowConfigDialog}
+          reporter={selectedReporter}
+          validationId={validationId}
+          selectedFormat={selectedFormat}
+          onSuccess={handleDownloadSuccess}
+        />
+      )}
     </>
   )
 }
