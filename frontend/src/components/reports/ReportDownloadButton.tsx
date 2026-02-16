@@ -7,7 +7,7 @@
  * Also supports custom reporters from the plugin system.
  */
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
 import { Download, FileText, FileSpreadsheet, FileJson, ChevronDown, Loader2, Globe } from 'lucide-react'
 import { useIntlayer } from '@/providers'
 import { Button } from '@/components/ui/button'
@@ -83,6 +83,45 @@ const DEFAULT_LOCALES: LocaleInfo[] = [
   { code: 'tr', english_name: 'Turkish', native_name: 'Türkçe', flag: '🇹🇷', rtl: false },
 ]
 
+/**
+ * Module-level store for async data (locales + custom reporters).
+ *
+ * By keeping this outside React state, async API responses never trigger
+ * re-renders on the DropdownMenu tree, which would cause Radix UI's
+ * DropdownMenuSub to lose its internal open state and close immediately.
+ *
+ * We use useSyncExternalStore so the component picks up the initial snapshot
+ * synchronously and only re-renders once (when data arrives before the
+ * dropdown is opened by the user).
+ */
+let _locales: LocaleInfo[] = DEFAULT_LOCALES
+let _customReporters: CustomReporter[] = []
+let _dataVersion = 0
+let _dataLoaded = false
+const _listeners = new Set<() => void>()
+
+function subscribeData(cb: () => void) {
+  _listeners.add(cb)
+  return () => { _listeners.delete(cb) }
+}
+function getDataSnapshot() { return _dataVersion }
+
+function _notifyListeners() {
+  _dataVersion++
+  _listeners.forEach((cb) => cb())
+}
+
+// Fetch once at module load time (runs before any dropdown interaction)
+if (!_dataLoaded) {
+  _dataLoaded = true
+  getReportLocales()
+    .then((data) => { _locales = data; _notifyListeners() })
+    .catch(() => {})
+  listCustomReporters({ is_enabled: true })
+    .then((result) => { _customReporters = result.data; _notifyListeners() })
+    .catch(() => {})
+}
+
 export function ReportDownloadButton({
   validationId,
   disabled = false,
@@ -92,26 +131,15 @@ export function ReportDownloadButton({
   const common = useIntlayer('common')
   const { toast } = useToast()
   const [isDownloading, setIsDownloading] = useState(false)
-  const [locales, setLocales] = useState<LocaleInfo[]>(DEFAULT_LOCALES)
   const [selectedLocale, setSelectedLocale] = useState<ReportLocale>('en')
-  const [customReporters, setCustomReporters] = useState<CustomReporter[]>([])
-  const customReportersLoaded = useRef(false)
 
-  // Fetch available locales and custom reporters on mount (before dropdown opens)
-  useEffect(() => {
-    getReportLocales()
-      .then(setLocales)
-      .catch(() => {
-        setLocales(DEFAULT_LOCALES)
-      })
+  // Subscribe to module-level data store without causing re-renders
+  // while the dropdown is open (data is loaded at module init time)
+  useSyncExternalStore(subscribeData, getDataSnapshot)
 
-    if (!customReportersLoaded.current) {
-      customReportersLoaded.current = true
-      listCustomReporters({ is_enabled: true })
-        .then((result) => setCustomReporters(result.data))
-        .catch(() => {})
-    }
-  }, [])
+  // Read current values from module-level store
+  const locales = _locales
+  const customReporters = _customReporters
 
   const handleDownload = async (format: ReportFormat, theme?: ReportTheme, locale?: ReportLocale) => {
     setIsDownloading(true)

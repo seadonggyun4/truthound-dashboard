@@ -322,6 +322,27 @@ def mount_static_files(app: FastAPI) -> None:
             name="assets",
         )
 
+    # Cache-control headers for index.html to prevent stale SPA shell
+    _no_cache_headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    }
+
+    def _serve_index() -> FileResponse:
+        """Return index.html with no-cache headers."""
+        return FileResponse(
+            index_file,
+            media_type="text/html",
+            headers=_no_cache_headers,
+        )
+
+    # Explicit root route (some ASGI path-matching treats "/" differently)
+    @app.get("/", include_in_schema=False)
+    async def serve_root() -> FileResponse:
+        """Serve SPA index at root."""
+        return _serve_index()
+
     # SPA fallback route - must be last
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str) -> FileResponse:
@@ -339,16 +360,7 @@ def mount_static_files(app: FastAPI) -> None:
             return FileResponse(file_path)
 
         # Fall back to index.html for SPA routing
-        # Disable caching for index.html so browsers always get the latest version
-        # (asset files use content hashes for cache busting)
-        return FileResponse(
-            index_file,
-            headers={
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-                "Expires": "0",
-            },
-        )
+        return _serve_index()
 
 
 # Create app instance

@@ -283,17 +283,12 @@ export function CustomReporterSection({
   disabled = false,
   reporters: reportersProp,
 }: CustomReporterSectionProps) {
-  const [reporters, setReporters] = useState<CustomReporter[]>(reportersProp || [])
+  // Use prop directly - no local state copy to avoid re-render cascades
+  // that would close Radix dropdown submenus
+  const reporters = reportersProp || []
   const [selectedReporter, setSelectedReporter] = useState<CustomReporter | null>(null)
   const [selectedFormat, setSelectedFormat] = useState('')
   const [showConfigDialog, setShowConfigDialog] = useState(false)
-
-  // Sync with parent prop (no async API call inside dropdown)
-  useEffect(() => {
-    if (reportersProp) {
-      setReporters(reportersProp)
-    }
-  }, [reportersProp])
 
   const handleReporterSelect = useCallback(
     (reporter: CustomReporter, format: string) => {
