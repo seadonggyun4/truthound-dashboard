@@ -140,10 +140,25 @@ def serve(
         )
     )
 
-    # Open browser
+    # Open browser after server is ready (not before!)
     if not no_browser:
-        webbrowser.open(url)
-        console.print("[dim]Opening browser...[/dim]")
+        import threading
+        import time
+        import urllib.request
+
+        def _open_browser_when_ready() -> None:
+            """Wait for the server to accept connections, then open browser."""
+            for _ in range(30):  # wait up to ~6 seconds
+                time.sleep(0.2)
+                try:
+                    urllib.request.urlopen(f"{url}/api/v1/sources", timeout=1)
+                    break
+                except Exception:
+                    continue
+            webbrowser.open(url)
+
+        threading.Thread(target=_open_browser_when_ready, daemon=True).start()
+        console.print("[dim]Browser will open when server is ready...[/dim]")
 
     # Configure and run server
     uvicorn.run(
