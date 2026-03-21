@@ -34,7 +34,6 @@ from .notifications.dispatcher import create_dispatcher
 from .services import ValidationService
 from .truthound_adapter import get_adapter
 from .triggers import TriggerFactory, TriggerContext, TriggerEvaluation
-from .schema_watcher import process_due_watchers
 from .tiering import process_tiering_policies
 
 logger = logging.getLogger(__name__)
@@ -78,8 +77,6 @@ class ValidationScheduler:
     DATA_CHANGE_CHECK_INTERVAL_SECONDS = 60  # 1 minute (reduced for better responsiveness)
     # Default per-schedule check interval
     DEFAULT_SCHEDULE_CHECK_INTERVAL_MINUTES = 5
-    # Schema watcher check interval (how often to check for due watchers)
-    SCHEMA_WATCHER_CHECK_INTERVAL_SECONDS = 10  # Check every 10 seconds for due watchers
     # Storage tiering check interval (default: check every hour)
     TIERING_CHECK_INTERVAL_SECONDS = 3600  # 1 hour
 
@@ -105,11 +102,9 @@ class ValidationScheduler:
         self._maintenance_cron = maintenance_cron or self.DEFAULT_MAINTENANCE_CRON
         self._maintenance_job_id = "system_maintenance"
         self._data_change_job_id = "data_change_check"
-        self._schema_watcher_job_id = "schema_watcher_check"
         self._data_change_check_interval = (
             data_change_check_interval or self.DATA_CHANGE_CHECK_INTERVAL_SECONDS
         )
-        self._schema_watcher_check_interval = self.SCHEMA_WATCHER_CHECK_INTERVAL_SECONDS
 
         # Tiering state
         self._tiering_job_id = "tiering_policy_check"
@@ -127,12 +122,6 @@ class ValidationScheduler:
         self._last_checker_run: datetime | None = None
         self._checker_running = False
 
-        # Schema watcher monitoring state
-        self._last_schema_watcher_run: datetime | None = None
-        self._schema_watcher_running = False
-        self._schema_watcher_check_count = 0
-        self._schema_watcher_processed_count = 0
-
     async def start(self) -> None:
         """Start the scheduler and load existing schedules."""
         logger.info("Starting validation scheduler")
@@ -145,9 +134,6 @@ class ValidationScheduler:
 
         # Start data change trigger checker
         self._schedule_data_change_checker()
-
-        # Start schema watcher checker
-        self._schedule_schema_watcher_checker()
 
         # Start tiering policy checker
         self._schedule_tiering_checker()
@@ -527,73 +513,6 @@ class ValidationScheduler:
             )
         except Exception as e:
             logger.error(f"Failed to schedule data change checker: {e}")
-
-    def _schedule_schema_watcher_checker(self) -> None:
-        """Schedule periodic checker for schema watchers."""
-        try:
-            self._scheduler.add_job(
-                self._check_schema_watchers,
-                trigger=IntervalTrigger(seconds=self._schema_watcher_check_interval),
-                id=self._schema_watcher_job_id,
-                name="Schema Watcher Checker",
-                replace_existing=True,
-            )
-            logger.info(
-                f"Scheduled schema watcher checker: every {self._schema_watcher_check_interval}s"
-            )
-        except Exception as e:
-            logger.error(f"Failed to schedule schema watcher checker: {e}")
-
-    async def _check_schema_watchers(self) -> None:
-        """Check all schema watchers that are due for checking.
-
-        This runs periodically to process watchers whose next_check_at
-        timestamp has passed.
-
-        Features:
-        - Processes all due watchers in order
-        - Updates watcher state after each check
-        - Creates alerts for detected changes
-        - Sends notifications if enabled
-        """
-        if self._schema_watcher_running:
-            logger.debug("Schema watcher check already running, skipping")
-            return
-
-        self._schema_watcher_running = True
-        self._last_schema_watcher_run = datetime.utcnow()
-        self._schema_watcher_check_count += 1
-        logger.debug("Checking schema watchers")
-
-        try:
-            async with get_session() as session:
-                processed = await process_due_watchers(session)
-                self._schema_watcher_processed_count += processed
-
-                if processed > 0:
-                    logger.info(f"Processed {processed} schema watcher(s)")
-        except Exception as e:
-            logger.error(f"Error checking schema watchers: {e}")
-        finally:
-            self._schema_watcher_running = False
-
-    def get_schema_watcher_status(self) -> dict[str, Any]:
-        """Get current schema watcher checker status.
-
-        Returns:
-            Dictionary with schema watcher checker stats.
-        """
-        return {
-            "enabled": True,
-            "checker_running": self._schema_watcher_running,
-            "checker_interval_seconds": self._schema_watcher_check_interval,
-            "last_checker_run_at": (
-                self._last_schema_watcher_run.isoformat()
-                if self._last_schema_watcher_run else None
-            ),
-            "total_checks": self._schema_watcher_check_count,
-            "total_processed": self._schema_watcher_processed_count,
-        }
 
     def _schedule_tiering_checker(self) -> None:
         """Schedule periodic checker for storage tiering policies."""

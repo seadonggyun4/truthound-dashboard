@@ -16,16 +16,20 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from truthound_dashboard.core import (
+    AuthService,
+    ControlPlaneContext,
     DriftService,
     HistoryService,
     MaskService,
+    OverviewService,
     PIIScanService,
     ProfileService,
     RuleService,
+    SavedViewService,
     ScheduleService,
     SchemaService,
     SourceService,
@@ -66,6 +70,32 @@ async def get_source_service(session: SessionDep) -> SourceService:
         SourceService instance.
     """
     return SourceService(session)
+
+
+async def get_auth_service(session: SessionDep) -> AuthService:
+    """Get auth service dependency."""
+    return AuthService(session)
+
+
+async def get_saved_view_service(session: SessionDep) -> SavedViewService:
+    """Get saved view service dependency."""
+    return SavedViewService(session)
+
+
+async def get_overview_service(session: SessionDep) -> OverviewService:
+    """Get overview service dependency."""
+    return OverviewService(session)
+
+
+async def get_control_plane_context(
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+    x_truthound_session: Annotated[str | None, Header(alias="X-Truthound-Session")] = None,
+) -> ControlPlaneContext:
+    """Resolve current user/workspace context."""
+    try:
+        return await auth_service.resolve_context(x_truthound_session)
+    except PermissionError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
 
 
 async def get_validation_service(session: SessionDep) -> ValidationService:

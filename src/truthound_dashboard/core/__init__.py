@@ -4,7 +4,7 @@ This module contains the core business logic for the dashboard,
 including services, adapters, backends, and domain models.
 
 Exports:
-    - Backends: BackendFactory, BaseDataQualityBackend, TruthoundBackend, MockBackend
+    - Backends: BackendFactory, BaseDataQualityBackend, TruthoundBackend
     - Interfaces: IDataQualityBackend, DataInput, ICheckResult, etc.
     - Converters: TruthoundResultConverter
     - Adapter (legacy): TruthoundAdapter, get_adapter
@@ -29,13 +29,11 @@ Note:
     - generate_suite() for automatic validation rule generation from profiles
 
 Architecture:
-    The backend abstraction layer provides loose coupling with truthound:
+    The backend abstraction layer provides loose coupling with Truthound 3.0:
 
     API Endpoints → Services → BackendFactory → IDataQualityBackend
                                                     ↓
-                                    ┌───────────────┴───────────────┐
-                                    │  TruthoundBackend  │  MockBackend  │
-                                    └───────────────────────────────┘
+                                            TruthoundBackend
 """
 
 # Backend abstraction (loose coupling with truthound)
@@ -46,7 +44,6 @@ from .backends import (
     BackendUnavailableError,
     BackendVersionError,
     BaseDataQualityBackend,
-    MockBackend,
     TruthoundBackend,
     get_backend,
     reset_backend,
@@ -74,6 +71,13 @@ from .cache import (
     get_cache_manager,
     reset_cache,
 )
+from .control_plane import (
+    AuthService,
+    ControlPlaneContext,
+    ControlPlaneService,
+    OverviewService,
+    SavedViewService,
+)
 from .encryption import (
     EncryptionError,
     Encryptor,
@@ -84,6 +88,7 @@ from .encryption import (
     get_encryptor,
     is_sensitive_field,
     mask_sensitive_value,
+    redact_config,
 )
 from .exceptions import (
     AuthenticationFailedError,
@@ -131,19 +136,6 @@ from .logging import (
     get_audit_logger,
     get_logger,
     setup_logging,
-)
-from .maintenance import (
-    CleanupResult,
-    CleanupStrategy,
-    MaintenanceConfig,
-    MaintenanceManager,
-    MaintenanceReport,
-    cleanup_notification_logs,
-    cleanup_old_profiles,
-    cleanup_old_validations,
-    get_maintenance_manager,
-    reset_maintenance_manager,
-    vacuum_database,
 )
 from .notifications import (
     NotificationDispatcher,
@@ -210,28 +202,6 @@ from .truthound_adapter import (
     get_adapter,
     reset_adapter,
 )
-# Phase 5 Services
-from .phase5 import (
-    ActivityLogger,
-    CatalogService,
-    CollaborationService,
-    GlossaryService,
-)
-# Quality Reporter
-from .quality_reporter import (
-    QualityFilter,
-    QualityLevel,
-    QualityMetrics,
-    QualityReportConfig,
-    QualityReportFormat,
-    QualityReportResult,
-    QualityReportStatus,
-    QualityReporterService,
-    QualityScore,
-    QualityScoreResult,
-    QualityStatistics,
-    QualityThresholds,
-)
 # Storage Tiering
 from .tiering import (
     TieringAdapter,
@@ -249,7 +219,6 @@ __all__ = [
     "BackendFactory",
     "BaseDataQualityBackend",
     "TruthoundBackend",
-    "MockBackend",
     "get_backend",
     "reset_backend",
     "BackendError",
@@ -315,18 +284,6 @@ __all__ = [
     "get_cache",
     "get_cache_manager",
     "reset_cache",
-    # Maintenance (Phase 4)
-    "MaintenanceManager",
-    "MaintenanceConfig",
-    "MaintenanceReport",
-    "CleanupResult",
-    "CleanupStrategy",
-    "get_maintenance_manager",
-    "reset_maintenance_manager",
-    "cleanup_old_validations",
-    "cleanup_old_profiles",
-    "cleanup_notification_logs",
-    "vacuum_database",
     # Exceptions (Phase 4)
     "TruthoundDashboardError",
     "ErrorCode",
@@ -394,11 +351,6 @@ __all__ = [
     "StratifiedSamplingStrategy",
     "get_sampler",
     "reset_sampler",
-    # Phase 5 Services
-    "GlossaryService",
-    "CatalogService",
-    "CollaborationService",
-    "ActivityLogger",
     # Validation Limits (DoS Prevention)
     "ValidationLimitError",
     "DeduplicationLimits",
@@ -412,19 +364,6 @@ __all__ = [
     "clear_limits_cache",
     "validate_positive_int",
     "validate_positive_float",
-    # Quality Reporter
-    "QualityReporterService",
-    "QualityScore",
-    "QualityScoreResult",
-    "QualityMetrics",
-    "QualityStatistics",
-    "QualityFilter",
-    "QualityReportConfig",
-    "QualityReportResult",
-    "QualityReportFormat",
-    "QualityReportStatus",
-    "QualityLevel",
-    "QualityThresholds",
     # Storage Tiering
     "TieringAdapter",
     "TieringService",

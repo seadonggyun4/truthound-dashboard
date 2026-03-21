@@ -6,51 +6,34 @@ This module configures the main API router and includes all sub-routers.
 from fastapi import APIRouter
 
 from . import (
-    # Phase 1-4
     alerts,
+    anomaly,
+    control_plane,
     drift,
-    drift_monitor,
+    enterprise_sampling,
     health,
     history,
-    maintenance,
+    lineage,
     mask,
     notifications,
     notifications_advanced,
+    observability,
+    plugins,
     profile,
-    quality_reporter,
     reports,
+    rule_suggestions,
     rules,
     scan,
     schedules,
+    schema_evolution,
     schemas,
     sources,
+    tiering,
     triggers,
     validations,
     validators,
     versioning,
     websocket,
-    # Phase 5
-    catalog,
-    collaboration,
-    glossary,
-    # Schema Evolution & Rule Suggestions
-    rule_suggestions,
-    schema_evolution,
-    schema_watcher,
-    # Phase 9: Plugin System
-    plugins,
-    # Phase 10: ML & Lineage
-    anomaly,
-    lineage,
-    model_monitoring,
-    # Cross-Feature Integration
-    cross_alerts,
-    # Storage Tiering (truthound 1.2.10+)
-    tiering,
-    # Enterprise Sampling (truthound 1.2.10+)
-    enterprise_sampling,
-    # Observability (truthound store observability)
-    observability,
 )
 
 api_router = APIRouter()
@@ -59,6 +42,11 @@ api_router = APIRouter()
 api_router.include_router(
     health.router,
     tags=["health"],
+)
+
+api_router.include_router(
+    control_plane.router,
+    tags=["control-plane"],
 )
 
 # Source management
@@ -99,22 +87,14 @@ api_router.include_router(
     tags=["profiling"],
 )
 
-# History endpoints (Phase 2)
 api_router.include_router(
     history.router,
     tags=["history"],
 )
 
-# Drift detection endpoints (Phase 2)
 api_router.include_router(
     drift.router,
     tags=["drift"],
-)
-
-# Drift monitoring endpoints
-api_router.include_router(
-    drift_monitor.router,
-    tags=["drift-monitor"],
 )
 
 # PII scan endpoints
@@ -130,45 +110,15 @@ api_router.include_router(
     tags=["masks"],
 )
 
-# Schedule management endpoints (Phase 2)
 api_router.include_router(
     schedules.router,
     tags=["schedules"],
 )
 
-# Notification management endpoints (Phase 3)
 api_router.include_router(
     notifications.router,
     tags=["notifications"],
 )
-
-# =============================================================================
-# Phase 5: Business Glossary & Data Catalog
-# =============================================================================
-
-# Glossary management endpoints
-api_router.include_router(
-    glossary.router,
-    prefix="/glossary",
-    tags=["glossary"],
-)
-
-# Catalog management endpoints
-api_router.include_router(
-    catalog.router,
-    prefix="/catalog",
-    tags=["catalog"],
-)
-
-# Collaboration endpoints (comments, activities)
-api_router.include_router(
-    collaboration.router,
-    tags=["collaboration"],
-)
-
-# =============================================================================
-# Phase 4: Reports & Maintenance & Versioning
-# =============================================================================
 
 # Report generation endpoints
 api_router.include_router(
@@ -177,169 +127,64 @@ api_router.include_router(
     tags=["reports"],
 )
 
-# Maintenance and retention policy endpoints
-api_router.include_router(
-    maintenance.router,
-    prefix="/maintenance",
-    tags=["maintenance"],
-)
-
 # Versioning endpoints
 api_router.include_router(
     versioning.router,
     tags=["versioning"],
 )
 
-# =============================================================================
-# Schema Evolution & Rule Suggestions
-# =============================================================================
-
-# Schema evolution endpoints
 api_router.include_router(
     schema_evolution.router,
     tags=["schema-evolution"],
 )
 
-# Rule suggestion endpoints
 api_router.include_router(
     rule_suggestions.router,
     tags=["rule-suggestions"],
 )
 
-# Rule suggestion presets endpoint
 api_router.include_router(
     rule_suggestions.presets_router,
     tags=["rule-suggestions"],
 )
-
-# =============================================================================
-# Phase 14: Advanced Notifications
-# =============================================================================
-
-# Advanced notification endpoints (routing, deduplication, throttling, escalation)
 api_router.include_router(
     notifications_advanced.router,
     tags=["notifications-advanced"],
 )
-
-# =============================================================================
-# Phase 10: ML & Lineage
-# =============================================================================
-
-# Data lineage endpoints
 api_router.include_router(
     lineage.router,
     prefix="/lineage",
     tags=["lineage"],
 )
 
-# Anomaly detection endpoints
 api_router.include_router(
     anomaly.router,
     tags=["anomaly"],
 )
-
-# ML Model Monitoring endpoints
-api_router.include_router(
-    model_monitoring.router,
-    tags=["model-monitoring"],
-)
-
-# =============================================================================
-# Unified Alerts
-# =============================================================================
-
-# Unified alerts aggregation endpoints
 api_router.include_router(
     alerts.router,
     tags=["alerts"],
 )
-
-# =============================================================================
-# Cross-Feature Integration
-# =============================================================================
-
-# Cross-alert correlation endpoints (anomaly + drift)
-api_router.include_router(
-    cross_alerts.router,
-    tags=["cross-alerts"],
-)
-
-# =============================================================================
-# Trigger Monitoring & Webhooks
-# =============================================================================
-
-# Trigger monitoring and webhook endpoints
 api_router.include_router(
     triggers.router,
     tags=["triggers"],
 )
-
-# =============================================================================
-# WebSocket Real-time Updates
-# =============================================================================
-
-# WebSocket endpoints for real-time updates
 api_router.include_router(
     websocket.router,
     tags=["websocket"],
 )
-
-# =============================================================================
-# Phase 9: Plugin System
-# =============================================================================
-
-# Plugin marketplace and custom validators/reporters
 api_router.include_router(
     plugins.router,
     tags=["plugins"],
 )
-
-# =============================================================================
-# Storage Tiering (truthound 1.2.10+)
-# =============================================================================
-
-# Storage tiering endpoints (tiers, policies, configs, migrations)
 api_router.include_router(
     tiering.router,
     tags=["tiering"],
 )
-
-# =============================================================================
-# Quality Reporter (truthound 1.2.10+)
-# =============================================================================
-
-# Quality scoring and reporting endpoints
-api_router.include_router(
-    quality_reporter.router,
-    tags=["quality-reporter"],
-)
-
-# =============================================================================
-# Schema Watcher (truthound 1.2.10+)
-# =============================================================================
-
-# Schema watcher endpoints for continuous schema monitoring
-api_router.include_router(
-    schema_watcher.router,
-    tags=["schema-watcher"],
-)
-
-# =============================================================================
-# Enterprise Sampling (truthound 1.2.10+)
-# =============================================================================
-
-# Enterprise sampling endpoints (block, multi-stage, column-aware, progressive)
 api_router.include_router(
     enterprise_sampling.router,
     tags=["enterprise-sampling"],
 )
-
-# =============================================================================
-# Observability (truthound store observability)
-# =============================================================================
-
-# Observability endpoints (audit, metrics, tracing)
 api_router.include_router(
     observability.router,
     prefix="/observability",

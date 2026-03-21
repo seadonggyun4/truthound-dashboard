@@ -478,10 +478,6 @@ class IDataQualityBackend(Protocol):
                 import truthound as th
                 result = th.check(data, **kwargs)
                 return convert_to_check_result(result)
-
-        class MockBackend(IDataQualityBackend):
-            async def check(self, data, **kwargs) -> ICheckResult:
-                return MockCheckResult(passed=True, issues=[])
     """
 
     def is_available(self) -> bool:

@@ -4,9 +4,9 @@ This module provides the concrete implementation of the data quality
 backend using the truthound library. All truthound imports are isolated
 here with lazy loading for better independence.
 
-Updated for truthound 2.x API:
-- Uses truthound.datasources.get_datasource() for auto-detection
-- Supports both old and new import paths for backward compatibility
+Updated for Truthound 3.0:
+- Uses namespace imports for advanced subsystems
+- Passes DataSource objects directly through the public API
 - Uses DataSourceCapability for feature detection
 """
 
@@ -105,8 +105,8 @@ class TruthoundBackend(BaseDataQualityBackend):
     def _resolve_data_input(self, data: DataInput) -> Any:
         """Resolve DataInput to a format truthound can process.
 
-        Truthound 2.x accepts DataSource objects directly, so we try to
-        pass them through. For backward compatibility, we also support
+        Truthound 3.0 accepts DataSource objects directly, so we try to
+        pass them through. For compatibility, we also support
         extracting LazyFrames from DataSource objects.
 
         Args:
@@ -118,10 +118,10 @@ class TruthoundBackend(BaseDataQualityBackend):
         if isinstance(data, str):
             return data
 
-        # Check if it's a truthound DataSource (new API)
+        # Check if it's a truthound DataSource
         # These should be passed directly to truthound functions
         if hasattr(data, "capabilities"):
-            # It's likely a truthound 2.x DataSource
+            # It's likely a Truthound DataSource
             return data
 
         # Check if it's a DataSource with to_polars_lazyframe method (legacy)
@@ -169,7 +169,7 @@ class TruthoundBackend(BaseDataQualityBackend):
     ) -> CheckResult:
         """Run data validation using truthound.
 
-        Updated for truthound 2.x API:
+        Updated for Truthound 3.0:
         - Supports passing DataSource objects directly via 'source' parameter
         - Falls back to 'data' parameter for file paths and DataFrames
 
@@ -197,10 +197,10 @@ class TruthoundBackend(BaseDataQualityBackend):
         # Build kwargs
         kwargs: dict[str, Any] = {}
 
-        # Truthound 2.x prefers 'source' for DataSource objects
+        # Truthound 3.0 prefers 'source' for DataSource objects
         # but also accepts 'data' for backward compatibility
         if hasattr(resolved_data, "capabilities"):
-            # It's a truthound 2.x DataSource, use 'source' parameter
+            # It's a Truthound DataSource, use 'source' parameter
             kwargs["source"] = resolved_data
 
             # Auto-enable pushdown if source supports it and not explicitly set
@@ -368,7 +368,9 @@ class TruthoundBackend(BaseDataQualityBackend):
             kwargs["sample_size"] = sample_size
 
         try:
-            func = partial(th.compare, resolved_baseline, resolved_current, **kwargs)
+            from truthound.drift import compare
+
+            func = partial(compare, resolved_baseline, resolved_current, **kwargs)
             result = await self._run_in_executor(func)
             return self._convert_compare_result(result)
         except Exception as e:
@@ -492,8 +494,7 @@ class TruthoundBackend(BaseDataQualityBackend):
         Returns:
             GenerateSuiteResult with generated rules.
         """
-        from truthound.profiler import generate_suite
-        from truthound.profiler.generators import Strictness
+        from truthound.profiler import Strictness, generate_suite
 
         strictness_map = {
             "loose": Strictness.LOOSE,

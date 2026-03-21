@@ -167,8 +167,10 @@ class TruthoundCheckpointAdapter:
         }
         status = status_map.get(status_str.lower(), CheckpointStatus.ERROR)
 
-        # Extract validation result
-        validation_result = getattr(th_result, "validation_result", None)
+        # Truthound 3.0 exposes the raw run and the normalized view separately.
+        validation_run = getattr(th_result, "validation_run", None)
+        validation_view = getattr(th_result, "validation_view", None)
+        validation_result = validation_view or validation_run
 
         # Build checkpoint result
         result = CheckpointResult(
@@ -186,13 +188,34 @@ class TruthoundCheckpointAdapter:
         if validation_result:
             result.row_count = getattr(validation_result, "row_count", 0)
             result.column_count = getattr(validation_result, "column_count", 0)
-            result.issue_count = getattr(validation_result, "total_issues", 0)
-            result.critical_count = getattr(validation_result, "critical_issues", 0)
-            result.high_count = getattr(validation_result, "high_issues", 0)
-            result.medium_count = getattr(validation_result, "medium_issues", 0)
-            result.low_count = getattr(validation_result, "low_issues", 0)
-            result.has_critical = getattr(validation_result, "has_critical", False)
-            result.has_high = getattr(validation_result, "has_high", False)
+            statistics = getattr(validation_result, "statistics", None)
+            result.issue_count = (
+                getattr(statistics, "total_issues", 0)
+                if statistics is not None
+                else len(getattr(validation_result, "issues", []))
+            )
+            result.critical_count = (
+                getattr(statistics, "critical_issues", 0)
+                if statistics is not None
+                else 0
+            )
+            result.high_count = (
+                getattr(statistics, "high_issues", 0)
+                if statistics is not None
+                else 0
+            )
+            result.medium_count = (
+                getattr(statistics, "medium_issues", 0)
+                if statistics is not None
+                else 0
+            )
+            result.low_count = (
+                getattr(statistics, "low_issues", 0)
+                if statistics is not None
+                else 0
+            )
+            result.has_critical = result.critical_count > 0
+            result.has_high = result.high_count > 0
             result.issues = getattr(validation_result, "issues", [])
 
         # Convert action results

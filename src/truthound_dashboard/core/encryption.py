@@ -407,3 +407,28 @@ def mask_sensitive_value(value: str, visible_chars: int = 4) -> str:
     if len(value) <= visible_chars:
         return "***"
     return "***" + value[-visible_chars:]
+
+
+def redact_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Redact sensitive fields for API responses.
+
+    Preserves non-sensitive fields and masks encrypted/plain secret values.
+    """
+    redacted: dict[str, Any] = {}
+    for key, value in config.items():
+        if isinstance(value, dict):
+            if "_encrypted" in value:
+                redacted[key] = {
+                    "_redacted": True,
+                    "value": mask_sensitive_value(str(value["_encrypted"])),
+                }
+            else:
+                redacted[key] = redact_config(value)
+        elif isinstance(value, str) and value and is_sensitive_field(key):
+            redacted[key] = {
+                "_redacted": True,
+                "value": mask_sensitive_value(value),
+            }
+        else:
+            redacted[key] = value
+    return redacted

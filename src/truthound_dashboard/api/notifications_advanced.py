@@ -56,7 +56,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..api.deps import get_session
+from ..api.deps import get_control_plane_context, get_session
 from .websocket import notify_incident_state_changed
 from ..core.notifications.metrics.collectors import (
     DeduplicationMetrics,
@@ -445,7 +445,7 @@ def _validate_rule_config_on_save(
             detail={
                 "message": "Invalid rule configuration",
                 "errors": error_details,
-                "validation_result": {
+                "validation_summary": {
                     "rule_count": result.rule_count,
                     "max_depth": result.max_depth,
                     "circular_paths": result.circular_paths,
@@ -1420,6 +1420,7 @@ async def acknowledge_incident(
     request: AcknowledgeRequest,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
+    context=Depends(get_control_plane_context),
 ) -> EscalationIncidentResponse:
     """Acknowledge an escalation incident."""
     result = await session.execute(
@@ -1438,14 +1439,15 @@ async def acknowledge_incident(
 
     # Record state transition
     old_state = incident.state
+    actor = context.user.display_name or context.user.email
     incident.state = EscalationStateEnum.ACKNOWLEDGED.value
-    incident.acknowledged_by = request.actor
+    incident.acknowledged_by = actor
     incident.acknowledged_at = datetime.utcnow()
     incident.add_event(
         from_state=old_state,
         to_state=EscalationStateEnum.ACKNOWLEDGED.value,
-        actor=request.actor,
-        message=request.message or f"Acknowledged by {request.actor}",
+        actor=actor,
+        message=request.message or f"Acknowledged by {actor}",
     )
 
     await session.commit()
@@ -1460,8 +1462,8 @@ async def acknowledge_incident(
         from_state=old_state,
         to_state=EscalationStateEnum.ACKNOWLEDGED.value,
         current_level=incident.current_level,
-        actor=request.actor,
-        message=request.message or f"Acknowledged by {request.actor}",
+        actor=actor,
+        message=request.message or f"Acknowledged by {actor}",
     )
 
     return _escalation_incident_to_response(incident)
@@ -1473,6 +1475,7 @@ async def resolve_incident(
     request: ResolveRequest,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
+    context=Depends(get_control_plane_context),
 ) -> EscalationIncidentResponse:
     """Resolve an escalation incident."""
     result = await session.execute(
@@ -1488,17 +1491,17 @@ async def resolve_incident(
 
     # Record state transition
     old_state = incident.state
+    actor = context.user.display_name or context.user.email
     incident.state = EscalationStateEnum.RESOLVED.value
-    incident.resolved_by = request.actor
+    incident.resolved_by = actor
     incident.resolved_at = datetime.utcnow()
     incident.next_escalation_at = None
 
-    actor_msg = request.actor or "system"
     incident.add_event(
         from_state=old_state,
         to_state=EscalationStateEnum.RESOLVED.value,
-        actor=request.actor,
-        message=request.message or f"Resolved by {actor_msg}",
+        actor=actor,
+        message=request.message or f"Resolved by {actor}",
     )
 
     await session.commit()
@@ -1513,8 +1516,8 @@ async def resolve_incident(
         from_state=old_state,
         to_state=EscalationStateEnum.RESOLVED.value,
         current_level=incident.current_level,
-        actor=request.actor,
-        message=request.message or f"Resolved by {actor_msg}",
+        actor=actor,
+        message=request.message or f"Resolved by {actor}",
     )
 
     return _escalation_incident_to_response(incident)
@@ -2450,4 +2453,3 @@ async def validate_jinja2_template(
             "error_line": error_line,
             "rendered_output": None,
         }
-

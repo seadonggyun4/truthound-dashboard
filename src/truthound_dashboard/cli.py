@@ -32,7 +32,7 @@ from truthound_dashboard import __version__
 
 app = typer.Typer(
     name="truthound-dashboard",
-    help="Open-source data quality dashboard - GX Cloud alternative",
+    help="Operational dashboard for Truthound 3.0",
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
@@ -59,7 +59,7 @@ def main(
         ),
     ] = None,
 ) -> None:
-    """Truthound Dashboard - Open-source data quality monitoring."""
+    """Truthound Dashboard for Truthound 3.0 operations."""
     pass
 
 

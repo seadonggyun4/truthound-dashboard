@@ -50,6 +50,7 @@ from .datasource_factory import (
     create_datasource,
     get_source_path_or_datasource,
 )
+from .encryption import decrypt_config, encrypt_config, is_sensitive_field
 from .truthound_adapter import (
     CheckResult,
     DataInput,
@@ -63,6 +64,15 @@ from .truthound_adapter import (
 logger = logging.getLogger(__name__)
 
 
+def _has_sensitive_config(config: dict[str, Any]) -> bool:
+    for key, value in config.items():
+        if isinstance(value, dict) and _has_sensitive_config(value):
+            return True
+        if isinstance(value, str) and value and is_sensitive_field(key):
+            return True
+    return False
+
+
 class SourceRepository(BaseRepository[Source]):
     """Repository for Source model operations."""
 
@@ -73,6 +83,7 @@ class SourceRepository(BaseRepository[Source]):
         *,
         offset: int = 0,
         limit: int = 100,
+        workspace_id: str | None = None,
     ) -> Sequence[Source]:
         """Get active sources only.
 
@@ -83,13 +94,12 @@ class SourceRepository(BaseRepository[Source]):
         Returns:
             Sequence of active sources.
         """
-        return await self.list(
-            offset=offset,
-            limit=limit,
-            filters=[Source.is_active],
-        )
+        filters = [Source.is_active]
+        if workspace_id is not None:
+            filters.append(and_(Source.workspace_id == workspace_id))
+        return await self.list(offset=offset, limit=limit, filters=filters)
 
-    async def get_by_name(self, name: str) -> Source | None:
+    async def get_by_name(self, name: str, workspace_id: str | None = None) -> Source | None:
         """Get source by name.
 
         Args:
@@ -98,7 +108,10 @@ class SourceRepository(BaseRepository[Source]):
         Returns:
             Source or None if not found.
         """
-        result = await self.session.execute(select(Source).where(Source.name == name))
+        query = select(Source).where(Source.name == name)
+        if workspace_id is not None:
+            query = query.where(Source.workspace_id == workspace_id)
+        result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
 
@@ -121,7 +134,7 @@ def get_data_input_from_source(source: Source) -> DataInput:
         ValueError: If source configuration is invalid.
     """
     source_type = source.type.lower()
-    config = source.config or {}
+    config = decrypt_config(source.config or {})
 
     # For file sources, return path directly
     if SourceType.is_file_type(source_type):
@@ -157,7 +170,7 @@ async def get_async_data_input_from_source(source: Source) -> DataInput:
     from .datasource_factory import create_datasource_async
 
     source_type = source.type.lower()
-    config = source.config or {}
+    config = decrypt_config(source.config or {})
 
     if not SourceType.is_async_type(source_type):
         raise ValueError(f"Source type '{source_type}' doesn't require async creation")
@@ -360,9 +373,14 @@ class SourceService:
         self.schema_repo = SchemaRepository(session)
         self.validation_repo = ValidationRepository(session)
 
-    async def get_by_id(self, id: str) -> Source | None:
+    async def get_by_id(self, id: str, *, workspace_id: str | None = None) -> Source | None:
         """Get source by ID."""
-        return await self.repository.get_by_id(id)
+        if workspace_id is None:
+            return await self.repository.get_by_id(id)
+        result = await self.session.execute(
+            select(Source).where(Source.id == id).where(Source.workspace_id == workspace_id)
+        )
+        return result.scalar_one_or_none()
 
     async def list(
         self,
@@ -370,6 +388,7 @@ class SourceService:
         offset: int = 0,
         limit: int = 100,
         active_only: bool = True,
+        workspace_id: str | None = None,
     ) -> Sequence[Source]:
         """List sources.
 
@@ -382,10 +401,15 @@ class SourceService:
             Sequence of sources.
         """
         if active_only:
-            return await self.repository.get_active(offset=offset, limit=limit)
-        return await self.repository.list(offset=offset, limit=limit)
+            return await self.repository.get_active(
+                offset=offset,
+                limit=limit,
+                workspace_id=workspace_id,
+            )
+        filters = [Source.workspace_id == workspace_id] if workspace_id is not None else None
+        return await self.repository.list(offset=offset, limit=limit, filters=filters)
 
-    async def count(self, *, active_only: bool = True) -> int:
+    async def count(self, *, active_only: bool = True, workspace_id: str | None = None) -> int:
         """Count sources.
 
         Args:
@@ -394,9 +418,12 @@ class SourceService:
         Returns:
             Total count of sources.
         """
+        filters = []
         if active_only:
-            return await self.repository.count(filters=[Source.is_active == True])
-        return await self.repository.count()
+            filters.append(Source.is_active == True)
+        if workspace_id is not None:
+            filters.append(Source.workspace_id == workspace_id)
+        return await self.repository.count(filters=filters or None)
 
     async def create(
         self,
@@ -405,6 +432,8 @@ class SourceService:
         type: str,
         config: dict[str, Any],
         description: str | None = None,
+        workspace_id: str | None = None,
+        environment: str = "production",
     ) -> Source:
         """Create new source.
 
@@ -420,7 +449,10 @@ class SourceService:
         return await self.repository.create(
             name=name,
             type=type,
-            config=config,
+            workspace_id=workspace_id,
+            environment=environment,
+            config=encrypt_config(config),
+            credential_updated_at=datetime.utcnow() if _has_sensitive_config(config) else None,
             description=description,
         )
 
@@ -432,6 +464,8 @@ class SourceService:
         config: dict[str, Any] | None = None,
         description: str | None = None,
         is_active: bool | None = None,
+        environment: str | None = None,
+        workspace_id: str | None = None,
     ) -> Source | None:
         """Update source.
 
@@ -445,20 +479,47 @@ class SourceService:
         Returns:
             Updated source or None.
         """
-        update_data = {}
+        source = await self.get_by_id(id, workspace_id=workspace_id)
+        if source is None:
+            return None
+
         if name is not None:
-            update_data["name"] = name
+            source.name = name
         if config is not None:
-            update_data["config"] = config
+            source.config = encrypt_config(config)
+            source.config_version = (source.config_version or 0) + 1
+            if _has_sensitive_config(config):
+                source.credential_updated_at = datetime.utcnow()
         if description is not None:
-            update_data["description"] = description
+            source.description = description
         if is_active is not None:
-            update_data["is_active"] = is_active
+            source.is_active = is_active
+        if environment is not None:
+            source.environment = environment
 
-        if not update_data:
-            return await self.repository.get_by_id(id)
+        await self.session.flush()
+        await self.session.refresh(source)
+        return source
 
-        return await self.repository.update(id, **update_data)
+    async def rotate_credentials(
+        self,
+        id: str,
+        *,
+        credentials: dict[str, Any],
+        workspace_id: str | None = None,
+    ) -> Source | None:
+        """Rotate only credential values while preserving other config."""
+        source = await self.get_by_id(id, workspace_id=workspace_id)
+        if source is None:
+            return None
+        current_config = decrypt_config(source.config or {})
+        merged = {**current_config, **credentials}
+        source.config = encrypt_config(merged)
+        source.config_version = (source.config_version or 0) + 1
+        source.credential_updated_at = datetime.utcnow()
+        await self.session.flush()
+        await self.session.refresh(source)
+        return source
 
     async def delete(self, id: str) -> bool:
         """Delete source and related data.
@@ -505,7 +566,6 @@ class ValidationService:
     """Service for running and managing validations.
 
     Handles validation execution, result storage, and history.
-    Supports both built-in truthound validators and custom validators.
 
     Supports various data backends through truthound's DataSource abstraction:
     - File: CSV, Parquet, JSON, NDJSON, JSONL
@@ -534,26 +594,24 @@ class ValidationService:
         *,
         validators: list[str] | None = None,
         validator_config: dict[str, dict[str, Any]] | None = None,
-        custom_validators: list[dict[str, Any]] | None = None,
         schema_path: str | None = None,
         auto_schema: bool = False,
         min_severity: str | None = None,
         parallel: bool = False,
         max_workers: int | None = None,
         pushdown: bool | None = None,
-        # PHASE 1: result format
+        # Result detail controls
         result_format: str | None = None,
         include_unexpected_rows: bool = False,
         max_unexpected_rows: int | None = None,
-        # PHASE 5: exception control
+        # Exception handling controls
         catch_exceptions: bool = True,
         max_retries: int = 3,
     ) -> Validation:
         """Run validation on a source.
 
         This method provides full access to truthound's th.check() parameters,
-        allowing fine-grained control over validation behavior. It also supports
-        running custom validators alongside built-in validators.
+        allowing fine-grained control over validation behavior.
 
         Supports all data source types including files, SQL databases,
         cloud data warehouses, and async sources (MongoDB, Elasticsearch, Kafka).
@@ -561,13 +619,11 @@ class ValidationService:
         Args:
             source_id: Source ID to validate.
             validators: Optional validator list. If None, all validators run.
-            validator_config: Optional per-validator configuration (truthound 2.x).
+            validator_config: Optional per-validator configuration passed through
+                the dashboard adapter layer.
                 Format: {"ValidatorName": {"param1": value1, "param2": value2}}
                 Example: {"Null": {"columns": ("email",), "mostly": 0.95},
                           "CompletenessRatio": {"column": "phone", "min_ratio": 0.98}}
-                Note: columns should be tuples, not lists, for truthound 2.x.
-            custom_validators: Optional list of custom validator configs.
-                Format: [{"validator_id": "...", "column": "...", "params": {...}}]
             schema_path: Optional schema file path.
             auto_schema: Auto-learn schema if True.
             min_severity: Minimum severity to report ("low", "medium", "high", "critical").
@@ -617,28 +673,17 @@ class ValidationService:
                 parallel=parallel,
                 max_workers=max_workers,
                 pushdown=pushdown,
-                # PHASE 1
+                # Result detail controls
                 result_format=result_format,
                 include_unexpected_rows=include_unexpected_rows,
                 max_unexpected_rows=max_unexpected_rows,
-                # PHASE 5
+                # Exception handling controls
                 catch_exceptions=catch_exceptions,
                 max_retries=max_retries,
             )
 
-            # Run custom validators if specified
-            custom_results = []
-            if custom_validators:
-                custom_results = await self._run_custom_validators(
-                    source=source,
-                    custom_validators=custom_validators,
-                    validation_id=str(validation.id),
-                )
-
-            # Update validation with combined results
-            await self._update_validation_success(
-                validation, result, custom_results=custom_results
-            )
+            # Update validation with built-in results
+            await self._update_validation_success(validation, result)
 
             # Update source last validated
             source.last_validated_at = datetime.utcnow()
@@ -651,141 +696,22 @@ class ValidationService:
         await self.session.refresh(validation)
         return validation
 
-    async def _run_custom_validators(
-        self,
-        source: Source,
-        custom_validators: list[dict[str, Any]],
-        validation_id: str,
-    ) -> list[dict[str, Any]]:
-        """Run custom validators on source data.
-
-        Args:
-            source: Data source to validate.
-            custom_validators: List of custom validator configs.
-            validation_id: Parent validation ID.
-
-        Returns:
-            List of custom validator results.
-        """
-        from truthound_dashboard.core.plugins import CustomValidatorExecutor
-        from truthound_dashboard.core.plugins.registry import plugin_registry
-        from truthound_dashboard.core.plugins.validator_executor import ValidatorContext
-
-        results = []
-        executor = CustomValidatorExecutor()
-
-        # Load source data once
-        try:
-            import polars as pl
-
-            source_path = source.source_path or ""
-            if source.type == "csv":
-                df = pl.read_csv(source_path)
-            elif source.type == "parquet":
-                df = pl.read_parquet(source_path)
-            elif source.type == "json":
-                df = pl.read_json(source_path)
-            else:
-                # Unsupported source type for custom validators
-                return results
-        except Exception:
-            return results
-
-        for cv_config in custom_validators:
-            validator_id = cv_config.get("validator_id")
-            column_name = cv_config.get("column")
-            params = cv_config.get("params", {})
-
-            if not validator_id or not column_name:
-                continue
-
-            # Get the custom validator
-            validator = await plugin_registry.get_validator(
-                self.session, validator_id=validator_id
-            )
-            if not validator or not validator.is_enabled:
-                continue
-
-            # Check column exists
-            if column_name not in df.columns:
-                results.append({
-                    "validator_id": validator_id,
-                    "validator_name": validator.name,
-                    "column": column_name,
-                    "passed": False,
-                    "error": f"Column '{column_name}' not found",
-                })
-                continue
-
-            # Create context
-            column_values = df[column_name].to_list()
-            context = ValidatorContext(
-                column_name=column_name,
-                column_values=column_values,
-                parameters=params,
-                schema={"dtype": str(df[column_name].dtype)},
-                row_count=len(column_values),
-            )
-
-            # Execute
-            try:
-                result = await executor.execute(
-                    validator=validator,
-                    context=context,
-                    session=self.session,
-                    source_id=str(source.id),
-                )
-                results.append({
-                    "validator_id": validator_id,
-                    "validator_name": validator.name,
-                    "column": column_name,
-                    "passed": result.passed,
-                    "issues": result.issues,
-                    "message": result.message,
-                    "execution_time_ms": result.execution_time_ms,
-                })
-            except Exception as e:
-                results.append({
-                    "validator_id": validator_id,
-                    "validator_name": validator.name,
-                    "column": column_name,
-                    "passed": False,
-                    "error": str(e),
-                })
-
-        return results
-
     async def _update_validation_success(
         self,
         validation: Validation,
         result: CheckResult,
-        custom_results: list[dict[str, Any]] | None = None,
     ) -> None:
         """Update validation with successful result.
 
         Args:
             validation: Validation record to update.
             result: Check result from built-in validators.
-            custom_results: Optional results from custom validators.
         """
-        # Calculate combined pass/fail status
-        builtin_passed = result.passed
-        custom_passed = True
-        custom_issues_count = 0
-
-        if custom_results:
-            for cr in custom_results:
-                if not cr.get("passed", True):
-                    custom_passed = False
-                custom_issues_count += len(cr.get("issues", []))
-
-        combined_passed = builtin_passed and custom_passed
-
-        validation.status = "success" if combined_passed else "failed"
-        validation.passed = combined_passed
+        validation.status = "success" if result.passed else "failed"
+        validation.passed = result.passed
         validation.has_critical = result.has_critical
         validation.has_high = result.has_high
-        validation.total_issues = result.total_issues + custom_issues_count
+        validation.total_issues = result.total_issues
         validation.critical_issues = result.critical_issues
         validation.high_issues = result.high_issues
         validation.medium_issues = result.medium_issues
@@ -795,10 +721,6 @@ class ValidationService:
 
         # Combine results
         combined_result = result.to_dict()
-        if custom_results:
-            combined_result["custom_validators"] = custom_results
-            combined_result["custom_validators_passed"] = custom_passed
-            combined_result["custom_issues_count"] = custom_issues_count
 
         validation.result_json = combined_result
         validation.completed_at = datetime.utcnow()

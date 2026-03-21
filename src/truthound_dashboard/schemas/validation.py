@@ -1,11 +1,9 @@
 """Validation-related Pydantic schemas.
 
-This module defines schemas for validation API operations.
-Supports truthound 1.3.0+ features including:
-- PHASE 1: ResultFormat system (boolean_only/basic/summary/complete)
-- PHASE 2: Structured validation results (ValidationDetail, ReportStatistics)
-- PHASE 4: DAG execution info (ValidatorExecutionSummary)
-- PHASE 5: Exception isolation & auto-retry (ExceptionInfo, ExceptionSummary)
+The dashboard keeps a small amount of derived summary data for UI cards, but
+the primary response contract follows Truthound 3.0's ``ValidationRunResult``
+shape: ``run_id``, ``run_time``, ``checks``, ``issues``,
+``execution_issues``, ``row_count``, ``column_count``, and ``metadata``.
 """
 
 from __future__ import annotations
@@ -24,16 +22,16 @@ ValidationStatus = Literal["pending", "running", "success", "failed", "error"]
 # Issue severity types
 IssueSeverity = Literal["critical", "high", "medium", "low"]
 
-# Result format levels (PHASE 1)
+# Result format levels
 ResultFormatLevel = Literal["boolean_only", "basic", "summary", "complete"]
 
 
 # ---------------------------------------------------------------------------
-# PHASE 2: Structured validation detail
+# Structured validation detail
 # ---------------------------------------------------------------------------
 
 class ValidationDetailResult(BaseSchema):
-    """Structured validation result detail (PHASE 2).
+    """Structured validation result detail.
 
     Maps to truthound's ValidationDetail dataclass.
     Fields are populated selectively based on the result_format level.
@@ -80,11 +78,11 @@ class ValidationDetailResult(BaseSchema):
 
 
 # ---------------------------------------------------------------------------
-# PHASE 5: Exception information
+# Exception information
 # ---------------------------------------------------------------------------
 
 class ExceptionInfoSchema(BaseSchema):
-    """Individual validation exception info (PHASE 5).
+    """Individual validation exception info.
 
     Maps to truthound's ExceptionInfo dataclass.
     """
@@ -105,7 +103,7 @@ class ExceptionInfoSchema(BaseSchema):
 
 
 # ---------------------------------------------------------------------------
-# Core: ValidationIssue (extended for PHASE 1-5)
+# Validation issues
 # ---------------------------------------------------------------------------
 
 class ValidationIssue(BaseSchema):
@@ -114,10 +112,8 @@ class ValidationIssue(BaseSchema):
     Represents one issue found during validation, mapping to
     truthound's ValidationIssue dataclass.
 
-    Extended in truthound 1.3.0+ with:
-    - result: Structured detail (PHASE 2)
-    - validator_name, success: Metadata (PHASE 2)
-    - exception_info: Error context (PHASE 5)
+    Truthound 3.0 still carries rich nested detail on each issue, including
+    structured result data and optional exception context.
     """
 
     model_config = ConfigDict(extra="ignore")
@@ -136,7 +132,6 @@ class ValidationIssue(BaseSchema):
         description="Sample problematic values",
     )
 
-    # PHASE 2: Structured result & metadata
     validator_name: str | None = Field(
         default=None, description="Validator that generated this issue"
     )
@@ -145,25 +140,41 @@ class ValidationIssue(BaseSchema):
         default=None, description="Structured detail (BASIC+ result_format)"
     )
 
-    # PHASE 5: Exception context
     exception_info: ExceptionInfoSchema | None = Field(
         default=None,
         description="Exception info if this issue was generated from a system error",
     )
 
 
-class CustomValidatorConfig(BaseSchema):
-    """Configuration for running a custom validator."""
+class ValidationCheck(BaseSchema):
+    """Canonical Truthound 3.0 per-check result."""
 
-    validator_id: str = Field(
-        ..., description="ID of the custom validator to run"
+    model_config = ConfigDict(extra="ignore")
+
+    name: str = Field(..., description="Check name")
+    category: str = Field(default="general", description="Check category")
+    success: bool = Field(default=True, description="Whether the check passed")
+    issue_count: int = Field(default=0, ge=0, description="Number of issues raised by this check")
+    issues: list[ValidationIssue] = Field(
+        default_factory=list,
+        description="Issues associated with this check",
     )
-    column: str = Field(
-        ..., description="Column to validate"
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Arbitrary Truthound check metadata",
     )
-    params: dict[str, Any] | None = Field(
-        default=None, description="Parameter values for the validator"
-    )
+
+
+class ExecutionIssue(BaseSchema):
+    """Canonical Truthound 3.0 execution issue."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    check_name: str = Field(..., description="Name of the check that failed during execution")
+    message: str = Field(..., description="Execution failure message")
+    exception_type: str | None = Field(default=None, description="Exception type when available")
+    failure_category: str | None = Field(default=None, description="Execution failure classification")
+    retry_count: int = Field(default=0, ge=0, description="Number of retry attempts")
 
 
 class ValidationRunRequest(BaseSchema):
@@ -172,13 +183,12 @@ class ValidationRunRequest(BaseSchema):
     This schema maps to truthound's th.check() parameters for maximum flexibility.
     All optional parameters default to None/False to use truthound's defaults.
 
-    Supports three modes:
-    1. Simple mode: Use `validators` list with validator names (backward compatible)
+    Supports two modes:
+    1. Simple mode: Use `validators` list with validator names
     2. Advanced mode: Use `validator_configs` for per-validator parameter configuration
-    3. Custom validators: Use `custom_validators` to include user-defined validators
     """
 
-    # Core validation options - Simple mode (backward compatible)
+    # Core validation options - Simple mode
     validators: list[str] | None = Field(
         default=None,
         description="Specific validators to run by name. If None, all validators are used.",
@@ -191,15 +201,6 @@ class ValidationRunRequest(BaseSchema):
         description=(
             "Advanced: Configure individual validators with specific parameters. "
             "Takes precedence over 'validators' list if provided."
-        ),
-    )
-
-    # Custom validators - User-defined validators
-    custom_validators: list[CustomValidatorConfig] | None = Field(
-        default=None,
-        description=(
-            "Custom validators to run alongside built-in validators. "
-            "Each config specifies the validator_id, target column, and parameters."
         ),
     )
 
@@ -236,7 +237,7 @@ class ValidationRunRequest(BaseSchema):
         description="Enable query pushdown optimization for SQL data sources. None uses auto-detection.",
     )
 
-    # PHASE 1: Result format control
+    # Result format control
     result_format: ResultFormatLevel | None = Field(
         default=None,
         description=(
@@ -258,7 +259,7 @@ class ValidationRunRequest(BaseSchema):
         description="Maximum number of failure rows to return when include_unexpected_rows=True.",
     )
 
-    # PHASE 5: Exception control
+    # Exception handling control
     catch_exceptions: bool = Field(
         default=True,
         description=(
@@ -278,14 +279,11 @@ class ValidationRunRequest(BaseSchema):
 
 
 # ---------------------------------------------------------------------------
-# PHASE 2: Report statistics
+# Derived report statistics
 # ---------------------------------------------------------------------------
 
 class ReportStatistics(BaseSchema):
-    """Aggregated validation report statistics (PHASE 2).
-
-    Maps to truthound's ReportStatistics dataclass.
-    """
+    """Aggregated validation report statistics derived from Truthound runs."""
 
     model_config = ConfigDict(extra="ignore")
 
@@ -301,18 +299,18 @@ class ReportStatistics(BaseSchema):
 
 
 # ---------------------------------------------------------------------------
-# PHASE 4: Validator execution summary
+# Execution summary
 # ---------------------------------------------------------------------------
 
 class SkippedValidatorInfo(BaseSchema):
-    """Info about a skipped validator (PHASE 4)."""
+    """Info about a skipped validator."""
 
     validator_name: str = Field(..., description="Validator name")
     reason: str | None = Field(default=None, description="Skip reason")
 
 
 class ValidatorExecutionSummary(BaseSchema):
-    """Validator execution summary from DAG execution (PHASE 4)."""
+    """Validator execution summary from canonical check results."""
 
     total_validators: int = Field(default=0, description="Total validators")
     executed: int = Field(default=0, description="Executed validators")
@@ -324,14 +322,11 @@ class ValidatorExecutionSummary(BaseSchema):
 
 
 # ---------------------------------------------------------------------------
-# PHASE 5: Exception summary
+# Exception summary
 # ---------------------------------------------------------------------------
 
 class ExceptionSummarySchema(BaseSchema):
-    """Session-level exception summary (PHASE 5).
-
-    Maps to truthound's ExceptionSummary dataclass.
-    """
+    """Session-level exception summary derived from execution issues."""
 
     model_config = ConfigDict(extra="ignore")
 
@@ -367,15 +362,30 @@ class ValidationResponse(IDMixin, ValidationSummary):
 
     source_id: str = Field(..., description="Source that was validated")
     status: ValidationStatus = Field(..., description="Current validation status")
+    run_id: str | None = Field(default=None, description="Truthound run identifier")
+    run_time: datetime | None = Field(default=None, description="Truthound run timestamp")
 
     # Data statistics
     row_count: int | None = Field(default=None, description="Number of rows validated")
     column_count: int | None = Field(default=None, description="Number of columns")
 
+    checks: list[ValidationCheck] = Field(
+        default_factory=list,
+        description="Canonical Truthound 3.0 per-check results",
+    )
+
     # Issues list (full details)
     issues: list[ValidationIssue] = Field(
         default_factory=list,
         description="List of validation issues",
+    )
+    execution_issues: list[ExecutionIssue] = Field(
+        default_factory=list,
+        description="Canonical Truthound 3.0 execution issues",
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Canonical Truthound 3.0 run metadata",
     )
 
     # Error info (if status is 'error')
@@ -396,48 +406,135 @@ class ValidationResponse(IDMixin, ValidationSummary):
     )
     created_at: datetime = Field(..., description="Record creation timestamp")
 
-    # PHASE 1: Result format used
     result_format: str | None = Field(
         default=None, description="Result format level used for this validation"
     )
 
-    # PHASE 2: Report statistics
     statistics: ReportStatistics | None = Field(
         default=None, description="Aggregated validation statistics"
     )
 
-    # PHASE 4: Execution summary
     validator_execution_summary: ValidatorExecutionSummary | None = Field(
         default=None, description="Validator execution summary (parallel/DAG mode)"
     )
 
-    # PHASE 5: Exception summary
     exception_summary: ExceptionSummarySchema | None = Field(
         default=None, description="Session-level exception summary"
     )
 
+    @staticmethod
+    def _build_statistics(
+        issues: list[ValidationIssue],
+        checks: list[ValidationCheck],
+    ) -> ReportStatistics | None:
+        """Derive summary statistics from canonical Truthound results."""
+        if not issues and not checks:
+            return None
+
+        issues_by_severity: dict[str, int] = {}
+        issues_by_column: dict[str, int] = {}
+        issues_by_validator: dict[str, int] = {}
+        issues_by_type: dict[str, int] = {}
+
+        for issue in issues:
+            validator = issue.validator_name or issue.issue_type or "unknown"
+            issues_by_severity[issue.severity] = issues_by_severity.get(issue.severity, 0) + 1
+            issues_by_column[issue.column] = issues_by_column.get(issue.column, 0) + 1
+            issues_by_validator[validator] = issues_by_validator.get(validator, 0) + 1
+            issues_by_type[issue.issue_type] = issues_by_type.get(issue.issue_type, 0) + 1
+
+        most_problematic_columns = [
+            [column, count]
+            for column, count in sorted(
+                issues_by_column.items(),
+                key=lambda item: item[1],
+                reverse=True,
+            )
+        ]
+
+        total_checks = len(checks)
+        successful_checks = sum(1 for check in checks if check.success)
+
+        return ReportStatistics(
+            total_validations=total_checks,
+            successful_validations=successful_checks,
+            unsuccessful_validations=total_checks - successful_checks,
+            success_percent=(successful_checks / total_checks * 100.0) if total_checks else 100.0,
+            issues_by_severity=issues_by_severity,
+            issues_by_column=issues_by_column,
+            issues_by_validator=issues_by_validator,
+            issues_by_type=issues_by_type,
+            most_problematic_columns=most_problematic_columns,
+        )
+
+    @staticmethod
+    def _build_execution_summary(
+        checks: list[ValidationCheck],
+        execution_issues: list[ExecutionIssue],
+    ) -> ValidatorExecutionSummary | None:
+        """Derive a lightweight execution summary from canonical checks."""
+        if not checks:
+            return None
+
+        return ValidatorExecutionSummary(
+            total_validators=len(checks),
+            executed=len(checks),
+            skipped=0,
+            failed=len(execution_issues),
+            skipped_details=[],
+        )
+
+    @staticmethod
+    def _build_exception_summary(
+        execution_issues: list[ExecutionIssue],
+    ) -> ExceptionSummarySchema | None:
+        """Derive exception summary from Truthound 3.0 execution issues."""
+        if not execution_issues:
+            return None
+
+        exceptions_by_type: dict[str, int] = {}
+        exceptions_by_category: dict[str, int] = {}
+        exceptions_by_validator: dict[str, int] = {}
+        total_retries = 0
+        retryable_count = 0
+
+        for issue in execution_issues:
+            exception_type = issue.exception_type or "unknown"
+            category = issue.failure_category or "unknown"
+            exceptions_by_type[exception_type] = exceptions_by_type.get(exception_type, 0) + 1
+            exceptions_by_category[category] = exceptions_by_category.get(category, 0) + 1
+            exceptions_by_validator[issue.check_name] = (
+                exceptions_by_validator.get(issue.check_name, 0) + 1
+            )
+            total_retries += issue.retry_count
+            if issue.retry_count > 0:
+                retryable_count += 1
+
+        return ExceptionSummarySchema(
+            total_exceptions=len(execution_issues),
+            total_retries=total_retries,
+            exceptions_by_type=exceptions_by_type,
+            exceptions_by_category=exceptions_by_category,
+            exceptions_by_validator=exceptions_by_validator,
+            retryable_count=retryable_count,
+        )
+
     @classmethod
     def from_model(cls, validation: Any) -> ValidationResponse:
-        """Create response from model.
-
-        Handles both legacy DB records (without PHASE 1-5 fields) and
-        new records with full structured data.
-
-        Args:
-            validation: Validation model instance.
-
-        Returns:
-            ValidationResponse instance.
-        """
+        """Create response from a stored validation model."""
         issues: list[ValidationIssue] = []
         result_json = validation.result_json or {}
+        checks: list[ValidationCheck] = []
+        execution_issues: list[ExecutionIssue] = []
+        metadata = result_json.get("metadata")
+        if not isinstance(metadata, dict):
+            metadata = {}
 
         if "issues" in result_json:
             for issue_data in result_json["issues"]:
                 try:
                     issues.append(ValidationIssue(**issue_data))
                 except Exception:
-                    # Fallback for legacy DB records missing new fields
                     issues.append(ValidationIssue(
                         column=issue_data.get("column", ""),
                         issue_type=issue_data.get("issue_type", "unknown"),
@@ -449,7 +546,31 @@ class ValidationResponse(IDMixin, ValidationSummary):
                         sample_values=issue_data.get("sample_values"),
                     ))
 
-        # PHASE 2: statistics
+        for check_data in result_json.get("checks", []):
+            try:
+                checks.append(ValidationCheck(**check_data))
+            except Exception:
+                checks.append(ValidationCheck(
+                    name=check_data.get("name", "unknown"),
+                    category=check_data.get("category", "general"),
+                    success=check_data.get("success", True),
+                    issue_count=check_data.get("issue_count", 0),
+                    issues=[],
+                    metadata=check_data.get("metadata") or {},
+                ))
+
+        for execution_issue_data in result_json.get("execution_issues", []):
+            try:
+                execution_issues.append(ExecutionIssue(**execution_issue_data))
+            except Exception:
+                execution_issues.append(ExecutionIssue(
+                    check_name=execution_issue_data.get("check_name", "unknown"),
+                    message=execution_issue_data.get("message", ""),
+                    exception_type=execution_issue_data.get("exception_type"),
+                    failure_category=execution_issue_data.get("failure_category"),
+                    retry_count=execution_issue_data.get("retry_count", 0),
+                ))
+
         statistics = None
         raw_stats = result_json.get("statistics")
         if raw_stats and isinstance(raw_stats, dict):
@@ -457,8 +578,9 @@ class ValidationResponse(IDMixin, ValidationSummary):
                 statistics = ReportStatistics(**raw_stats)
             except Exception:
                 pass
+        if statistics is None:
+            statistics = cls._build_statistics(issues, checks)
 
-        # PHASE 4: execution summary
         exec_summary = None
         raw_exec = result_json.get("validator_execution_summary")
         if raw_exec and isinstance(raw_exec, dict):
@@ -466,8 +588,9 @@ class ValidationResponse(IDMixin, ValidationSummary):
                 exec_summary = ValidatorExecutionSummary(**raw_exec)
             except Exception:
                 pass
+        if exec_summary is None:
+            exec_summary = cls._build_execution_summary(checks, execution_issues)
 
-        # PHASE 5: exception summary
         exc_summary = None
         raw_exc = result_json.get("exception_summary")
         if raw_exc and isinstance(raw_exc, dict):
@@ -475,11 +598,25 @@ class ValidationResponse(IDMixin, ValidationSummary):
                 exc_summary = ExceptionSummarySchema(**raw_exc)
             except Exception:
                 pass
+        if exc_summary is None:
+            exc_summary = cls._build_exception_summary(execution_issues)
+
+        run_time = None
+        raw_run_time = result_json.get("run_time")
+        if isinstance(raw_run_time, datetime):
+            run_time = raw_run_time
+        elif isinstance(raw_run_time, str):
+            try:
+                run_time = datetime.fromisoformat(raw_run_time)
+            except ValueError:
+                run_time = None
 
         return cls(
             id=validation.id,
             source_id=validation.source_id,
             status=validation.status,
+            run_id=result_json.get("run_id"),
+            run_time=run_time,
             passed=None if validation.status == "error" else (validation.passed or False),
             has_critical=validation.has_critical or False,
             has_high=validation.has_high or False,
@@ -490,7 +627,10 @@ class ValidationResponse(IDMixin, ValidationSummary):
             low_issues=validation.low_issues or 0,
             row_count=validation.row_count,
             column_count=validation.column_count,
+            checks=checks,
             issues=issues,
+            execution_issues=execution_issues,
+            metadata=metadata,
             error_message=validation.error_message,
             duration_ms=validation.duration_ms,
             started_at=validation.started_at,

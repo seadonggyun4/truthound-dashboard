@@ -854,14 +854,12 @@ class EscalationIncidentListResponse(ListResponseWrapper):
 class AcknowledgeRequest(BaseModel):
     """Request to acknowledge an incident."""
 
-    actor: str = Field(..., description="Who is acknowledging")
     message: str = Field(default="", description="Acknowledgement message")
 
 
 class ResolveRequest(BaseModel):
     """Request to resolve an incident."""
 
-    actor: str | None = Field(None, description="Who is resolving (null for auto)")
     message: str = Field(default="", description="Resolution message")
 
 

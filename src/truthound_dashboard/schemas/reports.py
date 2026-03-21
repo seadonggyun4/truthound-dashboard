@@ -127,7 +127,6 @@ class GeneratedReportCreate(GeneratedReportBase):
 
     validation_id: str | None = Field(default=None, description="Associated validation ID")
     source_id: str | None = Field(default=None, description="Associated source ID")
-    reporter_id: str | None = Field(default=None, description="Custom reporter ID if used")
     expires_in_days: int | None = Field(
         default=30,
         ge=1,
@@ -149,7 +148,6 @@ class GeneratedReportResponse(GeneratedReportBase, IDMixin, TimestampMixin):
 
     validation_id: str | None = None
     source_id: str | None = None
-    reporter_id: str | None = None
     status: ReportStatus = ReportStatus.PENDING
     file_path: str | None = None
     file_size: int | None = None
@@ -162,7 +160,6 @@ class GeneratedReportResponse(GeneratedReportBase, IDMixin, TimestampMixin):
 
     # Enriched fields (populated in API)
     source_name: str | None = Field(default=None, description="Source name for display")
-    reporter_name: str | None = Field(default=None, description="Reporter name for display")
     download_url: str | None = Field(default=None, description="URL to download the report")
 
     @classmethod
@@ -179,7 +176,6 @@ class GeneratedReportResponse(GeneratedReportBase, IDMixin, TimestampMixin):
             metadata=model.metadata,
             validation_id=str(model.validation_id) if model.validation_id else None,
             source_id=str(model.source_id) if model.source_id else None,
-            reporter_id=str(model.reporter_id) if model.reporter_id else None,
             status=ReportStatus(model.status.value if hasattr(model.status, "value") else model.status),
             file_path=model.file_path,
             file_size=model.file_size,
@@ -192,7 +188,6 @@ class GeneratedReportResponse(GeneratedReportBase, IDMixin, TimestampMixin):
             created_at=model.created_at,
             updated_at=model.updated_at,
             source_name=model.source.name if model.source else None,
-            reporter_name=model.reporter.display_name if model.reporter else None,
         )
 
 
@@ -214,8 +209,7 @@ class BulkReportGenerateRequest(BaseSchema):
     format: ReportFormatType = Field(default="html", description="Output format")
     theme: ReportThemeType = Field(default="professional", description="Visual theme")
     locale: str = Field(default="en", max_length=10, description="Language locale")
-    reporter_id: str | None = Field(default=None, description="Custom reporter ID")
-    config: dict[str, Any] | None = Field(default=None, description="Reporter config")
+    config: dict[str, Any] | None = Field(default=None, description="Generation config")
     save_to_history: bool = Field(
         default=True,
         description="Save reports to history",
@@ -249,7 +243,6 @@ class ReportHistoryQuery(BaseSchema):
 
     source_id: str | None = Field(default=None, description="Filter by source ID")
     validation_id: str | None = Field(default=None, description="Filter by validation ID")
-    reporter_id: str | None = Field(default=None, description="Filter by reporter ID")
     format: ReportFormatType | None = Field(default=None, description="Filter by format")
     status: ReportStatus | None = Field(default=None, description="Filter by status")
     include_expired: bool = Field(
@@ -282,4 +275,3 @@ class ReportStatistics(BaseSchema):
         description="Average generation time",
     )
     expired_count: int = Field(default=0, description="Expired reports count")
-    reporters_used: int = Field(default=0, description="Unique reporters used")

@@ -32,7 +32,7 @@ class BaseDataQualityBackend(ABC):
 
     This class defines the interface that all data quality backends
     must implement. Concrete implementations (e.g., TruthoundBackend,
-    MockBackend) inherit from this class.
+    Truthound-backed implementations inherit from this class.
 
     The backend is responsible for:
     - Running data validations (check)

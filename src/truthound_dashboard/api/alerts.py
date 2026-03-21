@@ -1,9 +1,8 @@
 """API endpoints for Unified Alerts.
 
 Provides REST API for:
-- Listing all alerts from all sources
+- Listing aggregated anomaly and validation alerts
 - Alert summary and statistics
-- Acknowledging and resolving alerts
 - Alert correlation queries
 """
 
@@ -29,6 +28,7 @@ from ..schemas.unified_alerts import (
     UnifiedAlertListResponse,
     UnifiedAlertResponse,
 )
+from .deps import get_control_plane_context
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
@@ -56,11 +56,7 @@ async def list_alerts(
 ) -> UnifiedAlertListResponse:
     """List all unified alerts from all sources.
 
-    Aggregates alerts from:
-    - Model monitoring
-    - Drift monitoring
-    - Anomaly detection
-    - Validation failures
+    Aggregates alerts from anomaly detection and validation failures.
     """
     alerts, total = await service.get_all_alerts(
         source=source,
@@ -134,12 +130,14 @@ async def get_alert(
 @router.post("/bulk/acknowledge", response_model=BulkAlertActionResponse)
 async def bulk_acknowledge_alerts(
     request: BulkAlertActionRequest,
+    context = Depends(get_control_plane_context),
     service: UnifiedAlertsService = Depends(get_service),
 ) -> BulkAlertActionResponse:
     """Bulk acknowledge multiple alerts."""
+    actor = context.user.display_name or context.user.email
     success, failed, failed_ids = await service.bulk_acknowledge(
         request.alert_ids,
-        request.actor,
+        actor,
         request.message,
     )
 
@@ -153,12 +151,14 @@ async def bulk_acknowledge_alerts(
 @router.post("/bulk/resolve", response_model=BulkAlertActionResponse)
 async def bulk_resolve_alerts(
     request: BulkAlertActionRequest,
+    context = Depends(get_control_plane_context),
     service: UnifiedAlertsService = Depends(get_service),
 ) -> BulkAlertActionResponse:
     """Bulk resolve multiple alerts."""
+    actor = context.user.display_name or context.user.email
     success, failed, failed_ids = await service.bulk_resolve(
         request.alert_ids,
-        request.actor,
+        actor,
         request.message,
     )
 
@@ -178,14 +178,15 @@ async def bulk_resolve_alerts(
 async def acknowledge_alert(
     alert_id: str,
     request: AcknowledgeAlertRequest,
+    context = Depends(get_control_plane_context),
     service: UnifiedAlertsService = Depends(get_service),
 ) -> UnifiedAlertResponse:
     """Acknowledge an alert.
 
-    Note: Not all alert types support acknowledgement.
-    Validation and anomaly alerts are derived from their source data.
+    Validation and anomaly alerts are derived from source data and are read-only.
     """
-    alert = await service.acknowledge_alert(alert_id, request.actor, request.message)
+    actor = context.user.display_name or context.user.email
+    alert = await service.acknowledge_alert(alert_id, actor, request.message)
     if not alert:
         raise HTTPException(
             status_code=404,
@@ -199,14 +200,15 @@ async def acknowledge_alert(
 async def resolve_alert(
     alert_id: str,
     request: ResolveAlertRequest,
+    context = Depends(get_control_plane_context),
     service: UnifiedAlertsService = Depends(get_service),
 ) -> UnifiedAlertResponse:
     """Resolve an alert.
 
-    Note: Not all alert types support resolution.
-    Validation and anomaly alerts are derived from their source data.
+    Validation and anomaly alerts are derived from source data and are read-only.
     """
-    alert = await service.resolve_alert(alert_id, request.actor, request.message)
+    actor = context.user.display_name or context.user.email
+    alert = await service.resolve_alert(alert_id, actor, request.message)
     if not alert:
         raise HTTPException(
             status_code=404,
@@ -229,10 +231,8 @@ async def get_alert_correlations(
 ) -> AlertCorrelationResponse:
     """Get correlated alerts for a given alert.
 
-    Finds alerts that are related by:
-    - Same source (data source, model)
-    - Similar time frame
-    - Similar severity
+    Finds alerts that are related by same source, similar time frame,
+    and similar severity.
     """
     correlations = await service.get_alert_correlations(
         alert_id,

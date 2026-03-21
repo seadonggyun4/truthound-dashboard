@@ -6,12 +6,10 @@ routers, and lifecycle management.
 The application serves both the API and the React SPA static files.
 
 Features:
-- Phase 4 production-ready components:
-  - Rate limiting and security headers
-  - Structured logging
-  - Error handling with localization
-  - Database maintenance scheduling
-  - Cache management
+- Truthound 3.0 API integration
+- Preserved dashboard UI shell with Intlayer i18n
+- Source, validation, profile, drift, privacy, checkpoint, reporter,
+  plugin, observability, and lineage workflows
 
 Example:
     # Run with uvicorn
@@ -46,7 +44,6 @@ from truthound_dashboard.api.router import api_router
 from truthound_dashboard.config import get_settings
 from truthound_dashboard.core.cache import get_cache
 from truthound_dashboard.core.logging import setup_logging
-from truthound_dashboard.core.maintenance import get_maintenance_manager
 from truthound_dashboard.core.notifications.escalation.scheduler import (
     get_escalation_scheduler,
 )
@@ -67,7 +64,6 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         - Initialize database tables
         - Start cache cleanup task
         - Start validation scheduler
-        - Schedule maintenance tasks
     - Shutdown:
         - Stop scheduler
         - Stop cache cleanup
@@ -83,7 +79,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Configure logging
     setup_logging(level=settings.log_level)
-    logger.info(f"Starting Truthound Dashboard v{__version__}")
+    logger.info(f"Starting Truthound Dashboard 3.0 v{__version__}")
 
     # Initialize database
     await init_db()
@@ -116,9 +112,6 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     await streaming_detector.start()
     logger.info("Streaming session cleanup started")
 
-    # Register maintenance tasks with scheduler
-    _register_maintenance_tasks()
-
     yield
 
     # Shutdown
@@ -144,60 +137,6 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     await cache.stop_cleanup_task()
     logger.info("Cache cleanup stopped")
 
-
-def _register_maintenance_tasks() -> None:
-    """Register maintenance tasks with the scheduler.
-
-    Schedules daily cleanup at 3 AM and weekly vacuum on Sunday at 4 AM.
-    """
-    from apscheduler.triggers.cron import CronTrigger
-
-    from truthound_dashboard.core.maintenance import (
-        cleanup_notification_logs,
-        cleanup_old_profiles,
-        cleanup_old_validations,
-        vacuum_database,
-    )
-
-    scheduler = get_scheduler()
-
-    # Daily cleanup at 3 AM
-    scheduler._scheduler.add_job(
-        cleanup_old_validations,
-        trigger=CronTrigger.from_crontab("0 3 * * *"),
-        id="maintenance_validations",
-        replace_existing=True,
-        name="Cleanup old validations",
-    )
-
-    scheduler._scheduler.add_job(
-        cleanup_old_profiles,
-        trigger=CronTrigger.from_crontab("0 3 * * *"),
-        id="maintenance_profiles",
-        replace_existing=True,
-        name="Cleanup old profiles",
-    )
-
-    scheduler._scheduler.add_job(
-        cleanup_notification_logs,
-        trigger=CronTrigger.from_crontab("0 3 * * *"),
-        id="maintenance_notification_logs",
-        replace_existing=True,
-        name="Cleanup notification logs",
-    )
-
-    # Weekly vacuum on Sunday at 4 AM
-    scheduler._scheduler.add_job(
-        vacuum_database,
-        trigger=CronTrigger.from_crontab("0 4 * * 0"),
-        id="maintenance_vacuum",
-        replace_existing=True,
-        name="Database vacuum",
-    )
-
-    logger.info("Maintenance tasks registered")
-
-
 def create_app() -> FastAPI:
     """Create and configure FastAPI application.
 
@@ -209,7 +148,7 @@ def create_app() -> FastAPI:
     """
     app = FastAPI(
         title="Truthound Dashboard",
-        description="Open-source data quality dashboard - GX Cloud alternative",
+        description="Operational dashboard for Truthound 3.0",
         version=__version__,
         lifespan=lifespan,
         docs_url="/docs",

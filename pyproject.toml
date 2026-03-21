@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "truthound-dashboard"
-version = "1.6.7"
-description = "Open-source data quality dashboard - GX Cloud alternative"
+version = "3.0.0"
+description = "Truthound Dashboard for the Truthound 3.0 validation platform"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
@@ -25,7 +25,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "truthound>=1.3.1",
+    "truthound>=3.0.0",
     "fastapi>=0.110.0",
     "uvicorn[standard]>=0.27.0",
     "sqlalchemy[asyncio]>=2.0.0",
@@ -49,6 +49,11 @@ dev = [
     "ruff>=0.1.0",
     "black>=23.0.0",
     "mypy>=1.8.0",
+]
+docs = [
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "pymdown-extensions>=10.0.0",
 ]
 translate = [
     # Translation module uses httpx which is already a core dependency

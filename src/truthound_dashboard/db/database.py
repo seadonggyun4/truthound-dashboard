@@ -159,11 +159,11 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def _run_migrations(engine: AsyncEngine) -> None:
-    """Run database migrations for schema updates.
+    """Run schema backfills and destructive legacy cleanup.
 
-    This handles backward compatibility when new columns are added.
-    SQLite doesn't support ALTER TABLE ADD COLUMN IF NOT EXISTS,
-    so we check column existence first.
+    SQLite doesn't support ``ALTER TABLE ... ADD COLUMN IF NOT EXISTS``,
+    so we check column existence first. We also drop retired tables whose
+    product surfaces were physically removed from the dashboard.
 
     Args:
         engine: Database engine to use.
@@ -174,6 +174,47 @@ async def _run_migrations(engine: AsyncEngine) -> None:
         ("schedules", "trigger_config", "JSON", None),
         ("schedules", "trigger_count", "INTEGER", 0),
         ("schedules", "last_trigger_result", "JSON", None),
+        ("sources", "workspace_id", "VARCHAR(36)", None),
+        ("sources", "environment", "VARCHAR(32)", "production"),
+        ("sources", "config_version", "INTEGER", 1),
+        ("sources", "credential_updated_at", "DATETIME", None),
+        ("generated_reports", "workspace_id", "VARCHAR(36)", None),
+        ("generated_reports", "artifact_type", "VARCHAR(50)", "report"),
+    ]
+    legacy_tables = [
+        "activities",
+        "asset_columns",
+        "asset_tags",
+        "catalog_assets",
+        "comments",
+        "cross_alert_configs",
+        "cross_alert_correlations",
+        "cross_alert_trigger_events",
+        "custom_reporters",
+        "custom_validators",
+        "drift_alerts",
+        "drift_monitor_runs",
+        "drift_monitors",
+        "glossary_categories",
+        "glossary_terms",
+        "model_alert_handlers",
+        "model_alert_rules",
+        "model_alerts",
+        "model_metrics",
+        "model_predictions",
+        "monitored_models",
+        "plugin_execution_logs",
+        "plugin_hooks",
+        "plugin_ratings",
+        "plugin_signatures",
+        "security_policies",
+        "schema_watcher_alerts",
+        "schema_watcher_runs",
+        "schema_watchers",
+        "term_history",
+        "term_relationships",
+        "trusted_signers",
+        "hot_reload_configs",
     ]
 
     async with engine.begin() as conn:
@@ -199,6 +240,143 @@ async def _run_migrations(engine: AsyncEngine) -> None:
                     logger.info(f"Migration: Added column {table}.{column}")
                 except Exception as e:
                     logger.warning(f"Migration skipped for {table}.{column}: {e}")
+
+        table_rows = await conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table'")
+        )
+        existing_tables = {row[0] for row in table_rows.fetchall()}
+
+        await conn.execute(text("PRAGMA foreign_keys=OFF"))
+        try:
+            for legacy_table in legacy_tables:
+                if legacy_table not in existing_tables:
+                    continue
+                await conn.execute(text(f"DROP TABLE IF EXISTS {legacy_table}"))
+                logger.info("Migration: Dropped legacy table %s", legacy_table)
+
+            report_columns_result = await conn.execute(text("PRAGMA table_info(generated_reports)"))
+            report_columns = [row[1] for row in report_columns_result.fetchall()]
+            if "generated_reports" in existing_tables and "reporter_id" in report_columns:
+                await conn.execute(text("ALTER TABLE generated_reports RENAME TO generated_reports_legacy"))
+                await conn.execute(
+                    text(
+                        """
+                        CREATE TABLE generated_reports (
+                            validation_id VARCHAR(36),
+                            workspace_id VARCHAR(36),
+                            source_id VARCHAR(36),
+                            id VARCHAR(36) NOT NULL,
+                            name VARCHAR(255) NOT NULL,
+                            artifact_type VARCHAR(50) NOT NULL DEFAULT 'report',
+                            description TEXT,
+                            format VARCHAR(6) NOT NULL,
+                            theme VARCHAR(50),
+                            locale VARCHAR(10) NOT NULL DEFAULT 'en',
+                            status VARCHAR(10) NOT NULL,
+                            file_path VARCHAR(500),
+                            file_size INTEGER,
+                            content_hash VARCHAR(64),
+                            config JSON,
+                            metadata JSON,
+                            error_message TEXT,
+                            generation_time_ms FLOAT,
+                            expires_at DATETIME,
+                            downloaded_count INTEGER NOT NULL DEFAULT 0,
+                            last_downloaded_at DATETIME,
+                            created_at DATETIME NOT NULL,
+                            updated_at DATETIME NOT NULL,
+                            PRIMARY KEY (id),
+                            FOREIGN KEY(validation_id) REFERENCES validations (id) ON DELETE SET NULL,
+                            FOREIGN KEY(workspace_id) REFERENCES workspaces (id) ON DELETE SET NULL,
+                            FOREIGN KEY(source_id) REFERENCES sources (id) ON DELETE SET NULL
+                        )
+                        """
+                    )
+                )
+                await conn.execute(
+                    text(
+                        """
+                        INSERT INTO generated_reports (
+                            validation_id,
+                            workspace_id,
+                            source_id,
+                            id,
+                            name,
+                            artifact_type,
+                            description,
+                            format,
+                            theme,
+                            locale,
+                            status,
+                            file_path,
+                            file_size,
+                            content_hash,
+                            config,
+                            metadata,
+                            error_message,
+                            generation_time_ms,
+                            expires_at,
+                            downloaded_count,
+                            last_downloaded_at,
+                            created_at,
+                            updated_at
+                        )
+                        SELECT
+                            validation_id,
+                            workspace_id,
+                            source_id,
+                            id,
+                            name,
+                            COALESCE(artifact_type, 'report'),
+                            description,
+                            format,
+                            theme,
+                            locale,
+                            status,
+                            file_path,
+                            file_size,
+                            content_hash,
+                            config,
+                            metadata,
+                            error_message,
+                            generation_time_ms,
+                            expires_at,
+                            downloaded_count,
+                            last_downloaded_at,
+                            created_at,
+                            updated_at
+                        FROM generated_reports_legacy
+                        """
+                    )
+                )
+                await conn.execute(text("DROP TABLE generated_reports_legacy"))
+                await conn.execute(
+                    text("CREATE INDEX idx_generated_reports_validation ON generated_reports (validation_id)")
+                )
+                await conn.execute(
+                    text("CREATE INDEX idx_generated_reports_workspace ON generated_reports (workspace_id)")
+                )
+                await conn.execute(
+                    text("CREATE INDEX idx_generated_reports_source ON generated_reports (source_id)")
+                )
+                await conn.execute(
+                    text("CREATE INDEX idx_generated_reports_artifact_type ON generated_reports (artifact_type)")
+                )
+                await conn.execute(
+                    text("CREATE INDEX idx_generated_reports_status ON generated_reports (status)")
+                )
+                await conn.execute(
+                    text("CREATE INDEX idx_generated_reports_format ON generated_reports (format)")
+                )
+                await conn.execute(
+                    text("CREATE INDEX idx_generated_reports_created ON generated_reports (created_at)")
+                )
+                await conn.execute(
+                    text("CREATE INDEX idx_generated_reports_expires ON generated_reports (expires_at)")
+                )
+                logger.info("Migration: Rebuilt generated_reports without reporter_id")
+        finally:
+            await conn.execute(text("PRAGMA foreign_keys=ON"))
 
 
 async def init_db(engine: AsyncEngine | None = None) -> None:

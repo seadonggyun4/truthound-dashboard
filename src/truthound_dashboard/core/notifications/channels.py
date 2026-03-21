@@ -51,14 +51,10 @@ from .events import (
 logger = logging.getLogger(__name__)
 
 
-def _build_checkpoint_result_mock(event: NotificationEvent | None) -> Any:
-    """Build a mock CheckpointResult for truthound actions.
-
-    truthound actions expect a CheckpointResult object. We create a
-    minimal mock that provides the necessary attributes.
-    """
+def _build_checkpoint_action_payload(event: NotificationEvent | None) -> Any:
+    """Build a lightweight checkpoint payload for Truthound actions."""
     @dataclass
-    class MockStatistics:
+    class ValidationStatisticsPayload:
         total_issues: int = 0
         critical_issues: int = 0
         high_issues: int = 0
@@ -68,42 +64,47 @@ def _build_checkpoint_result_mock(event: NotificationEvent | None) -> Any:
         pass_rate: float = 100.0
 
     @dataclass
-    class MockValidationResult:
-        statistics: MockStatistics
+    class ValidationRunPayload:
+        statistics: ValidationStatisticsPayload
         error: str | None = None
 
     @dataclass
-    class MockCheckpointResult:
+    class CheckpointActionPayload:
         checkpoint_name: str
         run_id: str
         status: str
         data_asset: str
-        validation_result: MockValidationResult
+        validation_run: ValidationRunPayload
         duration_ms: float = 0.0
 
         def summary(self) -> str:
             return f"{self.checkpoint_name}: {self.status}"
 
+        @property
+        def validation_result(self) -> ValidationRunPayload:
+            """Compatibility alias for legacy action templates."""
+            return self.validation_run
+
     if event is None:
-        return MockCheckpointResult(
+        return CheckpointActionPayload(
             checkpoint_name="test",
             run_id="test-run",
             status="success",
             data_asset="test",
-            validation_result=MockValidationResult(statistics=MockStatistics()),
+            validation_run=ValidationRunPayload(statistics=ValidationStatisticsPayload()),
         )
 
     # Extract data from event
     data = event.data or {}
 
     if isinstance(event, ValidationFailedEvent):
-        return MockCheckpointResult(
+        return CheckpointActionPayload(
             checkpoint_name=event.source_name or "validation",
             run_id=data.get("validation_id", "unknown"),
             status="failure",
             data_asset=event.source_name or "unknown",
-            validation_result=MockValidationResult(
-                statistics=MockStatistics(
+            validation_run=ValidationRunPayload(
+                statistics=ValidationStatisticsPayload(
                     total_issues=data.get("total_issues", 0),
                     critical_issues=1 if data.get("has_critical") else 0,
                     high_issues=1 if data.get("has_high") else 0,
@@ -111,31 +112,31 @@ def _build_checkpoint_result_mock(event: NotificationEvent | None) -> Any:
             ),
         )
     elif isinstance(event, DriftDetectedEvent):
-        return MockCheckpointResult(
+        return CheckpointActionPayload(
             checkpoint_name=f"drift_{event.source_name or 'unknown'}",
             run_id=data.get("comparison_id", "unknown"),
             status="warning",
             data_asset=event.source_name or "unknown",
-            validation_result=MockValidationResult(statistics=MockStatistics()),
+            validation_run=ValidationRunPayload(statistics=ValidationStatisticsPayload()),
         )
     elif isinstance(event, ScheduleFailedEvent):
-        return MockCheckpointResult(
+        return CheckpointActionPayload(
             checkpoint_name=data.get("schedule_name", "schedule"),
             run_id=data.get("run_id", "unknown"),
             status="error",
             data_asset=event.source_name or "unknown",
-            validation_result=MockValidationResult(
-                statistics=MockStatistics(),
+            validation_run=ValidationRunPayload(
+                statistics=ValidationStatisticsPayload(),
                 error=data.get("error_message"),
             ),
         )
     else:
-        return MockCheckpointResult(
+        return CheckpointActionPayload(
             checkpoint_name=event.event_type,
             run_id="dashboard-event",
             status="info",
             data_asset=event.source_name or "unknown",
-            validation_result=MockValidationResult(statistics=MockStatistics()),
+            validation_run=ValidationRunPayload(statistics=ValidationStatisticsPayload()),
         )
 
 
@@ -213,11 +214,11 @@ class SlackChannel(BaseNotificationChannel):
         """Send notification to Slack using truthound library."""
         try:
             action = self._create_action()
-            mock_result = _build_checkpoint_result_mock(event)
+            action_payload = _build_checkpoint_action_payload(event)
 
             # truthound actions are sync, run in executor
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, action.execute, mock_result)
+            await loop.run_in_executor(None, action.execute, action_payload)
             return True
         except Exception as e:
             logger.error(f"Slack notification failed: {e}")
@@ -338,10 +339,10 @@ class EmailChannel(BaseNotificationChannel):
         """Send notification via Email using truthound library."""
         try:
             action = self._create_action()
-            mock_result = _build_checkpoint_result_mock(event)
+            action_payload = _build_checkpoint_action_payload(event)
 
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, action.execute, mock_result)
+            await loop.run_in_executor(None, action.execute, action_payload)
             return True
         except Exception as e:
             logger.error(f"Email notification failed: {e}")
@@ -399,10 +400,10 @@ class TeamsChannel(BaseNotificationChannel):
         """Send notification to Teams using truthound library."""
         try:
             action = self._create_action()
-            mock_result = _build_checkpoint_result_mock(event)
+            action_payload = _build_checkpoint_action_payload(event)
 
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, action.execute, mock_result)
+            await loop.run_in_executor(None, action.execute, action_payload)
             return True
         except Exception as e:
             logger.error(f"Teams notification failed: {e}")
@@ -474,10 +475,10 @@ class DiscordChannel(BaseNotificationChannel):
         """Send notification to Discord using truthound library."""
         try:
             action = self._create_action()
-            mock_result = _build_checkpoint_result_mock(event)
+            action_payload = _build_checkpoint_action_payload(event)
 
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, action.execute, mock_result)
+            await loop.run_in_executor(None, action.execute, action_payload)
             return True
         except Exception as e:
             logger.error(f"Discord notification failed: {e}")
@@ -542,10 +543,10 @@ class TelegramChannel(BaseNotificationChannel):
         """Send notification to Telegram using truthound library."""
         try:
             action = self._create_action()
-            mock_result = _build_checkpoint_result_mock(event)
+            action_payload = _build_checkpoint_action_payload(event)
 
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, action.execute, mock_result)
+            await loop.run_in_executor(None, action.execute, action_payload)
             return True
         except Exception as e:
             logger.error(f"Telegram notification failed: {e}")
@@ -624,10 +625,10 @@ class PagerDutyChannel(BaseNotificationChannel):
         """Send notification to PagerDuty using truthound library."""
         try:
             action = self._create_action()
-            mock_result = _build_checkpoint_result_mock(event)
+            action_payload = _build_checkpoint_action_payload(event)
 
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, action.execute, mock_result)
+            await loop.run_in_executor(None, action.execute, action_payload)
             return True
         except Exception as e:
             logger.error(f"PagerDuty notification failed: {e}")
@@ -699,10 +700,10 @@ class WebhookChannel(BaseNotificationChannel):
         """Send notification via Webhook using truthound library."""
         try:
             action = self._create_action()
-            mock_result = _build_checkpoint_result_mock(event)
+            action_payload = _build_checkpoint_action_payload(event)
 
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, action.execute, mock_result)
+            await loop.run_in_executor(None, action.execute, action_payload)
             return True
         except Exception as e:
             logger.error(f"Webhook notification failed: {e}")
@@ -781,10 +782,10 @@ class OpsGenieChannel(BaseNotificationChannel):
         """Send notification to OpsGenie using truthound library."""
         try:
             action = self._create_action()
-            mock_result = _build_checkpoint_result_mock(event)
+            action_payload = _build_checkpoint_action_payload(event)
 
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, action.execute, mock_result)
+            await loop.run_in_executor(None, action.execute, action_payload)
             return True
         except Exception as e:
             logger.error(f"OpsGenie notification failed: {e}")
@@ -864,10 +865,10 @@ class GitHubChannel(BaseNotificationChannel):
         """Send notification to GitHub using truthound library."""
         try:
             action = self._create_action()
-            mock_result = _build_checkpoint_result_mock(event)
+            action_payload = _build_checkpoint_action_payload(event)
 
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, action.execute, mock_result)
+            await loop.run_in_executor(None, action.execute, action_payload)
             return True
         except Exception as e:
             logger.error(f"GitHub notification failed: {e}")

@@ -373,7 +373,6 @@ async def list_report_history(
     service: ReportHistoryServiceDep,
     source_id: Annotated[str | None, Query(description="Filter by source ID")] = None,
     validation_id: Annotated[str | None, Query(description="Filter by validation ID")] = None,
-    reporter_id: Annotated[str | None, Query(description="Filter by reporter ID")] = None,
     format: Annotated[str | None, Query(description="Filter by format")] = None,
     status: Annotated[str | None, Query(description="Filter by status")] = None,
     include_expired: Annotated[bool, Query(description="Include expired reports")] = False,
@@ -389,7 +388,6 @@ async def list_report_history(
         service: Report history service.
         source_id: Filter by source ID.
         validation_id: Filter by validation ID.
-        reporter_id: Filter by reporter ID.
         format: Filter by format (html, csv, json).
         status: Filter by status (pending, generating, completed, failed, expired).
         include_expired: Include expired reports (default: false).
@@ -405,7 +403,6 @@ async def list_report_history(
     reports, total = await service.list_reports(
         source_id=source_id,
         validation_id=validation_id,
-        reporter_id=reporter_id,
         format=format,
         status=status,
         include_expired=include_expired,
@@ -510,7 +507,6 @@ async def create_report_record(
         format=request.format,
         validation_id=request.validation_id,
         source_id=request.source_id,
-        reporter_id=request.reporter_id,
         description=request.description,
         theme=request.theme,
         locale=request.locale,
@@ -795,7 +791,6 @@ async def generate_bulk_reports(
                 format=request.format,
                 validation_id=validation_id,
                 source_id=str(validation.source_id),
-                reporter_id=request.reporter_id,
                 theme=request.theme,
                 locale=request.locale,
                 config=request.config,

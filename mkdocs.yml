@@ -1,0 +1,54 @@
+site_name: Truthound Dashboard
+site_description: Truthound 3.0 operational dashboard
+site_url: https://truthound.netlify.app/dashboard/
+
+theme:
+  name: material
+  logo: https://truthound.netlify.app/assets/truthound_icon.png
+  favicon: https://truthound.netlify.app/assets/truthound_icon.png
+  features:
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+
+nav:
+  - Overview: index.md
+  - Getting Started: getting-started.md
+  - Architecture: architecture.md
+  - 3.0 Upgrade: migration/3.0.md
+  - Guides:
+      - Sources: guides/sources.md
+      - Validations: guides/validations.md
+      - Profile: guides/profile.md
+      - Drift: guides/drift.md
+      - Privacy: guides/privacy.md
+      - Lineage: guides/lineage.md
+      - Checkpoints: guides/checkpoints.md
+      - Reports & Data Docs: guides/reports-datadocs.md
+      - Schema Evolution: guides/schema-evolution.md
+      - Profile Comparison: guides/profile-comparison.md
+      - Rule Suggestions: guides/rule-suggestions.md
+      - Notifications & Triggers: guides/notifications.md
+  - Advanced:
+      - Plugins: advanced/plugins.md
+      - Observability: advanced/observability.md
+      - Storage: advanced/storage.md
+      - Enterprise Sampling: advanced/enterprise-sampling.md
+      - Realtime: advanced/realtime.md
+      - ML: advanced/ml.md
+  - Operations:
+      - CI: operations/ci.md
+      - Deployment: operations/deployment.md
+      - Troubleshooting: operations/troubleshooting.md
+  - API Reference:
+      - Overview: api-reference/index.md

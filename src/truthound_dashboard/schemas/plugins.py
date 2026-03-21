@@ -1,12 +1,4 @@
-"""Pydantic schemas for Plugin System.
-
-This module defines schemas for plugin management including:
-- Plugin metadata and versioning
-- Custom validators
-- Custom reporters
-- Plugin marketplace
-- Security and sandboxing
-"""
+"""Pydantic schemas for the registry-only plugin surface."""
 
 from datetime import datetime
 from enum import Enum
@@ -58,30 +50,6 @@ class SecurityLevel(str, Enum):
     VERIFIED = "verified"
     UNVERIFIED = "unverified"
     SANDBOXED = "sandboxed"
-
-
-class ValidatorParamType(str, Enum):
-    """Parameter types for custom validators."""
-
-    STRING = "string"
-    INTEGER = "integer"
-    FLOAT = "float"
-    BOOLEAN = "boolean"
-    COLUMN = "column"
-    COLUMN_LIST = "column_list"
-    SELECT = "select"
-    MULTI_SELECT = "multi_select"
-    REGEX = "regex"
-    JSON = "json"
-
-
-class ReporterOutputFormat(str, Enum):
-    """Output format for custom reporters."""
-
-    HTML = "html"
-    JSON = "json"
-    CSV = "csv"
-    CUSTOM = "custom"
 
 
 # =============================================================================
@@ -137,7 +105,7 @@ class PluginDependency(BaseSchema):
 
 
 # =============================================================================
-# Plugin Security
+# Plugin Security Metadata
 # =============================================================================
 
 
@@ -153,41 +121,6 @@ class PluginPermission(str, Enum):
     ACCESS_SECRETS = "access_secrets"
 
 
-class PluginSignature(BaseSchema):
-    """Plugin signature information for verification."""
-
-    algorithm: str = Field(default="ed25519", description="Signature algorithm")
-    public_key: str = Field(description="Public key for verification")
-    signature: str = Field(description="Signature of the plugin package")
-    signed_at: datetime = Field(description="Timestamp of signing")
-    signer_id: str | None = Field(default=None, description="ID of the signer")
-
-
-class SandboxConfig(BaseSchema):
-    """Sandbox configuration for plugin execution."""
-
-    enabled: bool = Field(default=True, description="Whether sandbox is enabled")
-    memory_limit_mb: int = Field(
-        default=256, ge=64, le=2048, description="Memory limit in MB"
-    )
-    cpu_time_limit_seconds: int = Field(
-        default=30, ge=1, le=300, description="CPU time limit in seconds"
-    )
-    network_enabled: bool = Field(
-        default=False, description="Whether network access is allowed"
-    )
-    allowed_modules: list[str] = Field(
-        default_factory=list, description="List of allowed Python modules"
-    )
-    blocked_modules: list[str] = Field(
-        default_factory=lambda: ["os", "subprocess", "sys", "shutil"],
-        description="List of blocked Python modules",
-    )
-    max_file_size_mb: int = Field(
-        default=10, ge=1, le=100, description="Max file size in MB"
-    )
-
-
 class SecurityReport(BaseSchema):
     """Security analysis report for a plugin."""
 
@@ -199,266 +132,6 @@ class SecurityReport(BaseSchema):
     permissions_required: list[PluginPermission] = Field(default_factory=list)
     signature_valid: bool = Field(default=False)
     sandbox_compatible: bool = Field(default=True)
-
-
-# =============================================================================
-# Custom Validator Plugin
-# =============================================================================
-
-
-class ValidatorParamDefinition(BaseSchema):
-    """Definition of a validator parameter."""
-
-    name: str = Field(description="Parameter name")
-    type: ValidatorParamType = Field(description="Parameter type")
-    description: str = Field(description="Parameter description")
-    required: bool = Field(default=False, description="Whether parameter is required")
-    default: Any = Field(default=None, description="Default value")
-    options: list[str] | None = Field(
-        default=None, description="Options for select/multi_select types"
-    )
-    min_value: float | None = Field(
-        default=None, description="Minimum value for numeric types"
-    )
-    max_value: float | None = Field(
-        default=None, description="Maximum value for numeric types"
-    )
-    pattern: str | None = Field(
-        default=None, description="Regex pattern for string validation"
-    )
-
-
-class CustomValidatorBase(BaseSchema):
-    """Base schema for custom validator."""
-
-    name: str = Field(max_length=100, description="Validator name")
-    display_name: str = Field(max_length=200, description="Display name for UI")
-    description: str = Field(description="Validator description")
-    category: str = Field(max_length=50, description="Validator category")
-    severity: Literal["error", "warning", "info"] = Field(
-        default="error", description="Default severity"
-    )
-    tags: list[str] = Field(default_factory=list, description="Tags for search/filter")
-    parameters: list[ValidatorParamDefinition] = Field(
-        default_factory=list, description="Validator parameters"
-    )
-    code: str = Field(description="Python code implementing the validator")
-    test_cases: list[dict[str, Any]] = Field(
-        default_factory=list, description="Test cases for validation"
-    )
-
-
-class CustomValidatorCreate(CustomValidatorBase):
-    """Schema for creating a custom validator."""
-
-    plugin_id: str | None = Field(
-        default=None, description="Associated plugin ID if part of a plugin"
-    )
-
-
-class CustomValidatorUpdate(BaseSchema):
-    """Schema for updating a custom validator."""
-
-    display_name: str | None = None
-    description: str | None = None
-    category: str | None = None
-    severity: Literal["error", "warning", "info"] | None = None
-    tags: list[str] | None = None
-    parameters: list[ValidatorParamDefinition] | None = None
-    code: str | None = None
-    test_cases: list[dict[str, Any]] | None = None
-    is_enabled: bool | None = None
-
-
-class CustomValidatorResponse(CustomValidatorBase, IDMixin, TimestampMixin):
-    """Response schema for custom validator."""
-
-    plugin_id: str | None = None
-    is_enabled: bool = True
-    is_verified: bool = False
-    usage_count: int = 0
-    last_used_at: datetime | None = None
-
-    @classmethod
-    def from_model(cls, model: Any) -> "CustomValidatorResponse":
-        return cls(
-            id=str(model.id),
-            name=model.name,
-            display_name=model.display_name,
-            description=model.description,
-            category=model.category,
-            severity=model.severity,
-            tags=model.tags or [],
-            parameters=model.parameters or [],
-            code=model.code,
-            test_cases=model.test_cases or [],
-            plugin_id=str(model.plugin_id) if model.plugin_id else None,
-            is_enabled=model.is_enabled,
-            is_verified=model.is_verified,
-            usage_count=model.usage_count,
-            last_used_at=model.last_used_at,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-        )
-
-
-class CustomValidatorListResponse(ListResponseWrapper[CustomValidatorResponse]):
-    """List response for custom validators."""
-
-    pass
-
-
-class ValidatorTestRequest(BaseSchema):
-    """Request to test a custom validator."""
-
-    code: str = Field(description="Validator code to test")
-    parameters: list[ValidatorParamDefinition] = Field(
-        default_factory=list, description="Parameter definitions"
-    )
-    test_data: dict[str, Any] = Field(description="Test data (column values)")
-    param_values: dict[str, Any] = Field(
-        default_factory=dict, description="Parameter values for test"
-    )
-
-
-class ValidatorTestResponse(BaseSchema):
-    """Response from testing a custom validator."""
-
-    success: bool
-    passed: bool | None = None
-    execution_time_ms: float
-    result: dict[str, Any] | None = None
-    error: str | None = None
-    warnings: list[str] = Field(default_factory=list)
-
-
-# =============================================================================
-# Custom Reporter Plugin
-# =============================================================================
-
-
-class ReporterFieldDefinition(BaseSchema):
-    """Definition of a reporter configuration field."""
-
-    name: str = Field(description="Field name")
-    type: str = Field(description="Field type (string, boolean, select, etc.)")
-    label: str = Field(description="Display label")
-    description: str | None = Field(default=None, description="Field description")
-    required: bool = Field(default=False)
-    default: Any = Field(default=None)
-    options: list[dict[str, str]] | None = Field(
-        default=None, description="Options for select fields"
-    )
-
-
-class CustomReporterBase(BaseSchema):
-    """Base schema for custom reporter."""
-
-    name: str = Field(max_length=100, description="Reporter name")
-    display_name: str = Field(max_length=200, description="Display name for UI")
-    description: str = Field(description="Reporter description")
-    output_formats: list[ReporterOutputFormat] = Field(
-        default_factory=lambda: [ReporterOutputFormat.HTML],
-        description="Supported output formats",
-    )
-    config_fields: list[ReporterFieldDefinition] = Field(
-        default_factory=list, description="Configuration fields"
-    )
-    template: str | None = Field(
-        default=None, description="Jinja2 template for report generation"
-    )
-    code: str | None = Field(
-        default=None, description="Python code for custom report generation"
-    )
-    preview_image_url: str | None = Field(
-        default=None, description="Preview image URL"
-    )
-
-
-class CustomReporterCreate(CustomReporterBase):
-    """Schema for creating a custom reporter."""
-
-    plugin_id: str | None = Field(default=None, description="Associated plugin ID")
-
-
-class CustomReporterUpdate(BaseSchema):
-    """Schema for updating a custom reporter."""
-
-    display_name: str | None = None
-    description: str | None = None
-    output_formats: list[ReporterOutputFormat] | None = None
-    config_fields: list[ReporterFieldDefinition] | None = None
-    template: str | None = None
-    code: str | None = None
-    preview_image_url: str | None = None
-    is_enabled: bool | None = None
-
-
-class CustomReporterResponse(CustomReporterBase, IDMixin, TimestampMixin):
-    """Response schema for custom reporter."""
-
-    plugin_id: str | None = None
-    is_enabled: bool = True
-    is_verified: bool = False
-    usage_count: int = 0
-
-    @classmethod
-    def from_model(cls, model: Any) -> "CustomReporterResponse":
-        return cls(
-            id=str(model.id),
-            name=model.name,
-            display_name=model.display_name,
-            description=model.description,
-            output_formats=model.output_formats or [ReporterOutputFormat.HTML],
-            config_fields=model.config_fields or [],
-            template=model.template,
-            code=model.code,
-            preview_image_url=model.preview_image_url,
-            plugin_id=str(model.plugin_id) if model.plugin_id else None,
-            is_enabled=model.is_enabled,
-            is_verified=model.is_verified,
-            usage_count=model.usage_count,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-        )
-
-
-class CustomReporterListResponse(ListResponseWrapper[CustomReporterResponse]):
-    """List response for custom reporters."""
-
-    pass
-
-
-class ReporterGenerateRequest(BaseSchema):
-    """Request to generate a report using a custom reporter."""
-
-    output_format: ReporterOutputFormat = Field(description="Desired output format")
-    config: dict[str, Any] = Field(
-        default_factory=dict, description="Reporter configuration"
-    )
-    # Either validation_id or data must be provided
-    validation_id: str | None = Field(
-        default=None,
-        description="Validation ID to generate report from (auto-fetches data)",
-    )
-    data: dict[str, Any] | None = Field(
-        default=None,
-        description="Data to include in report (use if not providing validation_id)",
-    )
-    source_ids: list[str] | None = Field(
-        default=None, description="Source IDs to include"
-    )
-
-
-class ReporterGenerateResponse(BaseSchema):
-    """Response from generating a report."""
-
-    success: bool
-    report_id: str | None = None
-    download_url: str | None = None
-    preview_html: str | None = None
-    error: str | None = None
-    generation_time_ms: float = 0
 
 
 # =============================================================================
@@ -519,34 +192,6 @@ class PluginBase(PluginMetadata):
     )
     changelog: str | None = Field(default=None, description="Changelog markdown")
     readme: str | None = Field(default=None, description="README markdown")
-
-
-class PluginCreate(PluginBase):
-    """Schema for creating/registering a plugin."""
-
-    package_url: str | None = Field(
-        default=None, description="URL to download plugin package"
-    )
-    signature: PluginSignature | None = Field(
-        default=None, description="Plugin signature"
-    )
-    sandbox_config: SandboxConfig | None = Field(
-        default=None, description="Sandbox configuration"
-    )
-
-
-class PluginUpdate(BaseSchema):
-    """Schema for updating a plugin."""
-
-    display_name: str | None = None
-    description: str | None = None
-    icon_url: str | None = None
-    banner_url: str | None = None
-    documentation_url: str | None = None
-    changelog: str | None = None
-    readme: str | None = None
-    is_enabled: bool | None = None
-    sandbox_config: SandboxConfig | None = None
 
 
 class PluginResponse(PluginBase, IDMixin, TimestampMixin):
@@ -746,57 +391,6 @@ class PluginUpdateCheckResponse(BaseSchema):
     changelog: str | None = None
     breaking_changes: bool = False
     release_notes: str | None = None
-
-
-class PluginRatingRequest(BaseSchema):
-    """Request to rate a plugin."""
-
-    plugin_id: str
-    rating: int = Field(ge=1, le=5, description="Rating from 1 to 5")
-    review: str | None = Field(
-        default=None, max_length=2000, description="Optional review text"
-    )
-
-
-class PluginRatingResponse(BaseSchema):
-    """Response from rating a plugin."""
-
-    success: bool
-    plugin_id: str
-    new_average_rating: float
-    total_ratings: int
-
-
-# =============================================================================
-# Plugin Execution
-# =============================================================================
-
-
-class PluginExecutionContext(BaseSchema):
-    """Context for plugin execution."""
-
-    plugin_id: str
-    execution_id: str
-    source_id: str | None = None
-    validation_id: str | None = None
-    parameters: dict[str, Any] = Field(default_factory=dict)
-    sandbox_enabled: bool = True
-    timeout_seconds: int = 30
-    memory_limit_mb: int = 256
-
-
-class PluginExecutionResult(BaseSchema):
-    """Result of plugin execution."""
-
-    execution_id: str
-    plugin_id: str
-    success: bool
-    result: Any = None
-    error: str | None = None
-    execution_time_ms: float = 0
-    memory_used_mb: float | None = None
-    warnings: list[str] = Field(default_factory=list)
-    logs: list[str] = Field(default_factory=list)
 
 
 # =============================================================================

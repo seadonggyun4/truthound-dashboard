@@ -1,13 +1,7 @@
 """Truthound result converters.
 
-This module isolates all truthound-specific result object conversions.
-It handles converting truthound's Report, Schema, TableProfile, etc.
-into dashboard-standard result dataclasses.
-
-By isolating conversions here, we can:
-- Handle truthound API changes in one place
-- Support multiple truthound versions
-- Provide graceful fallbacks for missing attributes
+This module centralizes conversion from Truthound 3.0 result objects into the
+dashboard's JSON-friendly storage and API payloads.
 """
 
 from __future__ import annotations
@@ -48,65 +42,34 @@ class TruthoundResultConverter:
 
     @staticmethod
     def convert_check_result(result: Any) -> dict[str, Any]:
-        """Convert truthound Report to CheckResult dict.
+        """Convert Truthound validation output into the dashboard payload.
 
-        Supports truthound 1.3.0+ with PHASE 1-5 features:
-        - PHASE 1: result_format level preserved
-        - PHASE 2: ValidationDetail, ReportStatistics, success flag
-        - PHASE 4: validator execution summary (via validator_results)
-        - PHASE 5: ExceptionInfo on issues, ExceptionSummary on report
-
-        Args:
-            result: Truthound Report object.
-
-        Returns:
-            Dictionary with CheckResult fields.
+        Truthound 3.0 returns ``ValidationRunResult`` with canonical fields
+        such as ``run_id``, ``run_time``, ``checks``, ``issues``,
+        ``execution_issues``, and ``metadata``. Older dashboard code expects
+        summary counters, so this converter preserves those derived fields while
+        making the canonical run contract available verbatim.
         """
         issues = getattr(result, "issues", [])
         severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
 
         converted_issues = []
         for issue in issues:
-            severity = TruthoundResultConverter.convert_severity(issue.severity)
+            converted_issue = TruthoundResultConverter._convert_issue(issue)
+            severity = converted_issue["severity"]
             if severity in severity_counts:
                 severity_counts[severity] += 1
+            converted_issues.append(converted_issue)
 
-            issue_dict: dict[str, Any] = {
-                "column": getattr(issue, "column", ""),
-                "issue_type": getattr(issue, "issue_type", "unknown"),
-                "count": getattr(issue, "count", 0),
-                "severity": severity,
-                "details": getattr(issue, "details", None),
-                "expected": getattr(issue, "expected", None),
-                "actual": getattr(issue, "actual", None),
-                "sample_values": getattr(issue, "sample_values", None),
-                # PHASE 2: metadata
-                "validator_name": getattr(issue, "validator_name", None),
-                "success": getattr(issue, "success", False),
-            }
-
-            # PHASE 2: structured ValidationDetail
-            result_detail = getattr(issue, "result", None)
-            if result_detail is not None:
-                issue_dict["result"] = TruthoundResultConverter._convert_validation_detail(
-                    result_detail
-                )
-
-            # PHASE 5: exception info
-            exc_info = getattr(issue, "exception_info", None)
-            if exc_info is not None and getattr(exc_info, "raised_exception", False):
-                issue_dict["exception_info"] = {
-                    "exception_type": getattr(exc_info, "exception_type", None),
-                    "exception_message": getattr(exc_info, "exception_message", None),
-                    "retry_count": getattr(exc_info, "retry_count", 0),
-                    "max_retries": getattr(exc_info, "max_retries", 0),
-                    "is_retryable": getattr(exc_info, "is_retryable", False),
-                    "failure_category": getattr(exc_info, "failure_category", "unknown"),
-                    "validator_name": getattr(exc_info, "validator_name", None),
-                    "column": getattr(exc_info, "column", None),
-                }
-
-            converted_issues.append(issue_dict)
+        converted_checks = [
+            TruthoundResultConverter._convert_check(check)
+            for check in getattr(result, "checks", []) or []
+        ]
+        execution_issues = [
+            TruthoundResultConverter._convert_execution_issue(issue)
+            for issue in getattr(result, "execution_issues", []) or []
+        ]
+        metadata = dict(getattr(result, "metadata", {}) or {})
 
         report_dict: dict[str, Any] = {
             "passed": not getattr(result, "has_issues", len(issues) > 0),
@@ -120,31 +83,206 @@ class TruthoundResultConverter:
             "source": getattr(result, "source", ""),
             "row_count": getattr(result, "row_count", 0),
             "column_count": getattr(result, "column_count", 0),
+            "suite_name": getattr(result, "suite_name", ""),
+            "execution_mode": getattr(result, "execution_mode", "sequential"),
             "issues": converted_issues,
+            "checks": converted_checks,
+            "execution_issues": execution_issues,
+            "metadata": metadata,
         }
 
-        # PHASE 1: result_format
+        run_id = getattr(result, "run_id", None)
+        if run_id is not None:
+            report_dict["run_id"] = run_id
+        run_time = getattr(result, "run_time", None)
+        if run_time is not None:
+            report_dict["run_time"] = (
+                run_time.isoformat() if hasattr(run_time, "isoformat") else str(run_time)
+            )
+
         raw_rf = getattr(result, "result_format", None)
         if raw_rf is not None:
             report_dict["result_format"] = (
                 raw_rf.value if hasattr(raw_rf, "value") else str(raw_rf)
             )
 
-        # PHASE 2: report statistics
         raw_stats = getattr(result, "statistics", None)
         if raw_stats is not None:
             report_dict["statistics"] = TruthoundResultConverter._convert_report_statistics(
                 raw_stats
             )
+        elif converted_checks or converted_issues:
+            report_dict["statistics"] = TruthoundResultConverter._build_statistics(
+                converted_checks,
+                converted_issues,
+            )
 
-        # PHASE 5: exception summary
+        raw_exec = getattr(result, "validator_execution_summary", None)
+        if raw_exec is not None:
+            report_dict["validator_execution_summary"] = dict(raw_exec)
+        elif converted_checks:
+            report_dict["validator_execution_summary"] = {
+                "total_validators": len(converted_checks),
+                "executed": len(converted_checks),
+                "skipped": 0,
+                "failed": len(execution_issues),
+                "skipped_details": [],
+            }
+
         raw_exc = getattr(result, "exception_summary", None)
         if raw_exc is not None:
             report_dict["exception_summary"] = TruthoundResultConverter._convert_exception_summary(
                 raw_exc
             )
+        elif execution_issues:
+            report_dict["exception_summary"] = TruthoundResultConverter._build_exception_summary(
+                execution_issues
+            )
 
         return report_dict
+
+    @staticmethod
+    def _convert_issue(issue: Any) -> dict[str, Any]:
+        """Convert a Truthound validation issue into a serializable dict."""
+        issue_dict: dict[str, Any] = {
+            "column": getattr(issue, "column", ""),
+            "issue_type": getattr(issue, "issue_type", "unknown"),
+            "count": getattr(issue, "count", 0),
+            "severity": TruthoundResultConverter.convert_severity(
+                getattr(issue, "severity", "medium")
+            ),
+            "details": getattr(issue, "details", None),
+            "expected": getattr(issue, "expected", None),
+            "actual": getattr(issue, "actual", None),
+            "sample_values": getattr(issue, "sample_values", None),
+            "validator_name": getattr(issue, "validator_name", None),
+            "success": getattr(issue, "success", False),
+        }
+
+        result_detail = getattr(issue, "result", None)
+        if result_detail is not None:
+            issue_dict["result"] = TruthoundResultConverter._convert_validation_detail(
+                result_detail
+            )
+
+        exc_info = getattr(issue, "exception_info", None)
+        if exc_info is not None:
+            issue_dict["exception_info"] = {
+                "exception_type": getattr(exc_info, "exception_type", None),
+                "exception_message": getattr(exc_info, "exception_message", None),
+                "retry_count": getattr(exc_info, "retry_count", 0),
+                "max_retries": getattr(exc_info, "max_retries", 0),
+                "is_retryable": getattr(exc_info, "is_retryable", False),
+                "failure_category": getattr(exc_info, "failure_category", "unknown"),
+                "validator_name": getattr(exc_info, "validator_name", None),
+                "column": getattr(exc_info, "column", None),
+            }
+
+        return issue_dict
+
+    @staticmethod
+    def _convert_check(check: Any) -> dict[str, Any]:
+        """Convert a Truthound ``CheckResult`` into a serializable dict."""
+        check_issues = [
+            TruthoundResultConverter._convert_issue(issue)
+            for issue in getattr(check, "issues", []) or []
+        ]
+        return {
+            "name": getattr(check, "name", "unknown"),
+            "category": getattr(check, "category", "general"),
+            "success": getattr(check, "success", len(check_issues) == 0),
+            "issue_count": getattr(check, "issue_count", len(check_issues)),
+            "issues": check_issues,
+            "metadata": dict(getattr(check, "metadata", {}) or {}),
+        }
+
+    @staticmethod
+    def _convert_execution_issue(issue: Any) -> dict[str, Any]:
+        """Convert a Truthound ``ExecutionIssue`` into a serializable dict."""
+        return {
+            "check_name": getattr(issue, "check_name", "unknown"),
+            "message": getattr(issue, "message", ""),
+            "exception_type": getattr(issue, "exception_type", None),
+            "failure_category": getattr(issue, "failure_category", None),
+            "retry_count": getattr(issue, "retry_count", 0),
+        }
+
+    @staticmethod
+    def _build_statistics(
+        checks: list[dict[str, Any]],
+        issues: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Derive dashboard summary statistics from the canonical run payload."""
+        issues_by_severity: dict[str, int] = {}
+        issues_by_column: dict[str, int] = {}
+        issues_by_validator: dict[str, int] = {}
+        issues_by_type: dict[str, int] = {}
+
+        for issue in issues:
+            severity = str(issue.get("severity", "medium"))
+            column = str(issue.get("column", ""))
+            validator = str(issue.get("validator_name") or issue.get("issue_type") or "unknown")
+            issue_type = str(issue.get("issue_type", "unknown"))
+
+            issues_by_severity[severity] = issues_by_severity.get(severity, 0) + 1
+            issues_by_column[column] = issues_by_column.get(column, 0) + 1
+            issues_by_validator[validator] = issues_by_validator.get(validator, 0) + 1
+            issues_by_type[issue_type] = issues_by_type.get(issue_type, 0) + 1
+
+        most_problematic_columns = [
+            [column, count]
+            for column, count in sorted(
+                issues_by_column.items(),
+                key=lambda item: item[1],
+                reverse=True,
+            )
+        ]
+
+        total_checks = len(checks)
+        successful_checks = sum(1 for check in checks if check.get("success", False))
+
+        return {
+            "total_validations": total_checks,
+            "successful_validations": successful_checks,
+            "unsuccessful_validations": total_checks - successful_checks,
+            "success_percent": (successful_checks / total_checks * 100.0) if total_checks else 100.0,
+            "issues_by_severity": issues_by_severity,
+            "issues_by_column": issues_by_column,
+            "issues_by_validator": issues_by_validator,
+            "issues_by_type": issues_by_type,
+            "most_problematic_columns": most_problematic_columns,
+        }
+
+    @staticmethod
+    def _build_exception_summary(execution_issues: list[dict[str, Any]]) -> dict[str, Any]:
+        """Derive exception summary from Truthound 3.0 execution issues."""
+        exceptions_by_type: dict[str, int] = {}
+        exceptions_by_category: dict[str, int] = {}
+        exceptions_by_validator: dict[str, int] = {}
+        retryable_count = 0
+        total_retries = 0
+
+        for issue in execution_issues:
+            exception_type = str(issue.get("exception_type") or "unknown")
+            category = str(issue.get("failure_category") or "unknown")
+            validator = str(issue.get("check_name") or "unknown")
+            retry_count = int(issue.get("retry_count", 0) or 0)
+
+            exceptions_by_type[exception_type] = exceptions_by_type.get(exception_type, 0) + 1
+            exceptions_by_category[category] = exceptions_by_category.get(category, 0) + 1
+            exceptions_by_validator[validator] = exceptions_by_validator.get(validator, 0) + 1
+            total_retries += retry_count
+            if retry_count > 0:
+                retryable_count += 1
+
+        return {
+            "total_exceptions": len(execution_issues),
+            "total_retries": total_retries,
+            "exceptions_by_type": exceptions_by_type,
+            "exceptions_by_category": exceptions_by_category,
+            "exceptions_by_validator": exceptions_by_validator,
+            "retryable_count": retryable_count,
+        }
 
     @staticmethod
     def _convert_validation_detail(detail: Any) -> dict[str, Any]:
@@ -197,7 +335,7 @@ class TruthoundResultConverter:
 
     @staticmethod
     def _convert_report_statistics(stats: Any) -> dict[str, Any]:
-        """Convert truthound ReportStatistics to dict (PHASE 2)."""
+        """Convert report statistics to a serializable dict."""
         # Convert most_problematic_columns tuples to lists for JSON serialization
         mpc = getattr(stats, "most_problematic_columns", [])
         if mpc:
@@ -217,7 +355,7 @@ class TruthoundResultConverter:
 
     @staticmethod
     def _convert_exception_summary(exc: Any) -> dict[str, Any]:
-        """Convert truthound ExceptionSummary to dict (PHASE 5)."""
+        """Convert exception summary to a serializable dict."""
         return {
             "total_exceptions": getattr(exc, "total_exceptions", 0),
             "total_retries": getattr(exc, "total_retries", 0),

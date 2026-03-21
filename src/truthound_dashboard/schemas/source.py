@@ -10,6 +10,8 @@ from typing import Any, Literal
 
 from pydantic import Field, field_validator
 
+from truthound_dashboard.core.encryption import redact_config
+
 from .base import BaseSchema, IDMixin, ListResponseWrapper, TimestampMixin
 
 # Supported source types - must match SourceType enum in connections.py
@@ -74,6 +76,15 @@ class SourceBase(BaseSchema):
         max_length=1000,
         description="Optional source description",
     )
+    environment: str = Field(
+        default="production",
+        description="Deployment environment for the source",
+        examples=["production", "staging"],
+    )
+    workspace_id: str | None = Field(
+        default=None,
+        description="Owning workspace identifier",
+    )
 
 
 class SourceCreate(SourceBase):
@@ -106,6 +117,10 @@ class SourceUpdate(BaseSchema):
         max_length=1000,
         description="New description",
     )
+    environment: str | None = Field(
+        default=None,
+        description="Deployment environment",
+    )
     is_active: bool | None = Field(
         default=None,
         description="Whether source is active",
@@ -119,6 +134,15 @@ class SourceResponse(SourceBase, IDMixin, TimestampMixin):
     last_validated_at: datetime | None = Field(
         default=None,
         description="Last validation timestamp",
+    )
+    config_version: int = Field(default=1, description="Config revision number")
+    credential_updated_at: datetime | None = Field(
+        default=None,
+        description="Last credential rotation time",
+    )
+    has_stored_secrets: bool = Field(
+        default=False,
+        description="Whether the source contains redacted secret fields",
     )
 
     # Computed properties from relationships
@@ -142,12 +166,20 @@ class SourceResponse(SourceBase, IDMixin, TimestampMixin):
             id=source.id,
             name=source.name,
             type=source.type,
-            config=source.config,
+            config=redact_config(source.config or {}),
             description=source.description,
+            environment=getattr(source, "environment", "production"),
+            workspace_id=getattr(source, "workspace_id", None),
             is_active=source.is_active,
             created_at=source.created_at,
             updated_at=source.updated_at,
             last_validated_at=source.last_validated_at,
+            config_version=getattr(source, "config_version", 1),
+            credential_updated_at=getattr(source, "credential_updated_at", None),
+            has_stored_secrets=any(
+                isinstance(value, dict) and value.get("_redacted")
+                for value in redact_config(source.config or {}).values()
+            ),
             has_schema=source.latest_schema is not None,
             latest_validation_status=(
                 source.latest_validation.status if source.latest_validation else None
@@ -258,6 +290,16 @@ class TestConnectionRequest(BaseSchema):
 
     type: SourceType = Field(..., description="Source type")
     config: dict[str, Any] = Field(..., description="Connection configuration")
+
+
+class SourceCredentialUpdate(BaseSchema):
+    """Secret-only credential rotation payload."""
+
+    credentials: dict[str, Any] = Field(
+        ...,
+        description="Credential fields to rotate",
+        examples=[{"password": "new-secret"}],
+    )
 
 
 class TestConnectionResponse(BaseSchema):

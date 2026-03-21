@@ -1,17 +1,16 @@
 """Data quality backend implementations.
 
 This module provides backend implementations for data quality operations.
-The backends abstract away the specific library (truthound) and provide
-a unified interface for the dashboard services.
+Truthound 3.0 is the canonical execution backend for the dashboard.
 
 Architecture:
     BackendFactory
         ↓
     BaseDataQualityBackend (ABC)
         ↓
-    ┌─────────────────────────────┐
-    │  TruthoundBackend  │ MockBackend │
-    └─────────────────────────────┘
+    ┌──────────────────────┐
+    │  TruthoundBackend    │
+    └──────────────────────┘
 
 Usage:
     from truthound_dashboard.core.backends import BackendFactory
@@ -23,8 +22,6 @@ Usage:
     if backend.is_available():
         result = await backend.check("data.csv")
 
-    # Use a specific backend
-    backend = BackendFactory.get_backend("mock")
 """
 
 from .base import BaseDataQualityBackend
@@ -42,7 +39,6 @@ from .factory import (
     get_backend_capabilities,
     get_backend_info,
 )
-from .mock_backend import MockBackend
 from .truthound_backend import TruthoundBackend
 
 __all__ = [
@@ -50,7 +46,6 @@ __all__ = [
     "BaseDataQualityBackend",
     # Backend implementations
     "TruthoundBackend",
-    "MockBackend",
     # Factory
     "BackendFactory",
     "get_backend",

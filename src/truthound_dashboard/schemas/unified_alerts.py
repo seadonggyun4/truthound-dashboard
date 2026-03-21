@@ -1,8 +1,6 @@
 """Pydantic schemas for Unified Alerts.
 
-Provides schemas for aggregating alerts from all sources:
-- Model monitoring alerts
-- Drift monitoring alerts
+Provides schemas for the active alert sources served by the dashboard:
 - Anomaly detection alerts
 - Validation failures
 """
@@ -26,8 +24,6 @@ from .base import BaseSchema, IDMixin, ListResponseWrapper, TimestampMixin
 class AlertSource(str, Enum):
     """Sources of alerts in the unified system."""
 
-    MODEL = "model"
-    DRIFT = "drift"
     ANOMALY = "anomaly"
     VALIDATION = "validation"
 
@@ -103,8 +99,6 @@ class AlertCountBySeverity(BaseModel):
 class AlertCountBySource(BaseModel):
     """Alert counts by source."""
 
-    model: int = Field(default=0, description="Model monitoring alerts")
-    drift: int = Field(default=0, description="Drift monitoring alerts")
     anomaly: int = Field(default=0, description="Anomaly detection alerts")
     validation: int = Field(default=0, description="Validation failure alerts")
 
@@ -196,14 +190,12 @@ class AlertCorrelationResponse(BaseSchema):
 class AcknowledgeAlertRequest(BaseModel):
     """Request to acknowledge an alert."""
 
-    actor: str = Field(..., description="Who is acknowledging", min_length=1)
     message: str = Field(default="", description="Optional acknowledgement message")
 
 
 class ResolveAlertRequest(BaseModel):
     """Request to resolve an alert."""
 
-    actor: str = Field(..., description="Who is resolving", min_length=1)
     message: str = Field(default="", description="Resolution message")
 
 
@@ -211,7 +203,6 @@ class BulkAlertActionRequest(BaseModel):
     """Request for bulk alert actions."""
 
     alert_ids: list[str] = Field(..., description="Alert IDs to act on", min_length=1)
-    actor: str = Field(..., description="Who is performing the action")
     message: str = Field(default="", description="Optional message")
 
 

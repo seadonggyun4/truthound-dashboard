@@ -20,6 +20,14 @@ from .database import (
     reset_connection,
     reset_db,
 )
+from .control_plane_models import (
+    Membership,
+    Role,
+    SavedView,
+    Session,
+    User,
+    Workspace,
+)
 from .models import (
     # Phase 1-4 Models
     AppSettings,
@@ -36,42 +44,12 @@ from .models import (
     Schema,
     Source,
     Validation,
-    # Phase 5 Enums
-    ActivityAction,
-    AssetType,
-    RelationshipType,
-    ResourceType,
-    SensitivityLevel,
-    TermStatus,
     TriggerType,
-    # Phase 5 Models
-    Activity,
-    AssetColumn,
-    AssetTag,
-    CatalogAsset,
-    Comment,
-    GlossaryCategory,
-    GlossaryTerm,
-    TermHistory,
-    TermRelationship,
     # Anomaly Detection Models
     AnomalyDetection,
-    # Model Monitoring Models
-    MonitoredModel,
-    ModelAlert,
-    ModelAlertRule,
-    ModelAlertHandler,
-    # Drift Monitoring Models
-    DriftMonitor,
-    DriftMonitorRun,
-    DriftAlert,
     # Scheduler Job Models
     SchedulerJob,
     SchedulerJobState,
-    # Cross-Alert Models
-    CrossAlertConfig,
-    CrossAlertCorrelation,
-    CrossAlertTriggerEvent,
 )
 from .repository import BaseRepository
 
@@ -89,6 +67,13 @@ __all__ = [
     "init_db",
     "reset_db",
     "reset_connection",
+    # Control-plane models
+    "Workspace",
+    "Role",
+    "User",
+    "Membership",
+    "Session",
+    "SavedView",
     # Models
     "Source",
     "Schema",
@@ -105,44 +90,12 @@ __all__ = [
     "NotificationChannel",
     "NotificationRule",
     "NotificationLog",
-    # Phase 5 Enums
-    "TermStatus",
-    "RelationshipType",
-    "AssetType",
-    "SensitivityLevel",
-    "ResourceType",
-    "ActivityAction",
     "TriggerType",
-    # Phase 5 Models - Glossary
-    "GlossaryCategory",
-    "GlossaryTerm",
-    "TermRelationship",
-    "TermHistory",
-    # Phase 5 Models - Catalog
-    "CatalogAsset",
-    "AssetColumn",
-    "AssetTag",
-    # Phase 5 Models - Collaboration
-    "Comment",
-    "Activity",
     # Anomaly Detection Models
     "AnomalyDetection",
-    # Model Monitoring Models
-    "MonitoredModel",
-    "ModelAlert",
-    "ModelAlertRule",
-    "ModelAlertHandler",
-    # Drift Monitoring Models
-    "DriftMonitor",
-    "DriftMonitorRun",
-    "DriftAlert",
     # Scheduler Job Models
     "SchedulerJob",
     "SchedulerJobState",
-    # Cross-Alert Models
-    "CrossAlertConfig",
-    "CrossAlertCorrelation",
-    "CrossAlertTriggerEvent",
     # Repository
     "BaseRepository",
 ]

@@ -13,22 +13,24 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from pydantic import Field
 
 from truthound_dashboard.schemas import (
     MessageResponse,
     SourceCreate,
+    SourceCredentialUpdate,
     SourceListResponse,
     SourceResponse,
     SourceTypesResponse,
     SourceUpdate,
     TestConnectionResponse,
 )
+from truthound_dashboard.core.encryption import decrypt_config
 from truthound_dashboard.schemas.base import BaseSchema
 
-from .deps import SourceServiceDep
+from .deps import SourceServiceDep, get_control_plane_context
 
 router = APIRouter()
 
@@ -41,6 +43,7 @@ router = APIRouter()
 )
 async def list_sources(
     service: SourceServiceDep,
+    context=Depends(get_control_plane_context),
     offset: Annotated[int, Query(ge=0, description="Offset for pagination")] = 0,
     limit: Annotated[
         int, Query(ge=1, le=100, description="Maximum items to return")
@@ -61,8 +64,13 @@ async def list_sources(
         Paginated list of sources.
     """
     # Sequential execution required - SQLAlchemy session doesn't support concurrent operations
-    sources = await service.list(offset=offset, limit=limit, active_only=active_only)
-    total = await service.count(active_only=active_only)
+    sources = await service.list(
+        offset=offset,
+        limit=limit,
+        active_only=active_only,
+        workspace_id=context.workspace.id,
+    )
+    total = await service.count(active_only=active_only, workspace_id=context.workspace.id)
 
     return SourceListResponse(
         data=[SourceResponse.from_model(s) for s in sources],
@@ -82,6 +90,7 @@ async def list_sources(
 async def create_source(
     service: SourceServiceDep,
     source: SourceCreate,
+    context=Depends(get_control_plane_context),
 ) -> SourceResponse:
     """Create a new data source.
 
@@ -97,6 +106,8 @@ async def create_source(
         type=source.type,
         config=source.config,
         description=source.description,
+        workspace_id=source.workspace_id or context.workspace.id,
+        environment=source.environment,
     )
     return SourceResponse.from_model(created)
 
@@ -110,6 +121,7 @@ async def create_source(
 async def get_source(
     service: SourceServiceDep,
     source_id: Annotated[str, Path(description="Source ID")],
+    context=Depends(get_control_plane_context),
 ) -> SourceResponse:
     """Get a specific data source.
 
@@ -123,7 +135,7 @@ async def get_source(
     Raises:
         HTTPException: 404 if source not found.
     """
-    source = await service.get_by_id(source_id)
+    source = await service.get_by_id(source_id, workspace_id=context.workspace.id)
     if source is None:
         raise HTTPException(status_code=404, detail="Source not found")
     return SourceResponse.from_model(source)
@@ -139,6 +151,7 @@ async def update_source(
     service: SourceServiceDep,
     source_id: Annotated[str, Path(description="Source ID")],
     update: SourceUpdate,
+    context=Depends(get_control_plane_context),
 ) -> SourceResponse:
     """Update an existing data source.
 
@@ -159,6 +172,8 @@ async def update_source(
         config=update.config,
         description=update.description,
         is_active=update.is_active,
+        environment=update.environment,
+        workspace_id=context.workspace.id,
     )
     if updated is None:
         raise HTTPException(status_code=404, detail="Source not found")
@@ -174,6 +189,7 @@ async def update_source(
 async def delete_source(
     service: SourceServiceDep,
     source_id: Annotated[str, Path(description="Source ID")],
+    context=Depends(get_control_plane_context),
 ) -> MessageResponse:
     """Delete a data source.
 
@@ -187,6 +203,9 @@ async def delete_source(
     Raises:
         HTTPException: 404 if source not found.
     """
+    source = await service.get_by_id(source_id, workspace_id=context.workspace.id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source not found")
     deleted = await service.delete(source_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Source not found")
@@ -216,6 +235,7 @@ class BulkDeleteResponse(BaseSchema):
 async def bulk_delete_sources(
     service: SourceServiceDep,
     request: BulkDeleteRequest,
+    context=Depends(get_control_plane_context),
 ) -> BulkDeleteResponse:
     """Delete multiple data sources.
 
@@ -234,6 +254,10 @@ async def bulk_delete_sources(
 
     for source_id in request.ids:
         try:
+            source = await service.get_by_id(source_id, workspace_id=context.workspace.id)
+            if source is None:
+                failed_ids.append(source_id)
+                continue
             deleted = await service.delete(source_id)
             if deleted:
                 deleted_count += 1
@@ -258,6 +282,7 @@ async def bulk_delete_sources(
 async def test_source_connection(
     service: SourceServiceDep,
     source_id: Annotated[str, Path(description="Source ID")],
+    context=Depends(get_control_plane_context),
 ) -> TestConnectionResponse:
     """Test connection to a data source.
 
@@ -273,16 +298,38 @@ async def test_source_connection(
     """
     from truthound_dashboard.core.connections import test_connection
 
-    source = await service.get_by_id(source_id)
+    source = await service.get_by_id(source_id, workspace_id=context.workspace.id)
     if source is None:
         raise HTTPException(status_code=404, detail="Source not found")
 
-    result = await test_connection(source.type, source.config)
+    result = await test_connection(source.type, decrypt_config(source.config))
     return TestConnectionResponse(
         connected=result.get("success", False),
         message=result.get("message"),
         error=result.get("error"),
     )
+
+
+@router.post(
+    "/{source_id}/credentials",
+    response_model=SourceResponse,
+    summary="Rotate source credentials",
+    description="Rotate stored source credentials without exposing secret values",
+)
+async def rotate_source_credentials(
+    service: SourceServiceDep,
+    source_id: Annotated[str, Path(description="Source ID")],
+    payload: SourceCredentialUpdate = ...,
+    context=Depends(get_control_plane_context),
+) -> SourceResponse:
+    source = await service.rotate_credentials(
+        source_id,
+        credentials=payload.credentials,
+        workspace_id=context.workspace.id,
+    )
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source not found")
+    return SourceResponse.from_model(source)
 
 
 @router.get(

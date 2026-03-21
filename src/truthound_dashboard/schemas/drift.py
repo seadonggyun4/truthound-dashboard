@@ -2,7 +2,7 @@
 
 Schemas for drift comparison request/response.
 
-Drift Methods (14 supported by th.compare() in truthound v1.2.9+):
+Drift Methods supported by ``truthound.drift.compare()``:
 
 General purpose (any column type):
 - auto: Smart selection (numeric → PSI, categorical → chi2) [RECOMMENDED]
@@ -36,9 +36,7 @@ from .base import IDMixin, TimestampMixin
 
 
 class DriftMethod(str, Enum):
-    """Drift detection methods supported by truthound v1.2.9+.
-
-    All 14 methods are fully supported by th.compare():
+    """Drift detection methods supported by ``truthound.drift.compare()``.
 
     General purpose (any column type):
     - auto: Smart selection based on data type (numeric → PSI, categorical → chi2)

@@ -22,7 +22,7 @@ Features:
 - Async wrappers for all truthound functions (check, learn, profile, compare, scan, mask)
 - Support for both file paths and DataSource objects
 - Automatic sampling for large datasets (100MB+ files)
-- ValidationResult conversion for reporter integration
+- ValidationRunResult conversion for reporter integration
 - Configurable sample size and sampling methods
 
 Example:
@@ -39,8 +39,8 @@ Example:
     # With auto-sampling for large files
     result = await adapter.check_with_sampling("/path/to/large.csv")
 
-    # Convert to ValidationResult for reporters
-    validation_result = result.to_validation_result()
+    # Convert to ValidationRunResult for reporters
+    validation_run = result.to_validation_result()
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, Union, runtime_checkable
@@ -76,8 +76,8 @@ class TruthoundResult(Protocol):
 class CheckResult:
     """Validation check result.
 
-    This class wraps truthound's Report/ValidationResult and provides
-    a consistent interface for the dashboard regardless of truthound version.
+    This class wraps Truthound validation output and keeps the dashboard's
+    stored payload aligned with the Truthound 3.0 run contract.
 
     Attributes:
         passed: Whether validation passed (no issues).
@@ -94,6 +94,9 @@ class CheckResult:
         issues: List of validation issues.
         run_id: Optional run identifier for tracking.
         run_time: Optional timestamp of the validation run.
+        checks: Canonical Truthound 3.0 per-check results.
+        execution_issues: Canonical Truthound 3.0 runtime failures.
+        metadata: Canonical Truthound 3.0 run metadata.
         _raw_result: Internal reference to the original truthound result.
     """
 
@@ -111,18 +114,23 @@ class CheckResult:
     issues: list[dict[str, Any]]
     run_id: str | None = None
     run_time: Any = None
+    checks: list[dict[str, Any]] = field(default_factory=list)
+    execution_issues: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    suite_name: str | None = None
+    execution_mode: str | None = None
     _raw_result: Any = None
 
-    # PHASE 1: result_format used
+    # Result format used
     result_format: str | None = None
 
-    # PHASE 2: report statistics
+    # Derived report statistics
     statistics: dict[str, Any] | None = None
 
-    # PHASE 4: execution summary
+    # Execution summary
     validator_execution_summary: dict[str, Any] | None = None
 
-    # PHASE 5: exception summary
+    # Exception summary
     exception_summary: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -140,6 +148,9 @@ class CheckResult:
             "row_count": self.row_count,
             "column_count": self.column_count,
             "issues": self.issues,
+            "checks": self.checks,
+            "execution_issues": self.execution_issues,
+            "metadata": self.metadata,
         }
         if self.run_id:
             result["run_id"] = self.run_id
@@ -149,43 +160,48 @@ class CheckResult:
                 if hasattr(self.run_time, "isoformat")
                 else str(self.run_time)
             )
-        # PHASE 1
+        # Result format
         if self.result_format:
             result["result_format"] = self.result_format
-        # PHASE 2
+        if self.suite_name:
+            result["suite_name"] = self.suite_name
+        if self.execution_mode:
+            result["execution_mode"] = self.execution_mode
+        # Derived statistics
         if self.statistics:
             result["statistics"] = self.statistics
-        # PHASE 4
+        # Execution summary
         if self.validator_execution_summary:
             result["validator_execution_summary"] = self.validator_execution_summary
-        # PHASE 5
+        # Exception summary
         if self.exception_summary:
             result["exception_summary"] = self.exception_summary
         return result
 
     def to_validation_result(self) -> Any:
-        """Convert to truthound's ValidationResult format for reporters.
+        """Convert to truthound's ValidationRunResult format for reporters.
 
         This enables using truthound's reporters directly with this result.
 
         Returns:
-            An object that implements the ValidationResult interface expected
+            An object that implements the ValidationRunResult interface expected
             by truthound reporters, or the raw result if available.
         """
         # If we have the raw truthound result, prefer using it
         if self._raw_result is not None:
-            # Check if it's already a ValidationResult
-            if hasattr(self._raw_result, "results") and hasattr(
+            # Check if it's already a validation run result
+            if hasattr(self._raw_result, "checks") and hasattr(
                 self._raw_result, "run_id"
             ):
                 return self._raw_result
-            # It's a Report - try to convert
-            return self._create_validation_result_mock()
-        return self._create_validation_result_mock()
+            # It is not already a Truthound 3.0 run result, so build a
+            # compatibility object for reporter integrations.
+            return self._create_validation_result_proxy()
+        return self._create_validation_result_proxy()
 
-    def _create_validation_result_mock(self) -> "_ValidationResultMock":
-        """Create a mock ValidationResult for reporter compatibility."""
-        return _ValidationResultMock(self)
+    def _create_validation_result_proxy(self) -> "_ValidationResultProxy":
+        """Create a compatibility proxy for reporter integrations."""
+        return _ValidationResultProxy(self)
 
 
 @dataclass
@@ -573,11 +589,11 @@ class TruthoundAdapter:
         parallel: bool = False,
         max_workers: int | None = None,
         pushdown: bool | None = None,
-        # PHASE 1: result format control
+        # Result format control
         result_format: str | None = None,
         include_unexpected_rows: bool = False,
         max_unexpected_rows: int | None = None,
-        # PHASE 5: exception control
+        # Exception handling control
         catch_exceptions: bool = True,
         max_retries: int = 3,
     ) -> CheckResult:
@@ -594,7 +610,6 @@ class TruthoundAdapter:
             validator_config: Optional dict of per-validator configuration.
                 Format: {"ValidatorName": {"param1": value1, "param2": value2}}
                 Example: {"Null": {"columns": ("a", "b"), "mostly": 0.95}}
-                Note: In truthound 2.x, columns should be tuples, not lists.
             schema: Optional path to schema YAML file.
             auto_schema: If True, auto-learns schema for validation.
             min_severity: Minimum severity to report ("low", "medium", "high", "critical").
@@ -616,8 +631,8 @@ class TruthoundAdapter:
         """
         import truthound as th
 
-        # Build kwargs dynamically to avoid passing None for optional params
-        # Use 'source' parameter for DataSource objects (truthound 2.x API)
+        # Build kwargs dynamically to avoid passing None for optional params.
+        # Non-file sources are passed through the adapter's source-aware path.
         if isinstance(data, str):
             kwargs: dict[str, Any] = {"data": data}
         else:
@@ -632,7 +647,7 @@ class TruthoundAdapter:
             }
         )
 
-        # Add per-validator configuration if provided (truthound 2.x uses validator_config)
+        # Add per-validator configuration if provided.
         if validator_config:
             kwargs["validator_config"] = validator_config
 
@@ -644,7 +659,7 @@ class TruthoundAdapter:
         if pushdown is not None:
             kwargs["pushdown"] = pushdown
 
-        # PHASE 1: result_format
+        # Result format
         if result_format is not None:
             if include_unexpected_rows or max_unexpected_rows is not None:
                 try:
@@ -660,7 +675,7 @@ class TruthoundAdapter:
             else:
                 kwargs["result_format"] = result_format
 
-        # PHASE 5: exception control
+        # Exception handling control
         if not catch_exceptions:
             kwargs["catch_exceptions"] = False
         if max_retries != 3:
@@ -892,8 +907,7 @@ class TruthoundAdapter:
         Raises:
             ImportError: If truthound.profiler module is not available.
         """
-        from truthound.profiler import generate_suite
-        from truthound.profiler.generators import Strictness
+        from truthound.profiler import Strictness, generate_suite
 
         # Convert strictness string to enum
         strictness_map = {
@@ -1051,7 +1065,7 @@ class TruthoundAdapter:
             ImportError: If truthound is not installed.
             FileNotFoundError: If data file doesn't exist.
         """
-        import truthound as th
+        from truthound.drift import compare
 
         func = partial(th.scan, data)
 
@@ -1105,7 +1119,7 @@ class TruthoundAdapter:
         if sample_size is not None:
             kwargs["sample_size"] = sample_size
 
-        func = partial(th.compare, baseline, current, **kwargs)
+        func = partial(compare, baseline, current, **kwargs)
 
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(self._executor, func)
@@ -1421,21 +1435,14 @@ class TruthoundAdapter:
         )
 
     def _convert_check_result(self, result: Any) -> CheckResult:
-        """Convert truthound Report to CheckResult.
-
-        Supports truthound 1.3.0+ with PHASE 1-5 features.
-        Uses TruthoundResultConverter for the heavy lifting, then
-        constructs CheckResult with structured data.
-        """
+        """Convert Truthound validation output into the dashboard result shape."""
         from datetime import datetime
         from .converters.truthound import TruthoundResultConverter
 
-        # Use the centralized converter for full PHASE 1-5 extraction
         converted = TruthoundResultConverter.convert_check_result(result)
 
-        # Extract run_id and run_time if available (truthound 2.x)
-        run_id = getattr(result, "run_id", None)
-        run_time = getattr(result, "run_time", None)
+        run_id = getattr(result, "run_id", converted.get("run_id"))
+        run_time = getattr(result, "run_time", None) or converted.get("run_time")
         if run_time is None:
             run_time = datetime.now()
 
@@ -1454,12 +1461,15 @@ class TruthoundAdapter:
             issues=converted["issues"],
             run_id=run_id,
             run_time=run_time,
+            checks=converted.get("checks", []),
+            execution_issues=converted.get("execution_issues", []),
+            metadata=converted.get("metadata", {}),
+            suite_name=converted.get("suite_name"),
+            execution_mode=converted.get("execution_mode"),
             _raw_result=result,
-            # PHASE 1
             result_format=converted.get("result_format"),
-            # PHASE 2
             statistics=converted.get("statistics"),
-            # PHASE 5
+            validator_execution_summary=converted.get("validator_execution_summary"),
             exception_summary=converted.get("exception_summary"),
         )
 
@@ -1926,12 +1936,12 @@ class TruthoundAdapter:
 
 
 # =============================================================================
-# ValidationResult Mock for Reporter Integration
+# ValidationResult compatibility proxy for reporter integration
 # =============================================================================
 
 
-class _ValidationResultMock:
-    """Mock object that mimics truthound's ValidationResult interface.
+class _ValidationResultProxy:
+    """Compatibility object that mimics Truthound validation result interfaces.
 
     This enables using truthound reporters with CheckResult objects from
     this adapter, maintaining loose coupling with the truthound library.
@@ -1946,9 +1956,9 @@ class _ValidationResultMock:
 
         self._result = check_result
         self._results = [
-            _ValidatorResultMock(issue) for issue in check_result.issues
+            _ValidatorResultProxy(issue) for issue in check_result.issues
         ]
-        self._statistics = _ResultStatisticsMock(check_result)
+        self._statistics = _ResultStatisticsProxy(check_result)
         self._run_time = check_result.run_time or datetime.now()
 
     # === ValidationResult interface (new API) ===
@@ -1966,19 +1976,19 @@ class _ValidationResultMock:
         return self._result.source
 
     @property
-    def status(self) -> "_ResultStatusMock":
-        return _ResultStatusMock(self._result.passed)
+    def status(self) -> "_ResultStatusProxy":
+        return _ResultStatusProxy(self._result.passed)
 
     @property
     def success(self) -> bool:
         return self._result.passed
 
     @property
-    def results(self) -> list["_ValidatorResultMock"]:
+    def results(self) -> list["_ValidatorResultProxy"]:
         return self._results
 
     @property
-    def statistics(self) -> "_ResultStatisticsMock":
+    def statistics(self) -> "_ResultStatisticsProxy":
         return self._statistics
 
     @property
@@ -2000,7 +2010,7 @@ class _ValidationResultMock:
         return self._result.column_count
 
     @property
-    def issues(self) -> list["_ValidatorResultMock"]:
+    def issues(self) -> list["_ValidatorResultProxy"]:
         return self._results
 
     @property
@@ -2040,8 +2050,8 @@ class _ValidationResultMock:
         return json.dumps(self.to_dict(), indent=indent, default=str)
 
 
-class _ResultStatusMock:
-    """Mock ResultStatus enum for reporter compatibility."""
+class _ResultStatusProxy:
+    """Compatibility ResultStatus enum for reporter integrations."""
 
     def __init__(self, passed: bool) -> None:
         self._passed = passed
@@ -2054,8 +2064,8 @@ class _ResultStatusMock:
         return self.value
 
 
-class _ResultStatisticsMock:
-    """Mock ResultStatistics for reporter compatibility."""
+class _ResultStatisticsProxy:
+    """Compatibility ResultStatistics object for reporter integrations."""
 
     def __init__(self, check_result: CheckResult) -> None:
         self._result = check_result
@@ -2105,8 +2115,8 @@ class _ResultStatisticsMock:
         }
 
 
-class _ValidatorResultMock:
-    """Mock ValidatorResult for reporter compatibility."""
+class _ValidatorResultProxy:
+    """Compatibility validator result for reporter integrations."""
 
     def __init__(self, issue: dict[str, Any]) -> None:
         self._issue = issue
@@ -2124,8 +2134,8 @@ class _ValidatorResultMock:
         return self._issue.get("issue_type", "")
 
     @property
-    def severity(self) -> "_SeverityMock":
-        return _SeverityMock(self._issue.get("severity", "medium"))
+    def severity(self) -> "_SeverityProxy":
+        return _SeverityProxy(self._issue.get("severity", "medium"))
 
     @property
     def message(self) -> str:
@@ -2171,8 +2181,8 @@ class _ValidatorResultMock:
         }
 
 
-class _SeverityMock:
-    """Mock Severity enum for reporter compatibility."""
+class _SeverityProxy:
+    """Compatibility Severity enum for reporter integrations."""
 
     def __init__(self, value: str) -> None:
         self._value = value.lower() if isinstance(value, str) else str(value).lower()

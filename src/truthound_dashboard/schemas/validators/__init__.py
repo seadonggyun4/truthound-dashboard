@@ -18,8 +18,6 @@ Usage:
 from __future__ import annotations
 
 from .base import (
-    CustomValidatorExecuteRequest,
-    CustomValidatorExecuteResponse,
     ParameterDefinition,
     ParameterType,
     UnifiedValidatorDefinition,
@@ -54,8 +52,6 @@ __all__ = [
     "ValidatorSource",
     "UnifiedValidatorDefinition",
     "UnifiedValidatorListResponse",
-    "CustomValidatorExecuteRequest",
-    "CustomValidatorExecuteResponse",
     # Utility functions
     "configs_to_truthound_format",
     "has_custom_params",

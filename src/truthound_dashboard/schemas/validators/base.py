@@ -180,17 +180,14 @@ class ValidatorConfigList(BaseModel):
 def configs_to_truthound_format(
     configs: list[ValidatorConfig],
 ) -> tuple[list[str] | None, dict[str, dict[str, Any]]]:
-    """Convert ValidatorConfig list to truthound-compatible format.
+    """Convert dashboard validator configs into the adapter input shape.
 
-    truthound 2.x supports two ways of specifying validators:
-    1. Simple list of validator names: validators=["Null", "Duplicate"]
-    2. Dict-based configuration: validator_config={"Null": {"columns": ("a", "b")}}
+    The dashboard keeps a UI-friendly representation:
+    1. `validators` for selecting built-in checks
+    2. `validator_configs` for per-check parameters
 
-    This function converts our ValidatorConfig format to both formats,
-    allowing the caller to choose based on whether custom params exist.
-
-    Note: In truthound 2.x, columns parameters should be tuples, not lists.
-    This function automatically converts lists to tuples for compatibility.
+    This helper normalizes that data into the compact execution structure
+    used by the dashboard adapter layer.
 
     Args:
         configs: List of ValidatorConfig objects from API request.
@@ -229,8 +226,6 @@ def configs_to_truthound_format(
             for k, v in config.params.items():
                 if v is None or v == "" or v == []:
                     continue
-                # Convert lists to tuples for truthound 2.x compatibility
-                # (columns parameter should be tuple, not list)
                 if isinstance(v, list):
                     filtered_params[k] = tuple(v)
                 else:
@@ -353,44 +348,6 @@ class UnifiedValidatorDefinition(BaseModel):
             is_verified=True,
         )
 
-    @classmethod
-    def from_custom(cls, custom_validator: Any) -> "UnifiedValidatorDefinition":
-        """Create from a CustomValidator database model."""
-        # Convert custom validator parameters to ParameterDefinition format
-        parameters = []
-        for param in custom_validator.parameters or []:
-            param_def = ParameterDefinition(
-                name=param.get("name", ""),
-                label=param.get("name", "").replace("_", " ").title(),
-                type=ParameterType(param.get("type", "string")),
-                description=param.get("description", ""),
-                required=param.get("required", False),
-                default=param.get("default"),
-                options=param.get("options"),
-                min_value=param.get("min_value"),
-                max_value=param.get("max_value"),
-            )
-            parameters.append(param_def)
-
-        return cls(
-            id=str(custom_validator.id),
-            name=f"custom:{custom_validator.name}",  # Prefix to distinguish
-            display_name=custom_validator.display_name,
-            category=custom_validator.category,
-            description=custom_validator.description,
-            parameters=parameters,
-            tags=custom_validator.tags or [],
-            severity_default=custom_validator.severity or "medium",
-            source=ValidatorSource.CUSTOM,
-            is_enabled=custom_validator.is_enabled,
-            requires_extra=None,
-            experimental=False,
-            deprecated=False,
-            usage_count=custom_validator.usage_count,
-            is_verified=custom_validator.is_verified,
-        )
-
-
 class UnifiedValidatorListResponse(BaseModel):
     """Response for unified validator list."""
 
@@ -403,32 +360,3 @@ class UnifiedValidatorListResponse(BaseModel):
     categories: list[dict[str, Any]] = Field(
         default_factory=list, description="Category summary with counts"
     )
-
-
-class CustomValidatorExecuteRequest(BaseModel):
-    """Request to execute a custom validator on a data source."""
-
-    source_id: str = Field(..., description="Data source ID to validate")
-    column_name: str = Field(..., description="Column to validate")
-    param_values: dict[str, Any] = Field(
-        default_factory=dict, description="Parameter values"
-    )
-    sample_size: int | None = Field(
-        default=None, ge=1, le=100000, description="Sample size (optional)"
-    )
-
-
-class CustomValidatorExecuteResponse(BaseModel):
-    """Response from custom validator execution."""
-
-    success: bool = Field(..., description="Whether execution succeeded")
-    passed: bool | None = Field(default=None, description="Whether validation passed")
-    execution_time_ms: float = Field(default=0, description="Execution time in ms")
-    issues: list[dict[str, Any]] = Field(
-        default_factory=list, description="Validation issues found"
-    )
-    message: str = Field(default="", description="Summary message")
-    details: dict[str, Any] = Field(
-        default_factory=dict, description="Additional details"
-    )
-    error: str | None = Field(default=None, description="Error message if failed")

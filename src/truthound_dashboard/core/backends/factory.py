@@ -1,12 +1,11 @@
 """Backend factory for data quality backends.
 
 This module provides a factory for creating and managing data quality
-backends. It supports registration of custom backends and automatic
-fallback when the primary backend is unavailable.
+backends. Truthound 3.0 is the only supported execution backend.
 
 Key Features:
 - Lazy initialization of built-in backends
-- Automatic fallback to mock backend when truthound unavailable
+- Truthound-only backend selection
 - Instance caching for efficiency
 - Backend version detection
 - Capability reporting for feature detection
@@ -40,9 +39,6 @@ class BackendFactory:
         # Get the default backend
         backend = BackendFactory.get_backend()
 
-        # Get a specific backend
-        mock_backend = BackendFactory.get_backend("mock")
-
         # Register a custom backend
         BackendFactory.register("custom", MyCustomBackend)
     """
@@ -50,7 +46,7 @@ class BackendFactory:
     _backends: dict[str, type["BaseDataQualityBackend"]] = {}
     _instances: dict[str, "BaseDataQualityBackend"] = {}
     _default_backend: str = "truthound"
-    _fallback_backend: str = "mock"
+    _fallback_backend: str = ""
     _initialized: bool = False
 
     @classmethod
@@ -60,11 +56,9 @@ class BackendFactory:
             return
 
         # Import and register built-in backends
-        from .mock_backend import MockBackend
         from .truthound_backend import TruthoundBackend
 
         cls._backends["truthound"] = TruthoundBackend
-        cls._backends["mock"] = MockBackend
         cls._initialized = True
 
     @classmethod
@@ -116,7 +110,7 @@ class BackendFactory:
 
         Args:
             name: Backend name. If None, uses default backend.
-            fallback: If True, fallback to mock when primary unavailable.
+            fallback: If True, use the configured fallback backend.
             max_workers: Maximum worker threads for the backend.
 
         Returns:
@@ -242,7 +236,7 @@ class BackendFactory:
         cls._backends.clear()
         cls._initialized = False
         cls._default_backend = "truthound"
-        cls._fallback_backend = "mock"
+        cls._fallback_backend = ""
 
 
 # =============================================================================
@@ -263,7 +257,7 @@ def get_backend(
 
     Args:
         name: Backend name. If None, uses default backend.
-        fallback: If True, fallback to mock when primary unavailable.
+        fallback: If True, use the configured fallback backend.
 
     Returns:
         Backend instance.
@@ -316,7 +310,7 @@ def get_backend_capabilities() -> dict[str, bool]:
     Returns:
         Dictionary mapping capability names to availability.
     """
-    backend = get_backend(fallback=True)
+    backend = get_backend(fallback=False)
     capabilities = {
         # Core validation
         "check": True,  # Always available
@@ -380,7 +374,7 @@ def _is_ci_reporters_available() -> bool:
 
 
 def _is_truthound_2x_api() -> bool:
-    """Check if truthound 2.x API is available (explicit imports)."""
+    """Check if Truthound 3.x namespace-style imports are available."""
     try:
         # Check for new explicit import pattern
         from truthound.datasources.sql.postgresql import (  # noqa: F401
@@ -417,7 +411,7 @@ def get_backend_info() -> dict[str, any]:
         "version": version or get_truthound_version(),
         "available": available,
         "capabilities": get_backend_capabilities(),
-        "registered_backends": list(BackendFactory._backends.keys()) if BackendFactory._initialized else ["truthound", "mock"],
+        "registered_backends": list(BackendFactory._backends.keys()) if BackendFactory._initialized else ["truthound"],
         "fallback_enabled": bool(BackendFactory._fallback_backend),
         "fallback_backend": BackendFactory._fallback_backend or None,
     }

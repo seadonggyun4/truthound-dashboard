@@ -280,9 +280,11 @@ class AnomalyDetectionService:
 
             return result
 
-        except ImportError:
-            # If truthound is not available, return mock result
-            return self._generate_mock_result(algorithm, config)
+        except ImportError as exc:
+            raise RuntimeError(
+                "Truthound 3.0 anomaly features are unavailable. "
+                "Install truthound with the ML extras required by this dashboard."
+            ) from exc
 
     def _build_algorithm_params(
         self,
@@ -882,59 +884,6 @@ class AnomalyDetectionService:
                 "is_anomaly": is_anomaly,
                 "scores": reconstruction_error,
             }
-
-    def _generate_mock_result(
-        self,
-        algorithm: str,
-        config: dict[str, Any] | None,
-    ) -> dict[str, Any]:
-        """Generate mock result when truthound is not available.
-
-        Args:
-            algorithm: Algorithm name.
-            config: Algorithm configuration.
-
-        Returns:
-            Mock detection results.
-        """
-        import random
-
-        total_rows = random.randint(1000, 10000)
-        anomaly_rate = random.uniform(0.01, 0.15)
-        anomaly_count = int(total_rows * anomaly_rate)
-
-        columns = ["col_a", "col_b", "col_c", "col_d"]
-        if config and "columns" in config:
-            columns = config["columns"]
-
-        return {
-            "total_rows": total_rows,
-            "anomaly_count": anomaly_count,
-            "anomaly_rate": anomaly_rate,
-            "columns_analyzed": columns,
-            "anomalies": [
-                {
-                    "row_index": i,
-                    "anomaly_score": random.uniform(0.5, 1.0),
-                    "column_values": {col: random.uniform(-10, 100) for col in columns},
-                    "is_anomaly": True,
-                }
-                for i in range(min(anomaly_count, 100))
-            ],
-            "column_summaries": [
-                {
-                    "column": col,
-                    "dtype": "float64",
-                    "anomaly_count": anomaly_count // len(columns),
-                    "anomaly_rate": anomaly_rate,
-                    "mean_anomaly_score": random.uniform(0.6, 0.9),
-                    "min_value": random.uniform(-100, 0),
-                    "max_value": random.uniform(50, 200),
-                    "top_anomaly_indices": list(range(10)),
-                }
-                for col in columns
-            ],
-        }
 
     # =========================================================================
     # Query Operations

@@ -17,7 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from truthound_dashboard.db.models import (
-    CustomReporter,
     GeneratedReport,
     ReportFormatType,
     ReportStatus,
@@ -46,7 +45,6 @@ class ReportHistoryService:
         self,
         source_id: str | None = None,
         validation_id: str | None = None,
-        reporter_id: str | None = None,
         format: str | None = None,
         status: str | None = None,
         include_expired: bool = False,
@@ -61,7 +59,6 @@ class ReportHistoryService:
         Args:
             source_id: Filter by source ID.
             validation_id: Filter by validation ID.
-            reporter_id: Filter by reporter ID.
             format: Filter by format.
             status: Filter by status.
             include_expired: Include expired reports.
@@ -78,7 +75,6 @@ class ReportHistoryService:
         query = select(GeneratedReport).options(
             selectinload(GeneratedReport.source),
             selectinload(GeneratedReport.validation),
-            selectinload(GeneratedReport.reporter),
         )
 
         # Apply filters
@@ -89,9 +85,6 @@ class ReportHistoryService:
 
         if validation_id:
             conditions.append(GeneratedReport.validation_id == validation_id)
-
-        if reporter_id:
-            conditions.append(GeneratedReport.reporter_id == reporter_id)
 
         if format:
             try:
@@ -157,7 +150,6 @@ class ReportHistoryService:
             .options(
                 selectinload(GeneratedReport.source),
                 selectinload(GeneratedReport.validation),
-                selectinload(GeneratedReport.reporter),
             )
             .where(GeneratedReport.id == report_id)
         )
@@ -170,7 +162,6 @@ class ReportHistoryService:
         format: str,
         validation_id: str | None = None,
         source_id: str | None = None,
-        reporter_id: str | None = None,
         description: str | None = None,
         theme: str | None = None,
         locale: str = "en",
@@ -185,7 +176,6 @@ class ReportHistoryService:
             format: Report format.
             validation_id: Associated validation ID.
             source_id: Associated source ID.
-            reporter_id: Custom reporter ID.
             description: Report description.
             theme: Visual theme.
             locale: Language locale.
@@ -207,10 +197,17 @@ class ReportHistoryService:
         except ValueError:
             format_enum = ReportFormatType.HTML
 
+        workspace_id = None
+        if source_id:
+            source = await self.session.get(Source, source_id)
+            workspace_id = getattr(source, "workspace_id", None) if source else None
+
         report = GeneratedReport(
             name=name,
             description=description,
             format=format_enum,
+            workspace_id=workspace_id,
+            artifact_type="report",
             theme=theme,
             locale=locale,
             status=ReportStatus.PENDING,
@@ -218,7 +215,6 @@ class ReportHistoryService:
             metadata=metadata,
             validation_id=validation_id,
             source_id=source_id,
-            reporter_id=reporter_id,
             expires_at=expires_at,
         )
 
@@ -488,12 +484,6 @@ class ReportHistoryService:
         )
         expired_count = await self.session.scalar(expired_query) or 0
 
-        # Unique reporters used
-        reporters_query = select(
-            func.count(func.distinct(GeneratedReport.reporter_id))
-        ).where(GeneratedReport.reporter_id.isnot(None))
-        reporters_used = await self.session.scalar(reporters_query) or 0
-
         return {
             "total_reports": total,
             "total_size_bytes": int(total_size),
@@ -502,7 +492,6 @@ class ReportHistoryService:
             "total_downloads": int(total_downloads),
             "avg_generation_time_ms": float(avg_time) if avg_time else None,
             "expired_count": expired_count,
-            "reporters_used": reporters_used,
         }
 
     async def cleanup_expired(self) -> int:
