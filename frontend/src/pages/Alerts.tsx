@@ -20,17 +20,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
   UnifiedAlertList,
   AlertSummaryCards,
@@ -39,7 +29,7 @@ import {
 import { request } from '@/api/core'
 
 // Types
-type AlertSource = 'model' | 'drift' | 'anomaly' | 'validation'
+type AlertSource = 'anomaly' | 'validation'
 type AlertSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info'
 type AlertStatus = 'open' | 'acknowledged' | 'resolved' | 'ignored'
 
@@ -72,8 +62,6 @@ interface AlertSummary {
     info: number
   }
   by_source: {
-    model: number
-    drift: number
     anomaly: number
     validation: number
   }
@@ -122,22 +110,6 @@ export default function Alerts() {
   const [correlations, setCorrelations] = useState<AlertCorrelationData[]>([])
   const [correlationsLoading, setCorrelationsLoading] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
-
-  // Action dialogs
-  const [acknowledgeDialog, setAcknowledgeDialog] = useState<{
-    open: boolean
-    alertId: string | null
-    bulk: boolean
-    alertIds: string[]
-  }>({ open: false, alertId: null, bulk: false, alertIds: [] })
-  const [resolveDialog, setResolveDialog] = useState<{
-    open: boolean
-    alertId: string | null
-    bulk: boolean
-    alertIds: string[]
-  }>({ open: false, alertId: null, bulk: false, alertIds: [] })
-  const [actorName, setActorName] = useState('')
-  const [actionMessage, setActionMessage] = useState('')
 
   // Fetch alerts
   const fetchAlerts = useCallback(async () => {
@@ -209,114 +181,6 @@ export default function Alerts() {
     fetchCorrelations(alert.id)
   }
 
-  // Handle acknowledge
-  const handleAcknowledge = (alertId: string) => {
-    setAcknowledgeDialog({ open: true, alertId, bulk: false, alertIds: [] })
-  }
-
-  const handleBulkAcknowledge = (alertIds: string[]) => {
-    setAcknowledgeDialog({ open: true, alertId: null, bulk: true, alertIds })
-  }
-
-  const confirmAcknowledge = async () => {
-    if (!actorName.trim()) return
-
-    try {
-      if (acknowledgeDialog.bulk) {
-        await request('/alerts/bulk/acknowledge', {
-          method: 'POST',
-          body: JSON.stringify({
-            alert_ids: acknowledgeDialog.alertIds,
-            actor: actorName,
-            message: actionMessage,
-          }),
-        })
-        toast({
-          title: str(common.success),
-          description: str(content.messages.acknowledgeSuccess),
-        })
-      } else if (acknowledgeDialog.alertId) {
-        await request(`/alerts/${acknowledgeDialog.alertId}/acknowledge`, {
-          method: 'POST',
-          body: JSON.stringify({
-            actor: actorName,
-            message: actionMessage,
-          }),
-        })
-        toast({
-          title: str(common.success),
-          description: str(content.messages.acknowledgeSuccess),
-        })
-      }
-
-      setAcknowledgeDialog({ open: false, alertId: null, bulk: false, alertIds: [] })
-      setActorName('')
-      setActionMessage('')
-      fetchAlerts()
-      fetchSummary()
-    } catch (error) {
-      toast({
-        title: str(common.error),
-        description: str(content.messages.acknowledgeFailed),
-        variant: 'destructive',
-      })
-    }
-  }
-
-  // Handle resolve
-  const handleResolve = (alertId: string) => {
-    setResolveDialog({ open: true, alertId, bulk: false, alertIds: [] })
-  }
-
-  const handleBulkResolve = (alertIds: string[]) => {
-    setResolveDialog({ open: true, alertId: null, bulk: true, alertIds })
-  }
-
-  const confirmResolve = async () => {
-    if (!actorName.trim()) return
-
-    try {
-      if (resolveDialog.bulk) {
-        await request('/alerts/bulk/resolve', {
-          method: 'POST',
-          body: JSON.stringify({
-            alert_ids: resolveDialog.alertIds,
-            actor: actorName,
-            message: actionMessage,
-          }),
-        })
-        toast({
-          title: str(common.success),
-          description: str(content.messages.resolveSuccess),
-        })
-      } else if (resolveDialog.alertId) {
-        await request(`/alerts/${resolveDialog.alertId}/resolve`, {
-          method: 'POST',
-          body: JSON.stringify({
-            actor: actorName,
-            message: actionMessage,
-          }),
-        })
-        toast({
-          title: str(common.success),
-          description: str(content.messages.resolveSuccess),
-        })
-      }
-
-      setResolveDialog({ open: false, alertId: null, bulk: false, alertIds: [] })
-      setActorName('')
-      setActionMessage('')
-      fetchAlerts()
-      fetchSummary()
-    } catch (error) {
-      toast({
-        title: str(common.error),
-        description: str(content.messages.resolveFailed),
-        variant: 'destructive',
-      })
-    }
-  }
-
   // Handle refresh
   const handleRefresh = () => {
     fetchAlerts()
@@ -355,10 +219,6 @@ export default function Alerts() {
           onSourceFilterChange={setSourceFilter}
           onSeverityFilterChange={setSeverityFilter}
           onStatusFilterChange={setStatusFilter}
-          onAcknowledge={handleAcknowledge}
-          onResolve={handleResolve}
-          onBulkAcknowledge={handleBulkAcknowledge}
-          onBulkResolve={handleBulkResolve}
           onViewDetails={handleViewDetails}
           onViewCorrelations={handleViewCorrelations}
         />
@@ -451,117 +311,6 @@ export default function Alerts() {
         </SheetContent>
       </Sheet>
 
-      {/* Acknowledge Dialog */}
-      <Dialog
-        open={acknowledgeDialog.open}
-        onOpenChange={(open) => {
-          if (!open) {
-            setAcknowledgeDialog({ open: false, alertId: null, bulk: false, alertIds: [] })
-            setActorName('')
-            setActionMessage('')
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{str(content.acknowledgeDialog.title)}</DialogTitle>
-            <DialogDescription>
-              {str(content.acknowledgeDialog.description)}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="actor-name">{str(content.acknowledgeDialog.nameLabel)}</Label>
-              <Input
-                id="actor-name"
-                value={actorName}
-                onChange={(e) => setActorName(e.target.value)}
-                placeholder="Your name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="action-message">{str(content.acknowledgeDialog.messageLabel)}</Label>
-              <Textarea
-                id="action-message"
-                value={actionMessage}
-                onChange={(e) => setActionMessage(e.target.value)}
-                placeholder="Optional message..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setAcknowledgeDialog({ open: false, alertId: null, bulk: false, alertIds: [] })
-                setActorName('')
-                setActionMessage('')
-              }}
-            >
-              {str(content.acknowledgeDialog.cancel)}
-            </Button>
-            <Button onClick={confirmAcknowledge} disabled={!actorName.trim()}>
-              {str(content.acknowledgeDialog.confirm)}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Resolve Dialog */}
-      <Dialog
-        open={resolveDialog.open}
-        onOpenChange={(open) => {
-          if (!open) {
-            setResolveDialog({ open: false, alertId: null, bulk: false, alertIds: [] })
-            setActorName('')
-            setActionMessage('')
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{str(content.resolveDialog.title)}</DialogTitle>
-            <DialogDescription>
-              {str(content.resolveDialog.description)}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="resolve-actor-name">{str(content.resolveDialog.nameLabel)}</Label>
-              <Input
-                id="resolve-actor-name"
-                value={actorName}
-                onChange={(e) => setActorName(e.target.value)}
-                placeholder="Your name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="resolve-message">{str(content.resolveDialog.messageLabel)}</Label>
-              <Textarea
-                id="resolve-message"
-                value={actionMessage}
-                onChange={(e) => setActionMessage(e.target.value)}
-                placeholder="Resolution details..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setResolveDialog({ open: false, alertId: null, bulk: false, alertIds: [] })
-                setActorName('')
-                setActionMessage('')
-              }}
-            >
-              {str(content.resolveDialog.cancel)}
-            </Button>
-            <Button onClick={confirmResolve} disabled={!actorName.trim()}>
-              {str(content.resolveDialog.confirm)}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

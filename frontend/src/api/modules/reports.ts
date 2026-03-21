@@ -56,7 +56,7 @@ export interface AvailableFormatsResponse {
 
 export type ReportStatus = 'pending' | 'generating' | 'completed' | 'failed' | 'expired'
 
-export interface GeneratedReport {
+export interface GeneratedReportRecord {
   id: string
   name: string
   description?: string
@@ -67,24 +67,24 @@ export interface GeneratedReport {
   theme: ReportTheme
   locale: ReportLocale
   status: ReportStatus
-  filename?: string
   file_path?: string
-  file_size_bytes?: number
-  content_type?: string
+  file_size?: number
+  content_hash?: string
   generation_time_ms?: number
   error_message?: string
-  download_count: number
+  downloaded_count: number
+  last_downloaded_at?: string
+  download_url?: string
   expires_at?: string
-  is_expired: boolean
   created_at: string
   updated_at: string
 }
 
 export interface GeneratedReportListResponse {
-  data: GeneratedReport[]
+  data: GeneratedReportRecord[]
   total: number
-  page: number
-  page_size: number
+  offset: number
+  limit: number
 }
 
 export interface ReportStatistics {
@@ -108,7 +108,7 @@ export interface BulkReportGenerateResponse {
   total_requested: number
   reports_created: number
   reports_failed: number
-  reports: GeneratedReport[]
+  reports: GeneratedReportRecord[]
   errors: string[]
 }
 
@@ -198,8 +198,8 @@ export async function getReportStatistics(): Promise<ReportStatistics> {
   return request<ReportStatistics>('/reports/history/statistics')
 }
 
-export async function getGeneratedReport(reportId: string): Promise<GeneratedReport> {
-  return request<GeneratedReport>(`/reports/history/${reportId}`)
+export async function getGeneratedReport(reportId: string): Promise<GeneratedReportRecord> {
+  return request<GeneratedReportRecord>(`/reports/history/${reportId}`)
 }
 
 export async function createReportRecord(data: {
@@ -213,8 +213,8 @@ export async function createReportRecord(data: {
   include_samples?: boolean
   include_statistics?: boolean
   generate_immediately?: boolean
-}): Promise<GeneratedReport> {
-  return request<GeneratedReport>('/reports/history', {
+}): Promise<GeneratedReportRecord> {
+  return request<GeneratedReportRecord>('/reports/history', {
     method: 'POST',
     body: JSON.stringify(data),
   })
@@ -223,8 +223,8 @@ export async function createReportRecord(data: {
 export async function updateReportRecord(reportId: string, data: {
   name?: string
   description?: string
-}): Promise<GeneratedReport> {
-  return request<GeneratedReport>(`/reports/history/${reportId}`, {
+}): Promise<GeneratedReportRecord> {
+  return request<GeneratedReportRecord>(`/reports/history/${reportId}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   })
@@ -245,8 +245,8 @@ export async function downloadSavedReport(reportId: string): Promise<Blob> {
   return response.blob()
 }
 
-export async function generateReportContent(reportId: string): Promise<GeneratedReport> {
-  return request<GeneratedReport>(`/reports/history/${reportId}/generate`, {
+export async function generateReportContent(reportId: string): Promise<GeneratedReportRecord> {
+  return request<GeneratedReportRecord>(`/reports/history/${reportId}/generate`, {
     method: 'POST',
   })
 }

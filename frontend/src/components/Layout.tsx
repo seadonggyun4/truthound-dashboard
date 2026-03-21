@@ -9,15 +9,9 @@ import {
   GitCompare,
   Clock,
   Bell,
-  BookOpen,
-  FolderOpen,
-  Activity,
-  Settings,
   Network,
   AlertTriangle,
   Shield,
-  Radio,
-  Cpu,
   BellRing,
   AlertCircle,
   FileText,
@@ -27,7 +21,6 @@ import {
   ChevronLeft,
   Loader2,
   HardDrive,
-  Eye,
   BarChart3,
   PanelLeftClose,
   PanelLeftOpen,
@@ -37,6 +30,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useTheme } from '@/components/theme-provider'
 import { LanguageSelector } from '@/components/common'
+import { getSession, type SessionContext } from '@/api/modules/control-plane'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import logoImg from '@/assets/logo.png'
 import { request } from '@/api/core'
@@ -55,7 +49,21 @@ import {
 // Navigation throttle delay (ms) - must wait this long between navigations
 const NAV_THROTTLE_MS = 800
 
-type NavKey = 'dashboard' | 'sources' | 'catalog' | 'glossary' | 'drift' | 'lineage' | 'schedules' | 'activity' | 'notifications' | 'maintenance' | 'anomaly' | 'privacy' | 'driftMonitoring' | 'modelMonitoring' | 'notificationsAdvanced' | 'alerts' | 'reports' | 'plugins' | 'storageTiering' | 'schemaWatcher' | 'observability'
+type NavKey =
+  | 'dashboard'
+  | 'sources'
+  | 'drift'
+  | 'lineage'
+  | 'anomaly'
+  | 'privacy'
+  | 'alerts'
+  | 'schedules'
+  | 'notifications'
+  | 'notificationsAdvanced'
+  | 'reports'
+  | 'plugins'
+  | 'storageTiering'
+  | 'observability'
 
 interface NavItem {
   key: NavKey
@@ -69,28 +77,21 @@ const navigation: NavItem[] = [
   // Data Management
   { key: 'dashboard', href: '/', icon: LayoutDashboard, section: 'data' },
   { key: 'sources', href: '/sources', icon: Database, section: 'data' },
-  { key: 'catalog', href: '/catalog', icon: FolderOpen, section: 'data' },
-  { key: 'glossary', href: '/glossary', icon: BookOpen, section: 'data' },
   // Data Quality
   { key: 'drift', href: '/drift', icon: GitCompare, section: 'quality' },
-  { key: 'driftMonitoring', href: '/drift-monitoring', icon: Radio, section: 'quality' },
-  { key: 'schemaWatcher', href: '/schema-watcher', icon: Eye, section: 'quality' },
   { key: 'privacy', href: '/privacy', icon: Shield, section: 'quality' },
   { key: 'lineage', href: '/lineage', icon: Network, section: 'quality' },
   // ML & Monitoring
   { key: 'anomaly', href: '/anomaly', icon: AlertTriangle, section: 'ml' },
-  { key: 'modelMonitoring', href: '/model-monitoring', icon: Cpu, section: 'ml' },
   // System
   { key: 'alerts', href: '/alerts', icon: AlertCircle, section: 'system', showBadge: true },
   { key: 'schedules', href: '/schedules', icon: Clock, section: 'system' },
-  { key: 'activity', href: '/activity', icon: Activity, section: 'system' },
   { key: 'notifications', href: '/notifications', icon: Bell, section: 'system' },
   { key: 'notificationsAdvanced', href: '/notifications/advanced', icon: BellRing, section: 'system' },
   { key: 'reports', href: '/reports', icon: FileText, section: 'system' },
   { key: 'plugins', href: '/plugins', icon: Puzzle, section: 'system' },
   { key: 'storageTiering', href: '/storage-tiering', icon: HardDrive, section: 'system' },
   { key: 'observability', href: '/observability', icon: BarChart3, section: 'system' },
-  { key: 'maintenance', href: '/maintenance', icon: Settings, section: 'system' },
 ]
 
 export default function Layout() {
@@ -105,6 +106,7 @@ export default function Layout() {
   })
   const [alertCount, setAlertCount] = useState(0)
   const [localIP, setLocalIP] = useState<string>('')
+  const [sessionContext, setSessionContext] = useState<SessionContext | null>(null)
 
   // Navigation loading state
   const [isNavigating, setIsNavigating] = useState(false)
@@ -210,6 +212,18 @@ export default function Layout() {
     // Refresh every 60 seconds
     const interval = setInterval(fetchAlertCount, 60000)
     return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    const bootstrapSession = async () => {
+      try {
+        const session = await getSession()
+        setSessionContext(session)
+      } catch {
+        // Keep the dashboard usable even if the control-plane bootstrap fails.
+      }
+    }
+    void bootstrapSession()
   }, [])
 
   return (
@@ -555,6 +569,12 @@ export default function Layout() {
               <span className="px-2 py-1 rounded-md bg-muted/50">
                 {localIP}
               </span>
+            </div>
+          )}
+          {sessionContext && (
+            <div className="hidden lg:flex items-center gap-2">
+              <Badge variant="outline">{sessionContext.workspace.name}</Badge>
+              <Badge variant="secondary">{sessionContext.user.display_name}</Badge>
             </div>
           )}
           <div className="flex-1" />

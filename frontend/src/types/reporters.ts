@@ -10,7 +10,6 @@
  * - ValidationReporter for validation-specific reports
  * - CI Platform reporters: GitHub Actions, GitLab CI, Azure DevOps, Jenkins
  * - Mixin-based extensibility (Formatting, Aggregation, Filtering)
- * - SDK for custom reporter development using decorators or builder pattern
  *
  * Important distinction:
  * - Report (from th.check()): Simple report with issues list, has_issues, print(), to_json()
@@ -351,7 +350,6 @@ export interface GeneratedReport {
   metadata?: Record<string, unknown>
   validationId?: string
   sourceId?: string
-  reporterId?: string
   status: ReportStatus
   filePath?: string
   fileSize?: number
@@ -362,7 +360,6 @@ export interface GeneratedReport {
   updatedAt: string
   // Enriched fields
   sourceName?: string
-  reporterName?: string
   downloadUrl?: string
 }
 
@@ -374,7 +371,6 @@ export interface ReportCreateOptions {
   format: ReportFormatType
   validationId?: string
   sourceId?: string
-  reporterId?: string
   description?: string
   theme?: ReportThemeType
   locale?: ReportLocale
@@ -403,60 +399,6 @@ export interface ReportStatistics {
   totalDownloads: number
   avgGenerationTimeMs?: number
   expiredCount: number
-  reportersUsed: number
-}
-
-// =============================================================================
-// Custom Reporter Types
-// =============================================================================
-
-/**
- * Custom reporter output format.
- */
-export type ReporterOutputFormat = 'string' | 'bytes' | 'json' | 'html'
-
-/**
- * Custom reporter definition.
- */
-export interface CustomReporter {
-  id: string
-  pluginId?: string
-  name: string
-  displayName: string
-  description?: string
-  version: string
-  category?: string
-  fileExtension: string
-  contentType: string
-  supportsTheme: boolean
-  supportsI18n: boolean
-  template?: string
-  code?: string
-  configSchema?: Record<string, unknown>
-  defaultConfig?: Record<string, unknown>
-  enabled: boolean
-  builtIn: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-/**
- * Options for creating a custom reporter.
- */
-export interface CustomReporterCreateOptions {
-  name: string
-  displayName: string
-  description?: string
-  version?: string
-  category?: string
-  fileExtension: string
-  contentType: string
-  supportsTheme?: boolean
-  supportsI18n?: boolean
-  template?: string
-  code?: string
-  configSchema?: Record<string, unknown>
-  defaultConfig?: Record<string, unknown>
 }
 
 // =============================================================================
@@ -490,7 +432,6 @@ export interface BulkReportRequest {
   format?: ReportFormatType
   theme?: ReportThemeType
   locale?: ReportLocale
-  reporterId?: string
   config?: Record<string, unknown>
   saveToHistory?: boolean
   expiresInDays?: number
@@ -817,8 +758,6 @@ export interface GenerateReportRequest {
   format: ReportFormatType
   /** Reporter configuration */
   config?: ReporterConfig
-  /** Custom reporter ID (if using custom reporter) */
-  reporterId?: string
   /** Save to report history */
   saveToHistory?: boolean
   /** Report name for history */
@@ -845,22 +784,4 @@ export interface GenerateReportResponse {
   generationTimeMs: number
   /** Report record if saved to history */
   report?: GeneratedReport
-}
-
-/**
- * Preview request for custom reporters.
- */
-export interface ReporterPreviewRequest {
-  reporterId: string
-  sampleData?: ValidationResult
-  config?: ReporterConfig
-}
-
-/**
- * Preview response.
- */
-export interface ReporterPreviewResponse {
-  content: string
-  contentType: string
-  previewUrl?: string
 }

@@ -59,13 +59,11 @@ const reportsContent = {
     // Preview
     previewReport: t({ en: 'Preview Report', ko: '리포트 미리보기' }),
 
-    // Custom Reporters
-    customReporters: t({ en: 'Custom Reporters', ko: '커스텀 리포터' }),
     noConfigRequired: t({ en: 'No configuration required.', ko: '설정이 필요하지 않습니다.' }),
     generateReport: t({ en: 'Generate Report', ko: '리포트 생성' }),
     generating: t({ en: 'Generating...', ko: '생성 중...' }),
-    customReportDownloaded: t({ en: 'Custom report downloaded', ko: '커스텀 리포트 다운로드됨' }),
-    configureReporter: t({ en: 'Configure and generate custom report', ko: '커스텀 리포트 설정 및 생성' }),
+    customReportDownloaded: t({ en: 'Report downloaded', ko: '리포트 다운로드됨' }),
+    configureReporter: t({ en: 'Configure and generate a report', ko: '리포트 설정 및 생성' }),
     clickToGenerate: t({ en: 'Click generate to create the report', ko: '생성 버튼을 클릭하여 리포트 생성' }),
 
     // Language selection
@@ -94,7 +92,6 @@ const reportsContent = {
     totalDownloads: t({ en: 'Total Downloads', ko: '총 다운로드' }),
     avgGenerationTime: t({ en: 'Avg. Generation Time', ko: '평균 생성 시간' }),
     expiredReports: t({ en: 'Expired Reports', ko: '만료된 리포트' }),
-    reportersUsed: t({ en: 'Reporters Used', ko: '사용된 리포터' }),
 
     // Report Status
     statusPending: t({ en: 'Pending', ko: '대기 중' }),
@@ -120,7 +117,6 @@ const reportsContent = {
     viewDetails: t({ en: 'View Details', ko: '상세 보기' }),
     bulkGenerate: t({ en: 'Bulk Generate', ko: '일괄 생성' }),
     cleanupExpired: t({ en: 'Cleanup Expired', ko: '만료 정리' }),
-    manageReporters: t({ en: 'Manage Reporters', ko: '리포터 관리' }),
 
     // Report Details
     reportName: t({ en: 'Report Name', ko: '리포트 이름' }),
@@ -128,7 +124,6 @@ const reportsContent = {
     status: t({ en: 'Status', ko: '상태' }),
     source: t({ en: 'Source', ko: '소스' }),
     validation: t({ en: 'Validation', ko: '검증' }),
-    reporter: t({ en: 'Reporter', ko: '리포터' }),
     theme: t({ en: 'Theme', ko: '테마' }),
     locale: t({ en: 'Language', ko: '언어' }),
     fileSize: t({ en: 'File Size', ko: '파일 크기' }),
@@ -139,7 +134,6 @@ const reportsContent = {
     errorMessage: t({ en: 'Error Message', ko: '오류 메시지' }),
     neverExpires: t({ en: 'Never Expires', ko: '만료 없음' }),
     noSource: t({ en: 'No Source', ko: '소스 없음' }),
-    noReporter: t({ en: 'Standard Reporter', ko: '기본 리포터' }),
 
     // Bulk Actions
     bulkGenerateTitle: t({ en: 'Bulk Generate Reports', ko: '리포트 일괄 생성' }),

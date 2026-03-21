@@ -64,13 +64,7 @@ import {
   type ValidatorConfig,
   type ResultFormatLevel,
 } from '@/api/modules/validations'
-import {
-  listValidators,
-  listUnifiedValidators,
-  type ValidatorDefinition,
-  type UnifiedValidatorDefinition,
-} from '@/api/modules/validators'
-import type { CustomValidatorSelectionConfig } from '@/components/validators/ValidatorSelector'
+import { listValidators, type ValidatorDefinition } from '@/api/modules/validators'
 import { formatDate, formatNumber } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -111,11 +105,9 @@ export default function SourceDetail() {
   const [validationDialogOpen, setValidationDialogOpen] = useState(false)
   const [validators, setValidators] = useState<ValidatorDefinition[]>([])
   const [validatorConfigs, setValidatorConfigs] = useState<ValidatorConfig[]>([])
-  const [customValidators, setCustomValidators] = useState<UnifiedValidatorDefinition[]>([])
-  const [customValidatorConfigs, setCustomValidatorConfigs] = useState<CustomValidatorSelectionConfig[]>([])
   const [loadingValidators, setLoadingValidators] = useState(false)
 
-  // Advanced validation options (PHASE 1 + PHASE 5)
+  // Advanced Truthound 3.0 validation options
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [resultFormat, setResultFormat] = useState<ResultFormatLevel>('basic')
   const [includeUnexpectedRows, setIncludeUnexpectedRows] = useState(false)
@@ -178,13 +170,8 @@ export default function SourceDetail() {
     if (validators.length > 0) return // Already loaded
     try {
       setLoadingValidators(true)
-      // Load both built-in and custom validators
-      const [validatorDefs, unifiedResponse] = await Promise.all([
-        listValidators(),
-        listUnifiedValidators({ source: 'custom', enabled_only: true }),
-      ])
+      const validatorDefs = await listValidators()
       setValidators(validatorDefs)
-      setCustomValidators(unifiedResponse.data)
     } catch {
       toast({
         title: 'Error',
@@ -204,32 +191,19 @@ export default function SourceDetail() {
     if (!id) return
     try {
       setValidating(true)
-      // Get enabled validators with their configurations
       const enabledConfigs = validatorConfigs.filter((c) => c.enabled)
 
-      // Get enabled custom validators
-      const enabledCustomConfigs = customValidatorConfigs
-        .filter((c) => c.enabled && c.column)
-        .map((c) => ({
-          validator_id: c.validator_id,
-          column: c.column,
-          params: c.params || {},
-        }))
-
       const options: Parameters<typeof runValidation>[1] = {
-        // PHASE 1: Result format options
+        // Result format options
         result_format: resultFormat,
         include_unexpected_rows: includeUnexpectedRows,
         ...(includeUnexpectedRows && { max_unexpected_rows: maxUnexpectedRows }),
-        // PHASE 5: Exception control
+        // Exception handling controls
         catch_exceptions: catchExceptions,
         max_retries: maxRetries,
       }
       if (enabledConfigs.length > 0) {
         options.validator_configs = enabledConfigs
-      }
-      if (enabledCustomConfigs.length > 0) {
-        options.custom_validators = enabledCustomConfigs
       }
 
       const result = await runValidation(id, options)
@@ -481,13 +455,10 @@ export default function SourceDetail() {
                     configs={validatorConfigs}
                     onChange={setValidatorConfigs}
                     columns={schema?.columns || []}
-                    customValidators={customValidators}
-                    customValidatorConfigs={customValidatorConfigs}
-                    onCustomValidatorChange={setCustomValidatorConfigs}
                   />
                 )}
 
-                {/* Advanced Options (PHASE 1 + PHASE 5) */}
+                {/* Advanced validation options */}
                 <Separator className="my-4" />
                 <button
                   type="button"

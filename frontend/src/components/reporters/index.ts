@@ -4,7 +4,6 @@
  * Components for the truthound reporter system:
  * - Format selection and configuration
  * - Report preview and download
- * - Custom reporter management
  */
 
 export { ReporterSelector } from './ReporterSelector'

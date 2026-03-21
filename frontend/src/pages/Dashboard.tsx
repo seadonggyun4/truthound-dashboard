@@ -8,11 +8,14 @@ import {
   XCircle,
   AlertTriangle,
   ArrowRight,
+  BellRing,
+  FileText,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { listSources, type SourceListResponse } from '@/api/modules/sources'
+import { getOverview, type OverviewResponse } from '@/api/modules/control-plane'
 import { formatDate } from '@/lib/utils'
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { GlassCard } from '@/components/GlassCard'
@@ -35,7 +38,16 @@ export default function Dashboard() {
     { throttleMs: 500, cacheTtlMs: 30000 }
   )
 
+  const { data: overviewResponse } = useThrottledFetch<OverviewResponse>(
+    'dashboard-overview',
+    getOverview,
+    { throttleMs: 500, cacheTtlMs: 30000 }
+  )
+
   const sources = sourcesResponse?.data ?? []
+  const activeIncidents = overviewResponse?.incidents.active ?? 0
+  const totalArtifacts = overviewResponse?.artifacts.total ?? 0
+  const quickViews = overviewResponse?.saved_views ?? []
 
   // Create a helper to get validation status labels
   const getValidationLabel = useMemo(() => {
@@ -95,7 +107,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <GlassCard
           className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20"
           glowColor="#fd9e4b"
@@ -187,6 +199,52 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </GlassCard>
+
+        <GlassCard
+          className="bg-gradient-to-br from-orange-500/10 via-orange-500/5 to-transparent border-orange-500/20"
+          glowColor="#f97316"
+        >
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-orange-500/10 blur-2xl" />
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-xl bg-orange-500/20 flex items-center justify-center">
+                <BellRing className="h-7 w-7 text-orange-500" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Active Incidents</p>
+                <p className="text-3xl font-bold text-orange-500">
+                  <AnimatedNumber value={activeIncidents} duration={1200} />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Escalations awaiting action
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </GlassCard>
+
+        <GlassCard
+          className="bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-transparent border-sky-500/20"
+          glowColor="#0ea5e9"
+        >
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-sky-500/10 blur-2xl" />
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-xl bg-sky-500/20 flex items-center justify-center">
+                <FileText className="h-7 w-7 text-sky-500" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Artifacts</p>
+                <p className="text-3xl font-bold text-sky-500">
+                  <AnimatedNumber value={totalArtifacts} duration={1200} />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Reports and Data Docs history
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </GlassCard>
       </div>
 
       {/* Recent Sources */}
@@ -256,6 +314,49 @@ export default function Dashboard() {
                   </div>
                 </Link>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Views</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Saved operational filters from Sources and Reports.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {quickViews.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Save a filtered view to pin it on the dashboard.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {quickViews.map((view) => {
+                const href =
+                  view.scope === 'reports'
+                    ? '/reports'
+                    : view.scope === 'incidents'
+                      ? '/notifications/advanced'
+                      : '/sources'
+                return (
+                  <Link
+                    key={view.id}
+                    to={href}
+                    className="flex items-center justify-between rounded-lg border p-4 hover:bg-accent transition-colors"
+                  >
+                    <div>
+                      <p className="font-medium">{view.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {view.scope}
+                        {view.owner_name ? ` • ${view.owner_name}` : ''}
+                      </p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                  </Link>
+                )
+              })}
             </div>
           )}
         </CardContent>

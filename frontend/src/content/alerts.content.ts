@@ -30,8 +30,6 @@ const alertsContent = {
     // Source types
     sources: {
       all: t({ en: 'All Sources', ko: '모든 소스' }),
-      model: t({ en: 'Model Monitoring', ko: '모델 모니터링' }),
-      drift: t({ en: 'Drift Detection', ko: '드리프트 감지' }),
       anomaly: t({ en: 'Anomaly Detection', ko: '이상 탐지' }),
       validation: t({ en: 'Validation', ko: '검증' }),
     },
@@ -165,10 +163,9 @@ const alertsContent = {
     acknowledgeDialog: {
       title: t({ en: 'Acknowledge Alert', ko: '알림 확인' }),
       description: t({
-        en: 'Enter your name to acknowledge this alert',
-        ko: '알림을 확인하려면 이름을 입력하세요',
+        en: 'Alert acknowledgement is handled from the incident workbench.',
+        ko: '알림 확인은 인시던트 워크벤치에서 처리됩니다.',
       }),
-      nameLabel: t({ en: 'Your Name', ko: '이름' }),
       messageLabel: t({ en: 'Message (optional)', ko: '메시지 (선택)' }),
       confirm: t({ en: 'Acknowledge', ko: '확인' }),
       cancel: t({ en: 'Cancel', ko: '취소' }),
@@ -178,10 +175,9 @@ const alertsContent = {
     resolveDialog: {
       title: t({ en: 'Resolve Alert', ko: '알림 해결' }),
       description: t({
-        en: 'Enter details to resolve this alert',
-        ko: '알림을 해결하려면 상세 정보를 입력하세요',
+        en: 'Alert resolution is handled from the incident workbench.',
+        ko: '알림 해결은 인시던트 워크벤치에서 처리됩니다.',
       }),
-      nameLabel: t({ en: 'Your Name', ko: '이름' }),
       messageLabel: t({ en: 'Resolution Message', ko: '해결 메시지' }),
       confirm: t({ en: 'Resolve', ko: '해결' }),
       cancel: t({ en: 'Cancel', ko: '취소' }),

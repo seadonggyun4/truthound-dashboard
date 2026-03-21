@@ -114,11 +114,6 @@ export type {
   ReportCreateOptions,
   ReportUpdateOptions,
   ReportStatistics,
-
-  // Custom reporters
-  ReporterOutputFormat,
-  CustomReporter,
-  CustomReporterCreateOptions,
   ReporterMixin,
   SDKReporter,
   ReporterBuilderOptions,
@@ -130,8 +125,6 @@ export type {
   BulkReportResponse,
   GenerateReportRequest,
   GenerateReportResponse,
-  ReporterPreviewRequest,
-  ReporterPreviewResponse,
 
   // ValidationResult types (for full reporter functionality)
   ResultStatus,

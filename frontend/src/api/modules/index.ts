@@ -26,26 +26,14 @@ export * from './schedules'
 // Privacy (PII scan, masking)
 export * from './privacy'
 
-// Notifications (includes basic channels/rules/logs and advanced routing/deduplication/throttling/escalation)
+// Checkpoint operations (schedules, notifications, alerts, triggers)
 export * from './notifications'
-
-// Glossary
-export * from './glossary'
-
-// Catalog
-export * from './catalog'
-
-// Collaboration
-export * from './collaboration'
 
 // Validators
 export * from './validators'
 
 // Reports
 export * from './reports'
-
-// Maintenance
-export * from './maintenance'
 
 // Schema Evolution
 export * from './schema-evolution'
@@ -74,9 +62,6 @@ export * from './plugins'
 // Triggers
 export * from './triggers'
 
-// Schema Watcher
-export * from './schema-watcher'
-
 // Enterprise Sampling
 export * from './enterprise-sampling'
 
@@ -91,3 +76,6 @@ export {
   getObservabilityConfig, updateObservabilityConfig, getObservabilityStats,
   listAuditEvents, getAuditStats, getMetrics, getStoreMetrics, getTracingStats, listSpans,
 } from './observability'
+
+// Storage
+export * from './tiering'

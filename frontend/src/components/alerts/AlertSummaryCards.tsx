@@ -16,8 +16,6 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  GitCompare,
-  Cpu,
   CheckCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -39,8 +37,6 @@ interface AlertSummary {
     info: number
   }
   by_source: {
-    model: number
-    drift: number
     anomaly: number
     validation: number
   }
@@ -66,8 +62,6 @@ interface AlertSummaryCardsProps {
 }
 
 const sourceIcons = {
-  model: Cpu,
-  drift: GitCompare,
   anomaly: AlertTriangle,
   validation: CheckCircle,
 }

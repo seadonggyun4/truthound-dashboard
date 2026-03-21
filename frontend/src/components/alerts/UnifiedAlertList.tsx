@@ -6,11 +6,9 @@
  * - Source type filter
  * - Severity filter
  * - Status filter
- * - Time range filter
- * - Bulk acknowledge/resolve
+ * - Read-only aggregated alert browsing
  */
 
-import { useState, useMemo } from 'react'
 import { useIntlayer } from '@/providers'
 import { str } from '@/lib/intlayer-utils'
 import { formatDistanceToNow } from 'date-fns'
@@ -21,14 +19,12 @@ import {
   CheckCircle,
   Clock,
   Eye,
-  CheckCheck,
   ExternalLink,
   MoreHorizontal,
 } from 'lucide-react'
 import { cn, parseUTC } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
   TableBody,
@@ -52,7 +48,7 @@ import {
 } from '@/components/ui/select'
 
 // Types
-type AlertSource = 'model' | 'drift' | 'anomaly' | 'validation'
+type AlertSource = 'anomaly' | 'validation'
 type AlertSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info'
 type AlertStatus = 'open' | 'acknowledged' | 'resolved' | 'ignored'
 
@@ -84,11 +80,6 @@ interface UnifiedAlertListProps {
   onSourceFilterChange: (source: AlertSource | null) => void
   onSeverityFilterChange: (severity: AlertSeverity | null) => void
   onStatusFilterChange: (status: AlertStatus | null) => void
-  // Actions
-  onAcknowledge: (alertId: string) => void
-  onResolve: (alertId: string) => void
-  onBulkAcknowledge: (alertIds: string[]) => void
-  onBulkResolve: (alertIds: string[]) => void
   onViewDetails: (alert: UnifiedAlert) => void
   onViewCorrelations?: (alert: UnifiedAlert) => void
 }
@@ -109,8 +100,6 @@ const statusConfig: Record<AlertStatus, { icon: typeof Clock; color: string }> =
 }
 
 const sourceLabels: Record<AlertSource, string> = {
-  model: 'Model',
-  drift: 'Drift',
   anomaly: 'Anomaly',
   validation: 'Validation',
 }
@@ -124,51 +113,10 @@ export function UnifiedAlertList({
   onSourceFilterChange,
   onSeverityFilterChange,
   onStatusFilterChange,
-  onAcknowledge,
-  onResolve,
-  onBulkAcknowledge,
-  onBulkResolve,
   onViewDetails,
   onViewCorrelations,
 }: UnifiedAlertListProps) {
   const content = useIntlayer('alerts')
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-
-  const selectableAlerts = useMemo(
-    () => alerts.filter(a => a.status === 'open' || a.status === 'acknowledged'),
-    [alerts]
-  )
-
-  const allSelected = selectableAlerts.length > 0 && selectedIds.size === selectableAlerts.length
-  const someSelected = selectedIds.size > 0 && selectedIds.size < selectableAlerts.length
-
-  const handleSelectAll = () => {
-    if (allSelected) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(selectableAlerts.map(a => a.id)))
-    }
-  }
-
-  const handleSelectOne = (alertId: string) => {
-    const newSelected = new Set(selectedIds)
-    if (newSelected.has(alertId)) {
-      newSelected.delete(alertId)
-    } else {
-      newSelected.add(alertId)
-    }
-    setSelectedIds(newSelected)
-  }
-
-  const handleBulkAcknowledge = () => {
-    onBulkAcknowledge(Array.from(selectedIds))
-    setSelectedIds(new Set())
-  }
-
-  const handleBulkResolve = () => {
-    onBulkResolve(Array.from(selectedIds))
-    setSelectedIds(new Set())
-  }
 
   const SeverityIcon = ({ severity }: { severity: AlertSeverity }) => {
     const config = severityConfig[severity]
@@ -184,7 +132,7 @@ export function UnifiedAlertList({
 
   return (
     <div className="space-y-4">
-      {/* Filters and bulk actions */}
+      {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
         {/* Source filter */}
         <Select
@@ -196,8 +144,6 @@ export function UnifiedAlertList({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{str(content.sources.all)}</SelectItem>
-            <SelectItem value="model">{str(content.sources.model)}</SelectItem>
-            <SelectItem value="drift">{str(content.sources.drift)}</SelectItem>
             <SelectItem value="anomaly">{str(content.sources.anomaly)}</SelectItem>
             <SelectItem value="validation">{str(content.sources.validation)}</SelectItem>
           </SelectContent>
@@ -237,31 +183,6 @@ export function UnifiedAlertList({
             <SelectItem value="ignored">{str(content.status.ignored)}</SelectItem>
           </SelectContent>
         </Select>
-
-        {/* Bulk actions */}
-        {selectedIds.size > 0 && (
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm text-muted-foreground">
-              {selectedIds.size} selected
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleBulkAcknowledge}
-            >
-              <Eye className="h-4 w-4 mr-1" />
-              {str(content.actions.bulkAcknowledge)}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleBulkResolve}
-            >
-              <CheckCheck className="h-4 w-4 mr-1" />
-              {str(content.actions.bulkResolve)}
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Alerts table */}
@@ -269,13 +190,6 @@ export function UnifiedAlertList({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[40px]">
-                <Checkbox
-                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                  onCheckedChange={handleSelectAll}
-                  disabled={selectableAlerts.length === 0}
-                />
-              </TableHead>
               <TableHead className="w-[100px]">{str(content.columns.severity)}</TableHead>
               <TableHead className="w-[100px]">{str(content.columns.source)}</TableHead>
               <TableHead>{str(content.columns.title)}</TableHead>
@@ -287,7 +201,7 @@ export function UnifiedAlertList({
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   <div className="flex items-center justify-center">
                     <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                   </div>
@@ -295,22 +209,14 @@ export function UnifiedAlertList({
               </TableRow>
             ) : alerts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                   {str(content.empty.noAlerts)}
                 </TableCell>
               </TableRow>
             ) : (
               alerts.map((alert) => {
-                const isSelectable = alert.status === 'open' || alert.status === 'acknowledged'
                 return (
                   <TableRow key={alert.id} className="hover:bg-muted/50">
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedIds.has(alert.id)}
-                        onCheckedChange={() => handleSelectOne(alert.id)}
-                        disabled={!isSelectable}
-                      />
-                    </TableCell>
                     <TableCell>
                       <div className={cn(
                         'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium',
@@ -358,18 +264,6 @@ export function UnifiedAlertList({
                             <DropdownMenuItem onClick={() => onViewCorrelations(alert)}>
                               <ExternalLink className="h-4 w-4 mr-2" />
                               {str(content.correlation.title)}
-                            </DropdownMenuItem>
-                          )}
-                          {alert.status === 'open' && (
-                            <DropdownMenuItem onClick={() => onAcknowledge(alert.id)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              {str(content.actions.acknowledge)}
-                            </DropdownMenuItem>
-                          )}
-                          {(alert.status === 'open' || alert.status === 'acknowledged') && (
-                            <DropdownMenuItem onClick={() => onResolve(alert.id)}>
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              {str(content.actions.resolve)}
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>

@@ -4,10 +4,10 @@
  * Provides React hooks for:
  * - Report generation with progress tracking
  * - Report history management
- * - Custom reporter configuration
+ * - Built-in report configuration
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useToast } from './use-toast'
 import type {
   ReportFormatType,
@@ -15,7 +15,6 @@ import type {
   ReportLocale,
   ReporterConfig,
   GeneratedReport,
-  CustomReporter,
   LocaleInfo,
 } from '@/types/reporters'
 import {
@@ -28,13 +27,13 @@ import {
   getReportStatistics,
   deleteReportRecord,
   cleanupExpiredReports,
+  type GeneratedReportRecord,
   type ReportFormat,
   type ReportTheme,
   type ReportLocale as ModuleReportLocale,
   type ReportStatus,
   type ReportStatistics,
 } from '@/api/modules/reports'
-import { listCustomReporters } from '@/api/modules/plugins'
 
 // Type alias for report history query params
 interface ReportHistoryQuery {
@@ -47,6 +46,29 @@ interface ReportHistoryQuery {
   pageSize?: number
 }
 import { createDefaultConfig } from '@/types/reporters'
+
+function normalizeGeneratedReport(report: GeneratedReportRecord): GeneratedReport {
+  return {
+    id: report.id,
+    name: report.name,
+    description: report.description,
+    format: report.format,
+    theme: report.theme,
+    locale: report.locale,
+    validationId: report.validation_id,
+    sourceId: report.source_id,
+    status: report.status,
+    filePath: report.file_path,
+    fileSize: report.file_size,
+    generationTimeMs: report.generation_time_ms,
+    downloadCount: report.downloaded_count,
+    expiresAt: report.expires_at,
+    createdAt: report.created_at,
+    updatedAt: report.updated_at,
+    sourceName: report.source_name,
+    downloadUrl: report.download_url,
+  }
+}
 
 // =============================================================================
 // Format and Configuration Hook
@@ -324,7 +346,7 @@ export function useReportHistory(
         page: query.page,
         page_size: query.pageSize,
       })
-      setReports((response.data ?? []) as unknown as GeneratedReport[])
+      setReports((response.data ?? []).map(normalizeGeneratedReport))
       setTotal(response.total ?? 0)
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch reports')
@@ -421,66 +443,6 @@ export function useReportHistory(
     updateQuery,
     deleteReport: handleDeleteReport,
     cleanupExpired: handleCleanupExpired,
-  }
-}
-
-// =============================================================================
-// Custom Reporters Hook
-// =============================================================================
-
-interface UseCustomReportersResult {
-  reporters: CustomReporter[]
-  total: number
-  isLoading: boolean
-  error: Error | null
-  refetch: () => Promise<void>
-}
-
-/**
- * Hook for fetching custom reporters.
- */
-export function useCustomReporters(params?: {
-  pluginId?: string
-  enabled?: boolean
-  search?: string
-}): UseCustomReportersResult {
-  const [reporters, setReporters] = useState<CustomReporter[]>([])
-  const [total, setTotal] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-
-  const paramsRef = useRef(params)
-  paramsRef.current = params
-
-  const fetchReporters = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const response = await listCustomReporters({
-        plugin_id: paramsRef.current?.pluginId,
-        is_enabled: paramsRef.current?.enabled,
-        search: paramsRef.current?.search,
-      })
-      setReporters(response.data as unknown as CustomReporter[])
-      setTotal(response.total)
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch reporters'))
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchReporters()
-  }, [fetchReporters])
-
-  return {
-    reporters,
-    total,
-    isLoading,
-    error,
-    refetch: fetchReporters,
   }
 }
 

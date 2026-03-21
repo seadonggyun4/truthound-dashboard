@@ -26,10 +26,12 @@ import { ReportDownloadButton } from '@/components/reports'
 import {
   getValidation,
   type Validation,
+  type ValidationCheck,
   type ValidationIssue,
   type ValidationDetailResult,
   type ValidationReportStatistics,
   type ExceptionSummary,
+  type ExecutionIssue,
   type ValidatorExecutionSummary,
 } from '@/api/modules/validations'
 import { createVersion } from '@/api/modules/versioning'
@@ -149,7 +151,6 @@ function IssueDetailPanel({ result }: { result: ValidationDetailResult }) {
   )
 }
 
-/** Report statistics panel (PHASE 2) */
 function StatisticsPanel({ statistics }: { statistics: ValidationReportStatistics }) {
   return (
     <div className="space-y-4">
@@ -211,7 +212,6 @@ function StatisticsPanel({ statistics }: { statistics: ValidationReportStatistic
   )
 }
 
-/** Execution summary panel (PHASE 4) */
 function ExecutionSummaryPanel({ summary }: { summary: ValidatorExecutionSummary }) {
   return (
     <div className="space-y-3">
@@ -259,7 +259,6 @@ function ExecutionSummaryPanel({ summary }: { summary: ValidatorExecutionSummary
   )
 }
 
-/** Exception summary panel (PHASE 5) */
 function ExceptionSummaryPanel({ summary }: { summary: ExceptionSummary }) {
   if (summary.total_exceptions === 0) return null
 
@@ -301,6 +300,130 @@ function ExceptionSummaryPanel({ summary }: { summary: ExceptionSummary }) {
       )}
     </div>
   )
+}
+
+function ChecksPanel({ checks }: { checks: ValidationCheck[] }) {
+  return (
+    <div className="space-y-2">
+      {checks.map((check) => (
+        <div
+          key={check.name}
+          className="flex items-start justify-between gap-4 rounded-lg border bg-card p-3"
+        >
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-medium">{check.name}</p>
+              <Badge variant="outline" className="text-xs">
+                {check.category}
+              </Badge>
+            </div>
+            {Object.keys(check.metadata || {}).length > 0 && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {Object.entries(check.metadata)
+                  .slice(0, 3)
+                  .map(([key, value]) => `${key}: ${String(value)}`)
+                  .join(' · ')}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={check.success ? 'success' : 'destructive'}>
+              {check.success ? 'passed' : 'failed'}
+            </Badge>
+            <Badge variant="outline">{check.issue_count} issues</Badge>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function buildStatisticsFromValidation(
+  validation: Validation
+): ValidationReportStatistics | null {
+  if (validation.statistics) return validation.statistics
+  if (!validation.checks.length && !validation.issues.length) return null
+
+  const issuesBySeverity: Record<string, number> = {}
+  const issuesByColumn: Record<string, number> = {}
+  const issuesByValidator: Record<string, number> = {}
+  const issuesByType: Record<string, number> = {}
+
+  for (const issue of validation.issues) {
+    issuesBySeverity[issue.severity] = (issuesBySeverity[issue.severity] || 0) + 1
+    issuesByColumn[issue.column] = (issuesByColumn[issue.column] || 0) + 1
+    const validator = issue.validator_name || issue.issue_type
+    issuesByValidator[validator] = (issuesByValidator[validator] || 0) + 1
+    issuesByType[issue.issue_type] = (issuesByType[issue.issue_type] || 0) + 1
+  }
+
+  const successfulChecks = validation.checks.filter((check) => check.success).length
+
+  return {
+    total_validations: validation.checks.length,
+    successful_validations: successfulChecks,
+    unsuccessful_validations: validation.checks.length - successfulChecks,
+    success_percent: validation.checks.length > 0
+      ? (successfulChecks / validation.checks.length) * 100
+      : 100,
+    issues_by_severity: issuesBySeverity,
+    issues_by_column: issuesByColumn,
+    issues_by_validator: issuesByValidator,
+    issues_by_type: issuesByType,
+    most_problematic_columns: Object.entries(issuesByColumn)
+      .sort(([, a], [, b]) => b - a)
+      .map(([column, count]) => [column, count] as [string, number]),
+  }
+}
+
+function buildExecutionSummary(
+  validation: Validation
+): ValidatorExecutionSummary | null {
+  if (validation.validator_execution_summary) {
+    return validation.validator_execution_summary
+  }
+  if (!validation.checks.length) return null
+
+  return {
+    total_validators: validation.checks.length,
+    executed: validation.checks.length,
+    skipped: 0,
+    failed: validation.execution_issues.length,
+    skipped_details: [],
+  }
+}
+
+function buildExceptionSummary(
+  executionIssues: ExecutionIssue[]
+): ExceptionSummary | null {
+  if (executionIssues.length === 0) return null
+
+  const exceptionsByType: Record<string, number> = {}
+  const exceptionsByCategory: Record<string, number> = {}
+  const exceptionsByValidator: Record<string, number> = {}
+  let totalRetries = 0
+  let retryableCount = 0
+
+  for (const issue of executionIssues) {
+    const exceptionType = issue.exception_type || 'unknown'
+    const category = issue.failure_category || 'unknown'
+    exceptionsByType[exceptionType] = (exceptionsByType[exceptionType] || 0) + 1
+    exceptionsByCategory[category] = (exceptionsByCategory[category] || 0) + 1
+    exceptionsByValidator[issue.check_name] = (exceptionsByValidator[issue.check_name] || 0) + 1
+    totalRetries += issue.retry_count
+    if (issue.retry_count > 0) {
+      retryableCount += 1
+    }
+  }
+
+  return {
+    total_exceptions: executionIssues.length,
+    total_retries: totalRetries,
+    exceptions_by_type: exceptionsByType,
+    exceptions_by_category: exceptionsByCategory,
+    exceptions_by_validator: exceptionsByValidator,
+    retryable_count: retryableCount,
+  }
 }
 
 // ============================================================================
@@ -378,7 +501,11 @@ export default function Validations() {
     )
   }
 
-  // Group issues by severity
+  const validationTime = validation.run_time || validation.created_at
+  const statistics = buildStatisticsFromValidation(validation)
+  const executionSummary = buildExecutionSummary(validation)
+  const exceptionSummary = validation.exception_summary || buildExceptionSummary(validation.execution_issues)
+
   const issuesBySeverity = {
     critical: validation.issues.filter((i) => i.severity === 'critical'),
     high: validation.issues.filter((i) => i.severity === 'high'),
@@ -386,8 +513,8 @@ export default function Validations() {
     low: validation.issues.filter((i) => i.severity === 'low'),
   }
 
-  // Separate system error issues from data validation issues
-  const systemErrors = validation.issues.filter((i) => i.exception_info)
+  const issueLevelSystemErrors = validation.issues.filter((i) => i.exception_info)
+  const systemErrors = validation.execution_issues
   const dataIssues = validation.issues.filter((i) => !i.exception_info)
 
   return (
@@ -416,8 +543,13 @@ export default function Validations() {
           </div>
           <div className="flex items-center gap-3 mt-2">
             <p className="text-muted-foreground">
-              {formatDate(validation.created_at)}
+              {formatDate(validationTime)}
             </p>
+            {validation.run_id && (
+              <Badge variant="outline" className="text-xs font-mono">
+                {validation.run_id}
+              </Badge>
+            )}
             {validation.result_format && (
               <Badge variant="outline" className="text-xs">
                 {validation.result_format.replace('_', ' ')}
@@ -544,64 +676,75 @@ export default function Validations() {
         </Card>
       </div>
 
-      {/* PHASE 2: Report Statistics */}
-      {validation.statistics && (
+      {validation.checks.length > 0 && (
+        <CollapsibleSection
+          title="Check Results"
+          icon={CheckCircle2}
+          defaultOpen={false}
+          badge={
+            <Badge variant="outline" className="text-xs">
+              {validation.checks.length} checks
+            </Badge>
+          }
+        >
+          <ChecksPanel checks={validation.checks} />
+        </CollapsibleSection>
+      )}
+
+      {statistics && (
         <CollapsibleSection
           title="Validation Statistics"
           icon={BarChart3}
           defaultOpen={false}
           badge={
             <Badge variant="outline" className="text-xs">
-              {validation.statistics.success_percent.toFixed(0)}% pass rate
+              {statistics.success_percent.toFixed(0)}% pass rate
             </Badge>
           }
         >
-          <StatisticsPanel statistics={validation.statistics} />
+          <StatisticsPanel statistics={statistics} />
         </CollapsibleSection>
       )}
 
-      {/* PHASE 4: Execution Summary */}
-      {validation.validator_execution_summary && (
+      {executionSummary && (
         <CollapsibleSection
           title="Execution Summary"
           icon={RefreshCw}
           defaultOpen={false}
           badge={
-            validation.validator_execution_summary.skipped > 0 ? (
+            executionSummary.skipped > 0 ? (
               <Badge variant="outline" className="text-xs text-yellow-600">
-                {validation.validator_execution_summary.skipped} skipped
+                {executionSummary.skipped} skipped
               </Badge>
             ) : undefined
           }
         >
-          <ExecutionSummaryPanel summary={validation.validator_execution_summary} />
+          <ExecutionSummaryPanel summary={executionSummary} />
         </CollapsibleSection>
       )}
 
-      {/* PHASE 5: Exception Summary */}
-      {validation.exception_summary && validation.exception_summary.total_exceptions > 0 && (
+      {exceptionSummary && exceptionSummary.total_exceptions > 0 && (
         <CollapsibleSection
           title="Exception Summary"
           icon={Bug}
           defaultOpen={true}
           badge={
             <Badge variant="destructive" className="text-xs">
-              {validation.exception_summary.total_exceptions} errors
+              {exceptionSummary.total_exceptions} errors
             </Badge>
           }
         >
-          <ExceptionSummaryPanel summary={validation.exception_summary} />
+          <ExceptionSummaryPanel summary={exceptionSummary} />
         </CollapsibleSection>
       )}
 
-      {/* System Errors (PHASE 5) */}
-      {systemErrors.length > 0 && (
+      {(systemErrors.length > 0 || issueLevelSystemErrors.length > 0) && (
         <Card className="border-amber-200 dark:border-amber-900">
           <CardHeader>
             <div className="flex items-center gap-2">
               <ShieldAlert className="h-5 w-5 text-amber-600" />
               <CardTitle className="text-base">
-                System Errors ({systemErrors.length})
+                System Errors ({systemErrors.length + issueLevelSystemErrors.length})
               </CardTitle>
             </div>
           </CardHeader>
@@ -610,6 +753,34 @@ export default function Validations() {
               {systemErrors.map((issue, index) => (
                 <div
                   key={index}
+                  className="p-3 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/10"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-medium text-sm">
+                        {issue.check_name}
+                      </p>
+                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                        {issue.exception_type || 'ExecutionError'}: {issue.message}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {issue.retry_count > 0 && (
+                        <Badge variant="outline" className="text-xs">
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Retried {issue.retry_count}x
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-xs capitalize">
+                        {issue.failure_category || 'unknown'}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {issueLevelSystemErrors.map((issue, index) => (
+                <div
+                  key={`legacy-${index}`}
                   className="p-3 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/10"
                 >
                   <div className="flex items-start justify-between">

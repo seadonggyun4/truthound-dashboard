@@ -4,10 +4,9 @@
  * Provides a dropdown button for downloading validation reports
  * in multiple formats (HTML, CSV, JSON) with theme selection.
  * Supports 15 languages for report content (per truthound documentation).
- * Also supports custom reporters from the plugin system.
  */
 
-import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { Download, FileText, FileSpreadsheet, FileJson, ChevronDown, Loader2, Globe } from 'lucide-react'
 import { useIntlayer } from '@/providers'
 import { Button } from '@/components/ui/button'
@@ -32,8 +31,6 @@ import {
   type ReportLocale,
   type LocaleInfo,
 } from '@/api/modules/reports'
-import { listCustomReporters, type CustomReporter } from '@/api/modules/plugins'
-import { CustomReporterSection } from './CustomReporterSection'
 
 export interface ReportDownloadButtonProps {
   validationId: string
@@ -84,7 +81,7 @@ const DEFAULT_LOCALES: LocaleInfo[] = [
 ]
 
 /**
- * Module-level store for async data (locales + custom reporters).
+ * Module-level store for async data (locales).
  *
  * By keeping this outside React state, async API responses never trigger
  * re-renders on the DropdownMenu tree, which would cause Radix UI's
@@ -95,7 +92,6 @@ const DEFAULT_LOCALES: LocaleInfo[] = [
  * dropdown is opened by the user).
  */
 let _locales: LocaleInfo[] = DEFAULT_LOCALES
-let _customReporters: CustomReporter[] = []
 let _dataVersion = 0
 let _dataLoaded = false
 const _listeners = new Set<() => void>()
@@ -117,9 +113,6 @@ if (!_dataLoaded) {
   getReportLocales()
     .then((data) => { _locales = data; _notifyListeners() })
     .catch(() => {})
-  listCustomReporters({ is_enabled: true })
-    .then((result) => { _customReporters = result.data; _notifyListeners() })
-    .catch(() => {})
 }
 
 export function ReportDownloadButton({
@@ -139,8 +132,6 @@ export function ReportDownloadButton({
 
   // Read current values from module-level store
   const locales = _locales
-  const customReporters = _customReporters
-
   const handleDownload = async (format: ReportFormat, theme?: ReportTheme, locale?: ReportLocale) => {
     setIsDownloading(true)
     try {
@@ -266,12 +257,6 @@ export function ReportDownloadButton({
           )
         })}
 
-          {/* Custom Reporters Section */}
-          <CustomReporterSection
-            validationId={validationId}
-            disabled={disabled || isDownloading}
-            reporters={customReporters}
-          />
       </DropdownMenuContent>
     </DropdownMenu>
   )

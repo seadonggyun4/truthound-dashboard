@@ -409,7 +409,6 @@ export function EscalationTab({ className, initialTemplate }: EscalationTabProps
   const handleAcknowledge = async (incident: EscalationIncident) => {
     try {
       await acknowledgeEscalationIncident(incident.id, {
-        actor: 'current-user@example.com',
         message: 'Acknowledged via dashboard',
       })
       toast({ title: str(content.success.incidentAcknowledged) })
@@ -425,7 +424,6 @@ export function EscalationTab({ className, initialTemplate }: EscalationTabProps
   const handleResolve = async (incident: EscalationIncident) => {
     try {
       await resolveEscalationIncident(incident.id, {
-        actor: 'current-user@example.com',
         message: 'Resolved via dashboard',
       })
       toast({ title: str(content.success.incidentResolved) })
@@ -467,7 +465,6 @@ export function EscalationTab({ className, initialTemplate }: EscalationTabProps
     const toAck = items.filter((i) => i.state === 'triggered')
     for (const incident of toAck) {
       await acknowledgeEscalationIncident(incident.id, {
-        actor: 'current-user@example.com',
         message: 'Bulk acknowledged via dashboard',
       })
     }
@@ -478,7 +475,6 @@ export function EscalationTab({ className, initialTemplate }: EscalationTabProps
     const toResolve = items.filter((i) => i.state !== 'resolved')
     for (const incident of toResolve) {
       await resolveEscalationIncident(incident.id, {
-        actor: 'current-user@example.com',
         message: 'Bulk resolved via dashboard',
       })
     }

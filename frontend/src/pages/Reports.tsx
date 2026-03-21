@@ -52,6 +52,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { str } from '@/lib/intlayer-utils'
+import { SavedViewBar } from '@/components/control-plane/SavedViewBar'
 
 // New reporter components
 import {
@@ -201,6 +202,13 @@ export default function Reports() {
 
   const totalPages = Math.ceil(total / pageSize)
 
+  const applySavedView = (filters: Record<string, unknown>) => {
+    setSearch(String(filters.search ?? ''))
+    setFormatFilter(String(filters.format ?? 'all'))
+    setStatusFilter(String(filters.status ?? 'all'))
+    setIncludeExpired(Boolean(filters.include_expired))
+  }
+
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -213,7 +221,7 @@ export default function Reports() {
           <Button variant="outline" asChild>
             <Link to="/plugins">
               <Settings className="h-4 w-4 mr-2" />
-              {str(t.manageReporters)}
+              Plugin Registry
             </Link>
           </Button>
           {statistics && (statistics.by_status?.expired ?? 0) > 0 && (
@@ -238,6 +246,18 @@ export default function Reports() {
           <CardDescription>{str(t.historyDescription)}</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <SavedViewBar
+              scope="reports"
+              currentFilters={{
+                search,
+                format: formatFilter,
+                status: statusFilter,
+                include_expired: includeExpired,
+              }}
+              onApply={applySavedView}
+            />
+          </div>
           <div className="flex flex-wrap gap-4 mb-4">
             <div className="flex-1 min-w-[200px]">
               <div className="relative">

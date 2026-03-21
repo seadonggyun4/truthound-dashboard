@@ -14,6 +14,8 @@ const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api/v1`
   : '/api/v1'
 
+const SESSION_STORAGE_KEY = 'truthound-dashboard-session-token'
+
 export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>
   /**
@@ -65,6 +67,20 @@ export class ApiError extends Error {
   }
 }
 
+export function getStoredSessionToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return window.localStorage.getItem(SESSION_STORAGE_KEY)
+}
+
+export function setStoredSessionToken(token: string | null): void {
+  if (typeof window === 'undefined') return
+  if (token) {
+    window.localStorage.setItem(SESSION_STORAGE_KEY, token)
+  } else {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY)
+  }
+}
+
 /**
  * Internal fetch implementation with rate limiting.
  */
@@ -96,6 +112,10 @@ async function doRequest<T>(
   const headers = new Headers(init.headers)
   if (!headers.has('Content-Type') && init.body) {
     headers.set('Content-Type', 'application/json')
+  }
+  const sessionToken = getStoredSessionToken()
+  if (sessionToken && !headers.has('X-Truthound-Session')) {
+    headers.set('X-Truthound-Session', sessionToken)
   }
 
   const response = await fetch(url, {

@@ -45,6 +45,7 @@ import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { AddSourceDialog } from '@/components/sources'
+import { SavedViewBar } from '@/components/control-plane/SavedViewBar'
 
 const PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100]
 const DEFAULT_PAGE_SIZE = 15
@@ -62,6 +63,7 @@ export default function Sources() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
+  const [environmentFilter, setEnvironmentFilter] = useState('all')
   const { toast } = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
 
@@ -73,6 +75,9 @@ export default function Sources() {
 
   const totalPages = Math.ceil(total / pageSize)
   const offset = (page - 1) * pageSize
+  const filteredSources = environmentFilter === 'all'
+    ? sources
+    : sources.filter((source) => source.environment === environmentFilter)
 
   // Helper to get validation status label
   const getValidationLabel = (status: string | null | undefined) => {
@@ -110,6 +115,10 @@ export default function Sources() {
     loadSources()
   }, [loadSources])
 
+  useEffect(() => {
+    setSelectedIds(new Set())
+  }, [environmentFilter])
+
   // Pagination handlers
   const setPage = (newPage: number) => {
     const params = new URLSearchParams(searchParams)
@@ -138,15 +147,15 @@ export default function Sources() {
   }
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === sources.length) {
+    if (selectedIds.size === filteredSources.length) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(sources.map((s) => s.id)))
+      setSelectedIds(new Set(filteredSources.map((s) => s.id)))
     }
   }
 
-  const isAllSelected = sources.length > 0 && selectedIds.size === sources.length
-  const isSomeSelected = selectedIds.size > 0 && selectedIds.size < sources.length
+  const isAllSelected = filteredSources.length > 0 && selectedIds.size === filteredSources.length
+  const isSomeSelected = selectedIds.size > 0 && selectedIds.size < filteredSources.length
 
   async function handleDelete(id: string) {
     const confirmed = await confirm({
@@ -332,6 +341,28 @@ export default function Sources() {
         </Card>
       ) : (
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <SavedViewBar
+              scope="sources"
+              currentFilters={{ environment: environmentFilter }}
+              onApply={(filters) => setEnvironmentFilter(String(filters.environment ?? 'all'))}
+            />
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Environment:</span>
+              <Select value={environmentFilter} onValueChange={setEnvironmentFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All environments</SelectItem>
+                  <SelectItem value="production">Production</SelectItem>
+                  <SelectItem value="staging">Staging</SelectItem>
+                  <SelectItem value="development">Development</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           {/* Select All Header & Page Size */}
           <div className="flex items-center justify-between px-4 py-2 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-3">
@@ -350,8 +381,8 @@ export default function Sources() {
               </button>
               <span className="text-sm text-muted-foreground">
                 {selectedIds.size > 0
-                  ? `${selectedIds.size} of ${sources.length} selected`
-                  : `${sources.length} items on this page`}
+                  ? `${selectedIds.size} of ${filteredSources.length} selected`
+                  : `${filteredSources.length} items on this page`}
               </span>
             </div>
 
@@ -377,7 +408,7 @@ export default function Sources() {
 
           {/* Sources Cards */}
           <div className="grid gap-4">
-            {sources.map((source) => (
+            {filteredSources.map((source) => (
               <Card
                 key={source.id}
                 className={`transition-all ${
@@ -408,6 +439,7 @@ export default function Sources() {
                         </Link>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Badge variant="outline">{source.type}</Badge>
+                          <Badge variant="secondary">{source.environment}</Badge>
                           <span>•</span>
                           <span>
                             {sources_t.lastValidated}: {formatDate(source.last_validated_at)}

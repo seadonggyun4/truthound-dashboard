@@ -1,24 +1,14 @@
 /**
- * Validations API - Run and manage validation results.
+ * Validations API - Run and manage Truthound 3.0 validation runs.
  *
- * Supports truthound 1.3.0+ features:
- * - PHASE 1: ResultFormat system (boolean_only/basic/summary/complete)
- * - PHASE 2: Structured results (ValidationDetailResult, ValidationReportStatistics)
- * - PHASE 4: DAG execution info (ValidatorExecutionSummary)
- * - PHASE 5: Exception isolation (ExceptionInfo, ExceptionSummary)
+ * The canonical payload mirrors Truthound's ValidationRunResult contract:
+ * run_id, run_time, checks, issues, execution_issues, metadata,
+ * row_count, and column_count.
  */
 import { request } from '../core'
 import type { PaginatedResponse } from '../core'
 
-// ============================================================================
-// Result Format (PHASE 1)
-// ============================================================================
-
 export type ResultFormatLevel = 'boolean_only' | 'basic' | 'summary' | 'complete'
-
-// ============================================================================
-// PHASE 2: Structured validation detail
-// ============================================================================
 
 /** Structured validation result detail — maps to truthound's ValidationDetail */
 export interface ValidationDetailResult {
@@ -37,7 +27,6 @@ export interface ValidationDetailResult {
   debug_query?: string
 }
 
-/** Aggregated report statistics */
 export interface ValidationReportStatistics {
   total_validations: number
   successful_validations: number
@@ -50,17 +39,11 @@ export interface ValidationReportStatistics {
   most_problematic_columns: Array<[string, number]>
 }
 
-// ============================================================================
-// PHASE 4: DAG execution info
-// ============================================================================
-
-/** Info about a skipped validator */
 export interface SkippedValidatorInfo {
   validator_name: string
   reason?: string
 }
 
-/** Validator execution summary from DAG execution */
 export interface ValidatorExecutionSummary {
   total_validators: number
   executed: number
@@ -69,11 +52,6 @@ export interface ValidatorExecutionSummary {
   skipped_details?: SkippedValidatorInfo[]
 }
 
-// ============================================================================
-// PHASE 5: Exception info
-// ============================================================================
-
-/** Individual validation exception info */
 export interface ExceptionInfo {
   exception_type?: string
   exception_message?: string
@@ -95,10 +73,6 @@ export interface ExceptionSummary {
   retryable_count: number
 }
 
-// ============================================================================
-// Core Types
-// ============================================================================
-
 export interface ValidationIssue {
   column: string
   issue_type: string
@@ -108,18 +82,35 @@ export interface ValidationIssue {
   expected?: unknown
   actual?: unknown
   sample_values?: unknown[]
-  // PHASE 2
   validator_name?: string
   success?: boolean
   result?: ValidationDetailResult
-  // PHASE 5
   exception_info?: ExceptionInfo
+}
+
+export interface ValidationCheck {
+  name: string
+  category: string
+  success: boolean
+  issue_count: number
+  issues: ValidationIssue[]
+  metadata: Record<string, unknown>
+}
+
+export interface ExecutionIssue {
+  check_name: string
+  message: string
+  exception_type?: string | null
+  failure_category?: string | null
+  retry_count: number
 }
 
 export interface Validation {
   id: string
   source_id: string
   status: 'pending' | 'running' | 'success' | 'failed' | 'error'
+  run_id?: string
+  run_time?: string
   passed: boolean
   has_critical: boolean
   has_high: boolean
@@ -130,19 +121,18 @@ export interface Validation {
   low_issues: number
   row_count?: number
   column_count?: number
+  checks: ValidationCheck[]
   issues: ValidationIssue[]
+  execution_issues: ExecutionIssue[]
+  metadata: Record<string, unknown>
   error_message?: string
   duration_ms?: number
   started_at?: string
   completed_at?: string
   created_at: string
-  // PHASE 1
   result_format?: ResultFormatLevel
-  // PHASE 2
   statistics?: ValidationReportStatistics
-  // PHASE 4
   validator_execution_summary?: ValidatorExecutionSummary
-  // PHASE 5
   exception_summary?: ExceptionSummary
 }
 
@@ -164,29 +154,18 @@ export interface ValidatorConfig {
 export interface ValidationRunOptions {
   validators?: string[]
   validator_configs?: ValidatorConfig[]
-  custom_validators?: Array<{
-    validator_id: string
-    column?: string
-    params?: Record<string, unknown>
-  }>
   schema_path?: string
   auto_schema?: boolean
   min_severity?: 'low' | 'medium' | 'high' | 'critical'
   parallel?: boolean
   max_workers?: number
   pushdown?: boolean
-  // PHASE 1: result format
   result_format?: ResultFormatLevel
   include_unexpected_rows?: boolean
   max_unexpected_rows?: number
-  // PHASE 5: exception control
   catch_exceptions?: boolean
   max_retries?: number
 }
-
-// ============================================================================
-// API Functions
-// ============================================================================
 
 export async function runValidation(
   sourceId: string,

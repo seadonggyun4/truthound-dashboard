@@ -119,10 +119,15 @@ export interface Source {
   type: SourceType
   config: Record<string, unknown>
   description?: string
+  environment: string
+  workspace_id?: string | null
   is_active: boolean
   created_at: string
   updated_at: string
   last_validated_at?: string
+  config_version: number
+  credential_updated_at?: string | null
+  has_stored_secrets: boolean
   has_schema: boolean
   latest_validation_status?: string
 }
@@ -249,6 +254,8 @@ export async function createSource(data: {
   type: string
   config: Record<string, unknown>
   description?: string
+  environment?: string
+  workspace_id?: string
 }): Promise<Source> {
   return request<Source>('/sources', {
     method: 'POST',
@@ -262,6 +269,7 @@ export async function updateSource(
     name?: string
     config?: Record<string, unknown>
     description?: string
+    environment?: string
     is_active?: boolean
   }
 ): Promise<Source> {
@@ -308,5 +316,15 @@ export async function testConnectionConfig(
   return request<TestConnectionResult>('/sources/test-connection', {
     method: 'POST',
     body: JSON.stringify({ type, config }),
+  })
+}
+
+export async function rotateSourceCredentials(
+  sourceId: string,
+  credentials: Record<string, unknown>
+): Promise<Source> {
+  return request<Source>(`/sources/${sourceId}/credentials`, {
+    method: 'POST',
+    body: JSON.stringify({ credentials }),
   })
 }

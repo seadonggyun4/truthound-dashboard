@@ -2,7 +2,7 @@
  * AlertCorrelation Component
  *
  * Displays related alerts for a given alert, grouped by:
- * - Same source (data source, model)
+ * - Same source
  * - Similar time frame
  * - Similar severity
  */
@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 
 // Types
-type AlertSource = 'model' | 'drift' | 'anomaly' | 'validation'
+type AlertSource = 'anomaly' | 'validation'
 type AlertSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info'
 type AlertStatus = 'open' | 'acknowledged' | 'resolved' | 'ignored'
 

@@ -39,7 +39,6 @@ import { BatchProgress } from '@/components/anomaly/BatchProgress'
 import { BatchResults } from '@/components/anomaly/BatchResults'
 import { AlgorithmComparison } from '@/components/anomaly/AlgorithmComparison'
 import { StreamingDashboard } from '@/components/anomaly/StreamingDashboard'
-import { RelatedAlerts, AutoTriggerConfigPanel } from '@/components/cross-alerts'
 import { listSources, type Source } from '@/api/modules/sources'
 import { getSourceSchema } from '@/api/modules/schemas'
 import {
@@ -417,15 +416,12 @@ export default function Anomaly() {
             <>
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Brain className="h-5 w-5" />
-                        {t.title}
-                      </CardTitle>
-                      <CardDescription>{t.subtitle}</CardDescription>
-                    </div>
-                    <AutoTriggerConfigPanel sourceId={selectedSourceId} />
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Brain className="h-5 w-5" />
+                      {t.title}
+                    </CardTitle>
+                    <CardDescription>{t.subtitle}</CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -438,13 +434,6 @@ export default function Anomaly() {
                   )}
                 </CardContent>
               </Card>
-
-              {/* Related Drift Alerts */}
-              <RelatedAlerts
-                sourceId={selectedSourceId}
-                alertType="anomaly"
-                maxItems={5}
-              />
             </>
           )}
         </TabsContent>

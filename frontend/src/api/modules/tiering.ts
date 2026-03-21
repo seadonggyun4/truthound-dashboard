@@ -5,6 +5,7 @@
  * based on truthound 1.2.10+ capabilities.
  */
 import { request } from '../core'
+import type { MessageResponse } from '../core'
 
 // ============================================================================
 // Enums
@@ -298,10 +299,6 @@ export interface PolicyTypeInfo {
 
 export interface PolicyTypesResponse {
   policy_types: PolicyTypeInfo[]
-}
-
-export interface MessageResponse {
-  message: string
 }
 
 // ============================================================================

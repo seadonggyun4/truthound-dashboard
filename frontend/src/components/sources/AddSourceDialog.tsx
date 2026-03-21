@@ -30,6 +30,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import {
@@ -56,6 +63,7 @@ type Step = 'type' | 'config' | 'test'
 interface FormState {
   name: string
   description: string
+  environment: 'production' | 'staging' | 'development'
   type: SourceType | null
   config: Record<string, unknown>
 }
@@ -63,6 +71,7 @@ interface FormState {
 const initialFormState: FormState = {
   name: '',
   description: '',
+  environment: 'production',
   type: null,
   config: {},
 }
@@ -247,6 +256,7 @@ export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDial
         type: form.type,
         config: form.config,
         description: form.description.trim() || undefined,
+        environment: form.environment,
       })
 
       toast({
@@ -381,7 +391,7 @@ export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDial
                   )}
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-3">
                   <div className="space-y-2">
                     <Label htmlFor="source-name" className={cn(errors.name && 'text-destructive')}>
                       Source Name <span className="text-destructive">*</span>
@@ -404,6 +414,28 @@ export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDial
                       value={form.description}
                       onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="source-environment">Environment</Label>
+                    <Select
+                      value={form.environment}
+                      onValueChange={(value) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          environment: value as FormState['environment'],
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="source-environment">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="production">Production</SelectItem>
+                        <SelectItem value="staging">Staging</SelectItem>
+                        <SelectItem value="development">Development</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
@@ -432,6 +464,10 @@ export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDial
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Type</span>
                     <Badge variant="outline">{selectedSourceType.name}</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Environment</span>
+                    <Badge variant="secondary">{form.environment}</Badge>
                   </div>
                   {form.description && (
                     <div className="flex justify-between">

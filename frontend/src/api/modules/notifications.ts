@@ -7,6 +7,7 @@
  * - Config import/export functionality
  */
 import { request } from '../core'
+import type { MessageResponse } from '../core'
 
 // ============================================================================
 // Basic Notification Types
@@ -94,10 +95,6 @@ export interface TestChannelResponse {
   success: boolean
   message: string
   error?: string
-}
-
-export interface MessageResponse {
-  message: string
 }
 
 // ============================================================================
@@ -837,7 +834,7 @@ export async function listActiveEscalationIncidents(): Promise<EscalationInciden
 
 export async function acknowledgeEscalationIncident(
   id: string,
-  data: { actor: string; message?: string }
+  data: { message?: string }
 ): Promise<EscalationIncident> {
   return request(`/notifications/escalation/incidents/${id}/acknowledge`, {
     method: 'POST',
@@ -847,7 +844,7 @@ export async function acknowledgeEscalationIncident(
 
 export async function resolveEscalationIncident(
   id: string,
-  data: { actor?: string; message?: string }
+  data: { message?: string }
 ): Promise<EscalationIncident> {
   return request(`/notifications/escalation/incidents/${id}/resolve`, {
     method: 'POST',
