@@ -1,9 +1,19 @@
 # truthound-dashboard
 
+<img width="1697" height="847" alt="truthound-dashboard" src="https://github.com/user-attachments/assets/2239ebff-470b-49fe-ab09-81bc3117880d" />
+
+[![PyPI version](https://img.shields.io/pypi/v/truthound-dashboard.svg)](https://pypi.org/project/truthound-dashboard/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Powered by Intlayer](https://img.shields.io/badge/Powered%20by-Intlayer-yellow.svg)](https://intlayer.org)
+[![Downloads](https://img.shields.io/pepy/dt/truthound-dashboard?color=brightgreen)](https://pepy.tech/project/truthound-dashboard)
+
 Truthound Dashboard is the operational UI for Truthound 3.0. It keeps the
 existing dashboard visual language and Intlayer-based application i18n while
 resetting the product surface to the APIs and namespaces that actually exist in
 Truthound 3.0.
+
+[Documentation](https://truthound.netlify.app/dashboard/) | [PyPI](https://pypi.org/project/truthound-dashboard/)
 
 ## What ships in 3.0
 
@@ -64,6 +74,28 @@ Local docs build:
 ```bash
 mkdocs build --strict
 ```
+
+## Application I18n with Intlayer
+
+Truthound Dashboard keeps its application-level internationalization on
+[Intlayer](https://intlayer.org). The existing dashboard shell, page content,
+labels, and component dictionaries remain Intlayer-based in the 3.0 reset.
+
+- Built-in locales are currently `en` and `ko`.
+- Frontend locale configuration lives in [`frontend/intlayer.config.mjs`](./frontend/intlayer.config.mjs).
+- UI content dictionaries live alongside the frontend in `frontend/src/**/*.content.ts`.
+- Additional locales can still be generated with the dashboard translation CLI.
+
+Examples:
+
+```bash
+truthound translate -l ja,zh,de -p openai
+truthound translate -l fr --dry-run
+truthound translate --list-languages
+```
+
+The translation command updates Intlayer content files and the frontend locale
+configuration without changing the dashboard's visual design system.
 
 ## Verification
 
