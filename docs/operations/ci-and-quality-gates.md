@@ -67,6 +67,9 @@ only reflects the results indirectly through product behavior.
   `core/services.py` remains a compatibility shim rather than a new monolith.
 - Confidence that the clean ratchet subtree cannot silently regress while broader
   repository lint and type debt is still being paid down.
+- Confidence that runtime preview verification targets
+  `https://truthound-dashboard.onrender.com/` while docs verification targets
+  `https://truthound.netlify.app/dashboard/`.
 
 ## Failure modes and troubleshooting
 

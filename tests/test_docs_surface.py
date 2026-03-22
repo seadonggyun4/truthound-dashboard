@@ -94,6 +94,7 @@ def test_readme_preserves_banner_badges_intlayer_and_docs_entrypoints() -> None:
     assert "[![PyPI version]" in readme
     assert "[![Powered by Intlayer]" in readme
     assert "## Docs Entry Points" in readme
+    assert "https://truthound-dashboard.onrender.com/" in readme
     assert "https://truthound.netlify.app/dashboard/" in readme
     assert "## Application I18n with Intlayer" in readme
     assert "truthound translate -l ja,zh,de -p openai" in readme
@@ -258,6 +259,8 @@ def test_ci_docs_page_describes_required_and_advisory_gates() -> None:
     for phrase in [
         "Tests PR",
         "Docs / docs",
+        "truthound-dashboard.onrender.com",
+        "truthound.netlify.app/dashboard/",
         "merge_group",
         "backend-py311",
         "backend-py312",
@@ -279,6 +282,21 @@ def test_ci_docs_page_describes_required_and_advisory_gates() -> None:
         "frontend-eslint-ratchet.txt",
     ]:
         assert phrase in ci_doc
+
+
+def test_deployment_docs_distinguish_runtime_preview_from_docs_host() -> None:
+    deployment = (DOCS_ROOT / "operations" / "deployment.md").read_text(encoding="utf-8")
+    configuration = (DOCS_ROOT / "operations" / "configuration.md").read_text(
+        encoding="utf-8"
+    )
+    index_page = (DOCS_ROOT / "index.md").read_text(encoding="utf-8")
+
+    for text in [deployment, configuration, index_page]:
+        assert "https://truthound-dashboard.onrender.com/" in text
+        assert "https://truthound.netlify.app/dashboard/" in text
+
+    assert "Netlify hosts the documentation portal" in deployment
+    assert "Use the Render URL when you need to review the running application." in index_page
 
 
 def test_internal_markdown_links_resolve() -> None:

@@ -13,6 +13,8 @@ is healthy before you onboard any sources.
   data assets.
 - Permission to create a local dashboard session and the bootstrap password for the
   initial workspace.
+- If you are validating a hosted review environment instead of a local install, use
+  the shared Render preview at `https://truthound-dashboard.onrender.com/`.
 
 ## UI path or entry point
 
@@ -24,6 +26,8 @@ active workspace.
 
 1. Install the dashboard dependencies and start the application stack for your
    current environment.
+   If you are using the shared hosted preview, open the Render URL directly and skip
+   the local startup step.
 2. Open the dashboard in a browser and wait for the `/auth/session` bootstrap call
    to complete.
 3. Sign in with the local bootstrap password or an existing session token.

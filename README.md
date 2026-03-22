@@ -77,9 +77,13 @@ mkdocs build --strict
 
 ## Docs Entry Points
 
+- Live app preview (Render): [https://truthound-dashboard.onrender.com/](https://truthound-dashboard.onrender.com/)
 - Dashboard docs site: [https://truthound.netlify.app/dashboard/](https://truthound.netlify.app/dashboard/)
 - Local docs source: [`docs/`](./docs)
 - Main Truthound docs portal: [https://truthound.netlify.app/](https://truthound.netlify.app/)
+
+The Render URL is the canonical reviewer-facing application preview. The Netlify URLs
+above are documentation entry points, not the dashboard runtime.
 
 Recommended reading order:
 

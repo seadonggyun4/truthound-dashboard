@@ -58,9 +58,12 @@ Continue with [Security and Secrets](security-and-secrets.md).
 
 ## Preview configuration defaults
 
+- Hosted reviewer preview URL: `https://truthound-dashboard.onrender.com/`
+- Dashboard docs URL: `https://truthound.netlify.app/dashboard/`
 - Leave `VITE_API_URL` unset for the canonical Render preview deployment.
 - Keep `TRUTHOUND_DATA_DIR` on an ephemeral preview path unless you explicitly need
   state to persist across preview redeploys.
 - Prefer `TRUTHOUND_LOG_LEVEL=info` in previews so reviewers can inspect runtime
   behavior without the noise of full debug logging.
 - Use `npm ci` for any frontend install step in CI, Render, or optional Vercel checks.
+- Use the Render URL for runtime checks and the Netlify URL for docs-only verification.

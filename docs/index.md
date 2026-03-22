@@ -16,6 +16,15 @@ The product follows a thin data-plane and strong control-plane model.
 - The browser route `/reports` exists as a user-facing route alias for the artifact
   index. All reporting REST contracts are canonical through `/artifacts`.
 
+## Hosted entry points
+
+- Live dashboard preview: `https://truthound-dashboard.onrender.com/`
+- Dashboard docs site: `https://truthound.netlify.app/dashboard/`
+- Main Truthound docs portal: `https://truthound.netlify.app/`
+
+Use the Render URL when you need to review the running application. Use the Netlify
+URLs when you need product, API, and operations documentation.
+
 ## Documentation map
 
 This documentation set is organized for operators, platform administrators, and

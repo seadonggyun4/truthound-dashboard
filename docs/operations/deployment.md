@@ -65,9 +65,20 @@ healthy enough to create a session and load the overview.
 Continue with [Configuration](configuration.md) and
 [State Storage and Migrations](state-storage-and-migrations.md).
 
+## Canonical runtime and docs URLs
+
+- Reviewer-facing application preview: `https://truthound-dashboard.onrender.com/`
+- Dashboard docs: `https://truthound.netlify.app/dashboard/`
+- Main docs portal: `https://truthound.netlify.app/`
+
+Keep these roles separate in runbooks and checks. Render hosts the live dashboard
+application preview. Netlify hosts the documentation portal and the staged
+`/dashboard/` documentation section.
+
 ## Preview platform defaults
 
 - Canonical reviewer preview: Render full-stack deployment from the repository root.
+- Current shared preview URL: `https://truthound-dashboard.onrender.com/`
 - Build command: `./scripts/build_preview.sh`
 - Start command: `truthound-dashboard serve --host 0.0.0.0 --port $PORT --no-browser`
 - Health endpoint: `GET /health`
@@ -78,6 +89,8 @@ Continue with [Configuration](configuration.md) and
   `/api/v1` requests.
 - Vercel is optional and non-blocking. If you keep it for manual static checks, keep the
   root at `frontend/` and the install step on `npm ci`.
+- Do not use `https://truthound.netlify.app/dashboard/` for runtime validation. That
+  host is for documentation, not the running preview app.
 
 ## Platform settings to update
 
