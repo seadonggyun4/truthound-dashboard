@@ -273,7 +273,7 @@ class Checkpoint(CheckpointProtocol):
         """
         # If source_id is set, load from database
         if self._config.source_id:
-            from truthound_dashboard.core.services import get_source_data_input
+            from truthound_dashboard.core.domains.source_io import get_source_data_input
             return await get_source_data_input(self._config.source_id)
 
         # Otherwise use source_name as path

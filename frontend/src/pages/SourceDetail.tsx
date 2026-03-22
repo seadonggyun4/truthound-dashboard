@@ -19,7 +19,6 @@ import {
   EyeOff,
   Shield,
   Server,
-  GitBranch,
   Network,
   BrainCircuit,
   ChevronDown,
@@ -415,12 +414,6 @@ export default function SourceDetail() {
               History
             </Link>
           </Button>
-          <Button variant="outline" asChild>
-            <Link to={`/sources/${id}/versions`}>
-              <GitBranch className="mr-2 h-4 w-4" />
-              Versions
-            </Link>
-          </Button>
           <Button variant="outline" onClick={handleLearnSchema}>
             <FileCode className="mr-2 h-4 w-4" />
             Learn Schema
@@ -668,6 +661,31 @@ export default function SourceDetail() {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Ownership</CardTitle>
+              <CardDescription>
+                Workspace ownership used for fleet overview, routing, and saved operational slices.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-sm text-muted-foreground">Owner</p>
+                  <p className="mt-2 font-medium">{source.owner_name ?? 'Unassigned'}</p>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-sm text-muted-foreground">Team</p>
+                  <p className="mt-2 font-medium">{source.team_name ?? 'Unassigned'}</p>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-sm text-muted-foreground">Domain</p>
+                  <p className="mt-2 font-medium">{source.domain_name ?? 'Unassigned'}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Connection Info Card */}
           {source.config && Object.keys(source.config).length > 0 && (
             <Card>

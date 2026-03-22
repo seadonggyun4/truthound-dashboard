@@ -14,61 +14,17 @@ import type {
   ReportThemeType,
   ReportLocale,
   ReporterConfig,
-  GeneratedReport,
   LocaleInfo,
 } from '@/types/reporters'
 import {
-  getReportFormats,
-  getReportLocales,
-  generateReportMetadata,
-  downloadValidationReport,
-  previewValidationReport,
-  listReportHistory,
-  getReportStatistics,
-  deleteReportRecord,
-  cleanupExpiredReports,
-  type GeneratedReportRecord,
-  type ReportFormat,
-  type ReportTheme,
-  type ReportLocale as ModuleReportLocale,
-  type ReportStatus,
-  type ReportStatistics,
-} from '@/api/modules/reports'
-
-// Type alias for report history query params
-interface ReportHistoryQuery {
-  search?: string
-  format?: ReportFormat
-  status?: ReportStatus
-  source_id?: string
-  include_expired?: boolean
-  page?: number
-  pageSize?: number
-}
+  downloadArtifact,
+  generateReportArtifact,
+  getArtifactCapabilities,
+  type ArtifactFormat as ReportFormat,
+  type ArtifactTheme as ReportTheme,
+  type ArtifactLocale as ModuleReportLocale,
+} from '@/api/modules/artifacts'
 import { createDefaultConfig } from '@/types/reporters'
-
-function normalizeGeneratedReport(report: GeneratedReportRecord): GeneratedReport {
-  return {
-    id: report.id,
-    name: report.name,
-    description: report.description,
-    format: report.format,
-    theme: report.theme,
-    locale: report.locale,
-    validationId: report.validation_id,
-    sourceId: report.source_id,
-    status: report.status,
-    filePath: report.file_path,
-    fileSize: report.file_size,
-    generationTimeMs: report.generation_time_ms,
-    downloadCount: report.downloaded_count,
-    expiresAt: report.expires_at,
-    createdAt: report.created_at,
-    updatedAt: report.updated_at,
-    sourceName: report.source_name,
-    downloadUrl: report.download_url,
-  }
-}
 
 // =============================================================================
 // Format and Configuration Hook
@@ -98,15 +54,11 @@ export function useReporterFormats(): UseReporterFormatsResult {
     setError(null)
 
     try {
-      const [formatsResponse, localesResponse] = await Promise.all([
-        getReportFormats(),
-        getReportLocales(),
-      ])
-
-      setFormats(formatsResponse.formats)
-      setThemes(formatsResponse.themes)
+      const capabilities = await getArtifactCapabilities()
+      setFormats(capabilities.formats)
+      setThemes(capabilities.themes)
       setLocales(
-        localesResponse.map((l) => ({
+        capabilities.locales.map((l) => ({
           code: (l as unknown as { code: string }).code as ReportLocale,
           englishName: (l as unknown as { englishName?: string; english_name?: string }).englishName || (l as unknown as { english_name?: string }).english_name || '',
           nativeName: (l as unknown as { nativeName?: string; native_name?: string }).nativeName || (l as unknown as { native_name?: string }).native_name || '',
@@ -185,10 +137,13 @@ export function useReportGeneration(
     setError(null)
 
     try {
-      await generateReportMetadata(validationId, {
+      await generateReportArtifact(validationId, {
+        format: format as ReportFormat,
         theme,
         locale,
-        ...config,
+        title: config?.title,
+        include_samples: config?.includeSamples,
+        include_statistics: config?.includeStatistics,
       })
 
       toast({
@@ -213,13 +168,14 @@ export function useReportGeneration(
     setError(null)
 
     try {
-      const blob = await downloadValidationReport(validationId, {
+      const artifact = await generateReportArtifact(validationId, {
         format: format as ReportFormat,
         theme: theme as ReportTheme,
         locale: locale as ModuleReportLocale,
         include_samples: config?.includeSamples,
         include_statistics: config?.includeStatistics,
       })
+      const blob = await downloadArtifact(artifact.id)
 
       // Create download link
       const url = window.URL.createObjectURL(blob)
@@ -253,7 +209,15 @@ export function useReportGeneration(
     setError(null)
 
     try {
-      const content = await previewValidationReport(validationId, format as ReportFormat, theme as ReportTheme, locale as ModuleReportLocale)
+      const artifact = await generateReportArtifact(validationId, {
+        format: format as ReportFormat,
+        theme: theme as ReportTheme,
+        locale: locale as ModuleReportLocale,
+        include_samples: config?.includeSamples,
+        include_statistics: config?.includeStatistics,
+      })
+      const blob = await downloadArtifact(artifact.id)
+      const content = await blob.text()
       setPreviewContent(content)
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Preview failed')
@@ -261,7 +225,7 @@ export function useReportGeneration(
     } finally {
       setIsGenerating(false)
     }
-  }, [validationId, format, theme, locale])
+  }, [validationId, format, theme, locale, config])
 
   const reset = useCallback(() => {
     setPreviewContent(null)
@@ -283,166 +247,6 @@ export function useReportGeneration(
     download,
     preview,
     reset,
-  }
-}
-
-// =============================================================================
-// Report History Hook
-// =============================================================================
-
-interface UseReportHistoryOptions {
-  query?: ReportHistoryQuery
-  autoFetch?: boolean
-}
-
-interface UseReportHistoryResult {
-  reports: GeneratedReport[]
-  total: number
-  page: number
-  pageSize: number
-  statistics: ReportStatistics | null
-  isLoading: boolean
-  error: Error | null
-  refetch: () => Promise<void>
-  fetchStatistics: () => Promise<void>
-  setPage: (page: number) => void
-  setPageSize: (size: number) => void
-  updateQuery: (query: Partial<ReportHistoryQuery>) => void
-  deleteReport: (reportId: string) => Promise<void>
-  cleanupExpired: () => Promise<number>
-}
-
-/**
- * Hook for managing report history with pagination and filtering.
- */
-export function useReportHistory(
-  options: UseReportHistoryOptions = {}
-): UseReportHistoryResult {
-  const { toast } = useToast()
-  const { query: initialQuery, autoFetch = true } = options
-
-  const [reports, setReports] = useState<GeneratedReport[]>([])
-  const [total, setTotal] = useState(0)
-  const [statistics, setStatistics] = useState<ReportStatistics | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-  const [query, setQuery] = useState<ReportHistoryQuery>({
-    page: 1,
-    pageSize: 20,
-    ...initialQuery,
-  })
-
-  const fetchReports = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const response = await listReportHistory({
-        search: query.search,
-        format: query.format,
-        status: query.status,
-        source_id: query.source_id,
-        include_expired: query.include_expired,
-        page: query.page,
-        page_size: query.pageSize,
-      })
-      setReports((response.data ?? []).map(normalizeGeneratedReport))
-      setTotal(response.total ?? 0)
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to fetch reports')
-      setError(error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [query])
-
-  const fetchStats = useCallback(async () => {
-    try {
-      const stats = await getReportStatistics()
-      setStatistics(stats)
-    } catch (err) {
-      console.error('Failed to fetch statistics:', err)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (autoFetch) {
-      fetchReports()
-      fetchStats()
-    }
-  }, [autoFetch, fetchReports, fetchStats])
-
-  const setPage = useCallback((page: number) => {
-    setQuery((prev) => ({ ...prev, page }))
-  }, [])
-
-  const setPageSize = useCallback((pageSize: number) => {
-    setQuery((prev) => ({ ...prev, pageSize, page: 1 }))
-  }, [])
-
-  const updateQuery = useCallback((newQuery: Partial<ReportHistoryQuery>) => {
-    setQuery((prev) => ({ ...prev, ...newQuery, page: 1 }))
-  }, [])
-
-  const handleDeleteReport = useCallback(
-    async (reportId: string) => {
-      try {
-        await deleteReportRecord(reportId)
-        toast({
-          title: 'Report Deleted',
-          description: 'The report has been deleted successfully',
-        })
-        fetchReports()
-        fetchStats()
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error('Delete failed')
-        toast({
-          title: 'Delete Failed',
-          description: error.message,
-          variant: 'destructive',
-        })
-        throw error
-      }
-    },
-    [toast, fetchReports, fetchStats]
-  )
-
-  const handleCleanupExpired = useCallback(async () => {
-    try {
-      const result = await cleanupExpiredReports()
-      toast({
-        title: 'Cleanup Complete',
-        description: `Deleted ${result.deleted} expired reports`,
-      })
-      fetchReports()
-      fetchStats()
-      return result.deleted
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error('Cleanup failed')
-      toast({
-        title: 'Cleanup Failed',
-        description: error.message,
-        variant: 'destructive',
-      })
-      throw error
-    }
-  }, [toast, fetchReports, fetchStats])
-
-  return {
-    reports,
-    total,
-    page: query.page || 1,
-    pageSize: query.pageSize || 20,
-    statistics,
-    isLoading,
-    error,
-    refetch: fetchReports,
-    fetchStatistics: fetchStats,
-    setPage,
-    setPageSize,
-    updateQuery,
-    deleteReport: handleDeleteReport,
-    cleanupExpired: handleCleanupExpired,
   }
 }
 

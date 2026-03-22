@@ -26,6 +26,7 @@ from .models import (
     EscalationState,
     StateTransition,
 )
+from truthound_dashboard.time import utc_now
 
 
 class EscalationStateMachine:
@@ -179,7 +180,7 @@ class EscalationStateMachine:
 
         # Update incident
         incident.state = to_state
-        incident.updated_at = datetime.utcnow()
+        incident.updated_at = utc_now()
         incident.events.append(event)
 
         # Call callback
@@ -231,7 +232,7 @@ class EscalationStateMachine:
             Updated incident.
         """
         incident.acknowledged_by = actor
-        incident.acknowledged_at = datetime.utcnow()
+        incident.acknowledged_at = utc_now()
         return self.transition(
             incident,
             EscalationState.ACKNOWLEDGED,
@@ -288,7 +289,7 @@ class EscalationStateMachine:
             Updated incident.
         """
         incident.resolved_by = actor or ("system" if auto else None)
-        incident.resolved_at = datetime.utcnow()
+        incident.resolved_at = utc_now()
         incident.next_escalation_at = None
 
         return self.transition(

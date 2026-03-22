@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -37,9 +38,14 @@ import {
   listSources,
   deleteSource,
   deleteSources,
+  listDomains,
+  listTeams,
   type Source,
+  type Domain,
+  type Team,
 } from '@/api/modules/sources'
 import { runValidation } from '@/api/modules/validations'
+import { listUsers, type User } from '@/api/modules/control-plane'
 import { formatDate } from '@/lib/utils'
 import { str } from '@/lib/intlayer-utils'
 import { useToast } from '@/hooks/use-toast'
@@ -64,6 +70,13 @@ export default function Sources() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
   const [environmentFilter, setEnvironmentFilter] = useState('all')
+  const [searchFilter, setSearchFilter] = useState('')
+  const [ownerFilter, setOwnerFilter] = useState('all')
+  const [teamFilter, setTeamFilter] = useState('all')
+  const [domainFilter, setDomainFilter] = useState('all')
+  const [users, setUsers] = useState<User[]>([])
+  const [teams, setTeams] = useState<Team[]>([])
+  const [domains, setDomains] = useState<Domain[]>([])
   const { toast } = useToast()
   const { confirm, ConfirmDialog } = useConfirm()
 
@@ -96,7 +109,14 @@ export default function Sources() {
   const loadSources = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await listSources({ offset, limit: pageSize })
+      const response = await listSources({
+        offset,
+        limit: pageSize,
+        search: searchFilter || undefined,
+        owner_user_id: ownerFilter !== 'all' ? ownerFilter : undefined,
+        team_id: teamFilter !== 'all' ? teamFilter : undefined,
+        domain_id: domainFilter !== 'all' ? domainFilter : undefined,
+      })
       setSources(response.data)
       setTotal(response.total)
       setSelectedIds(new Set()) // Clear selection on reload
@@ -109,15 +129,34 @@ export default function Sources() {
     } finally {
       setLoading(false)
     }
-  }, [toast, common, sources_t, offset, pageSize])
+  }, [toast, common, sources_t, offset, pageSize, searchFilter, ownerFilter, teamFilter, domainFilter])
+
+  const loadOwnershipOptions = useCallback(async () => {
+    try {
+      const [userRows, teamRows, domainRows] = await Promise.all([
+        listUsers(),
+        listTeams(),
+        listDomains(),
+      ])
+      setUsers(userRows)
+      setTeams(teamRows)
+      setDomains(domainRows)
+    } catch {
+      // Optional control-plane metadata; fail soft.
+    }
+  }, [])
 
   useEffect(() => {
     loadSources()
   }, [loadSources])
 
   useEffect(() => {
+    loadOwnershipOptions()
+  }, [loadOwnershipOptions])
+
+  useEffect(() => {
     setSelectedIds(new Set())
-  }, [environmentFilter])
+  }, [environmentFilter, searchFilter, ownerFilter, teamFilter, domainFilter])
 
   // Pagination handlers
   const setPage = (newPage: number) => {
@@ -344,10 +383,28 @@ export default function Sources() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <SavedViewBar
               scope="sources"
-              currentFilters={{ environment: environmentFilter }}
-              onApply={(filters) => setEnvironmentFilter(String(filters.environment ?? 'all'))}
+              currentFilters={{
+                environment: environmentFilter,
+                search: searchFilter,
+                owner_user_id: ownerFilter,
+                team_id: teamFilter,
+                domain_id: domainFilter,
+              }}
+              onApply={(filters) => {
+                setEnvironmentFilter(String(filters.environment ?? 'all'))
+                setSearchFilter(String(filters.search ?? ''))
+                setOwnerFilter(String(filters.owner_user_id ?? 'all'))
+                setTeamFilter(String(filters.team_id ?? 'all'))
+                setDomainFilter(String(filters.domain_id ?? 'all'))
+              }}
             />
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                value={searchFilter}
+                onChange={(event) => setSearchFilter(event.target.value)}
+                placeholder="Search sources"
+                className="w-[220px]"
+              />
               <span className="text-sm text-muted-foreground">Environment:</span>
               <Select value={environmentFilter} onValueChange={setEnvironmentFilter}>
                 <SelectTrigger className="w-[180px]">
@@ -358,6 +415,45 @@ export default function Sources() {
                   <SelectItem value="production">Production</SelectItem>
                   <SelectItem value="staging">Staging</SelectItem>
                   <SelectItem value="development">Development</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Owner" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All owners</SelectItem>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.display_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={teamFilter} onValueChange={setTeamFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Team" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All teams</SelectItem>
+                  {teams.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={domainFilter} onValueChange={setDomainFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Domain" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All domains</SelectItem>
+                  {domains.map((domain) => (
+                    <SelectItem key={domain.id} value={domain.id}>
+                      {domain.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -440,6 +536,9 @@ export default function Sources() {
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Badge variant="outline">{source.type}</Badge>
                           <Badge variant="secondary">{source.environment}</Badge>
+                          {source.owner_name && <Badge variant="outline">Owner: {source.owner_name}</Badge>}
+                          {source.team_name && <Badge variant="outline">Team: {source.team_name}</Badge>}
+                          {source.domain_name && <Badge variant="outline">Domain: {source.domain_name}</Badge>}
                           <span>•</span>
                           <span>
                             {sources_t.lastValidated}: {formatDate(source.last_validated_at)}

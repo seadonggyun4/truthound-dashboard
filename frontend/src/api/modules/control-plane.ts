@@ -1,5 +1,7 @@
 import { request, setStoredSessionToken } from '../core'
 
+export type SavedViewScope = 'sources' | 'alerts' | 'artifacts' | 'history'
+
 export interface Workspace {
   id: string
   name: string
@@ -16,6 +18,16 @@ export interface Role {
   name: string
   description?: string | null
   permissions: string[]
+  is_system: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface Permission {
+  id: string
+  key: string
+  category: string
+  description?: string | null
   is_system: boolean
   created_at: string
   updated_at: string
@@ -42,7 +54,7 @@ export interface SessionContext {
 
 export interface SavedView {
   id: string
-  scope: string
+  scope: SavedViewScope
   name: string
   description?: string | null
   filters: Record<string, unknown>
@@ -67,21 +79,69 @@ export interface OverviewSlice {
   healthy?: number | null
   unhealthy?: number | null
   failed?: number | null
+  fresh_24h?: number | null
+  stale?: number | null
+  unowned?: number | null
 }
 
 export interface OverviewSavedView {
   id: string
   name: string
-  scope: string
+  scope: SavedViewScope
   description?: string | null
   is_default: boolean
   owner_name?: string | null
 }
 
+export interface OverviewQueueBacklog {
+  queue_id: string
+  queue_name: string
+  count: number
+}
+
+export interface OverviewAssigneeLoad {
+  user_id?: string | null
+  user_name: string
+  count: number
+}
+
+export interface OverviewArtifactTypeCount {
+  artifact_type: string
+  count: number
+}
+
+export interface OverviewNamedCount {
+  id?: string | null
+  name: string
+  count: number
+}
+
+export interface OverviewOwnershipFreshness {
+  ownership_type: string
+  ownership_id?: string | null
+  ownership_name: string
+  fresh_24h: number
+  stale: number
+}
+
+export interface OverviewWorkspaceSummary {
+  id: string
+  name?: string | null
+  slug?: string | null
+}
+
 export interface OverviewResponse {
+  workspace: OverviewWorkspaceSummary
   sources: OverviewSlice
   incidents: OverviewSlice
   artifacts: OverviewSlice
+  incident_backlog: OverviewQueueBacklog[]
+  assignee_workload: OverviewAssigneeLoad[]
+  artifact_types: OverviewArtifactTypeCount[]
+  sources_by_owner: OverviewNamedCount[]
+  sources_by_team: OverviewNamedCount[]
+  sources_by_domain: OverviewNamedCount[]
+  artifact_freshness_by_ownership: OverviewOwnershipFreshness[]
   saved_views: OverviewSavedView[]
 }
 
@@ -125,14 +185,18 @@ export async function listRoles(): Promise<Role[]> {
   return request<Role[]>('/roles')
 }
 
-export async function listSavedViews(scope?: string): Promise<SavedViewListResponse> {
+export async function listPermissions(): Promise<Permission[]> {
+  return request<Permission[]>('/permissions')
+}
+
+export async function listSavedViews(scope?: SavedViewScope): Promise<SavedViewListResponse> {
   return request<SavedViewListResponse>('/views', {
     params: scope ? { scope } : undefined,
   })
 }
 
 export async function createSavedView(payload: {
-  scope: string
+  scope: SavedViewScope
   name: string
   description?: string
   filters: Record<string, unknown>

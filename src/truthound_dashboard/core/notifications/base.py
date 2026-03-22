@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, ClassVar
+from truthound_dashboard.time import utc_now
 
 
 class NotificationStatus(str, Enum):
@@ -58,7 +59,7 @@ class NotificationResult:
     channel_type: str
     message: str
     error: str | None = None
-    sent_at: datetime = field(default_factory=datetime.utcnow)
+    sent_at: datetime = field(default_factory=utc_now)
     metadata: dict[str, Any] = field(default_factory=dict)
     suppressed: bool = False
     suppression_reason: str | None = None
@@ -82,7 +83,7 @@ class NotificationEvent:
     event_type: str
     source_id: str | None = None
     source_name: str | None = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=utc_now)
     data: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

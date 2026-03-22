@@ -22,6 +22,7 @@ from .base import (
     TriggerEvaluation,
     TriggerRegistry,
 )
+from truthound_dashboard.time import utc_now
 
 # Import evaluators to register them
 from . import evaluators  # noqa: F401
@@ -233,7 +234,7 @@ class TriggerFactory:
             source_id=schedule.source_id,
             last_run_at=schedule.last_run_at,
             trigger_count=schedule.trigger_count,
-            current_time=from_time or datetime.utcnow(),
+            current_time=from_time or utc_now(),
         )
 
         return trigger.get_next_evaluation_time(context)

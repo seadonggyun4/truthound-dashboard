@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, ClassVar
+from truthound_dashboard.time import utc_now
 
 
 class MetricType(str, Enum):
@@ -56,7 +57,7 @@ class MetricEvent:
     """
 
     event_type: str
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=utc_now)
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -84,7 +85,7 @@ class MetricSnapshot:
     events: list[MetricEvent]
     event_counts: dict[str, int]
     last_reset: datetime | None
-    collected_at: datetime = field(default_factory=datetime.utcnow)
+    collected_at: datetime = field(default_factory=utc_now)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert snapshot to dictionary for serialization."""
@@ -241,7 +242,7 @@ class InMemoryMetricsCollector(MetricsCollector):
         """
         event = MetricEvent(
             event_type=event_type,
-            timestamp=datetime.utcnow(),
+            timestamp=utc_now(),
             metadata=metadata or {},
         )
 
@@ -348,7 +349,7 @@ class InMemoryMetricsCollector(MetricsCollector):
             self._gauges.clear()
             self._events.clear()
             self._event_counts.clear()
-            self._last_reset = datetime.utcnow()
+            self._last_reset = utc_now()
 
 
 class MetricsRegistry:

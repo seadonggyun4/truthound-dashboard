@@ -29,5 +29,7 @@ jobs:
         run: python -m pip install -e ".[docs,dev]"
       - name: Docs regression tests
         run: python -m pytest -q tests/test_docs_surface.py -p no:cacheprovider
+      - name: Legacy docs gate
+        run: python -m pytest -q tests/test_enforcement_gates.py -k no_legacy_surface_gate -p no:cacheprovider
       - name: MkDocs strict build
         run: python -m mkdocs build --strict

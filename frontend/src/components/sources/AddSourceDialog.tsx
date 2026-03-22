@@ -42,12 +42,17 @@ import { cn } from '@/lib/utils'
 import {
   getSupportedSourceTypes,
   createSource,
+  listDomains,
+  listTeams,
   testConnectionConfig,
+  type Domain,
+  type Team,
   type SourceTypeDefinition,
   type SourceCategoryDefinition,
   type SourceType,
   type SourceCategory,
 } from '@/api/modules/sources'
+import { listUsers, type User } from '@/api/modules/control-plane'
 import { SourceTypeSelector } from './SourceTypeSelector'
 import { DynamicSourceForm } from './DynamicSourceForm'
 import { useToast } from '@/hooks/use-toast'
@@ -66,6 +71,9 @@ interface FormState {
   environment: 'production' | 'staging' | 'development'
   type: SourceType | null
   config: Record<string, unknown>
+  owner_user_id: string
+  team_id: string
+  domain_id: string
 }
 
 const initialFormState: FormState = {
@@ -74,6 +82,9 @@ const initialFormState: FormState = {
   environment: 'production',
   type: null,
   config: {},
+  owner_user_id: '',
+  team_id: '',
+  domain_id: '',
 }
 
 export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDialogProps) {
@@ -83,6 +94,9 @@ export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDial
   const [sourceTypes, setSourceTypes] = useState<SourceTypeDefinition[]>([])
   const [categories, setCategories] = useState<SourceCategoryDefinition[]>([])
   const [loadingTypes, setLoadingTypes] = useState(true)
+  const [users, setUsers] = useState<User[]>([])
+  const [teams, setTeams] = useState<Team[]>([])
+  const [domains, setDomains] = useState<Domain[]>([])
 
   // Form state
   const [step, setStep] = useState<Step>('type')
@@ -109,6 +123,12 @@ export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDial
       loadSourceTypes()
     }
   }, [open, sourceTypes.length])
+
+  useEffect(() => {
+    if (open) {
+      void loadOwnershipOptions()
+    }
+  }, [open])
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -141,6 +161,21 @@ export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDial
       })
     } finally {
       setLoadingTypes(false)
+    }
+  }
+
+  const loadOwnershipOptions = async () => {
+    try {
+      const [userRows, teamRows, domainRows] = await Promise.all([
+        listUsers(),
+        listTeams(),
+        listDomains(),
+      ])
+      setUsers(userRows)
+      setTeams(teamRows)
+      setDomains(domainRows)
+    } catch {
+      // Ownership metadata is optional UI sugar.
     }
   }
 
@@ -257,6 +292,9 @@ export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDial
         config: form.config,
         description: form.description.trim() || undefined,
         environment: form.environment,
+        owner_user_id: form.owner_user_id || undefined,
+        team_id: form.team_id || undefined,
+        domain_id: form.domain_id || undefined,
       })
 
       toast({
@@ -438,6 +476,83 @@ export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDial
                     </Select>
                   </div>
                 </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="source-owner">Owner</Label>
+                    <Select
+                      value={form.owner_user_id || 'unassigned'}
+                      onValueChange={(value) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          owner_user_id: value === 'unassigned' ? '' : value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="source-owner">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {users.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.display_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="source-team">Team</Label>
+                    <Select
+                      value={form.team_id || 'unassigned'}
+                      onValueChange={(value) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          team_id: value === 'unassigned' ? '' : value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="source-team">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {teams.map((team) => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {team.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="source-domain">Domain</Label>
+                    <Select
+                      value={form.domain_id || 'unassigned'}
+                      onValueChange={(value) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          domain_id: value === 'unassigned' ? '' : value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="source-domain">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {domains.map((domain) => (
+                          <SelectItem key={domain.id} value={domain.id}>
+                            {domain.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
 
               {/* Dynamic connection form */}
@@ -473,6 +588,24 @@ export function AddSourceDialog({ open, onOpenChange, onSuccess }: AddSourceDial
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Description</span>
                       <span className="max-w-[200px] truncate">{form.description}</span>
+                    </div>
+                  )}
+                  {form.owner_user_id && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Owner</span>
+                      <span>{users.find((user) => user.id === form.owner_user_id)?.display_name ?? 'Unknown'}</span>
+                    </div>
+                  )}
+                  {form.team_id && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Team</span>
+                      <span>{teams.find((team) => team.id === form.team_id)?.name ?? 'Unknown'}</span>
+                    </div>
+                  )}
+                  {form.domain_id && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Domain</span>
+                      <span>{domains.find((domain) => domain.id === form.domain_id)?.name ?? 'Unknown'}</span>
                     </div>
                   )}
                 </div>

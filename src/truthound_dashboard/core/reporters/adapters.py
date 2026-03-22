@@ -45,6 +45,7 @@ from .interfaces import (
     ReportThemeType,
     ValidationIssueData,
 )
+from truthound_dashboard.time import utc_now
 
 if TYPE_CHECKING:
     pass
@@ -443,7 +444,7 @@ class _TruthoundValidationResultMock:
 
         if self._data.statistics.started_at:
             return self._data.statistics.started_at
-        return dt.utcnow()
+        return utc_now()
 
     @property
     def data_asset(self) -> str:

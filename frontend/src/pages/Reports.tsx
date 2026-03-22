@@ -4,7 +4,7 @@
  * Displays report history with statistics, filtering, and management actions.
  * Uses the new reporter component system for improved maintainability.
  */
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import { Link } from 'react-router-dom'
 import {
@@ -61,9 +61,14 @@ import {
   FormatIcon,
   ReportPreview,
 } from '@/components/reporters'
-import { useReportHistory } from '@/hooks/useReporter'
-import type { GeneratedReport } from '@/types/reporters'
-import type { ReportFormat, ReportStatus, ReportStatistics } from '@/api/modules/reports'
+import { useArtifactIndex } from '@/hooks/useArtifacts'
+import { downloadArtifact } from '@/api/modules/artifacts'
+import type {
+  ArtifactFormat,
+  ArtifactRecord,
+  ArtifactStatistics,
+  ArtifactStatus,
+} from '@/api/modules/artifacts'
 import { formatFileSize, formatGenerationTime } from '@/types/reporters'
 
 // Format date for display
@@ -77,7 +82,7 @@ function StatisticsCards({
   stats,
   t,
 }: {
-  stats: ReportStatistics | null
+  stats: ArtifactStatistics | null
   t: ReturnType<typeof useSafeIntlayer<'reports'>>
 }) {
   if (!stats) return null
@@ -90,7 +95,7 @@ function StatisticsCards({
             <FileText className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{str(t.totalReports)}</span>
           </div>
-          <p className="text-2xl font-bold mt-1">{stats.total_reports}</p>
+          <p className="text-2xl font-bold mt-1">{stats.total_artifacts}</p>
         </CardContent>
       </Card>
       <Card>
@@ -127,26 +132,26 @@ function StatisticsCards({
 export default function Reports() {
   const t = useSafeIntlayer('reports')
   const common = useSafeIntlayer('common')
-  const { toast } = useToast()
+  useToast()
 
   // Use the new report history hook
   const {
-    reports,
+    artifacts,
     total,
     page,
     pageSize,
     statistics,
     isLoading,
-    error,
     refetch,
     setPage,
     updateQuery,
-    deleteReport,
+    deleteArtifactRecord,
     cleanupExpired,
-  } = useReportHistory({ autoFetch: true })
+  } = useArtifactIndex({ autoFetch: true })
 
   // Local filter state
   const [search, setSearch] = useState('')
+  const [artifactTypeFilter, setArtifactTypeFilter] = useState<string>('all')
   const [formatFilter, setFormatFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [includeExpired, setIncludeExpired] = useState(false)
@@ -154,37 +159,38 @@ export default function Reports() {
   // Dialogs
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean
-    report: GeneratedReport | null
+    artifact: ArtifactRecord | null
   }>({
     open: false,
-    report: null,
+    artifact: null,
   })
   const [cleanupDialog, setCleanupDialog] = useState(false)
   const [previewDialog, setPreviewDialog] = useState<{
     open: boolean
-    report: GeneratedReport | null
+    artifact: ArtifactRecord | null
   }>({
     open: false,
-    report: null,
+    artifact: null,
   })
 
   // Update query when filters change
   useEffect(() => {
     updateQuery({
       search: search || undefined,
-      format: formatFilter !== 'all' ? formatFilter as ReportFormat : undefined,
-      status: statusFilter !== 'all' ? statusFilter as ReportStatus : undefined,
+      artifact_type: artifactTypeFilter !== 'all' ? artifactTypeFilter : undefined,
+      format: formatFilter !== 'all' ? formatFilter as ArtifactFormat : undefined,
+      status: statusFilter !== 'all' ? statusFilter as ArtifactStatus : undefined,
       include_expired: includeExpired,
     })
-  }, [search, formatFilter, statusFilter, includeExpired, updateQuery])
+  }, [search, artifactTypeFilter, formatFilter, statusFilter, includeExpired, updateQuery])
 
   // Handle delete
   const handleDelete = async () => {
-    if (!deleteDialog.report) return
+    if (!deleteDialog.artifact) return
 
     try {
-      await deleteReport(deleteDialog.report.id)
-      setDeleteDialog({ open: false, report: null })
+      await deleteArtifactRecord(deleteDialog.artifact.id)
+      setDeleteDialog({ open: false, artifact: null })
     } catch {
       // Error handled by hook
     }
@@ -204,6 +210,7 @@ export default function Reports() {
 
   const applySavedView = (filters: Record<string, unknown>) => {
     setSearch(String(filters.search ?? ''))
+    setArtifactTypeFilter(String(filters.artifact_type ?? 'all'))
     setFormatFilter(String(filters.format ?? 'all'))
     setStatusFilter(String(filters.status ?? 'all'))
     setIncludeExpired(Boolean(filters.include_expired))
@@ -248,9 +255,10 @@ export default function Reports() {
         <CardContent>
           <div className="mb-4">
             <SavedViewBar
-              scope="reports"
+              scope="artifacts"
               currentFilters={{
                 search,
+                artifact_type: artifactTypeFilter,
                 format: formatFilter,
                 status: statusFilter,
                 include_expired: includeExpired,
@@ -270,6 +278,16 @@ export default function Reports() {
                 />
               </div>
             </div>
+            <Select value={artifactTypeFilter} onValueChange={setArtifactTypeFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Artifact type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="report">Reports</SelectItem>
+                <SelectItem value="datadocs">Data Docs</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={formatFilter} onValueChange={setFormatFilter}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder={str(t.filterByFormat)} />
@@ -311,7 +329,7 @@ export default function Reports() {
             <div className="flex items-center justify-center py-8">
               <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : reports.length === 0 ? (
+          ) : artifacts.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold">{str(t.noReports)}</h3>
@@ -333,25 +351,32 @@ export default function Reports() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reports.map((report) => (
-                    <TableRow key={report.id}>
-                      <TableCell className="font-medium">{report.name}</TableCell>
+                  {artifacts.map((artifact) => (
+                    <TableRow key={artifact.id}>
+                      <TableCell className="font-medium">
+                        <div className="space-y-1">
+                          <div>{artifact.title}</div>
+                          <Badge variant="secondary" className="w-fit">
+                            {artifact.artifact_type === 'datadocs' ? 'Data Docs' : 'Report'}
+                          </Badge>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="flex items-center gap-1 w-fit">
-                          <FormatIcon format={report.format} className="h-3 w-3" />
-                          {report.format.toUpperCase()}
+                          <FormatIcon format={artifact.format} className="h-3 w-3" />
+                          {artifact.format.toUpperCase()}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <ReportStatusBadge status={report.status} />
+                        <ReportStatusBadge status={artifact.status} />
                       </TableCell>
                       <TableCell>
-                        {report.sourceName ? (
+                        {artifact.source_name ? (
                           <Link
-                            to={`/sources/${report.sourceId}`}
+                            to={`/sources/${artifact.source_id}`}
                             className="text-primary hover:underline flex items-center gap-1"
                           >
-                            {report.sourceName}
+                            {artifact.source_name}
                             <ExternalLink className="h-3 w-3" />
                           </Link>
                         ) : (
@@ -359,26 +384,42 @@ export default function Reports() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {report.fileSize ? formatFileSize(report.fileSize) : '-'}
+                        {artifact.file_size ? formatFileSize(artifact.file_size) : '-'}
                       </TableCell>
-                      <TableCell>{report.downloadCount}</TableCell>
-                      <TableCell>{formatDate(report.createdAt)}</TableCell>
+                      <TableCell>{artifact.downloaded_count}</TableCell>
+                      <TableCell>{formatDate(artifact.created_at)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           {/* Preview button for HTML reports */}
-                          {report.status === 'completed' &&
-                            report.validationId &&
-                            (report.format === 'html' || report.format === 'json') && (
+                          {artifact.status === 'completed' &&
+                            artifact.validation_id &&
+                            artifact.artifact_type !== 'datadocs' &&
+                            (artifact.format === 'html' || artifact.format === 'json') && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setPreviewDialog({ open: true, report })}
+                                onClick={() => setPreviewDialog({ open: true, artifact })}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
                             )}
+                          {artifact.status === 'completed' &&
+                            artifact.artifact_type === 'datadocs' &&
+                            artifact.download_url && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={async () => {
+                                  const blob = await downloadArtifact(artifact.id)
+                                  const url = window.URL.createObjectURL(blob)
+                                  window.open(url, '_blank', 'noopener,noreferrer')
+                                }}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            )}
                           <ReportDownloadButton
-                            report={report}
+                            artifact={artifact}
                             variant="ghost"
                             size="sm"
                             onSuccess={refetch}
@@ -386,7 +427,7 @@ export default function Reports() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setDeleteDialog({ open: true, report })}
+                            onClick={() => setDeleteDialog({ open: true, artifact })}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -432,7 +473,7 @@ export default function Reports() {
       {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialog.open}
-        onOpenChange={(open) => setDeleteDialog({ open, report: null })}
+        onOpenChange={(open) => setDeleteDialog({ open, artifact: null })}
       >
         <DialogContent>
           <DialogHeader>
@@ -442,7 +483,7 @@ export default function Reports() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDeleteDialog({ open: false, report: null })}
+              onClick={() => setDeleteDialog({ open: false, artifact: null })}
             >
               {str(common.cancel)}
             </Button>
@@ -479,25 +520,25 @@ export default function Reports() {
       {/* Preview Dialog */}
       <Dialog
         open={previewDialog.open}
-        onOpenChange={(open) => setPreviewDialog({ open, report: null })}
+        onOpenChange={(open) => setPreviewDialog({ open, artifact: null })}
       >
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {previewDialog.report && (
+              {previewDialog.artifact && (
                 <>
-                  <FormatIcon format={previewDialog.report.format} />
-                  {previewDialog.report.name}
+                  <FormatIcon format={previewDialog.artifact.format} />
+                  {previewDialog.artifact.title}
                 </>
               )}
             </DialogTitle>
           </DialogHeader>
-          {previewDialog.report && previewDialog.report.validationId && (
+          {previewDialog.artifact && (
             <ReportPreview
-              validationId={previewDialog.report.validationId}
-              format={previewDialog.report.format}
-              theme={previewDialog.report.theme}
-              locale={previewDialog.report.locale}
+              artifactId={previewDialog.artifact.id}
+              format={previewDialog.artifact.format}
+              theme={previewDialog.artifact.theme}
+              locale={previewDialog.artifact.locale}
               title=""
               maxHeight="60vh"
               showControls={true}

@@ -35,6 +35,7 @@ from truthound_dashboard.db.models import (
     Source,
     Validation,
 )
+from truthound_dashboard.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -275,10 +276,10 @@ class ValidationCleanupStrategy(CleanupStrategy):
 
     async def execute(self, config: MaintenanceConfig) -> CleanupResult:
         """Remove validation records older than retention period."""
-        start_time = datetime.utcnow()
+        start_time = utc_now()
 
         try:
-            cutoff = datetime.utcnow() - timedelta(
+            cutoff = utc_now() - timedelta(
                 days=config.validation_retention_days
             )
 
@@ -298,7 +299,7 @@ class ValidationCleanupStrategy(CleanupStrategy):
                     )
 
                 duration = int(
-                    (datetime.utcnow() - start_time).total_seconds() * 1000
+                    (utc_now() - start_time).total_seconds() * 1000
                 )
 
                 logger.info(
@@ -314,7 +315,7 @@ class ValidationCleanupStrategy(CleanupStrategy):
                 )
 
         except Exception as e:
-            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            duration = int((utc_now() - start_time).total_seconds() * 1000)
             logger.error(f"Validation cleanup failed: {e}")
             return CleanupResult(
                 task_name=self.name,
@@ -333,7 +334,7 @@ class ProfileCleanupStrategy(CleanupStrategy):
 
     async def execute(self, config: MaintenanceConfig) -> CleanupResult:
         """Keep only the most recent N profiles per source."""
-        start_time = datetime.utcnow()
+        start_time = utc_now()
         total_deleted = 0
 
         try:
@@ -371,7 +372,7 @@ class ProfileCleanupStrategy(CleanupStrategy):
                         )
                         total_deleted += count
 
-            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            duration = int((utc_now() - start_time).total_seconds() * 1000)
 
             logger.info(
                 f"Profile cleanup: deleted {total_deleted} records, "
@@ -386,7 +387,7 @@ class ProfileCleanupStrategy(CleanupStrategy):
             )
 
         except Exception as e:
-            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            duration = int((utc_now() - start_time).total_seconds() * 1000)
             logger.error(f"Profile cleanup failed: {e}")
             return CleanupResult(
                 task_name=self.name,
@@ -405,10 +406,10 @@ class NotificationLogCleanupStrategy(CleanupStrategy):
 
     async def execute(self, config: MaintenanceConfig) -> CleanupResult:
         """Remove notification logs older than retention period."""
-        start_time = datetime.utcnow()
+        start_time = utc_now()
 
         try:
-            cutoff = datetime.utcnow() - timedelta(
+            cutoff = utc_now() - timedelta(
                 days=config.notification_log_retention_days
             )
 
@@ -430,7 +431,7 @@ class NotificationLogCleanupStrategy(CleanupStrategy):
                     )
 
                 duration = int(
-                    (datetime.utcnow() - start_time).total_seconds() * 1000
+                    (utc_now() - start_time).total_seconds() * 1000
                 )
 
                 logger.info(
@@ -446,7 +447,7 @@ class NotificationLogCleanupStrategy(CleanupStrategy):
                 )
 
         except Exception as e:
-            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            duration = int((utc_now() - start_time).total_seconds() * 1000)
             logger.error(f"Notification log cleanup failed: {e}")
             return CleanupResult(
                 task_name=self.name,
@@ -468,7 +469,7 @@ class SizeBasedCleanupStrategy(CleanupStrategy):
 
     async def execute(self, config: MaintenanceConfig) -> CleanupResult:
         """Remove validations if total storage exceeds limit."""
-        start_time = datetime.utcnow()
+        start_time = utc_now()
         total_deleted = 0
 
         if config.max_storage_mb is None:
@@ -491,7 +492,7 @@ class SizeBasedCleanupStrategy(CleanupStrategy):
                 current_size = size_result.scalar() or 0
 
                 if current_size <= max_bytes:
-                    duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                    duration = int((utc_now() - start_time).total_seconds() * 1000)
                     return CleanupResult(
                         task_name=self.name,
                         records_deleted=0,
@@ -524,7 +525,7 @@ class SizeBasedCleanupStrategy(CleanupStrategy):
                     )
                     total_deleted = len(ids_to_delete)
 
-            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            duration = int((utc_now() - start_time).total_seconds() * 1000)
 
             logger.info(
                 f"Size-based cleanup: deleted {total_deleted} records, "
@@ -539,7 +540,7 @@ class SizeBasedCleanupStrategy(CleanupStrategy):
             )
 
         except Exception as e:
-            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            duration = int((utc_now() - start_time).total_seconds() * 1000)
             logger.error(f"Size-based cleanup failed: {e}")
             return CleanupResult(
                 task_name=self.name,
@@ -562,7 +563,7 @@ class StatusBasedCleanupStrategy(CleanupStrategy):
 
     async def execute(self, config: MaintenanceConfig) -> CleanupResult:
         """Remove validations based on status-specific retention."""
-        start_time = datetime.utcnow()
+        start_time = utc_now()
         total_deleted = 0
 
         if not config.keep_failed_validations:
@@ -575,11 +576,11 @@ class StatusBasedCleanupStrategy(CleanupStrategy):
 
         try:
             # Standard cutoff for passed validations
-            passed_cutoff = datetime.utcnow() - timedelta(
+            passed_cutoff = utc_now() - timedelta(
                 days=config.validation_retention_days
             )
             # Extended cutoff for failed validations
-            failed_cutoff = datetime.utcnow() - timedelta(
+            failed_cutoff = utc_now() - timedelta(
                 days=config.failed_retention_days
             )
 
@@ -620,7 +621,7 @@ class StatusBasedCleanupStrategy(CleanupStrategy):
                     )
                     total_deleted += failed_count
 
-            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            duration = int((utc_now() - start_time).total_seconds() * 1000)
 
             logger.info(
                 f"Status-based cleanup: deleted {passed_count} passed, "
@@ -635,7 +636,7 @@ class StatusBasedCleanupStrategy(CleanupStrategy):
             )
 
         except Exception as e:
-            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            duration = int((utc_now() - start_time).total_seconds() * 1000)
             logger.error(f"Status-based cleanup failed: {e}")
             return CleanupResult(
                 task_name=self.name,
@@ -658,7 +659,7 @@ class TagBasedCleanupStrategy(CleanupStrategy):
 
     async def execute(self, config: MaintenanceConfig) -> CleanupResult:
         """Handle tag-based retention rules."""
-        start_time = datetime.utcnow()
+        start_time = utc_now()
         total_deleted = 0
 
         if not config.protected_tags and not config.delete_tags:
@@ -674,7 +675,7 @@ class TagBasedCleanupStrategy(CleanupStrategy):
                 # Handle delete_tags: remove validations with these tags
                 # that are past standard retention
                 if config.delete_tags:
-                    cutoff = datetime.utcnow() - timedelta(
+                    cutoff = utc_now() - timedelta(
                         days=config.validation_retention_days
                     )
 
@@ -700,7 +701,7 @@ class TagBasedCleanupStrategy(CleanupStrategy):
 
                             logger.info(f"Tag cleanup: deleted {count} validations with tag '{tag}'")
 
-            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            duration = int((utc_now() - start_time).total_seconds() * 1000)
 
             logger.info(f"Tag-based cleanup: deleted {total_deleted} total records")
 
@@ -712,7 +713,7 @@ class TagBasedCleanupStrategy(CleanupStrategy):
             )
 
         except Exception as e:
-            duration = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            duration = int((utc_now() - start_time).total_seconds() * 1000)
             logger.error(f"Tag-based cleanup failed: {e}")
             return CleanupResult(
                 task_name=self.name,
@@ -839,11 +840,11 @@ class MaintenanceManager:
         if not self._config.enabled:
             logger.info("Maintenance is disabled")
             return MaintenanceReport(
-                started_at=datetime.utcnow(),
-                completed_at=datetime.utcnow(),
+                started_at=utc_now(),
+                completed_at=utc_now(),
             )
 
-        report = MaintenanceReport(started_at=datetime.utcnow())
+        report = MaintenanceReport(started_at=utc_now())
 
         for strategy in self._strategies:
             try:
@@ -868,7 +869,7 @@ class MaintenanceManager:
                 report.vacuum_error = str(e)
                 logger.error(f"VACUUM failed: {e}")
 
-        report.completed_at = datetime.utcnow()
+        report.completed_at = utc_now()
 
         logger.info(
             f"Maintenance completed: {report.total_deleted} records deleted "

@@ -1,12 +1,7 @@
 /**
  * UnifiedAlertList Component
  *
- * Displays a filterable, sortable list of all unified alerts.
- * Supports:
- * - Source type filter
- * - Severity filter
- * - Status filter
- * - Read-only aggregated alert browsing
+ * Displays a filterable, sortable list of queue-aware operational alerts.
  */
 
 import { useIntlayer } from '@/providers'
@@ -21,6 +16,7 @@ import {
   Eye,
   ExternalLink,
   MoreHorizontal,
+  Search,
 } from 'lucide-react'
 import { cn, parseUTC } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -46,8 +42,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 
-// Types
 type AlertSource = 'anomaly' | 'validation'
 type AlertSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info'
 type AlertStatus = 'open' | 'acknowledged' | 'resolved' | 'ignored'
@@ -62,6 +58,10 @@ interface UnifiedAlert {
   title: string
   message: string
   details: Record<string, unknown>
+  queue_id?: string | null
+  queue_name?: string | null
+  assignee_user_id?: string | null
+  assignee_name?: string | null
   acknowledged_at: string | null
   acknowledged_by: string | null
   resolved_at: string | null
@@ -73,13 +73,20 @@ interface UnifiedAlert {
 interface UnifiedAlertListProps {
   alerts: UnifiedAlert[]
   loading?: boolean
-  // Filters
   sourceFilter: AlertSource | null
   severityFilter: AlertSeverity | null
   statusFilter: AlertStatus | null
+  search: string
+  queueFilter: string
+  assigneeFilter: string
+  queues: Array<{ id: string; name: string }>
+  assignees: Array<{ id: string; name: string }>
   onSourceFilterChange: (source: AlertSource | null) => void
   onSeverityFilterChange: (severity: AlertSeverity | null) => void
   onStatusFilterChange: (status: AlertStatus | null) => void
+  onSearchChange: (value: string) => void
+  onQueueFilterChange: (queueId: string) => void
+  onAssigneeFilterChange: (userId: string) => void
   onViewDetails: (alert: UnifiedAlert) => void
   onViewCorrelations?: (alert: UnifiedAlert) => void
 }
@@ -110,9 +117,17 @@ export function UnifiedAlertList({
   sourceFilter,
   severityFilter,
   statusFilter,
+  search,
+  queueFilter,
+  assigneeFilter,
+  queues,
+  assignees,
   onSourceFilterChange,
   onSeverityFilterChange,
   onStatusFilterChange,
+  onSearchChange,
+  onQueueFilterChange,
+  onAssigneeFilterChange,
   onViewDetails,
   onViewCorrelations,
 }: UnifiedAlertListProps) {
@@ -132,9 +147,17 @@ export function UnifiedAlertList({
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
-        {/* Source filter */}
+        <div className="relative min-w-[220px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Search incidents"
+            className="pl-9"
+          />
+        </div>
+
         <Select
           value={sourceFilter ?? 'all'}
           onValueChange={(v) => onSourceFilterChange(v === 'all' ? null : v as AlertSource)}
@@ -149,7 +172,6 @@ export function UnifiedAlertList({
           </SelectContent>
         </Select>
 
-        {/* Severity filter */}
         <Select
           value={severityFilter ?? 'all'}
           onValueChange={(v) => onSeverityFilterChange(v === 'all' ? null : v as AlertSeverity)}
@@ -167,7 +189,6 @@ export function UnifiedAlertList({
           </SelectContent>
         </Select>
 
-        {/* Status filter */}
         <Select
           value={statusFilter ?? 'all'}
           onValueChange={(v) => onStatusFilterChange(v === 'all' ? null : v as AlertStatus)}
@@ -183,9 +204,32 @@ export function UnifiedAlertList({
             <SelectItem value="ignored">{str(content.status.ignored)}</SelectItem>
           </SelectContent>
         </Select>
+
+        <Select value={queueFilter} onValueChange={onQueueFilterChange}>
+          <SelectTrigger className="w-[170px]">
+            <SelectValue placeholder="Queue" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Queues</SelectItem>
+            {queues.map((queue) => (
+              <SelectItem key={queue.id} value={queue.id}>{queue.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={assigneeFilter} onValueChange={onAssigneeFilterChange}>
+          <SelectTrigger className="w-[170px]">
+            <SelectValue placeholder="Assignee" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Assignees</SelectItem>
+            {assignees.map((assignee) => (
+              <SelectItem key={assignee.id} value={assignee.id}>{assignee.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Alerts table */}
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -214,64 +258,64 @@ export function UnifiedAlertList({
                 </TableCell>
               </TableRow>
             ) : (
-              alerts.map((alert) => {
-                return (
-                  <TableRow key={alert.id} className="hover:bg-muted/50">
-                    <TableCell>
-                      <div className={cn(
-                        'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium',
-                        severityConfig[alert.severity].bgColor
-                      )}>
-                        <SeverityIcon severity={alert.severity} />
-                        <span className="capitalize">{alert.severity}</span>
+              alerts.map((alert) => (
+                <TableRow key={alert.id} className="hover:bg-muted/50">
+                  <TableCell>
+                    <div className={cn(
+                      'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium',
+                      severityConfig[alert.severity].bgColor
+                    )}>
+                      <SeverityIcon severity={alert.severity} />
+                      <span className="capitalize">{alert.severity}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="font-normal">
+                      {sourceLabels[alert.source]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="font-medium line-clamp-1">{alert.title}</div>
+                      <div className="text-xs text-muted-foreground line-clamp-1">
+                        {alert.source_name}
+                        {alert.queue_name ? ` • ${alert.queue_name}` : ''}
+                        {alert.assignee_name ? ` • ${alert.assignee_name}` : ''}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="font-normal">
-                        {sourceLabels[alert.source]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="font-medium line-clamp-1">{alert.title}</div>
-                        <div className="text-xs text-muted-foreground line-clamp-1">
-                          {alert.source_name}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5">
-                        <StatusIcon status={alert.status} />
-                        <span className="capitalize text-sm">{alert.status}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(parseUTC(alert.created_at), { addSuffix: true })}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onViewDetails(alert)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            {str(content.actions.viewDetails)}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      <StatusIcon status={alert.status} />
+                      <span className="capitalize text-sm">{alert.status}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatDistanceToNow(parseUTC(alert.created_at), { addSuffix: true })}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onViewDetails(alert)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View details
+                        </DropdownMenuItem>
+                        {onViewCorrelations && (
+                          <DropdownMenuItem onClick={() => onViewCorrelations(alert)}>
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            View correlations
                           </DropdownMenuItem>
-                          {onViewCorrelations && (
-                            <DropdownMenuItem onClick={() => onViewCorrelations(alert)}>
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              {str(content.correlation.title)}
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                )
-              })
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
@@ -279,5 +323,3 @@ export function UnifiedAlertList({
     </div>
   )
 }
-
-export default UnifiedAlertList

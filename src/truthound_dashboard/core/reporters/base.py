@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any
+from truthound_dashboard.time import utc_now
 
 if TYPE_CHECKING:
     from truthound_dashboard.db.models import Validation
@@ -71,7 +72,7 @@ class ReportMetadata:
     """
 
     title: str = "Validation Report"
-    generated_at: datetime = field(default_factory=datetime.utcnow)
+    generated_at: datetime = field(default_factory=utc_now)
     source_name: str | None = None
     source_id: str | None = None
     validation_id: str | None = None
@@ -193,7 +194,7 @@ class Reporter(ABC):
             metadata.source_name = validation.source.name
 
         # Generate filename
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = utc_now().strftime("%Y%m%d_%H%M%S")
         filename = f"validation_report_{timestamp}{self.file_extension}"
 
         # Render content (subclass implementation)

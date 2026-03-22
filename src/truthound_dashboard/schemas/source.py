@@ -85,6 +85,18 @@ class SourceBase(BaseSchema):
         default=None,
         description="Owning workspace identifier",
     )
+    owner_user_id: str | None = Field(
+        default=None,
+        description="Assigned owner user identifier",
+    )
+    team_id: str | None = Field(
+        default=None,
+        description="Assigned operational team identifier",
+    )
+    domain_id: str | None = Field(
+        default=None,
+        description="Assigned domain identifier",
+    )
 
 
 class SourceCreate(SourceBase):
@@ -127,6 +139,16 @@ class SourceUpdate(BaseSchema):
     )
 
 
+def _contains_redacted(value: Any) -> bool:
+    if isinstance(value, dict):
+        if value.get("_redacted"):
+            return True
+        return any(_contains_redacted(child) for child in value.values())
+    if isinstance(value, list):
+        return any(_contains_redacted(child) for child in value)
+    return False
+
+
 class SourceResponse(SourceBase, IDMixin, TimestampMixin):
     """Schema for source responses."""
 
@@ -144,6 +166,12 @@ class SourceResponse(SourceBase, IDMixin, TimestampMixin):
         default=False,
         description="Whether the source contains redacted secret fields",
     )
+    owner_user_id: str | None = Field(default=None, description="Owner user identifier")
+    owner_name: str | None = Field(default=None, description="Owner user display name")
+    team_id: str | None = Field(default=None, description="Owning team identifier")
+    team_name: str | None = Field(default=None, description="Owning team display name")
+    domain_id: str | None = Field(default=None, description="Owning domain identifier")
+    domain_name: str | None = Field(default=None, description="Owning domain display name")
 
     # Computed properties from relationships
     has_schema: bool = Field(default=False, description="Whether schema exists")
@@ -162,28 +190,32 @@ class SourceResponse(SourceBase, IDMixin, TimestampMixin):
         Returns:
             SourceResponse with computed fields.
         """
+        redacted_config = redact_config(source.config or {})
         return cls(
             id=source.id,
             name=source.name,
             type=source.type,
-            config=redact_config(source.config or {}),
+            config=redacted_config,
             description=source.description,
             environment=getattr(source, "environment", "production"),
             workspace_id=getattr(source, "workspace_id", None),
+            owner_user_id=getattr(source, "owner_user_id", None),
+            team_id=getattr(source, "team_id", None),
+            domain_id=getattr(source, "domain_id", None),
             is_active=source.is_active,
             created_at=source.created_at,
             updated_at=source.updated_at,
             last_validated_at=source.last_validated_at,
             config_version=getattr(source, "config_version", 1),
             credential_updated_at=getattr(source, "credential_updated_at", None),
-            has_stored_secrets=any(
-                isinstance(value, dict) and value.get("_redacted")
-                for value in redact_config(source.config or {}).values()
-            ),
+            has_stored_secrets=_contains_redacted(redacted_config),
             has_schema=source.latest_schema is not None,
             latest_validation_status=(
                 source.latest_validation.status if source.latest_validation else None
             ),
+            owner_name=getattr(source, "owner_name", None),
+            team_name=getattr(source, "team_name", None),
+            domain_name=getattr(source, "domain_name", None),
         )
 
 
@@ -300,6 +332,67 @@ class SourceCredentialUpdate(BaseSchema):
         description="Credential fields to rotate",
         examples=[{"password": "new-secret"}],
     )
+
+
+class TeamResponse(BaseSchema, IDMixin, TimestampMixin):
+    workspace_id: str
+    name: str
+    slug: str
+    description: str | None = None
+    is_active: bool = True
+
+
+class TeamCreate(BaseSchema):
+    name: str = Field(..., min_length=1, max_length=255)
+    slug: str = Field(..., min_length=1, max_length=100)
+    description: str | None = Field(default=None, max_length=1000)
+
+
+class DomainResponse(BaseSchema, IDMixin, TimestampMixin):
+    workspace_id: str
+    name: str
+    slug: str
+    description: str | None = None
+    is_active: bool = True
+
+
+class DomainCreate(BaseSchema):
+    name: str = Field(..., min_length=1, max_length=255)
+    slug: str = Field(..., min_length=1, max_length=100)
+    description: str | None = Field(default=None, max_length=1000)
+
+
+class SourceOwnershipResponse(BaseSchema, IDMixin, TimestampMixin):
+    source_id: str
+    workspace_id: str
+    owner_user_id: str | None = None
+    owner_name: str | None = None
+    team_id: str | None = None
+    team_name: str | None = None
+    domain_id: str | None = None
+    domain_name: str | None = None
+
+    @classmethod
+    def from_model(cls, ownership: Any) -> "SourceOwnershipResponse":
+        return cls(
+            id=ownership.id,
+            source_id=ownership.source_id,
+            workspace_id=ownership.workspace_id,
+            owner_user_id=ownership.owner_user_id,
+            owner_name=ownership.owner_user.display_name if ownership.owner_user else None,
+            team_id=ownership.team_id,
+            team_name=ownership.team.name if ownership.team else None,
+            domain_id=ownership.domain_id,
+            domain_name=ownership.domain.name if ownership.domain else None,
+            created_at=ownership.created_at,
+            updated_at=ownership.updated_at,
+        )
+
+
+class SourceOwnershipUpdate(BaseSchema):
+    owner_user_id: str | None = None
+    team_id: str | None = None
+    domain_id: str | None = None
 
 
 class TestConnectionResponse(BaseSchema):

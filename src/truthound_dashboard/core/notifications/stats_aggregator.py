@@ -46,6 +46,7 @@ from ...db.models import (
     EscalationStateEnum,
     ThrottlingConfig,
 )
+from truthound_dashboard.time import utc_now
 
 if TYPE_CHECKING:
     from .truthound_adapter import TruthoundNotificationAdapter, TruthoundStats
@@ -76,18 +77,18 @@ class CacheEntry(Generic[T]):
 
     value: T
     expires_at: datetime
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=utc_now)
     hit_count: int = 0
 
     @property
     def is_expired(self) -> bool:
         """Check if entry is expired."""
-        return datetime.utcnow() >= self.expires_at
+        return utc_now() >= self.expires_at
 
     @property
     def remaining_ttl_seconds(self) -> float:
         """Get remaining TTL in seconds."""
-        delta = self.expires_at - datetime.utcnow()
+        delta = self.expires_at - utc_now()
         return max(0, delta.total_seconds())
 
 
@@ -156,7 +157,7 @@ class StatsCache:
             ttl_seconds: TTL in seconds. Uses default if None.
         """
         ttl = ttl_seconds if ttl_seconds is not None else self._default_ttl
-        expires_at = datetime.utcnow() + timedelta(seconds=ttl)
+        expires_at = utc_now() + timedelta(seconds=ttl)
 
         async with self._lock:
             # Evict if at capacity
@@ -606,7 +607,7 @@ class StatsAggregator:
 
         # Cache result
         if use_cache:
-            stats_result.cached_at = datetime.utcnow()
+            stats_result.cached_at = utc_now()
             await self._cache.set(cache_key, stats_result, ttl)
 
         return stats_result
@@ -726,7 +727,7 @@ class StatsAggregator:
 
         # Cache result
         if use_cache:
-            stats_result.cached_at = datetime.utcnow()
+            stats_result.cached_at = utc_now()
             await self._cache.set(cache_key, stats_result, ttl)
 
         return stats_result
@@ -813,7 +814,7 @@ class StatsAggregator:
 
         # Cache result
         if use_cache:
-            stats_result.cached_at = datetime.utcnow()
+            stats_result.cached_at = utc_now()
             await self._cache.set(cache_key, stats_result, ttl)
 
         return stats_result
@@ -1024,7 +1025,7 @@ class StatsAggregator:
 
         # Cache result
         if use_cache:
-            result.cached_at = datetime.utcnow()
+            result.cached_at = utc_now()
             await self._cache.set(cache_key, result, ttl)
 
         return result
@@ -1079,7 +1080,7 @@ class StatsAggregator:
 
         # Cache result
         if use_cache:
-            result.cached_at = datetime.utcnow()
+            result.cached_at = utc_now()
             await self._cache.set(cache_key, result, ttl)
 
         return result

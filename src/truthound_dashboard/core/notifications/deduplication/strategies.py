@@ -26,6 +26,7 @@ from ...validation_limits import (
     get_deduplication_limits,
     validate_positive_int,
 )
+from truthound_dashboard.time import utc_now
 
 
 class StrategyRegistry:
@@ -210,7 +211,7 @@ class TumblingWindowStrategy(BaseWindowStrategy):
         Aligns the fingerprint to the start of its tumbling window.
         """
         if timestamp is None:
-            timestamp = datetime.utcnow()
+            timestamp = utc_now()
 
         # Calculate window start
         ts = timestamp.timestamp()

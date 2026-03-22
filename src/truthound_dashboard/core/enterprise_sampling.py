@@ -61,6 +61,7 @@ from truthound_dashboard.schemas.enterprise_sampling import (
     SketchEstimateResult,
     SketchType,
 )
+from truthound_dashboard.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -825,7 +826,7 @@ class EnterpriseScaleSampler:
             EnterpriseSamplingResponse with results.
         """
         job_id = str(uuid.uuid4())
-        started_at = datetime.utcnow()
+        started_at = utc_now()
 
         # Classify scale
         scale = classify_dataset_scale(row_count)
@@ -888,7 +889,7 @@ class EnterpriseScaleSampler:
                 job_id=job_id,
                 status="completed",
                 started_at=started_at,
-                completed_at=datetime.utcnow(),
+                completed_at=utc_now(),
                 metrics=metrics,
                 sampled_data_path=output.output_path,
             )
@@ -903,7 +904,7 @@ class EnterpriseScaleSampler:
                 job_id=job_id,
                 status="failed",
                 started_at=started_at,
-                completed_at=datetime.utcnow(),
+                completed_at=utc_now(),
                 error_message=str(e),
             )
 

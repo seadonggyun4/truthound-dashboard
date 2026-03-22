@@ -26,11 +26,13 @@ import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { FormatIcon } from './FormatIcon'
 import type { ReportFormatType, ReportThemeType, ReportLocale } from '@/types/reporters'
-import { previewValidationReport } from '@/api/modules/reports'
+import { downloadArtifact, generateReportArtifact } from '@/api/modules/artifacts'
 
 interface ReportPreviewProps {
+  /** Existing artifact ID to preview */
+  artifactId?: string
   /** Validation ID to preview */
-  validationId: string
+  validationId?: string
   /** Report format */
   format: ReportFormatType
   /** Report theme */
@@ -54,6 +56,7 @@ interface ReportPreviewProps {
 }
 
 export function ReportPreview({
+  artifactId,
   validationId,
   format,
   theme = 'professional',
@@ -78,7 +81,20 @@ export function ReportPreview({
     setError(null)
 
     try {
-      const result = await previewValidationReport(validationId, format as 'html' | 'csv' | 'json', theme as 'light' | 'dark' | 'professional' | 'minimal' | 'high_contrast', locale as 'en' | 'ko' | 'ja' | 'zh' | 'de' | 'fr' | 'es' | 'pt' | 'it' | 'ru' | 'ar' | 'th' | 'vi' | 'id' | 'tr')
+      let resolvedArtifactId = artifactId
+      if (!resolvedArtifactId) {
+        if (!validationId) {
+          throw new Error('Artifact or validation context is required')
+        }
+        const artifact = await generateReportArtifact(validationId, {
+          format: format as 'html' | 'csv' | 'json',
+          theme: theme as 'light' | 'dark' | 'professional' | 'minimal' | 'high_contrast',
+          locale: locale as 'en' | 'ko' | 'ja' | 'zh' | 'de' | 'fr' | 'es' | 'pt' | 'it' | 'ru' | 'ar' | 'th' | 'vi' | 'id' | 'tr',
+        })
+        resolvedArtifactId = artifact.id
+      }
+      const blob = await downloadArtifact(resolvedArtifactId)
+      const result = await blob.text()
       setContent(result)
       onLoad?.(result)
     } catch (err) {
@@ -93,7 +109,7 @@ export function ReportPreview({
     } finally {
       setIsLoading(false)
     }
-  }, [validationId, format, theme, locale, onLoad, onError, toast])
+  }, [artifactId, validationId, format, theme, locale, onLoad, onError, toast])
 
   useEffect(() => {
     if (autoLoad) {

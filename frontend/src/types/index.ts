@@ -110,21 +110,13 @@ export type {
   ReportOutput,
 
   // Generated reports
-  GeneratedReport,
+  ArtifactRecord,
   ReportCreateOptions,
   ReportUpdateOptions,
   ReportStatistics,
   ReporterMixin,
   SDKReporter,
   ReporterBuilderOptions,
-
-  // API types
-  AvailableFormatsResponse,
-  ReportListResponse,
-  BulkReportRequest,
-  BulkReportResponse,
-  GenerateReportRequest,
-  GenerateReportResponse,
 
   // ValidationResult types (for full reporter functionality)
   ResultStatus,

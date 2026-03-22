@@ -20,6 +20,9 @@ export interface NotificationChannel {
   is_active: boolean
   config_summary: string
   config?: Record<string, unknown>
+  config_version?: number | null
+  has_stored_secrets?: boolean
+  credential_updated_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -82,6 +85,7 @@ export interface NotificationChannelTypeInfo {
   name: string
   description: string
   config_schema: Record<string, unknown>
+  secret_fields?: string[]
 }
 
 export interface NotificationRuleConditionInfo {
@@ -235,6 +239,12 @@ export interface EscalationEvent {
 export interface EscalationIncident {
   id: string
   policy_id: string
+  workspace_id?: string | null
+  queue_id?: string | null
+  assignee_user_id?: string | null
+  assignee_name?: string | null
+  assigned_by?: string | null
+  assigned_at?: string | null
   incident_ref: string
   state: EscalationState
   current_level: number
@@ -248,6 +258,36 @@ export interface EscalationIncident {
   events: EscalationEvent[]
   created_at: string
   updated_at: string
+}
+
+export interface IncidentQueueMember {
+  id: string
+  user_id: string
+  user_name: string
+  email: string
+  is_default_responder: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface IncidentQueue {
+  id: string
+  workspace_id: string
+  name: string
+  slug: string
+  description?: string | null
+  is_default: boolean
+  is_active: boolean
+  members: IncidentQueueMember[]
+  created_at: string
+  updated_at: string
+}
+
+export interface IncidentQueueListResponse {
+  items: IncidentQueue[]
+  total: number
+  offset: number
+  limit: number
 }
 
 export interface EscalationStats {
@@ -459,6 +499,16 @@ export async function updateNotificationChannel(
   return request<NotificationChannel>(`/notifications/channels/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
+  })
+}
+
+export async function rotateNotificationChannelCredentials(
+  id: string,
+  config: Record<string, unknown>
+): Promise<NotificationChannel> {
+  return request<NotificationChannel>(`/notifications/channels/${id}/credentials/rotate`, {
+    method: 'POST',
+    body: JSON.stringify({ config }),
   })
 }
 
@@ -820,6 +870,8 @@ export async function listEscalationIncidents(params?: {
   limit?: number
   state?: EscalationState
   policy_id?: string
+  queue_id?: string
+  assignee_user_id?: string
 }): Promise<EscalationIncidentListResponse> {
   return request('/notifications/escalation/incidents', { params })
 }
@@ -854,6 +906,67 @@ export async function resolveEscalationIncident(
 
 export async function getEscalationStats(): Promise<EscalationStats> {
   return request('/notifications/escalation/stats')
+}
+
+export async function listIncidentQueues(): Promise<IncidentQueueListResponse> {
+  return request('/incident-queues')
+}
+
+export async function createIncidentQueue(data: {
+  name: string
+  description?: string
+  slug?: string
+  is_default?: boolean
+  is_active?: boolean
+  member_ids?: string[]
+}): Promise<IncidentQueue> {
+  return request('/incident-queues', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateIncidentQueue(
+  id: string,
+  data: {
+    name?: string
+    description?: string
+    is_default?: boolean
+    is_active?: boolean
+    member_ids?: string[]
+  }
+): Promise<IncidentQueue> {
+  return request(`/incident-queues/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteIncidentQueue(id: string): Promise<{ message: string }> {
+  return request(`/incident-queues/${id}`, { method: 'DELETE' })
+}
+
+export async function listIncidentQueueMembers(id: string): Promise<IncidentQueueMember[]> {
+  return request(`/incident-queues/${id}/members`)
+}
+
+export async function replaceIncidentQueueMembers(
+  id: string,
+  member_ids: string[]
+): Promise<IncidentQueueMember[]> {
+  return request(`/incident-queues/${id}/members`, {
+    method: 'PUT',
+    body: JSON.stringify({ member_ids }),
+  })
+}
+
+export async function removeIncidentQueueMember(
+  id: string,
+  userId: string
+): Promise<IncidentQueueMember[]> {
+  return request(`/incident-queues/${id}/members/${userId}`, {
+    method: 'DELETE',
+  })
 }
 
 // ============================================================================

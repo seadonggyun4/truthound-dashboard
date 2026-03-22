@@ -12,7 +12,7 @@ Services:
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import and_, func, select
@@ -23,9 +23,19 @@ from truthound_dashboard.db import (
     NotificationChannel,
     NotificationLog,
     NotificationRule,
+    Workspace,
 )
+from truthound_dashboard.time import utc_now
 
 from .base import ChannelRegistry
+from ..secrets import (
+    LocalEncryptedDbSecretProvider,
+    is_redacted_secret_payload,
+    is_secret_ref_payload,
+    merge_secret_aware_configs,
+)
+from ..encryption import is_sensitive_field
+from .serialization import get_channel_secret_fields, normalize_channel_config
 
 
 # =============================================================================
@@ -197,7 +207,7 @@ class NotificationLogRepository(BaseRepository[NotificationLog]):
         Returns:
             Sequence of logs.
         """
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = utc_now() - timedelta(hours=hours)
         filters = [NotificationLog.created_at >= cutoff]
 
         if status:
@@ -222,7 +232,7 @@ class NotificationLogRepository(BaseRepository[NotificationLog]):
         Returns:
             Statistics dictionary.
         """
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = utc_now() - timedelta(hours=hours)
 
         # Count by status
         result = await self.session.execute(
@@ -283,6 +293,94 @@ class NotificationChannelService:
         """
         self.session = session
         self.repository = NotificationChannelRepository(session)
+        self.secrets = LocalEncryptedDbSecretProvider(session)
+
+    async def _get_secret_workspace_id(self) -> str:
+        result = await self.session.execute(
+            select(Workspace).order_by(Workspace.is_default.desc(), Workspace.created_at.asc()).limit(1)
+        )
+        workspace = result.scalar_one_or_none()
+        if workspace is None:
+            workspace = Workspace(
+                name="Default Workspace",
+                slug="default",
+                description="Default operational workspace for notification secrets",
+                is_default=True,
+                is_active=True,
+            )
+            self.session.add(workspace)
+            await self.session.flush()
+            await self.session.refresh(workspace)
+        return workspace.id
+
+    async def _persist_channel_config(
+        self,
+        *,
+        channel_id: str,
+        channel_type: str,
+        config: dict[str, Any],
+    ) -> dict[str, Any]:
+        return await self.secrets.persist_config(
+            config=config,
+            workspace_id=await self._get_secret_workspace_id(),
+            name_prefix=f"notification-channel:{channel_id}",
+            kind="notification_channel",
+            secret_fields=get_channel_secret_fields(channel_type),
+        )
+
+    async def _materialize_for_validation(
+        self,
+        *,
+        config: dict[str, Any],
+    ) -> dict[str, Any]:
+        return await self.secrets.materialize_config(config)
+
+    async def _validate_config(
+        self,
+        *,
+        channel_type: str,
+        config: dict[str, Any],
+    ) -> None:
+        config = normalize_channel_config(channel_type, config)
+        channel_class = ChannelRegistry.get(channel_type)
+        if channel_class is None:
+            available = ChannelRegistry.list_types()
+            raise ValueError(
+                f"Unknown channel type: {channel_type}. "
+                f"Available types: {', '.join(available)}"
+            )
+
+        materialized = await self._materialize_for_validation(config=config)
+        errors = channel_class.validate_config(materialized)
+        if errors:
+            raise ValueError(f"Invalid configuration: {'; '.join(errors)}")
+
+    def _contains_secret_update(
+        self,
+        *,
+        channel_type: str,
+        config: dict[str, Any],
+    ) -> bool:
+        secret_fields = get_channel_secret_fields(channel_type)
+        for key, value in config.items():
+            if is_secret_ref_payload(value) or is_redacted_secret_payload(value):
+                continue
+            if (key in secret_fields or is_sensitive_field(key)) and isinstance(value, str) and value:
+                return True
+            if (
+                (key in secret_fields or is_sensitive_field(key))
+                and isinstance(value, dict)
+                and isinstance(value.get("_encrypted"), str)
+            ):
+                return True
+            if (
+                isinstance(value, dict)
+                and not is_secret_ref_payload(value)
+                and not is_redacted_secret_payload(value)
+                and self._contains_secret_update(channel_type=channel_type, config=value)
+            ):
+                return True
+        return False
 
     async def list(
         self,
@@ -347,26 +445,25 @@ class NotificationChannelService:
         Raises:
             ValueError: If channel type is unknown or config is invalid.
         """
-        # Validate channel type
-        channel_class = ChannelRegistry.get(channel_type)
-        if channel_class is None:
-            available = ChannelRegistry.list_types()
-            raise ValueError(
-                f"Unknown channel type: {channel_type}. "
-                f"Available types: {', '.join(available)}"
-            )
+        normalized_config = normalize_channel_config(channel_type, config)
+        await self._validate_config(channel_type=channel_type, config=normalized_config)
 
-        # Validate config
-        errors = channel_class.validate_config(config)
-        if errors:
-            raise ValueError(f"Invalid configuration: {'; '.join(errors)}")
-
-        return await self.repository.create(
+        channel = await self.repository.create(
             name=name,
             type=channel_type,
-            config=config,
+            config={},
+            config_version=1,
+            credential_updated_at=utc_now() if self._contains_secret_update(channel_type=channel_type, config=normalized_config) else None,
             is_active=is_active,
         )
+        channel.config = await self._persist_channel_config(
+            channel_id=channel.id,
+            channel_type=channel_type,
+            config=normalized_config,
+        )
+        await self.session.flush()
+        await self.session.refresh(channel)
+        return channel
 
     async def update(
         self,
@@ -394,27 +491,75 @@ class NotificationChannelService:
         if channel is None:
             return None
 
+        config_changed = False
+        secret_changed = False
+
         # Validate config if provided
         if config is not None:
-            channel_class = ChannelRegistry.get(channel.type)
-            if channel_class:
-                errors = channel_class.validate_config(config)
-                if errors:
-                    raise ValueError(f"Invalid configuration: {'; '.join(errors)}")
+            merged_config = merge_secret_aware_configs(channel.config or {}, config)
+            merged_config = normalize_channel_config(channel.type, merged_config)
+            await self._validate_config(channel_type=channel.type, config=merged_config)
+            config = merged_config
+            config_changed = True
+            secret_changed = self._contains_secret_update(
+                channel_type=channel.type,
+                config=config,
+            )
 
         # Update fields
         update_data = {}
         if name is not None:
             update_data["name"] = name
         if config is not None:
-            update_data["config"] = config
+            update_data["config"] = await self._persist_channel_config(
+                channel_id=channel.id,
+                channel_type=channel.type,
+                config=config,
+            )
         if is_active is not None:
             update_data["is_active"] = is_active
+        if config_changed:
+            update_data["config_version"] = (channel.config_version or 0) + 1
+        if secret_changed:
+            update_data["credential_updated_at"] = utc_now()
 
         if not update_data:
             return channel
 
         return await self.repository.update(channel_id, **update_data)
+
+    async def rotate_credentials(
+        self,
+        channel_id: str,
+        *,
+        config: dict[str, Any],
+    ) -> NotificationChannel | None:
+        channel = await self.repository.get_by_id(channel_id)
+        if channel is None:
+            return None
+
+        secret_fields = get_channel_secret_fields(channel.type)
+        requested_secret_fields = {
+            key for key, value in config.items()
+            if key in secret_fields and value not in (None, "")
+        }
+        if not requested_secret_fields:
+            raise ValueError("No secret-bearing fields provided for credential rotation")
+
+        merged_config = merge_secret_aware_configs(channel.config or {}, config)
+        merged_config = normalize_channel_config(channel.type, merged_config)
+        await self._validate_config(channel_type=channel.type, config=merged_config)
+        persisted_config = await self._persist_channel_config(
+            channel_id=channel.id,
+            channel_type=channel.type,
+            config=merged_config,
+        )
+        return await self.repository.update(
+            channel_id,
+            config=persisted_config,
+            config_version=(channel.config_version or 0) + 1,
+            credential_updated_at=utc_now(),
+        )
 
     async def delete(self, channel_id: str) -> bool:
         """Delete a notification channel.
@@ -441,13 +586,24 @@ class NotificationChannelService:
         """
         return await self.update(channel_id, is_active=is_active)
 
-    def get_available_types(self) -> dict[str, dict[str, Any]]:
+    def get_available_types(self) -> list[dict[str, Any]]:
         """Get available channel types with their schemas.
 
         Returns:
             Dictionary mapping type to schema.
         """
-        return ChannelRegistry.get_all_schemas()
+        return [
+            {
+                "type": channel_type,
+                "name": channel_class.__name__.removesuffix("Channel"),
+                "description": (channel_class.__doc__ or "").strip().splitlines()[0]
+                if channel_class.__doc__
+                else f"{channel_type.title()} notification channel",
+                "config_schema": channel_class.get_config_schema(),
+                "secret_fields": sorted(get_channel_secret_fields(channel_type)),
+            }
+            for channel_type, channel_class in sorted(ChannelRegistry._channels.items())
+        ]
 
 
 class NotificationRuleService:

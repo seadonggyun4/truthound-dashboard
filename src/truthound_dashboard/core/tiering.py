@@ -41,6 +41,7 @@ from uuid import uuid4
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from truthound_dashboard.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +110,7 @@ class MigrationResult:
     size_bytes: int = 0
     error_message: str | None = None
     duration_ms: float = 0.0
-    started_at: datetime = field(default_factory=datetime.utcnow)
+    started_at: datetime = field(default_factory=utc_now)
     completed_at: datetime | None = None
 
 
@@ -473,7 +474,7 @@ class TieringAdapter:
         Returns:
             MigrationResult with migration details.
         """
-        started_at = datetime.utcnow()
+        started_at = utc_now()
         from_tier = getattr(from_store, "name", "unknown")
         to_tier = getattr(to_store, "name", "unknown")
 
@@ -484,7 +485,7 @@ class TieringAdapter:
                 _executor,
                 partial(self._sync_migrate, item_id, from_store, to_store, metadata_store),
             )
-            completed_at = datetime.utcnow()
+            completed_at = utc_now()
             duration_ms = (completed_at - started_at).total_seconds() * 1000
 
             return MigrationResult(
@@ -499,7 +500,7 @@ class TieringAdapter:
                 completed_at=completed_at,
             )
         except Exception as e:
-            completed_at = datetime.utcnow()
+            completed_at = utc_now()
             duration_ms = (completed_at - started_at).total_seconds() * 1000
             return MigrationResult(
                 item_id=item_id,
@@ -540,7 +541,7 @@ class TieringAdapter:
                 info = metadata_store.get_info(item_id)
                 if info:
                     info.tier_name = getattr(to_store, "name", "unknown")
-                    info.migrated_at = datetime.utcnow()
+                    info.migrated_at = utc_now()
                     metadata_store.save_info(info)
 
             return {"success": True, "size_bytes": size_bytes}
@@ -627,7 +628,7 @@ class FallbackPolicy:
 
     def evaluate(self, info: TierInfo) -> bool:
         """Evaluate if item should be migrated."""
-        now = datetime.utcnow()
+        now = utc_now()
 
         if self.policy_type == "age_based":
             after_days = self.config.get("after_days", 0)
@@ -698,7 +699,7 @@ class FallbackPolicy:
         tier_info = TierInfo(
             item_id=getattr(info, "item_id", ""),
             tier_name=getattr(info, "tier_name", ""),
-            created_at=getattr(info, "created_at", datetime.utcnow()),
+            created_at=getattr(info, "created_at", utc_now()),
             migrated_at=getattr(info, "migrated_at", None),
             access_count=getattr(info, "access_count", 0),
             last_accessed=getattr(info, "last_accessed", None),
@@ -731,7 +732,7 @@ class FallbackMetadataStore:
     def update_access(self, item_id: str) -> None:
         if item_id in self._data:
             self._data[item_id].access_count += 1
-            self._data[item_id].last_accessed = datetime.utcnow()
+            self._data[item_id].last_accessed = utc_now()
 
 
 # =============================================================================
@@ -982,7 +983,7 @@ class TieringService:
         """
         from truthound_dashboard.db.models import TierPolicyModel, TierMigrationHistoryModel
 
-        start_time = datetime.utcnow()
+        start_time = utc_now()
         result = TieringExecutionResult(
             start_time=start_time,
             end_time=start_time,
@@ -1002,12 +1003,12 @@ class TieringService:
             policy_model = db_policy.scalar_one_or_none()
             if not policy_model:
                 result.errors.append(f"Policy '{policy_id}' not found")
-                result.end_time = datetime.utcnow()
+                result.end_time = utc_now()
                 return result
 
             if not policy_model.is_active:
                 result.errors.append(f"Policy '{policy_model.name}' is not active")
-                result.end_time = datetime.utcnow()
+                result.end_time = utc_now()
                 return result
 
             # Initialize tiers
@@ -1098,7 +1099,7 @@ class TieringService:
             logger.exception(f"Policy execution failed: {e}")
             result.errors.append(str(e))
 
-        result.end_time = datetime.utcnow()
+        result.end_time = utc_now()
         return result
 
     def _get_tier_items(
@@ -1133,7 +1134,7 @@ class TieringService:
                         TierInfo(
                             item_id=item_id,
                             tier_name=tier_name,
-                            created_at=datetime.utcnow(),
+                            created_at=utc_now(),
                         )
                     )
         except Exception as e:
@@ -1208,9 +1209,9 @@ class TieringService:
             info = TierInfo(
                 item_id=item_id,
                 tier_name=tier_id,
-                created_at=datetime.utcnow(),
+                created_at=utc_now(),
                 access_count=1,
-                last_accessed=datetime.utcnow(),
+                last_accessed=utc_now(),
             )
             metadata_store.save_info(info)
 
@@ -1257,8 +1258,8 @@ class TieringService:
                 logger.exception(f"Failed to execute policy {policy.id}: {e}")
                 results.append(
                     TieringExecutionResult(
-                        start_time=datetime.utcnow(),
-                        end_time=datetime.utcnow(),
+                        start_time=utc_now(),
+                        end_time=utc_now(),
                         errors=[str(e)],
                     )
                 )

@@ -38,9 +38,8 @@ import {
   getFormatInfo,
   formatSupportsTheme,
   formatSupportsI18n,
-  createDefaultConfig,
 } from '@/types/reporters'
-import { getReportFormats, getReportLocales } from '@/api/modules/reports'
+import { getArtifactCapabilities } from '@/api/modules/artifacts'
 
 interface ReporterSelectorProps {
   /** Current configuration */
@@ -88,14 +87,11 @@ export function ReporterSelector({
   const fetchAvailableOptions = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [formatsResponse, localesResponse] = await Promise.all([
-        getReportFormats(),
-        getReportLocales(),
-      ])
-      setAvailableFormats(formatsResponse.formats)
-      if (localesResponse.length > 0) {
+      const capabilities = await getArtifactCapabilities()
+      setAvailableFormats(capabilities.formats)
+      if (capabilities.locales.length > 0) {
         setAvailableLocales(
-          localesResponse.map((l) => ({
+          capabilities.locales.map((l) => ({
             code: (l as unknown as { code: string }).code as ReportLocale,
             englishName: (l as unknown as { englishName?: string; english_name?: string }).englishName || (l as unknown as { english_name?: string }).english_name || '',
             nativeName: (l as unknown as { nativeName?: string; native_name?: string }).nativeName || (l as unknown as { native_name?: string }).native_name || '',

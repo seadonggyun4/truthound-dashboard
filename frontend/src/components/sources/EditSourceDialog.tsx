@@ -29,19 +29,32 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import {
   getSupportedSourceTypes,
+  listDomains,
+  listTeams,
   updateSource,
+  updateSourceOwnership,
   testSourceConnection,
+  type Domain,
   type SourceTypeDefinition,
   type Source,
+  type Team,
 } from '@/api/modules/sources'
 import { DynamicSourceForm } from './DynamicSourceForm'
 import { useToast } from '@/hooks/use-toast'
 import { useIntlayer } from '@/providers'
 import { str } from '@/lib/intlayer-utils'
+import { listUsers, type User } from '@/api/modules/control-plane'
 
 interface EditSourceDialogProps {
   open: boolean
@@ -72,12 +85,18 @@ export function EditSourceDialog({
   // Source types data
   const [sourceTypes, setSourceTypes] = useState<SourceTypeDefinition[]>([])
   const [loadingTypes, setLoadingTypes] = useState(true)
+  const [users, setUsers] = useState<User[]>([])
+  const [teams, setTeams] = useState<Team[]>([])
+  const [domains, setDomains] = useState<Domain[]>([])
 
   // Form state
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [config, setConfig] = useState<Record<string, unknown>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [ownerUserId, setOwnerUserId] = useState('')
+  const [teamId, setTeamId] = useState('')
+  const [domainId, setDomainId] = useState('')
 
   // Track which sensitive fields have been modified
   const [modifiedSensitiveFields, setModifiedSensitiveFields] = useState<Set<string>>(new Set())
@@ -103,6 +122,12 @@ export function EditSourceDialog({
     }
   }, [open, sourceTypes.length])
 
+  useEffect(() => {
+    if (open) {
+      void loadOwnershipOptions()
+    }
+  }, [open])
+
   // Initialize form when source changes
   useEffect(() => {
     if (source && open) {
@@ -114,6 +139,9 @@ export function EditSourceDialog({
       setModifiedSensitiveFields(new Set())
       setTestResult(null)
       setActiveTab('general')
+      setOwnerUserId(source.owner_user_id || '')
+      setTeamId(source.team_id || '')
+      setDomainId(source.domain_id || '')
     }
   }, [source, open])
 
@@ -144,6 +172,21 @@ export function EditSourceDialog({
       })
     } finally {
       setLoadingTypes(false)
+    }
+  }
+
+  const loadOwnershipOptions = async () => {
+    try {
+      const [userRows, teamRows, domainRows] = await Promise.all([
+        listUsers(),
+        listTeams(),
+        listDomains(),
+      ])
+      setUsers(userRows)
+      setTeams(teamRows)
+      setDomains(domainRows)
+    } catch {
+      // Ownership metadata is optional UI sugar.
     }
   }
 
@@ -261,6 +304,11 @@ export function EditSourceDialog({
         description: description.trim() || undefined,
         config: configToSave,
       })
+      await updateSourceOwnership(source.id, {
+        owner_user_id: ownerUserId || null,
+        team_id: teamId || null,
+        domain_id: domainId || null,
+      })
 
       toast({
         title: str(common.success),
@@ -340,6 +388,68 @@ export function EditSourceDialog({
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                   />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-source-owner">Owner</Label>
+                    <Select
+                      value={ownerUserId || 'unassigned'}
+                      onValueChange={(value) => setOwnerUserId(value === 'unassigned' ? '' : value)}
+                    >
+                      <SelectTrigger id="edit-source-owner">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {users.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.display_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-source-team">Team</Label>
+                    <Select
+                      value={teamId || 'unassigned'}
+                      onValueChange={(value) => setTeamId(value === 'unassigned' ? '' : value)}
+                    >
+                      <SelectTrigger id="edit-source-team">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {teams.map((team) => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {team.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-source-domain">Domain</Label>
+                    <Select
+                      value={domainId || 'unassigned'}
+                      onValueChange={(value) => setDomainId(value === 'unassigned' ? '' : value)}
+                    >
+                      <SelectTrigger id="edit-source-domain">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {domains.map((domain) => (
+                          <SelectItem key={domain.id} value={domain.id}>
+                            {domain.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 

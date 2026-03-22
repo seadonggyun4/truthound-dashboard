@@ -25,6 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from truthound_dashboard.db.models import AnomalyDetection, AnomalyExplanation, Source
+from truthound_dashboard.time import utc_now
 
 
 class AnomalyExplainerService:
@@ -250,7 +251,7 @@ class AnomalyExplainerService:
                 "row_indices": valid_indices,
                 "feature_names": feature_names,
                 "explanations": explanations,
-                "generated_at": datetime.utcnow().isoformat(),
+                "generated_at": utc_now().isoformat(),
             }
 
         except ImportError:
@@ -566,7 +567,7 @@ class AnomalyExplainerService:
             "row_indices": row_indices,
             "feature_names": columns,
             "explanations": explanations,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": utc_now().isoformat(),
             "mock": True,
         }
 
@@ -595,7 +596,7 @@ class AnomalyExplainerService:
                 existing_exp.feature_contributions = explanation["feature_contributions"]
                 existing_exp.total_shap = explanation["total_shap"]
                 existing_exp.summary = explanation["summary"]
-                existing_exp.generated_at = datetime.utcnow()
+                existing_exp.generated_at = utc_now()
             else:
                 # Create new
                 new_explanation = AnomalyExplanation(

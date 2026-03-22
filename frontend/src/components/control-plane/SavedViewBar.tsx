@@ -5,6 +5,7 @@ import {
   createSavedView,
   listSavedViews,
   type SavedView,
+  type SavedViewScope,
 } from '@/api/modules/control-plane'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,7 +27,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 
 interface SavedViewBarProps {
-  scope: string
+  scope: SavedViewScope
   currentFilters: Record<string, unknown>
   onApply: (filters: Record<string, unknown>) => void
 }

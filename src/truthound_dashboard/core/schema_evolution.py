@@ -37,6 +37,7 @@ from truthound_dashboard.schemas.schema_evolution import (
     SchemaVersionResponse,
     SchemaVersionSummary,
 )
+from truthound_dashboard.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -723,7 +724,7 @@ class SchemaEvolutionService:
             total_changes=len(changes),
             breaking_changes=breaking_count,
             changes=change_responses,
-            detected_at=datetime.utcnow(),
+            detected_at=utc_now(),
         )
 
     async def get_version_history(

@@ -20,10 +20,14 @@ from fastapi import Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from truthound_dashboard.core import (
+    ArtifactService,
     AuthService,
+    AuthorizationService,
     ControlPlaneContext,
     DriftService,
     HistoryService,
+    IncidentQueueService,
+    IncidentService,
     MaskService,
     OverviewService,
     PIIScanService,
@@ -42,7 +46,6 @@ from truthound_dashboard.core.lineage import LineageService
 from truthound_dashboard.core.anomaly import AnomalyDetectionService
 from truthound_dashboard.core.anomaly_explainer import AnomalyExplainerService
 from truthound_dashboard.core.openlineage import OpenLineageEmitterService, OpenLineageWebhookService
-from truthound_dashboard.core.report_history import ReportHistoryService
 from truthound_dashboard.db import get_db_session
 
 
@@ -87,6 +90,26 @@ async def get_overview_service(session: SessionDep) -> OverviewService:
     return OverviewService(session)
 
 
+async def get_authorization_service(session: SessionDep) -> AuthorizationService:
+    """Get authorization service dependency."""
+    return AuthorizationService(session)
+
+
+async def get_artifact_service(session: SessionDep) -> ArtifactService:
+    """Get artifact service dependency."""
+    return ArtifactService(session)
+
+
+async def get_incident_service(session: SessionDep) -> IncidentService:
+    """Get incident workbench dependency."""
+    return IncidentService(session)
+
+
+async def get_incident_queue_service(session: SessionDep) -> IncidentQueueService:
+    """Get incident queue service dependency."""
+    return IncidentQueueService(session)
+
+
 async def get_control_plane_context(
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
     x_truthound_session: Annotated[str | None, Header(alias="X-Truthound-Session")] = None,
@@ -96,6 +119,25 @@ async def get_control_plane_context(
         return await auth_service.resolve_context(x_truthound_session)
     except PermissionError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+
+def require_permission(permission_key: str):
+    """Route-level permission dependency helper."""
+
+    async def _require_permission(
+        context: Annotated[ControlPlaneContext, Depends(get_control_plane_context)],
+        authz: Annotated[AuthorizationService, Depends(get_authorization_service)],
+    ) -> ControlPlaneContext:
+        allowed = await authz.has_permission(
+            user_id=context.user.id,
+            workspace_id=context.workspace.id,
+            permission_key=permission_key,
+        )
+        if not allowed:
+            raise HTTPException(status_code=403, detail=f"Missing permission: {permission_key}")
+        return context
+
+    return _require_permission
 
 
 async def get_validation_service(session: SessionDep) -> ValidationService:
@@ -336,19 +378,15 @@ OpenLineageWebhookServiceDep = Annotated[
     OpenLineageWebhookService, Depends(get_openlineage_webhook_service)
 ]
 
-
-async def get_report_history_service(session: SessionDep) -> ReportHistoryService:
-    """Get report history service dependency.
-
-    Args:
-        session: Database session.
-
-    Returns:
-        ReportHistoryService instance.
-    """
-    return ReportHistoryService(session)
-
-
-ReportHistoryServiceDep = Annotated[
-    ReportHistoryService, Depends(get_report_history_service)
+AuthorizationServiceDep = Annotated[
+    AuthorizationService, Depends(get_authorization_service)
+]
+ArtifactServiceDep = Annotated[
+    ArtifactService, Depends(get_artifact_service)
+]
+IncidentServiceDep = Annotated[
+    IncidentService, Depends(get_incident_service)
+]
+IncidentQueueServiceDep = Annotated[
+    IncidentQueueService, Depends(get_incident_queue_service)
 ]

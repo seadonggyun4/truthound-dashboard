@@ -35,6 +35,7 @@ from truthound_dashboard.schemas.openlineage import (
     SchemaField,
     build_dataset_namespace,
 )
+from truthound_dashboard.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +201,7 @@ class LineageToOpenLineageTransformer:
 
         # Create START event
         start_event = OpenLineageEvent(
-            event_time=datetime.utcnow().isoformat() + "Z",
+            event_time=utc_now().isoformat() + "Z",
             event_type=RunState.START,
             producer=self.producer,
             run=run,
@@ -212,7 +213,7 @@ class LineageToOpenLineageTransformer:
 
         # Create COMPLETE event
         complete_event = OpenLineageEvent(
-            event_time=datetime.utcnow().isoformat() + "Z",
+            event_time=utc_now().isoformat() + "Z",
             event_type=RunState.COMPLETE,
             producer=self.producer,
             run=run,
@@ -290,7 +291,7 @@ class LineageToOpenLineageTransformer:
             # START event
             events.append(
                 OpenLineageEvent(
-                    event_time=datetime.utcnow().isoformat() + "Z",
+                    event_time=utc_now().isoformat() + "Z",
                     event_type=RunState.START,
                     producer=self.producer,
                     run=run,
@@ -303,7 +304,7 @@ class LineageToOpenLineageTransformer:
             # COMPLETE event
             events.append(
                 OpenLineageEvent(
-                    event_time=datetime.utcnow().isoformat() + "Z",
+                    event_time=utc_now().isoformat() + "Z",
                     event_type=RunState.COMPLETE,
                     producer=self.producer,
                     run=run,
@@ -655,7 +656,7 @@ class OpenLineageEmitterService:
             "total_events": len(events),
             "total_datasets": len(dataset_names),
             "total_jobs": len(job_names),
-            "export_time": datetime.utcnow().isoformat() + "Z",
+            "export_time": utc_now().isoformat() + "Z",
         }
 
     async def emit_to_endpoint(
@@ -921,7 +922,7 @@ class OpenLineageWebhookService:
         """
         # Create a minimal test event
         test_event = {
-            "eventTime": datetime.utcnow().isoformat() + "Z",
+            "eventTime": utc_now().isoformat() + "Z",
             "eventType": "START",
             "producer": "https://github.com/truthound/truthound-dashboard",
             "schemaURL": "https://openlineage.io/spec/1-0-5/OpenLineage.json#/definitions/RunEvent",

@@ -32,8 +32,7 @@ export * from './notifications'
 // Validators
 export * from './validators'
 
-// Reports
-export * from './reports'
+export * from './artifacts'
 
 // Schema Evolution
 export * from './schema-evolution'
@@ -43,9 +42,6 @@ export * from './rule-suggestions'
 
 // Profile Comparison
 export * from './profile-comparison'
-
-// Versioning
-export * from './versioning'
 
 // Charts
 export * from './charts'

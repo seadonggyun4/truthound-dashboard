@@ -10,6 +10,7 @@ from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field
+from truthound_dashboard.time import utc_now
 
 
 class WebSocketMessageType(str, Enum):
@@ -36,7 +37,7 @@ class WebSocketMessage(BaseModel):
 
     type: WebSocketMessageType = Field(..., description="Message type")
     timestamp: str = Field(
-        default_factory=lambda: datetime.utcnow().isoformat(),
+        default_factory=lambda: utc_now().isoformat(),
         description="Message timestamp (ISO format)",
     )
     data: dict[str, Any] = Field(default_factory=dict, description="Message payload")

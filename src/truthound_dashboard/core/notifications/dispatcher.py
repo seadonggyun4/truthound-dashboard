@@ -41,6 +41,7 @@ from truthound_dashboard.db import (
     NotificationRule,
     get_session,
 )
+from truthound_dashboard.core.secrets import LocalEncryptedDbSecretProvider
 
 from .base import (
     BaseNotificationChannel,
@@ -409,12 +410,16 @@ class NotificationDispatcher:
         rule_id: str | None = None,
     ) -> NotificationResult:
         """Send notification to a specific channel."""
+        materialized_config = await LocalEncryptedDbSecretProvider(self.session).materialize_config(
+            channel_model.config or {}
+        )
+
         # Create channel instance
         channel = ChannelRegistry.create(
             channel_type=channel_model.type,
             channel_id=channel_model.id,
             name=channel_model.name,
-            config=channel_model.config,
+            config=materialized_config,
             is_active=channel_model.is_active,
         )
 

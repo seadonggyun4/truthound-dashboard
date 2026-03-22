@@ -30,6 +30,7 @@ from truthound_dashboard.schemas.observability import (
     StoreMetricsResponse,
     TracingStatsResponse,
 )
+from truthound_dashboard.time import utc_now
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -113,8 +114,8 @@ async def get_observability_stats() -> ObservabilityStatsResponse:
     try:
         events = store_manager.get_audit_events(limit=1000)
         if events:
-            today = datetime.utcnow().date()
-            week_ago = datetime.utcnow() - timedelta(days=7)
+            today = utc_now().date()
+            week_ago = utc_now() - timedelta(days=7)
 
             events_today = sum(1 for e in events if e.timestamp.date() == today)
             events_week = sum(1 for e in events if e.timestamp >= week_ago)
@@ -185,7 +186,7 @@ async def get_observability_stats() -> ObservabilityStatsResponse:
         audit=audit_stats,
         store_metrics=store_metrics,
         tracing=tracing_stats,
-        last_updated=datetime.utcnow(),
+        last_updated=utc_now(),
     )
 
 
@@ -318,8 +319,8 @@ async def get_audit_stats() -> AuditStatsResponse:
                 avg_duration_ms=None,
             )
 
-        today = datetime.utcnow().date()
-        week_ago = datetime.utcnow() - timedelta(days=7)
+        today = utc_now().date()
+        week_ago = utc_now() - timedelta(days=7)
 
         events_today = sum(1 for e in events if e.timestamp.date() == today)
         events_week = sum(1 for e in events if e.timestamp >= week_ago)
@@ -455,7 +456,7 @@ async def get_metrics() -> MetricsResponse:
             gauges=gauges,
             histograms=[],
             summaries=[],
-            timestamp=datetime.utcnow(),
+            timestamp=utc_now(),
         )
 
     except Exception as e:
@@ -465,7 +466,7 @@ async def get_metrics() -> MetricsResponse:
             gauges=[],
             histograms=[],
             summaries=[],
-            timestamp=datetime.utcnow(),
+            timestamp=utc_now(),
         )
 
 

@@ -17,6 +17,7 @@ from typing import Any
 from uuid import uuid4
 
 import numpy as np
+from truthound_dashboard.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +155,7 @@ class StreamingSession:
 
     def touch(self) -> None:
         """Update last_active_at to current time."""
-        self.last_active_at = datetime.utcnow()
+        self.last_active_at = utc_now()
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -331,7 +332,7 @@ class StreamingAnomalyDetector:
         Returns:
             Number of sessions removed.
         """
-        now = datetime.utcnow()
+        now = utc_now()
         async with self._lock:
             to_remove = [
                 sid
@@ -379,7 +380,7 @@ class StreamingAnomalyDetector:
             threshold=threshold,
             columns=columns or [],
             status=StreamingSessionStatus.CREATED,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
             config=config or {},
         )
 
@@ -406,7 +407,7 @@ class StreamingAnomalyDetector:
                 raise ValueError(f"Session '{session_id}' not found")
 
             session.status = StreamingSessionStatus.RUNNING
-            session.started_at = datetime.utcnow()
+            session.started_at = utc_now()
             session.touch()
 
         return session
@@ -429,7 +430,7 @@ class StreamingAnomalyDetector:
                 raise ValueError(f"Session '{session_id}' not found")
 
             session.status = StreamingSessionStatus.STOPPED
-            session.stopped_at = datetime.utcnow()
+            session.stopped_at = utc_now()
 
         return session
 
@@ -498,7 +499,7 @@ class StreamingAnomalyDetector:
             raise ValueError(f"Session '{session_id}' is not running")
 
         session.touch()
-        timestamp = timestamp or datetime.utcnow()
+        timestamp = timestamp or utc_now()
 
         # Store data point in buffer
         session._buffer.append({"timestamp": timestamp, "data": data})
@@ -540,7 +541,7 @@ class StreamingAnomalyDetector:
             List of alerts.
         """
         alerts = []
-        timestamps = timestamps or [datetime.utcnow()] * len(data_points)
+        timestamps = timestamps or [utc_now()] * len(data_points)
 
         for data, ts in zip(data_points, timestamps):
             alert = await self.push_data_point(session_id, data, ts)

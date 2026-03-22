@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, Generic, TypeVar
 
 from truthound_dashboard.config import get_settings
+from truthound_dashboard.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -50,18 +51,18 @@ class CacheEntry(Generic[T]):
             ttl_seconds: Time to live in seconds.
         """
         self.value = value
-        self.created_at = datetime.utcnow()
+        self.created_at = utc_now()
         self.expires_at = self.created_at + timedelta(seconds=ttl_seconds)
 
     @property
     def is_expired(self) -> bool:
         """Check if entry has expired."""
-        return datetime.utcnow() >= self.expires_at
+        return utc_now() >= self.expires_at
 
     @property
     def remaining_ttl(self) -> int:
         """Get remaining TTL in seconds."""
-        delta = self.expires_at - datetime.utcnow()
+        delta = self.expires_at - utc_now()
         return max(0, int(delta.total_seconds()))
 
 
@@ -328,19 +329,19 @@ class LFUCacheEntry(Generic[T]):
         """
         self.value = value
         self.frequency = 1
-        self.created_at = datetime.utcnow()
+        self.created_at = utc_now()
         self.last_accessed = self.created_at
         self.expires_at = self.created_at + timedelta(seconds=ttl_seconds)
 
     @property
     def is_expired(self) -> bool:
         """Check if entry has expired."""
-        return datetime.utcnow() >= self.expires_at
+        return utc_now() >= self.expires_at
 
     def access(self) -> None:
         """Record an access to this entry."""
         self.frequency += 1
-        self.last_accessed = datetime.utcnow()
+        self.last_accessed = utc_now()
 
 
 class LFUCache(CacheBackend):
@@ -547,7 +548,7 @@ class FileCache(CacheBackend):
                 data = json.loads(cache_path.read_text())
                 expires_at = datetime.fromisoformat(data["expires_at"])
 
-                if datetime.utcnow() >= expires_at:
+                if utc_now() >= expires_at:
                     cache_path.unlink(missing_ok=True)
                     return None
 
@@ -559,14 +560,14 @@ class FileCache(CacheBackend):
     async def set(self, key: str, value: Any, ttl_seconds: int = 60) -> None:
         """Set value in cache with TTL."""
         cache_path = self._get_cache_path(key)
-        expires_at = datetime.utcnow() + timedelta(seconds=ttl_seconds)
+        expires_at = utc_now() + timedelta(seconds=ttl_seconds)
 
         async with self._lock:
             data = {
                 "key": key,
                 "value": value,
                 "expires_at": expires_at.isoformat(),
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": utc_now().isoformat(),
             }
             cache_path.write_text(json.dumps(data))
 

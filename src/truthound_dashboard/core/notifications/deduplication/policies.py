@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any
+from truthound_dashboard.time import utc_now
 
 
 class DeduplicationPolicy(str, Enum):
@@ -236,7 +237,7 @@ class FingerprintGenerator:
     def _get_timestamp_bucket(self, timestamp: datetime | None) -> int:
         """Get timestamp bucket number."""
         if timestamp is None:
-            timestamp = datetime.utcnow()
+            timestamp = utc_now()
 
         ts = timestamp.timestamp()
         bucket_size = self.config.timestamp_bucket_seconds

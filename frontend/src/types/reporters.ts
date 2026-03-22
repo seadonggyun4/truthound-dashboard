@@ -333,15 +333,16 @@ export interface ReportOutput {
 }
 
 // =============================================================================
-// Generated Report Types
+// Artifact Types
 // =============================================================================
 
 /**
- * Generated report record from history.
+ * Canonical artifact record displayed in the report index.
  */
-export interface GeneratedReport {
+export interface ArtifactRecord {
   id: string
   name: string
+  artifactType?: string
   format: ReportFormatType
   description?: string
   theme?: ReportThemeType
@@ -399,53 +400,6 @@ export interface ReportStatistics {
   totalDownloads: number
   avgGenerationTimeMs?: number
   expiredCount: number
-}
-
-// =============================================================================
-// API Response Types
-// =============================================================================
-
-/**
- * Available formats response from API.
- */
-export interface AvailableFormatsResponse {
-  formats: string[]
-  themes: string[]
-  locales: LocaleInfo[]
-}
-
-/**
- * Paginated list response.
- */
-export interface ReportListResponse {
-  items: GeneratedReport[]
-  total: number
-  page: number
-  pageSize: number
-}
-
-/**
- * Bulk report generation request.
- */
-export interface BulkReportRequest {
-  validationIds: string[]
-  format?: ReportFormatType
-  theme?: ReportThemeType
-  locale?: ReportLocale
-  config?: Record<string, unknown>
-  saveToHistory?: boolean
-  expiresInDays?: number
-}
-
-/**
- * Bulk report generation response.
- */
-export interface BulkReportResponse {
-  total: number
-  successful: number
-  failed: number
-  reports: GeneratedReport[]
-  errors: Array<{ validationId: string; error: string }>
 }
 
 // =============================================================================
@@ -538,14 +492,14 @@ export function formatGenerationTime(ms: number | undefined): string {
 /**
  * Check if report is downloadable.
  */
-export function isReportDownloadable(report: GeneratedReport): boolean {
+export function isReportDownloadable(report: ArtifactRecord): boolean {
   return report.status === 'completed' && !!report.filePath
 }
 
 /**
  * Check if report is expired.
  */
-export function isReportExpired(report: GeneratedReport): boolean {
+export function isReportExpired(report: ArtifactRecord): boolean {
   if (!report.expiresAt) return false
   return new Date(report.expiresAt) < new Date()
 }
@@ -741,47 +695,4 @@ export interface ReporterBuilderOptions {
   renderer?: string
   configClass?: string
   mixins?: ReporterMixin[]
-}
-
-// =============================================================================
-// Report Generation Request/Response
-// =============================================================================
-
-/**
- * Request to generate a report.
- */
-export interface GenerateReportRequest {
-  /** Validation result or ID */
-  validationId?: string
-  validationResult?: ValidationResult
-  /** Report format */
-  format: ReportFormatType
-  /** Reporter configuration */
-  config?: ReporterConfig
-  /** Save to report history */
-  saveToHistory?: boolean
-  /** Report name for history */
-  name?: string
-  /** Expiration in days */
-  expiresInDays?: number
-}
-
-/**
- * Response from report generation.
- */
-export interface GenerateReportResponse {
-  /** Generated report content (base64 for binary formats) */
-  content: string
-  /** Content type */
-  contentType: string
-  /** Suggested filename */
-  filename: string
-  /** Format used */
-  format: ReportFormatType
-  /** Size in bytes */
-  sizeBytes: number
-  /** Generation time in ms */
-  generationTimeMs: number
-  /** Report record if saved to history */
-  report?: GeneratedReport
 }

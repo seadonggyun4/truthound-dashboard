@@ -6,6 +6,7 @@
  * - Deduplication (noise reduction)
  * - Throttling (rate limiting)
  * - Escalation Policies (multi-level alerts)
+ * - Incident Queues (assignment and routing ownership)
  */
 
 import { useState, useCallback, useEffect } from 'react'
@@ -23,12 +24,14 @@ import {
   Gauge,
   AlertTriangle,
   Bell,
+  Inbox,
 } from 'lucide-react'
 import {
   RoutingRulesTab,
   DeduplicationTab,
   ThrottlingTab,
   EscalationTab,
+  QueuesTab,
   ConfigImportExport,
   TemplateLibrary,
   type Template,
@@ -51,6 +54,7 @@ export default function NotificationsAdvanced() {
   const t = useSafeIntlayer('notificationsAdvanced')
   const common = useSafeIntlayer('common')
   const { toast } = useToast()
+  const tabs = t.tabs as Record<string, unknown>
 
   const [activeTab, setActiveTab] = useState('routing')
   const [isLoadingStats, setIsLoadingStats] = useState(true)
@@ -131,7 +135,7 @@ export default function NotificationsAdvanced() {
             Advanced Notifications
           </h1>
           <p className="text-muted-foreground">
-            Configure routing, deduplication, throttling, and escalation policies
+            Configure routing, deduplication, throttling, escalation policies, and queues
           </p>
         </div>
         <Button variant="outline" onClick={loadStats} disabled={isLoadingStats}>
@@ -247,7 +251,7 @@ export default function NotificationsAdvanced() {
       <Card>
         <CardHeader>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="routing" className="gap-2">
                 <Route className="h-4 w-4" />
                 {t.tabs.routing}
@@ -263,6 +267,10 @@ export default function NotificationsAdvanced() {
               <TabsTrigger value="escalation" className="gap-2">
                 <AlertTriangle className="h-4 w-4" />
                 {t.tabs.escalation}
+              </TabsTrigger>
+              <TabsTrigger value="queues" className="gap-2">
+                <Inbox className="h-4 w-4" />
+                {str((tabs.queues as string | undefined) ?? 'Queues')}
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -283,6 +291,10 @@ export default function NotificationsAdvanced() {
 
             <TabsContent value="escalation" className="mt-0">
               <EscalationTab initialTemplate={appliedTemplate?.category === 'escalation' ? templatePayload : null} />
+            </TabsContent>
+
+            <TabsContent value="queues" className="mt-0">
+              <QueuesTab onChanged={loadStats} />
             </TabsContent>
           </Tabs>
         </CardContent>

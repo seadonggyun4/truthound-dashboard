@@ -23,6 +23,12 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
+      - name: Static regression gates
+        run: python -m pytest -q tests/test_backend_surface.py tests/test_frontend_surface.py tests/test_docs_surface.py -p no:cacheprovider
+      - name: Enforcement gates
+        run: python -m pytest -q tests/test_enforcement_gates.py -p no:cacheprovider
+      - name: Control-plane smoke tests
+        run: python -m pytest -q tests/test_control_plane_hardening.py -p no:cacheprovider
       - name: Backend tests
         run: python -m pytest -q tests -p no:cacheprovider
       - name: Frontend type check

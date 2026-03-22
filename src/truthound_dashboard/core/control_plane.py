@@ -1,69 +1,28 @@
-"""Dashboard-native control-plane services.
-
-Truthound owns validation semantics. The dashboard owns user/workspace/session
-state, reusable views, and operational aggregates.
-"""
+"""Dashboard-native control-plane services."""
 
 from __future__ import annotations
 
 import hashlib
 import secrets
-from dataclasses import dataclass
-from datetime import datetime, timedelta
+from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import Any
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from truthound_dashboard.config import get_settings
 from truthound_dashboard.db import Membership, Role, SavedView, Session, User, Workspace
-from truthound_dashboard.db.models import EscalationIncidentModel, GeneratedReport, Source
+from truthound_dashboard.db import RolePermission
 
+from .authz import AuthorizationService
+from truthound_dashboard.time import utc_now
 
 DEFAULT_WORKSPACE_SLUG = "default"
 DEFAULT_USER_EMAIL = "admin@truthound.local"
 SESSION_TTL_HOURS = 12
-
-ROLE_PERMISSIONS: dict[str, list[str]] = {
-    "admin": [
-        "sources:read",
-        "sources:write",
-        "validations:read",
-        "validations:write",
-        "incidents:read",
-        "incidents:write",
-        "reports:read",
-        "reports:write",
-        "plugins:read",
-        "plugins:write",
-        "observability:read",
-        "views:write",
-        "users:read",
-        "roles:read",
-    ],
-    "operator": [
-        "sources:read",
-        "sources:write",
-        "validations:read",
-        "validations:write",
-        "incidents:read",
-        "incidents:write",
-        "reports:read",
-        "reports:write",
-        "plugins:read",
-        "observability:read",
-        "views:write",
-    ],
-    "viewer": [
-        "sources:read",
-        "validations:read",
-        "incidents:read",
-        "reports:read",
-        "plugins:read",
-        "observability:read",
-    ],
-}
+ALLOWED_SAVED_VIEW_SCOPES = {"sources", "alerts", "artifacts", "history"}
 
 
 def _hash_value(value: str) -> str:
@@ -78,6 +37,7 @@ class ControlPlaneContext:
     workspace: Workspace
     role: Role
     session: Session | None = None
+    permission_keys: tuple[str, ...] = field(default_factory=tuple)
 
 
 class ControlPlaneService:
@@ -85,15 +45,21 @@ class ControlPlaneService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.authz = AuthorizationService(session)
 
     async def ensure_bootstrap_state(self) -> ControlPlaneContext:
-        """Ensure the single-org bootstrap entities exist."""
         workspace = await self._ensure_default_workspace()
-        roles = await self._ensure_roles()
+        roles = await self.authz.ensure_seeded()
         user = await self._ensure_default_user()
         role = roles["admin"]
         await self._ensure_membership(user_id=user.id, workspace_id=workspace.id, role_id=role.id)
-        return ControlPlaneContext(user=user, workspace=workspace, role=role)
+        permission_keys = tuple(self.authz.permission_keys_for_role(role))
+        return ControlPlaneContext(
+            user=user,
+            workspace=workspace,
+            role=role,
+            permission_keys=permission_keys,
+        )
 
     async def _ensure_default_workspace(self) -> Workspace:
         result = await self.session.execute(
@@ -115,31 +81,6 @@ class ControlPlaneService:
         self.session.add(workspace)
         await self.session.flush()
         return workspace
-
-    async def _ensure_roles(self) -> dict[str, Role]:
-        existing = {
-            role.name: role
-            for role in (
-                await self.session.execute(select(Role).where(Role.name.in_(list(ROLE_PERMISSIONS.keys()))))
-            ).scalars()
-        }
-
-        for name, permissions in ROLE_PERMISSIONS.items():
-            role = existing.get(name)
-            if role is None:
-                role = Role(
-                    name=name,
-                    description=f"System {name} role",
-                    permissions=permissions,
-                    is_system=True,
-                )
-                self.session.add(role)
-                await self.session.flush()
-                existing[name] = role
-            elif role.permissions != permissions:
-                role.permissions = permissions
-
-        return existing
 
     async def _ensure_default_user(self) -> User:
         result = await self.session.execute(select(User).where(User.email == DEFAULT_USER_EMAIL))
@@ -183,7 +124,6 @@ class ControlPlaneService:
         return membership
 
     async def resolve_context(self, token: str | None = None) -> ControlPlaneContext:
-        """Resolve the active context from a session token or bootstrap fallback."""
         settings = get_settings()
         if token:
             token_hash = _hash_value(token)
@@ -204,12 +144,14 @@ class ControlPlaneService:
                 )
                 if membership is None:
                     raise PermissionError("Session is not attached to an active workspace")
-                session_obj.last_seen_at = datetime.utcnow()
+                session_obj.last_seen_at = utc_now()
+                permission_keys = tuple(self.authz.permission_keys_for_role(membership.role))
                 return ControlPlaneContext(
                     user=session_obj.user,
                     workspace=session_obj.workspace,
                     role=membership.role,
                     session=session_obj,
+                    permission_keys=permission_keys,
                 )
 
         if settings.auth_enabled:
@@ -220,7 +162,11 @@ class ControlPlaneService:
     async def _get_membership(self, *, user_id: str, workspace_id: str) -> Membership | None:
         result = await self.session.execute(
             select(Membership)
-            .options(selectinload(Membership.role))
+            .options(
+                selectinload(Membership.role)
+                .selectinload(Role.permission_links)
+                .selectinload(RolePermission.permission)
+            )
             .where(Membership.user_id == user_id, Membership.workspace_id == workspace_id)
         )
         return result.scalar_one_or_none()
@@ -230,7 +176,6 @@ class AuthService(ControlPlaneService):
     """Local session management."""
 
     async def get_or_create_session(self, token: str | None = None) -> tuple[str | None, ControlPlaneContext]:
-        """Return current session context, auto-creating one when auth is disabled."""
         try:
             context = await self.resolve_context(token)
             return token, context
@@ -244,10 +189,15 @@ class AuthService(ControlPlaneService):
                 workspace=context.workspace,
                 role=context.role,
                 session=session_obj,
+                permission_keys=context.permission_keys,
             )
 
-    async def login(self, *, password: str | None = None, workspace_id: str | None = None) -> tuple[str, ControlPlaneContext]:
-        """Create a new local session."""
+    async def login(
+        self,
+        *,
+        password: str | None = None,
+        workspace_id: str | None = None,
+    ) -> tuple[str, ControlPlaneContext]:
         settings = get_settings()
         context = await self.ensure_bootstrap_state()
         if settings.auth_enabled and password != settings.auth_password:
@@ -261,10 +211,12 @@ class AuthService(ControlPlaneService):
             membership = await self._get_membership(user_id=context.user.id, workspace_id=workspace.id)
             if membership is None:
                 raise PermissionError("Workspace access denied")
+            permission_keys = tuple(self.authz.permission_keys_for_role(membership.role))
             context = ControlPlaneContext(
                 user=context.user,
                 workspace=workspace,
                 role=membership.role,
+                permission_keys=permission_keys,
             )
 
         session_obj, token = await self._create_session(context)
@@ -273,18 +225,18 @@ class AuthService(ControlPlaneService):
             workspace=context.workspace,
             role=context.role,
             session=session_obj,
+            permission_keys=context.permission_keys,
         )
 
     async def logout(self, token: str | None) -> None:
-        """Revoke a session token."""
         if not token:
             return
         token_hash = _hash_value(token)
         result = await self.session.execute(select(Session).where(Session.token_hash == token_hash))
         session_obj = result.scalar_one_or_none()
         if session_obj is not None:
-            session_obj.revoked_at = datetime.utcnow()
-            session_obj.last_seen_at = datetime.utcnow()
+            session_obj.revoked_at = utc_now()
+            session_obj.last_seen_at = utc_now()
 
     async def _create_session(self, context: ControlPlaneContext) -> tuple[Session, str]:
         token = secrets.token_urlsafe(32)
@@ -292,8 +244,8 @@ class AuthService(ControlPlaneService):
             token_hash=_hash_value(token),
             user_id=context.user.id,
             workspace_id=context.workspace.id,
-            expires_at=datetime.utcnow() + timedelta(hours=SESSION_TTL_HOURS),
-            last_seen_at=datetime.utcnow(),
+            expires_at=utc_now() + timedelta(hours=SESSION_TTL_HOURS),
+            last_seen_at=utc_now(),
             auth_metadata={"provider": "local"},
         )
         self.session.add(session_obj)
@@ -312,6 +264,8 @@ class SavedViewService(ControlPlaneService):
         scope: str | None = None,
         owner_id: str | None = None,
     ) -> list[SavedView]:
+        if scope is not None and scope not in ALLOWED_SAVED_VIEW_SCOPES:
+            return []
         query = (
             select(SavedView)
             .options(selectinload(SavedView.owner))
@@ -336,6 +290,8 @@ class SavedViewService(ControlPlaneService):
         description: str | None = None,
         is_default: bool = False,
     ) -> SavedView:
+        if scope not in ALLOWED_SAVED_VIEW_SCOPES:
+            raise ValueError(f"Unsupported saved view scope: {scope}")
         view = SavedView(
             workspace_id=workspace_id,
             owner_id=owner_id,
@@ -387,86 +343,3 @@ class SavedViewService(ControlPlaneService):
             return False
         await self.session.delete(view)
         return True
-
-
-class OverviewService(ControlPlaneService):
-    """Fleet overview aggregates for the dashboard homepage."""
-
-    async def get_overview(self, *, workspace_id: str) -> dict[str, Any]:
-        source_query = select(Source).where(
-            or_(Source.workspace_id == workspace_id, Source.workspace_id.is_(None))
-        )
-        source_result = await self.session.execute(source_query)
-        sources = list(source_result.scalars().all())
-
-        total_sources = len(sources)
-        active_sources = len([source for source in sources if source.is_active])
-        healthy_sources = len(
-            [source for source in sources if source.latest_validation and source.latest_validation.status == "success"]
-        )
-        unhealthy_sources = len(
-            [
-                source
-                for source in sources
-                if source.latest_validation and source.latest_validation.status in {"failed", "error"}
-            ]
-        )
-
-        incident_total = (
-            await self.session.scalar(select(func.count()).select_from(EscalationIncidentModel))
-        ) or 0
-        incident_active = (
-            await self.session.scalar(
-                select(func.count())
-                .select_from(EscalationIncidentModel)
-                .where(EscalationIncidentModel.state != "resolved")
-            )
-        ) or 0
-
-        artifact_total = (
-            await self.session.scalar(
-                select(func.count())
-                .select_from(GeneratedReport)
-                .where(or_(GeneratedReport.workspace_id == workspace_id, GeneratedReport.workspace_id.is_(None)))
-            )
-        ) or 0
-        artifact_failed = (
-            await self.session.scalar(
-                select(func.count())
-                .select_from(GeneratedReport)
-                .where(
-                    or_(GeneratedReport.workspace_id == workspace_id, GeneratedReport.workspace_id.is_(None)),
-                    GeneratedReport.status == "failed",
-                )
-            )
-        ) or 0
-
-        views = await SavedViewService(self.session).list_views(workspace_id=workspace_id)
-
-        return {
-            "sources": {
-                "total": total_sources,
-                "active": active_sources,
-                "healthy": healthy_sources,
-                "unhealthy": unhealthy_sources,
-            },
-            "incidents": {
-                "total": incident_total,
-                "active": incident_active,
-            },
-            "artifacts": {
-                "total": artifact_total,
-                "failed": artifact_failed,
-            },
-            "saved_views": [
-                {
-                    "id": view.id,
-                    "name": view.name,
-                    "scope": view.scope,
-                    "description": view.description,
-                    "is_default": view.is_default,
-                    "owner_name": view.owner.display_name if view.owner else None,
-                }
-                for view in views[:8]
-            ],
-        }

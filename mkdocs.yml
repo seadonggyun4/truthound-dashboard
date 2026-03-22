@@ -39,6 +39,7 @@ nav:
       - Profile Comparison: guides/profile-comparison.md
       - Rule Suggestions: guides/rule-suggestions.md
       - Notifications & Triggers: guides/notifications.md
+      - Incident Workbench: guides/incident-workbench.md
   - Advanced:
       - Plugins: advanced/plugins.md
       - Observability: advanced/observability.md

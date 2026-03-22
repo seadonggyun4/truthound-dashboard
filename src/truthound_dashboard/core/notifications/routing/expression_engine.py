@@ -48,6 +48,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Callable
 
 from .rules import BaseRule, RuleRegistry
+from truthound_dashboard.time import utc_now
 
 if TYPE_CHECKING:
     from .engine import RouteContext
@@ -131,7 +132,7 @@ class ExpressionContext:
     severity: str = "info"
     issues: list[str] = field(default_factory=list)
     pass_rate: float = 1.0
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=utc_now)
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -243,7 +244,7 @@ class ExpressionContext:
             severity=severity,
             issues=issue_list,
             pass_rate=pass_rate,
-            timestamp=datetime.utcnow(),
+            timestamp=utc_now(),
             metadata=metadata,
         )
 

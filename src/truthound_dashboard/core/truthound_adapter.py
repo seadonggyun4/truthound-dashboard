@@ -54,6 +54,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, Union, runtime_checkable
 
 import yaml
+from truthound_dashboard.time import utc_now
 
 if TYPE_CHECKING:
     from truthound_dashboard.core.datasource_factory import SourceConfig
@@ -3413,7 +3414,7 @@ class SchemaEvolutionAdapter:
                 )
             )
 
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utc_now().isoformat()
         if hasattr(event, "timestamp"):
             timestamp = (
                 event.timestamp.isoformat()
@@ -3493,7 +3494,7 @@ class SchemaEvolutionAdapter:
             data_risk_level=data_risk_level,
             recommendations=recommendations,
             status=getattr(alert, "status", "open"),
-            created_at=_format_dt(getattr(alert, "created_at", None)) or datetime.utcnow().isoformat(),
+            created_at=_format_dt(getattr(alert, "created_at", None)) or utc_now().isoformat(),
             acknowledged_at=_format_dt(getattr(alert, "acknowledged_at", None)),
             resolved_at=_format_dt(getattr(alert, "resolved_at", None)),
         )

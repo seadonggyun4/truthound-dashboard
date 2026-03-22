@@ -13,7 +13,6 @@ import Profile from './pages/Profile'
 import Drift from './pages/Drift'
 import Schedules from './pages/Schedules'
 import Notifications from './pages/Notifications'
-import VersionHistory from './pages/VersionHistory'
 import Lineage from './pages/Lineage'
 import Anomaly from './pages/Anomaly'
 import Privacy from './pages/Privacy'
@@ -40,7 +39,6 @@ function App() {
           <Route path="sources/:id/rules" element={<Rules />} />
           <Route path="sources/:id/history" element={<History />} />
           <Route path="sources/:id/profile" element={<Profile />} />
-          <Route path="sources/:id/versions" element={<VersionHistory />} />
           <Route path="validations/:id" element={<Validations />} />
           <Route path="drift" element={<Drift />} />
           <Route path="lineage" element={<Lineage />} />

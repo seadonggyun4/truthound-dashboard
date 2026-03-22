@@ -91,8 +91,10 @@ class SchemaResponse(BaseSchema, IDMixin, TimestampMixin):
 
     source_id: str = Field(..., description="Parent source ID")
     schema_yaml: str = Field(..., description="Schema in YAML format")
-    schema_json: dict[str, Any] | None = Field(
+    schema_payload: dict[str, Any] | None = Field(
         default=None,
+        alias="schema_json",
+        serialization_alias="schema_json",
         description="Schema as JSON object",
     )
     row_count: int | None = Field(
@@ -128,7 +130,7 @@ class SchemaResponse(BaseSchema, IDMixin, TimestampMixin):
             id=schema.id,
             source_id=schema.source_id,
             schema_yaml=schema.schema_yaml,
-            schema_json=schema.schema_json,
+            schema_payload=schema.schema_json,
             row_count=schema.row_count,
             column_count=schema.column_count,
             columns=columns,

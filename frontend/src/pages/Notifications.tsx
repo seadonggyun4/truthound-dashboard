@@ -8,7 +8,7 @@
  * - Channel testing
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSafeIntlayer } from '@/hooks/useSafeIntlayer'
 import {
   Bell,
@@ -27,6 +27,7 @@ import {
   Github,
   Loader2,
   Filter,
+  KeyRound,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -74,11 +75,13 @@ import { useApi, useMutation } from '@/hooks/use-api'
 import { useConfirm } from '@/components/ConfirmDialog'
 import {
   listNotificationChannels,
+  getNotificationChannel,
   listNotificationRules,
   listNotificationLogs,
   getNotificationStats,
   testNotificationChannel,
   createNotificationChannel,
+  rotateNotificationChannelCredentials,
   updateNotificationChannel,
   deleteNotificationChannel,
   createNotificationRule,
@@ -166,6 +169,82 @@ function getConditionLabel(condition: string): string {
   return found?.label || condition
 }
 
+type SecretConfigPayload = {
+  _secret_ref?: string
+  _redacted?: boolean
+  hint?: string
+}
+
+function isSecretConfigPayload(value: unknown): value is SecretConfigPayload {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      '_redacted' in value &&
+      (('_secret_ref' in value) || ('hint' in value))
+  )
+}
+
+function getSecretFields(channelType: ChannelType): string[] {
+  const schema = getChannelSchema(channelType)
+  return Object.entries(schema.fields)
+    .filter(([, field]) => field.secret)
+    .map(([fieldName]) => fieldName)
+}
+
+function toEditableChannelConfig(
+  channelType: ChannelType,
+  config: Record<string, unknown> | undefined
+): ChannelConfig {
+  const schema = getChannelSchema(channelType)
+  const editable: ChannelConfig = {}
+
+  for (const [fieldName, fieldSchema] of Object.entries(schema.fields)) {
+    const value = config?.[fieldName]
+
+    if (isSecretConfigPayload(value)) {
+      editable[fieldName] = value.hint ?? '••••••••'
+      continue
+    }
+
+    if (fieldSchema.type === 'textarea') {
+      if (Array.isArray(value)) {
+        editable[fieldName] = value.join('\n')
+      } else if (value && typeof value === 'object') {
+        editable[fieldName] = JSON.stringify(value, null, 2)
+      } else {
+        editable[fieldName] = value ?? ''
+      }
+      continue
+    }
+
+    if (fieldSchema.type === 'string' && Array.isArray(value)) {
+      editable[fieldName] = value.join(', ')
+      continue
+    }
+
+    editable[fieldName] = value ?? fieldSchema.default ?? ''
+  }
+
+  return editable
+}
+
+function buildChannelConfigForSave(
+  channelType: ChannelType,
+  config: ChannelConfig,
+  existingConfig?: Record<string, unknown>
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = { ...config }
+
+  for (const fieldName of getSecretFields(channelType)) {
+    const existingValue = existingConfig?.[fieldName]
+    if (existingValue !== undefined) {
+      payload[fieldName] = existingValue
+    }
+  }
+
+  return payload
+}
+
 // ============================================================================
 // Channel Dialog Component
 // ============================================================================
@@ -182,16 +261,69 @@ function ChannelDialog({ open, onOpenChange, channel, onSave }: ChannelDialogPro
   const common = useSafeIntlayer('common')
   const { toast } = useToast()
 
-  const [step, setStep] = useState<'type' | 'config'>(channel ? 'config' : 'type')
+  const [step, setStep] = useState<'type' | 'config' | 'rotate'>(channel ? 'config' : 'type')
   const [channelType, setChannelType] = useState<ChannelType | null>(
     (channel?.type as ChannelType) || null
   )
   const [channelName, setChannelName] = useState(channel?.name || '')
-  const [config, setConfig] = useState<ChannelConfig>(channel?.config || {})
+  const [config, setConfig] = useState<ChannelConfig>({})
+  const [storedConfig, setStoredConfig] = useState<Record<string, unknown> | undefined>(channel?.config)
+  const [rotateConfig, setRotateConfig] = useState<Record<string, string>>({})
   const [isValid, setIsValid] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [loadingChannel, setLoadingChannel] = useState(false)
 
   const isEdit = !!channel
+  const secretFields = channelType ? getSecretFields(channelType) : []
+
+  useEffect(() => {
+    if (!open) return
+
+    if (!channel || !channel.type) {
+      setStep('type')
+      setChannelType(null)
+      setChannelName('')
+      setConfig({})
+      setStoredConfig(undefined)
+      setRotateConfig({})
+      return
+    }
+
+    let cancelled = false
+    const editingChannelId = channel.id
+
+    async function loadChannel() {
+      setLoadingChannel(true)
+      try {
+        const detail = await getNotificationChannel(editingChannelId)
+        if (cancelled) return
+        const resolvedType = detail.type as ChannelType
+        setStep('config')
+        setChannelType(resolvedType)
+        setChannelName(detail.name)
+        setStoredConfig(detail.config)
+        setConfig(toEditableChannelConfig(resolvedType, detail.config))
+        setRotateConfig({})
+      } catch {
+        if (!cancelled) {
+          toast({
+            title: str(notifications_t.updateChannelFailed) || 'Failed to load channel',
+            variant: 'destructive',
+          })
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingChannel(false)
+        }
+      }
+    }
+
+    void loadChannel()
+
+    return () => {
+      cancelled = true
+    }
+  }, [channel, open, notifications_t.updateChannelFailed, toast])
 
   const handleTypeSelect = (type: ChannelType) => {
     setChannelType(type)
@@ -209,7 +341,9 @@ function ChannelDialog({ open, onOpenChange, channel, onSave }: ChannelDialogPro
   }
 
   const handleBack = () => {
-    if (!isEdit) {
+    if (step === 'rotate') {
+      setStep('config')
+    } else if (!isEdit) {
       setStep('type')
     }
   }
@@ -222,7 +356,7 @@ function ChannelDialog({ open, onOpenChange, channel, onSave }: ChannelDialogPro
       if (isEdit && channel) {
         await updateNotificationChannel(channel.id, {
           name: channelName,
-          config,
+          config: buildChannelConfigForSave(channelType, config, storedConfig),
         })
         toast({ title: str(notifications_t.channelUpdated) || 'Channel updated' })
       } else {
@@ -248,6 +382,41 @@ function ChannelDialog({ open, onOpenChange, channel, onSave }: ChannelDialogPro
     }
   }
 
+  const handleRotateSave = async () => {
+    if (!channel) return
+
+    const payload = Object.fromEntries(
+      Object.entries(rotateConfig).filter(([, value]) => value.trim().length > 0)
+    )
+    if (Object.keys(payload).length === 0) {
+      toast({
+        title: 'Enter at least one credential value to rotate',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setSaving(true)
+    try {
+      const updated = await rotateNotificationChannelCredentials(channel.id, payload)
+      if (channelType) {
+        setStoredConfig(updated.config)
+        setConfig(toEditableChannelConfig(channelType, updated.config))
+      }
+      setRotateConfig({})
+      setStep('config')
+      toast({ title: 'Credentials rotated' })
+      onSave()
+    } catch {
+      toast({
+        title: 'Failed to rotate credentials',
+        variant: 'destructive',
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleClose = () => {
     onOpenChange(false)
     // Reset state after animation
@@ -255,7 +424,9 @@ function ChannelDialog({ open, onOpenChange, channel, onSave }: ChannelDialogPro
       setStep(channel ? 'config' : 'type')
       setChannelType((channel?.type as ChannelType) || null)
       setChannelName(channel?.name || '')
-      setConfig(channel?.config || {})
+      setConfig({})
+      setStoredConfig(channel?.config)
+      setRotateConfig({})
     }, 200)
   }
 
@@ -269,7 +440,9 @@ function ChannelDialog({ open, onOpenChange, channel, onSave }: ChannelDialogPro
           <DialogDescription>
             {step === 'type'
               ? 'Select a notification channel type'
-              : `Configure your ${channelType} channel settings`}
+              : step === 'rotate'
+                ? `Rotate stored credentials for ${channelType}`
+                : `Configure your ${channelType} channel settings`}
           </DialogDescription>
         </DialogHeader>
 
@@ -281,7 +454,12 @@ function ChannelDialog({ open, onOpenChange, channel, onSave }: ChannelDialogPro
           />
         )}
 
-        {step === 'config' && channelType && (
+        {loadingChannel && isEdit ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+            Loading channel details...
+          </div>
+        ) : step === 'config' && channelType ? (
           <div className="space-y-6 py-4">
             {/* Channel Name */}
             <div className="space-y-2">
@@ -305,12 +483,56 @@ function ChannelDialog({ open, onOpenChange, channel, onSave }: ChannelDialogPro
               config={config}
               onChange={setConfig}
               onValidChange={setIsValid}
+              disabledFields={isEdit ? secretFields : []}
             />
+
+            {isEdit && secretFields.length > 0 && (
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 font-medium text-foreground">
+                  <KeyRound className="h-4 w-4" />
+                  Stored credentials are redacted
+                </div>
+                <p className="mt-1">
+                  Secret fields stay read-only in the main editor. Use credential rotation to
+                  replace stored webhook URLs, tokens, or API keys.
+                </p>
+                {channel?.credential_updated_at && (
+                  <p className="mt-2 text-xs">
+                    Last credential update: {formatDate(channel.credential_updated_at)}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-        )}
+        ) : step === 'rotate' && channelType ? (
+          <div className="space-y-4 py-4">
+            {secretFields.map((fieldName) => {
+              const fieldSchema = getChannelSchema(channelType).fields[fieldName]
+              return (
+                <div key={fieldName} className="space-y-2">
+                  <Label htmlFor={`rotate-${fieldName}`}>
+                    {fieldName.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())}
+                  </Label>
+                  <Input
+                    id={`rotate-${fieldName}`}
+                    type="password"
+                    value={rotateConfig[fieldName] ?? ''}
+                    onChange={(e) =>
+                      setRotateConfig((prev) => ({ ...prev, [fieldName]: e.target.value }))
+                    }
+                    placeholder={fieldSchema?.placeholder || 'Enter new credential'}
+                  />
+                  {fieldSchema?.description && (
+                    <p className="text-xs text-muted-foreground">{fieldSchema.description}</p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        ) : null}
 
         <DialogFooter className="gap-2">
-          {step === 'config' && !isEdit && (
+          {((step === 'config' && !isEdit) || step === 'rotate') && (
             <Button variant="outline" onClick={handleBack}>
               Back
             </Button>
@@ -318,13 +540,25 @@ function ChannelDialog({ open, onOpenChange, channel, onSave }: ChannelDialogPro
           <Button variant="outline" onClick={handleClose}>
             {str(common.cancel)}
           </Button>
+          {step === 'config' && isEdit && secretFields.length > 0 && (
+            <Button variant="outline" onClick={() => setStep('rotate')}>
+              <KeyRound className="h-4 w-4 mr-2" />
+              Rotate Credentials
+            </Button>
+          )}
           {step === 'config' && (
             <Button
               onClick={handleSave}
-              disabled={!isValid || !channelName.trim() || saving}
+              disabled={!isValid || !channelName.trim() || saving || loadingChannel}
             >
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {isEdit ? str(common.save) : str(common.create)}
+            </Button>
+          )}
+          {step === 'rotate' && (
+            <Button onClick={handleRotateSave} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Rotate
             </Button>
           )}
         </DialogFooter>
@@ -798,20 +1032,14 @@ export default function Notifications() {
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="cursor-help">
-                                {channel.config_summary || 'Configured'}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="left" className="max-w-xs">
-                              <pre className="text-xs">
-                                {JSON.stringify(channel.config, null, 2)}
-                              </pre>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <div className="space-y-1">
+                          <div>{channel.config_summary || 'Configured'}</div>
+                          {channel.credential_updated_at && (
+                            <div className="text-xs text-muted-foreground/80">
+                              Credentials updated {formatDate(channel.credential_updated_at)}
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Switch

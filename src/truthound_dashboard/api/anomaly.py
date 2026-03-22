@@ -59,6 +59,7 @@ from truthound_dashboard.core.streaming_anomaly import (
 )
 
 from .deps import AnomalyDetectionServiceDep, AnomalyExplainerServiceDep
+from truthound_dashboard.time import utc_now
 
 router = APIRouter()
 
@@ -925,9 +926,9 @@ async def push_streaming_batch(
             try:
                 timestamps.append(datetime.fromisoformat(dp.timestamp))
             except ValueError:
-                timestamps.append(datetime.utcnow())
+                timestamps.append(utc_now())
         else:
-            timestamps.append(datetime.utcnow())
+            timestamps.append(utc_now())
 
     try:
         alerts = await detector.push_batch(

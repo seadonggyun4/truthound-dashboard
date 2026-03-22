@@ -130,9 +130,51 @@ export interface Source {
   has_stored_secrets: boolean
   has_schema: boolean
   latest_validation_status?: string
+  owner_user_id?: string | null
+  owner_name?: string | null
+  team_id?: string | null
+  team_name?: string | null
+  domain_id?: string | null
+  domain_name?: string | null
 }
 
 export type SourceListResponse = PaginatedResponse<Source>
+
+export interface Team {
+  id: string
+  workspace_id: string
+  name: string
+  slug: string
+  description?: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface Domain {
+  id: string
+  workspace_id: string
+  name: string
+  slug: string
+  description?: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface SourceOwnership {
+  id: string
+  source_id: string
+  workspace_id: string
+  owner_user_id?: string | null
+  owner_name?: string | null
+  team_id?: string | null
+  team_name?: string | null
+  domain_id?: string | null
+  domain_name?: string | null
+  created_at: string
+  updated_at: string
+}
 
 // ============================================================================
 // Utility Functions
@@ -239,6 +281,12 @@ export async function listSources(params?: {
   offset?: number
   limit?: number
   active_only?: boolean
+  saved_view_id?: string
+  search?: string
+  status?: 'active' | 'inactive'
+  owner_user_id?: string
+  team_id?: string
+  domain_id?: string
 }): Promise<SourceListResponse> {
   // Build dedupe key from params for consistent caching
   const dedupeKey = `sources-list-${JSON.stringify(params ?? {})}`
@@ -256,6 +304,9 @@ export async function createSource(data: {
   description?: string
   environment?: string
   workspace_id?: string
+  owner_user_id?: string
+  team_id?: string
+  domain_id?: string
 }): Promise<Source> {
   return request<Source>('/sources', {
     method: 'POST',
@@ -327,4 +378,30 @@ export async function rotateSourceCredentials(
     method: 'POST',
     body: JSON.stringify({ credentials }),
   })
+}
+
+export async function getSourceOwnership(sourceId: string): Promise<SourceOwnership> {
+  return request<SourceOwnership>(`/sources/${sourceId}/ownership`)
+}
+
+export async function updateSourceOwnership(
+  sourceId: string,
+  payload: {
+    owner_user_id?: string | null
+    team_id?: string | null
+    domain_id?: string | null
+  }
+): Promise<SourceOwnership> {
+  return request<SourceOwnership>(`/sources/${sourceId}/ownership`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function listTeams(): Promise<Team[]> {
+  return request<Team[]>('/teams')
+}
+
+export async function listDomains(): Promise<Domain[]> {
+  return request<Domain[]>('/domains')
 }

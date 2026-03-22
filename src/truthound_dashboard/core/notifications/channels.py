@@ -169,6 +169,7 @@ class SlackChannel(BaseNotificationChannel):
             "webhook_url": {
                 "type": "string",
                 "required": True,
+                "secret": True,
                 "description": "Slack incoming webhook URL",
             },
             "channel": {
@@ -273,6 +274,7 @@ class EmailChannel(BaseNotificationChannel):
             "smtp_password": {
                 "type": "string",
                 "required": False,
+                "secret": True,
                 "description": "SMTP authentication password",
             },
             "use_tls": {
@@ -308,6 +310,7 @@ class EmailChannel(BaseNotificationChannel):
             "api_key": {
                 "type": "string",
                 "required": False,
+                "secret": True,
                 "description": "API key for SendGrid/SES",
             },
         }
@@ -368,6 +371,7 @@ class TeamsChannel(BaseNotificationChannel):
             "webhook_url": {
                 "type": "string",
                 "required": True,
+                "secret": True,
                 "description": "Teams incoming webhook URL",
             },
             "channel": {
@@ -431,6 +435,7 @@ class DiscordChannel(BaseNotificationChannel):
             "webhook_url": {
                 "type": "string",
                 "required": True,
+                "secret": True,
                 "description": "Discord webhook URL",
             },
             "username": {
@@ -505,6 +510,7 @@ class TelegramChannel(BaseNotificationChannel):
             "bot_token": {
                 "type": "string",
                 "required": True,
+                "secret": True,
                 "description": "Telegram Bot Token",
             },
             "chat_id": {
@@ -575,6 +581,7 @@ class PagerDutyChannel(BaseNotificationChannel):
             "routing_key": {
                 "type": "string",
                 "required": True,
+                "secret": True,
                 "description": "PagerDuty Events API v2 routing key",
             },
             "severity": {
@@ -732,6 +739,7 @@ class OpsGenieChannel(BaseNotificationChannel):
             "api_key": {
                 "type": "string",
                 "required": True,
+                "secret": True,
                 "description": "OpsGenie API key",
             },
             "region": {
@@ -816,6 +824,7 @@ class GitHubChannel(BaseNotificationChannel):
             "token": {
                 "type": "string",
                 "required": True,
+                "secret": True,
                 "description": "GitHub personal access token",
             },
             "owner": {

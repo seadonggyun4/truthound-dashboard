@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, ClassVar
+from truthound_dashboard.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ class TriggerContext:
     source_id: str
     last_run_at: datetime | None = None
     trigger_count: int = 0
-    current_time: datetime = field(default_factory=datetime.utcnow)
+    current_time: datetime = field(default_factory=utc_now)
     profile_data: dict[str, Any] | None = None
     baseline_profile: dict[str, Any] | None = None
     event_data: dict[str, Any] | None = None
@@ -73,7 +74,7 @@ class TriggerEvaluation:
             ),
             "details": self.details,
             "confidence": self.confidence,
-            "evaluated_at": datetime.utcnow().isoformat(),
+            "evaluated_at": utc_now().isoformat(),
         }
 
 

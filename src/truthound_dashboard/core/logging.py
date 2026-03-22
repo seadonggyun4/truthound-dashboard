@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from truthound_dashboard.config import get_settings
+from truthound_dashboard.time import utc_now
 
 
 @dataclass
@@ -93,7 +94,7 @@ class JsonFormatter(logging.Formatter):
             JSON string.
         """
         log_data = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": utc_now().isoformat() + "Z",
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -404,7 +405,7 @@ class AuditLogger:
         """
         event = {
             "event_type": event_type,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": utc_now().isoformat() + "Z",
             "user": user or "system",
             "resource": resource,
             "action": action,

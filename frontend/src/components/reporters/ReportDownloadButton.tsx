@@ -8,17 +8,17 @@ import { useState } from 'react'
 import { Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
-import type { GeneratedReport, ReportFormatType } from '@/types/reporters'
-import { getFormatExtension, isReportDownloadable } from '@/types/reporters'
-import { downloadSavedReport, downloadValidationReport } from '@/api/modules/reports'
+import type { ArtifactRecord, ArtifactFormat } from '@/api/modules/artifacts'
+import { downloadArtifact, generateReportArtifact } from '@/api/modules/artifacts'
+import { getFormatExtension } from '@/types/reporters'
 
 interface ReportDownloadButtonProps {
   /** Saved report to download */
-  report?: GeneratedReport
+  artifact?: ArtifactRecord
   /** Validation ID for direct generation */
   validationId?: string
   /** Format for direct generation */
-  format?: ReportFormatType
+  format?: ArtifactFormat
   /** Custom filename (without extension) */
   filename?: string
   /** Button variant */
@@ -32,7 +32,7 @@ interface ReportDownloadButtonProps {
 }
 
 export function ReportDownloadButton({
-  report,
+  artifact,
   validationId,
   format = 'html',
   filename,
@@ -45,7 +45,7 @@ export function ReportDownloadButton({
   const [isLoading, setIsLoading] = useState(false)
 
   // Determine if button should be disabled
-  const isDisabled = report ? !isReportDownloadable(report) : !validationId
+  const isDisabled = artifact ? artifact.status !== 'completed' : !validationId
 
   const handleDownload = async () => {
     if (isDisabled) return
@@ -56,14 +56,13 @@ export function ReportDownloadButton({
       let blob: Blob
       let downloadFilename: string
 
-      if (report) {
-        // Download saved report
-        blob = await downloadSavedReport(report.id)
-        downloadFilename = filename || report.name
-        downloadFilename += getFormatExtension(report.format)
+      if (artifact) {
+        blob = await downloadArtifact(artifact.id)
+        downloadFilename = filename || artifact.title
+        downloadFilename += getFormatExtension(artifact.format)
       } else if (validationId) {
-        // Generate and download
-        blob = await downloadValidationReport(validationId, { format: format as 'html' | 'csv' | 'json' })
+        const generatedArtifact = await generateReportArtifact(validationId, { format })
+        blob = await downloadArtifact(generatedArtifact.id)
         downloadFilename = filename || `report_${validationId.slice(0, 8)}`
         downloadFilename += getFormatExtension(format)
       } else {

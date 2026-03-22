@@ -17,6 +17,7 @@ from uuid import uuid4
 
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
+from truthound_dashboard.time import utc_now
 
 
 class Base(DeclarativeBase):
@@ -68,14 +69,14 @@ class TimestampMixin:
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=utc_now,
         server_default=func.now(),
         nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utc_now,
+        onupdate=utc_now,
         server_default=func.now(),
         nullable=False,
     )
@@ -101,7 +102,7 @@ class SoftDeleteMixin:
 
     def soft_delete(self) -> None:
         """Mark record as deleted."""
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = utc_now()
 
     def restore(self) -> None:
         """Restore soft-deleted record."""

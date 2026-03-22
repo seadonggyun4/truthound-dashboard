@@ -14,9 +14,10 @@ from enum import Enum
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
-from pydantic import Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
 from .base import BaseSchema
+from truthound_dashboard.time import utc_now
 
 
 # =============================================================================
@@ -336,7 +337,7 @@ class OpenLineageEvent(BaseSchema):
     """
 
     event_time: str = Field(
-        default_factory=lambda: datetime.utcnow().isoformat() + "Z",
+        default_factory=lambda: utc_now().isoformat() + "Z",
         description="Event timestamp (ISO 8601 with timezone)",
     )
     event_type: RunState = Field(
@@ -364,8 +365,7 @@ class OpenLineageEvent(BaseSchema):
         description="Output datasets produced by the job",
     )
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 # =============================================================================
@@ -420,7 +420,7 @@ class OpenLineageExportResponse(BaseSchema):
     total_datasets: int = Field(..., description="Total unique datasets")
     total_jobs: int = Field(..., description="Total jobs represented")
     export_time: str = Field(
-        default_factory=lambda: datetime.utcnow().isoformat() + "Z",
+        default_factory=lambda: utc_now().isoformat() + "Z",
         description="Export timestamp",
     )
 

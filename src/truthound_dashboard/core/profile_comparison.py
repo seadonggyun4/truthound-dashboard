@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from truthound_dashboard.db import Profile, Source
-from truthound_dashboard.core.services import ProfileRepository
+from truthound_dashboard.core.domains.profiles import ProfileRepository
 from truthound_dashboard.core.statistics import (
     StatisticalTestResult,
     comprehensive_comparison,
@@ -38,6 +38,7 @@ from truthound_dashboard.schemas.profile_comparison import (
     ProfileTrendResponse,
     TrendDirection,
 )
+from truthound_dashboard.time import utc_now
 
 
 def _parse_percentage(value: str | None) -> float:
@@ -381,7 +382,7 @@ class ProfileComparisonService:
             column_comparisons=column_comparisons,
             significant_changes=significant_count,
             summary=summary,
-            compared_at=datetime.utcnow(),
+            compared_at=utc_now(),
         )
 
     async def get_latest_comparison(
@@ -460,7 +461,7 @@ class ProfileComparisonService:
         """
         # Calculate time range
         period_delta = self._parse_period(period)
-        start_time = datetime.utcnow() - period_delta
+        start_time = utc_now() - period_delta
 
         # Get profiles within period
         profiles = await self.profile_repo.get_for_source(
@@ -573,7 +574,7 @@ class ProfileComparisonService:
         # Build summary
         summary = {
             "start_date": start_time.isoformat(),
-            "end_date": datetime.utcnow().isoformat(),
+            "end_date": utc_now().isoformat(),
             "profile_count": len(data_points),
         }
 

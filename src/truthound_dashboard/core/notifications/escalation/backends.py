@@ -44,6 +44,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Callable
 from uuid import uuid4
+from truthound_dashboard.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -181,8 +182,8 @@ class JobData:
     last_run_time: datetime | None = None
     last_error: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=utc_now)
+    updated_at: datetime = field(default_factory=utc_now)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -232,12 +233,12 @@ class JobData:
             created_at=(
                 datetime.fromisoformat(data["created_at"])
                 if data.get("created_at")
-                else datetime.utcnow()
+                else utc_now()
             ),
             updated_at=(
                 datetime.fromisoformat(data["updated_at"])
                 if data.get("updated_at")
-                else datetime.utcnow()
+                else utc_now()
             ),
         )
 
@@ -490,7 +491,7 @@ class SchedulerBackend(ABC):
         if not job.next_run_time:
             return False
 
-        now = now or datetime.utcnow()
+        now = now or utc_now()
         grace_deadline = job.next_run_time + timedelta(
             seconds=self.config.misfire_grace_time
         )
@@ -512,14 +513,14 @@ class SchedulerBackend(ABC):
 
         # Mark as misfired
         job.state = JobState.MISFIRED
-        job.updated_at = datetime.utcnow()
+        job.updated_at = utc_now()
         job.metadata["misfire_count"] = job.metadata.get("misfire_count", 0) + 1
-        job.metadata["last_misfire_at"] = datetime.utcnow().isoformat()
+        job.metadata["last_misfire_at"] = utc_now().isoformat()
 
         # Calculate new next_run_time based on trigger
         if job.trigger_type == "interval":
             interval_seconds = job.trigger_args.get("seconds", 60)
-            job.next_run_time = datetime.utcnow() + timedelta(seconds=interval_seconds)
+            job.next_run_time = utc_now() + timedelta(seconds=interval_seconds)
             job.state = JobState.PENDING
 
         await self.update_job(job)
@@ -599,10 +600,10 @@ class InMemorySchedulerBackend(SchedulerBackend):
         # Wait for running jobs
         if self._running_jobs:
             logger.info(f"Waiting for {len(self._running_jobs)} running jobs...")
-            wait_until = datetime.utcnow() + timedelta(
+            wait_until = utc_now() + timedelta(
                 seconds=self.config.shutdown_timeout
             )
-            while self._running_jobs and datetime.utcnow() < wait_until:
+            while self._running_jobs and utc_now() < wait_until:
                 await asyncio.sleep(0.5)
 
             if self._running_jobs:
@@ -620,8 +621,8 @@ class InMemorySchedulerBackend(SchedulerBackend):
             if job.id in self._jobs:
                 raise ValueError(f"Job {job.id} already exists")
 
-            job.created_at = datetime.utcnow()
-            job.updated_at = datetime.utcnow()
+            job.created_at = utc_now()
+            job.updated_at = utc_now()
             self._jobs[job.id] = job
             logger.debug(f"Added job {job.id} ({job.name})")
             return job
@@ -632,7 +633,7 @@ class InMemorySchedulerBackend(SchedulerBackend):
             if job.id not in self._jobs:
                 raise KeyError(f"Job {job.id} not found")
 
-            job.updated_at = datetime.utcnow()
+            job.updated_at = utc_now()
             self._jobs[job.id] = job
             logger.debug(f"Updated job {job.id} ({job.name})")
             return job
@@ -671,7 +672,7 @@ class InMemorySchedulerBackend(SchedulerBackend):
 
     async def get_due_jobs(self, now: datetime | None = None) -> list[JobData]:
         """Get jobs due for execution."""
-        now = now or datetime.utcnow()
+        now = now or utc_now()
         due_jobs = []
 
         for job in self._jobs.values():
@@ -702,8 +703,8 @@ class InMemorySchedulerBackend(SchedulerBackend):
                 return False
 
             job.state = JobState.RUNNING
-            job.last_run_time = datetime.utcnow()
-            job.updated_at = datetime.utcnow()
+            job.last_run_time = utc_now()
+            job.updated_at = utc_now()
             self._running_jobs.add(job_id)
             logger.debug(f"Job {job_id} marked as running")
             return True
@@ -723,7 +724,7 @@ class InMemorySchedulerBackend(SchedulerBackend):
             job.next_run_time = next_run_time
             job.retry_count = 0
             job.last_error = None
-            job.updated_at = datetime.utcnow()
+            job.updated_at = utc_now()
             self._running_jobs.discard(job_id)
             logger.debug(f"Job {job_id} marked as completed")
             return True
@@ -741,13 +742,13 @@ class InMemorySchedulerBackend(SchedulerBackend):
                 return False
 
             job.last_error = error
-            job.updated_at = datetime.utcnow()
+            job.updated_at = utc_now()
             self._running_jobs.discard(job_id)
 
             if schedule_retry and job.retry_count < self.config.max_retries:
                 job.retry_count += 1
                 delay = self.calculate_retry_delay(job.retry_count)
-                job.next_run_time = datetime.utcnow() + timedelta(seconds=delay)
+                job.next_run_time = utc_now() + timedelta(seconds=delay)
                 job.state = JobState.PENDING
                 logger.info(
                     f"Job {job_id} failed, retry {job.retry_count}/{self.config.max_retries} "
@@ -859,10 +860,10 @@ class SQLAlchemySchedulerBackend(SchedulerBackend):
         # Wait for running jobs
         if self._running_jobs:
             logger.info(f"Waiting for {len(self._running_jobs)} running jobs...")
-            wait_until = datetime.utcnow() + timedelta(
+            wait_until = utc_now() + timedelta(
                 seconds=self.config.shutdown_timeout
             )
-            while self._running_jobs and datetime.utcnow() < wait_until:
+            while self._running_jobs and utc_now() < wait_until:
                 await asyncio.sleep(0.5)
 
             # Mark remaining running jobs as pending for recovery on restart
@@ -903,7 +904,7 @@ class SQLAlchemySchedulerBackend(SchedulerBackend):
                 for db_job in running_jobs:
                     logger.info(f"Recovering job {db_job.id} from running state")
                     db_job.state = JobState.PENDING.value
-                    db_job.updated_at = datetime.utcnow()
+                    db_job.updated_at = utc_now()
 
                 await session.commit()
 
@@ -921,7 +922,7 @@ class SQLAlchemySchedulerBackend(SchedulerBackend):
                 if self._shutdown:
                     break
 
-                older_than = datetime.utcnow() - timedelta(
+                older_than = utc_now() - timedelta(
                     days=self.config.job_retention_days
                 )
                 removed = await self.cleanup_old_jobs(older_than)
@@ -992,8 +993,8 @@ class SQLAlchemySchedulerBackend(SchedulerBackend):
                     if result.scalar_one_or_none():
                         raise ValueError(f"Job {job.id} already exists")
 
-                    job.created_at = datetime.utcnow()
-                    job.updated_at = datetime.utcnow()
+                    job.created_at = utc_now()
+                    job.updated_at = utc_now()
 
                     db_job = self._job_to_model(job)
                     session.add(db_job)
@@ -1026,7 +1027,7 @@ class SQLAlchemySchedulerBackend(SchedulerBackend):
                     if not db_job:
                         raise KeyError(f"Job {job.id} not found")
 
-                    job.updated_at = datetime.utcnow()
+                    job.updated_at = utc_now()
 
                     db_job.name = job.name
                     db_job.func_ref = job.func_ref
@@ -1135,7 +1136,7 @@ class SQLAlchemySchedulerBackend(SchedulerBackend):
         from ....db import get_session
         from ....db.models import SchedulerJob
 
-        now = now or datetime.utcnow()
+        now = now or utc_now()
 
         try:
             async with get_session() as session:
@@ -1192,8 +1193,8 @@ class SQLAlchemySchedulerBackend(SchedulerBackend):
                         return False
 
                     db_job.state = JobState.RUNNING.value
-                    db_job.last_run_time = datetime.utcnow()
-                    db_job.updated_at = datetime.utcnow()
+                    db_job.last_run_time = utc_now()
+                    db_job.updated_at = utc_now()
 
                     await session.commit()
                     self._running_jobs.add(job_id)
@@ -1234,7 +1235,7 @@ class SQLAlchemySchedulerBackend(SchedulerBackend):
 
                     db_job.retry_count = 0
                     db_job.last_error = None
-                    db_job.updated_at = datetime.utcnow()
+                    db_job.updated_at = utc_now()
 
                     await session.commit()
                     self._running_jobs.discard(job_id)
@@ -1269,13 +1270,13 @@ class SQLAlchemySchedulerBackend(SchedulerBackend):
                         return False
 
                     db_job.last_error = error
-                    db_job.updated_at = datetime.utcnow()
+                    db_job.updated_at = utc_now()
                     self._running_jobs.discard(job_id)
 
                     if schedule_retry and db_job.retry_count < self.config.max_retries:
                         db_job.retry_count += 1
                         delay = self.calculate_retry_delay(db_job.retry_count)
-                        db_job.next_run_time = datetime.utcnow() + timedelta(seconds=delay)
+                        db_job.next_run_time = utc_now() + timedelta(seconds=delay)
                         db_job.state = JobState.PENDING.value
                         logger.info(
                             f"Job {job_id} failed, retry {db_job.retry_count}/"

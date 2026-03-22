@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from truthound_dashboard.time import utc_now
 
 # Optional Redis dependency
 try:
@@ -60,7 +61,7 @@ class DeduplicationEntry:
     def is_expired(self, window_seconds: int) -> bool:
         """Check if entry has expired based on window."""
         expiry = self.last_seen + timedelta(seconds=window_seconds)
-        return datetime.utcnow() > expiry
+        return utc_now() > expiry
 
 
 class BaseDeduplicationStore(ABC):
@@ -152,7 +153,7 @@ class InMemoryDeduplicationStore(BaseDeduplicationStore):
 
     def record(self, fingerprint: str, metadata: dict[str, Any] | None = None) -> None:
         """Record a fingerprint."""
-        now = datetime.utcnow()
+        now = utc_now()
         with self._lock:
             if fingerprint in self._entries:
                 entry = self._entries[fingerprint]
@@ -176,7 +177,7 @@ class InMemoryDeduplicationStore(BaseDeduplicationStore):
 
     def cleanup(self, max_age_seconds: int) -> int:
         """Remove expired entries."""
-        cutoff = datetime.utcnow() - timedelta(seconds=max_age_seconds)
+        cutoff = utc_now() - timedelta(seconds=max_age_seconds)
         removed = 0
 
         with self._lock:

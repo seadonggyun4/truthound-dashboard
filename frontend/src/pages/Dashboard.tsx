@@ -48,6 +48,13 @@ export default function Dashboard() {
   const activeIncidents = overviewResponse?.incidents.active ?? 0
   const totalArtifacts = overviewResponse?.artifacts.total ?? 0
   const quickViews = overviewResponse?.saved_views ?? []
+  const incidentBacklog = overviewResponse?.incident_backlog ?? []
+  const assigneeWorkload = overviewResponse?.assignee_workload ?? []
+  const artifactTypes = overviewResponse?.artifact_types ?? []
+  const sourcesByOwner = overviewResponse?.sources_by_owner ?? []
+  const sourcesByTeam = overviewResponse?.sources_by_team ?? []
+  const sourcesByDomain = overviewResponse?.sources_by_domain ?? []
+  const ownershipFreshness = overviewResponse?.artifact_freshness_by_ownership ?? []
 
   // Create a helper to get validation status labels
   const getValidationLabel = useMemo(() => {
@@ -335,10 +342,12 @@ export default function Dashboard() {
             <div className="space-y-3">
               {quickViews.map((view) => {
                 const href =
-                  view.scope === 'reports'
+                  view.scope === 'artifacts'
                     ? '/reports'
-                    : view.scope === 'incidents'
-                      ? '/notifications/advanced'
+                    : view.scope === 'alerts'
+                      ? '/alerts'
+                    : view.scope === 'history'
+                      ? '/sources'
                       : '/sources'
                 return (
                   <Link
@@ -361,6 +370,186 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Queue Backlog</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Active queue load and current assignee workload.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {incidentBacklog.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No active incident queues.</p>
+            ) : (
+              <div className="space-y-3">
+                {incidentBacklog.map((item) => (
+                  <div key={item.queue_id} className="flex items-center justify-between rounded-lg border p-3">
+                    <span className="font-medium">{item.queue_name}</span>
+                    <Badge variant="outline">{item.count}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium mb-3">Assignee Workload</p>
+              {assigneeWorkload.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No assignees are carrying active incidents.</p>
+              ) : (
+                <div className="space-y-3">
+                  {assigneeWorkload.map((item) => (
+                    <div key={item.user_id ?? item.user_name} className="flex items-center justify-between rounded-lg border p-3">
+                      <span className="font-medium">{item.user_name}</span>
+                      <Badge variant="secondary">{item.count}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Artifact Freshness</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Type split plus freshness for reports and Data Docs.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border p-3">
+                <p className="text-sm text-muted-foreground">Fresh 24h</p>
+                <p className="text-2xl font-bold">{overviewResponse?.artifacts.fresh_24h ?? 0}</p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-sm text-muted-foreground">Stale 7d+</p>
+                <p className="text-2xl font-bold">{overviewResponse?.artifacts.stale ?? 0}</p>
+              </div>
+            </div>
+
+            {artifactTypes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No artifacts generated yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {artifactTypes.map((item) => (
+                  <div key={item.artifact_type} className="flex items-center justify-between rounded-lg border p-3">
+                    <span className="font-medium">
+                      {item.artifact_type === 'datadocs' ? 'Data Docs' : 'Report'}
+                    </span>
+                    <Badge variant="outline">{item.count}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Ownership Coverage</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Owner slices and sources still marked as unowned.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg border p-3">
+              <p className="text-sm text-muted-foreground">Unowned Sources</p>
+              <p className="text-2xl font-bold">{overviewResponse?.sources.unowned ?? 0}</p>
+            </div>
+            {sourcesByOwner.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No ownership assignments yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {sourcesByOwner.slice(0, 5).map((item) => (
+                  <div key={item.id ?? item.name} className="flex items-center justify-between rounded-lg border p-3">
+                    <span className="font-medium">{item.name}</span>
+                    <Badge variant="outline">{item.count}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Team And Domain Slices</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Fleet distribution by team and domain without changing the existing dashboard layout.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm font-medium mb-3">By Team</p>
+              {sourcesByTeam.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No teams assigned.</p>
+              ) : (
+                <div className="space-y-2">
+                  {sourcesByTeam.slice(0, 4).map((item) => (
+                    <div key={item.id ?? item.name} className="flex items-center justify-between rounded-lg border p-3">
+                      <span className="font-medium">{item.name}</span>
+                      <Badge variant="secondary">{item.count}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium mb-3">By Domain</p>
+              {sourcesByDomain.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No domains assigned.</p>
+              ) : (
+                <div className="space-y-2">
+                  {sourcesByDomain.slice(0, 4).map((item) => (
+                    <div key={item.id ?? item.name} className="flex items-center justify-between rounded-lg border p-3">
+                      <span className="font-medium">{item.name}</span>
+                      <Badge variant="outline">{item.count}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Artifact Freshness By Ownership</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Fresh and stale artifacts grouped by owner, team, or domain.
+            </p>
+          </CardHeader>
+          <CardContent>
+            {ownershipFreshness.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No ownership-linked artifacts yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {ownershipFreshness.slice(0, 6).map((item) => (
+                  <div
+                    key={`${item.ownership_type}:${item.ownership_id ?? item.ownership_name}`}
+                    className="rounded-lg border p-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{item.ownership_name}</span>
+                      <Badge variant="outline">{item.ownership_type}</Badge>
+                    </div>
+                    <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
+                      <span>Fresh 24h: {item.fresh_24h}</span>
+                      <span>Stale: {item.stale}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

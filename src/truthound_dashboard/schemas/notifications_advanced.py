@@ -821,6 +821,12 @@ class EscalationIncidentBase(BaseSchema):
     """Base escalation incident schema."""
 
     policy_id: str = Field(..., description="Escalation policy ID")
+    workspace_id: str | None = Field(default=None, description="Workspace ID")
+    queue_id: str | None = Field(default=None, description="Incident queue ID")
+    assignee_user_id: str | None = Field(default=None, description="Assigned user ID")
+    assignee_name: str | None = Field(default=None, description="Assigned user name")
+    assigned_by: str | None = Field(default=None, description="Who assigned the incident")
+    assigned_at: datetime | None = Field(default=None, description="When the incident was assigned")
     incident_ref: str = Field(..., description="External reference (e.g., validation ID)")
     state: EscalationState = Field(
         default=EscalationState.PENDING,
@@ -849,6 +855,52 @@ class EscalationIncidentListResponse(ListResponseWrapper):
     """Schema for escalation incident list response."""
 
     items: list[EscalationIncidentResponse]
+
+
+class IncidentQueueMemberResponse(BaseSchema, IDMixin, TimestampMixin):
+    user_id: str
+    user_name: str
+    email: str
+    is_default_responder: bool = False
+
+
+class IncidentQueueBase(BaseSchema):
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=1000)
+    slug: str | None = Field(default=None, max_length=100)
+    is_default: bool = False
+    is_active: bool = True
+    member_ids: list[str] = Field(default_factory=list)
+
+
+class IncidentQueueCreate(IncidentQueueBase):
+    pass
+
+
+class IncidentQueueUpdate(BaseSchema):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=1000)
+    is_default: bool | None = None
+    is_active: bool | None = None
+    member_ids: list[str] | None = None
+
+
+class IncidentQueueMembershipUpdate(BaseSchema):
+    member_ids: list[str] = Field(default_factory=list)
+
+
+class IncidentQueueResponse(BaseSchema, IDMixin, TimestampMixin):
+    workspace_id: str
+    name: str
+    slug: str
+    description: str | None = None
+    is_default: bool = False
+    is_active: bool = True
+    members: list[IncidentQueueMemberResponse] = Field(default_factory=list)
+
+
+class IncidentQueueListResponse(ListResponseWrapper):
+    items: list[IncidentQueueResponse]
 
 
 class AcknowledgeRequest(BaseModel):

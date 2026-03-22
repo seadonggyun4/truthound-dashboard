@@ -15,6 +15,7 @@ from ..interfaces import (
     ReporterConfig,
     ReportFormatType,
 )
+from truthound_dashboard.time import utc_now
 
 
 class BuiltinJSONReporter(BaseReporter[ReporterConfig]):
@@ -72,7 +73,7 @@ class BuiltinJSONReporter(BaseReporter[ReporterConfig]):
         report_data: dict[str, Any] = {
             "metadata": {
                 "title": config.title,
-                "generated_at": datetime.utcnow().isoformat(),
+                "generated_at": utc_now().isoformat(),
                 "format": self.format.value,
                 "theme": config.theme.value,
                 "locale": config.locale,

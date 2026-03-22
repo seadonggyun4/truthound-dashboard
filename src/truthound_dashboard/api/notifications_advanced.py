@@ -53,10 +53,11 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from ..api.deps import get_control_plane_context, get_session
+from ..api.deps import get_session, require_permission
 from .websocket import notify_incident_state_changed
 from ..core.notifications.metrics.collectors import (
     DeduplicationMetrics,
@@ -133,6 +134,7 @@ from ..schemas.notifications_advanced import (
     TimeRangeFilter,
     TriggerCheckResponse,
 )
+from truthound_dashboard.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +159,14 @@ def get_throttle_metrics() -> ThrottlingMetrics:
 def get_escalation_metrics() -> EscalationMetrics:
     """Get the global escalation metrics instance."""
     return _escalation_metrics
+
+
+def _workspace_filter(model: Any, workspace_id: str) -> Any:
+    """Build a workspace-aware filter that tolerates legacy null rows."""
+    workspace_column = getattr(model, "workspace_id", None)
+    if workspace_column is None:
+        raise AttributeError(f"{model!r} does not define workspace_id")
+    return or_(workspace_column == workspace_id, workspace_column.is_(None))
 
 
 # =============================================================================
@@ -239,13 +249,19 @@ def _escalation_incident_to_response(
                 to_state=event.get("to_state", ""),
                 actor=event.get("actor"),
                 message=event.get("message", ""),
-                timestamp=datetime.fromisoformat(event.get("timestamp", datetime.utcnow().isoformat())),
+                timestamp=datetime.fromisoformat(event.get("timestamp", utc_now().isoformat())),
             )
         )
 
     return EscalationIncidentResponse(
         id=incident.id,
         policy_id=incident.policy_id,
+        workspace_id=incident.workspace_id,
+        queue_id=incident.queue_id,
+        assignee_user_id=incident.assignee_user_id,
+        assignee_name=incident.assignee_user.display_name if getattr(incident, "assignee_user", None) else None,
+        assigned_by=incident.assigned_by_user.display_name if getattr(incident, "assigned_by_user", None) else None,
+        assigned_at=incident.assigned_at,
         incident_ref=incident.incident_ref,
         state=incident.state,
         current_level=incident.current_level,
@@ -384,23 +400,30 @@ async def list_routing_rules(
     limit: int = Query(default=50, ge=1, le=100),
     active_only: bool = Query(default=False),
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:read")),
 ) -> RoutingRuleListResponse:
     """List routing rules ordered by priority."""
-    query = select(RoutingRuleModel).order_by(
-        RoutingRuleModel.priority.desc(),
-        RoutingRuleModel.created_at.desc(),
+    base_query = (
+        select(RoutingRuleModel)
+        .where(_workspace_filter(RoutingRuleModel, context.workspace.id))
+        .order_by(
+            RoutingRuleModel.priority.desc(),
+            RoutingRuleModel.created_at.desc(),
+        )
     )
 
     if active_only:
-        query = query.where(RoutingRuleModel.is_active == True)
+        base_query = base_query.where(RoutingRuleModel.is_active == True)
 
-    query = query.offset(offset).limit(limit)
-    result = await session.execute(query)
+    total_result = await session.execute(base_query)
+    total = len(total_result.scalars().all())
+
+    result = await session.execute(base_query.offset(offset).limit(limit))
     rules = result.scalars().all()
 
     return RoutingRuleListResponse(
         items=[_routing_rule_to_response(r) for r in rules],
-        total=len(rules),
+        total=total,
         offset=offset,
         limit=limit,
     )
@@ -458,6 +481,7 @@ def _validate_rule_config_on_save(
 async def create_routing_rule(
     request: RoutingRuleCreate,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:write")),
 ) -> RoutingRuleResponse:
     """Create a new routing rule.
 
@@ -472,6 +496,7 @@ async def create_routing_rule(
     _validate_rule_config_on_save(request.rule_config)
 
     rule = RoutingRuleModel(
+        workspace_id=context.workspace.id,
         name=request.name,
         rule_config=request.rule_config,
         actions=request.actions,
@@ -491,10 +516,14 @@ async def create_routing_rule(
 async def get_routing_rule(
     rule_id: str,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:read")),
 ) -> RoutingRuleResponse:
     """Get a routing rule by ID."""
     result = await session.execute(
-        select(RoutingRuleModel).where(RoutingRuleModel.id == rule_id)
+        select(RoutingRuleModel).where(
+            RoutingRuleModel.id == rule_id,
+            _workspace_filter(RoutingRuleModel, context.workspace.id),
+        )
     )
     rule = result.scalar_one_or_none()
 
@@ -509,6 +538,7 @@ async def update_routing_rule(
     rule_id: str,
     request: RoutingRuleUpdate,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:write")),
 ) -> RoutingRuleResponse:
     """Update a routing rule.
 
@@ -520,7 +550,10 @@ async def update_routing_rule(
     - Reserved field names
     """
     result = await session.execute(
-        select(RoutingRuleModel).where(RoutingRuleModel.id == rule_id)
+        select(RoutingRuleModel).where(
+            RoutingRuleModel.id == rule_id,
+            _workspace_filter(RoutingRuleModel, context.workspace.id),
+        )
     )
     rule = result.scalar_one_or_none()
 
@@ -556,10 +589,14 @@ async def update_routing_rule(
 async def delete_routing_rule(
     rule_id: str,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:write")),
 ) -> MessageResponse:
     """Delete a routing rule."""
     result = await session.execute(
-        select(RoutingRuleModel).where(RoutingRuleModel.id == rule_id)
+        select(RoutingRuleModel).where(
+            RoutingRuleModel.id == rule_id,
+            _workspace_filter(RoutingRuleModel, context.workspace.id),
+        )
     )
     rule = result.scalar_one_or_none()
 
@@ -710,7 +747,7 @@ async def validate_expression(
         severity="high",
         issues=["null_values", "duplicates"],
         pass_rate=0.85,
-        timestamp=datetime.utcnow(),
+        timestamp=utc_now(),
         metadata={
             "environment": "production",
             "table": "orders",
@@ -788,20 +825,26 @@ async def list_deduplication_configs(
     limit: int = Query(default=50, ge=1, le=100),
     active_only: bool = Query(default=False),
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:read")),
 ) -> DeduplicationConfigListResponse:
     """List deduplication configurations."""
-    query = select(DeduplicationConfig).order_by(DeduplicationConfig.created_at.desc())
+    base_query = (
+        select(DeduplicationConfig)
+        .where(_workspace_filter(DeduplicationConfig, context.workspace.id))
+        .order_by(DeduplicationConfig.created_at.desc())
+    )
 
     if active_only:
-        query = query.where(DeduplicationConfig.is_active == True)
+        base_query = base_query.where(DeduplicationConfig.is_active == True)
 
-    query = query.offset(offset).limit(limit)
-    result = await session.execute(query)
+    total_result = await session.execute(base_query)
+    total = len(total_result.scalars().all())
+    result = await session.execute(base_query.offset(offset).limit(limit))
     configs = result.scalars().all()
 
     return DeduplicationConfigListResponse(
         items=[_dedup_config_to_response(c) for c in configs],
-        total=len(configs),
+        total=total,
         offset=offset,
         limit=limit,
     )
@@ -811,9 +854,11 @@ async def list_deduplication_configs(
 async def create_deduplication_config(
     request: DeduplicationConfigCreate,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:write")),
 ) -> DeduplicationConfigResponse:
     """Create a new deduplication configuration."""
     config = DeduplicationConfig(
+        workspace_id=context.workspace.id,
         name=request.name,
         strategy=request.strategy.value,
         policy=request.policy.value,
@@ -831,10 +876,14 @@ async def create_deduplication_config(
 async def get_deduplication_config(
     config_id: str,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:read")),
 ) -> DeduplicationConfigResponse:
     """Get a deduplication config by ID."""
     result = await session.execute(
-        select(DeduplicationConfig).where(DeduplicationConfig.id == config_id)
+        select(DeduplicationConfig).where(
+            DeduplicationConfig.id == config_id,
+            _workspace_filter(DeduplicationConfig, context.workspace.id),
+        )
     )
     config = result.scalar_one_or_none()
 
@@ -849,10 +898,14 @@ async def update_deduplication_config(
     config_id: str,
     request: DeduplicationConfigUpdate,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:write")),
 ) -> DeduplicationConfigResponse:
     """Update a deduplication config."""
     result = await session.execute(
-        select(DeduplicationConfig).where(DeduplicationConfig.id == config_id)
+        select(DeduplicationConfig).where(
+            DeduplicationConfig.id == config_id,
+            _workspace_filter(DeduplicationConfig, context.workspace.id),
+        )
     )
     config = result.scalar_one_or_none()
 
@@ -880,10 +933,14 @@ async def update_deduplication_config(
 async def delete_deduplication_config(
     config_id: str,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:write")),
 ) -> MessageResponse:
     """Delete a deduplication config."""
     result = await session.execute(
-        select(DeduplicationConfig).where(DeduplicationConfig.id == config_id)
+        select(DeduplicationConfig).where(
+            DeduplicationConfig.id == config_id,
+            _workspace_filter(DeduplicationConfig, context.workspace.id),
+        )
     )
     config = result.scalar_one_or_none()
 
@@ -1000,22 +1057,28 @@ async def list_throttling_configs(
     active_only: bool = Query(default=False),
     channel_id: str | None = Query(default=None),
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:read")),
 ) -> ThrottlingConfigListResponse:
     """List throttling configurations."""
-    query = select(ThrottlingConfig).order_by(ThrottlingConfig.created_at.desc())
+    base_query = (
+        select(ThrottlingConfig)
+        .where(_workspace_filter(ThrottlingConfig, context.workspace.id))
+        .order_by(ThrottlingConfig.created_at.desc())
+    )
 
     if active_only:
-        query = query.where(ThrottlingConfig.is_active == True)
+        base_query = base_query.where(ThrottlingConfig.is_active == True)
     if channel_id is not None:
-        query = query.where(ThrottlingConfig.channel_id == channel_id)
+        base_query = base_query.where(ThrottlingConfig.channel_id == channel_id)
 
-    query = query.offset(offset).limit(limit)
-    result = await session.execute(query)
+    total_result = await session.execute(base_query)
+    total = len(total_result.scalars().all())
+    result = await session.execute(base_query.offset(offset).limit(limit))
     configs = result.scalars().all()
 
     return ThrottlingConfigListResponse(
         items=[_throttle_config_to_response(c) for c in configs],
-        total=len(configs),
+        total=total,
         offset=offset,
         limit=limit,
     )
@@ -1025,9 +1088,11 @@ async def list_throttling_configs(
 async def create_throttling_config(
     request: ThrottlingConfigCreate,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:write")),
 ) -> ThrottlingConfigResponse:
     """Create a new throttling configuration."""
     config = ThrottlingConfig(
+        workspace_id=context.workspace.id,
         name=request.name,
         per_minute=request.per_minute,
         per_hour=request.per_hour,
@@ -1047,10 +1112,14 @@ async def create_throttling_config(
 async def get_throttling_config(
     config_id: str,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:read")),
 ) -> ThrottlingConfigResponse:
     """Get a throttling config by ID."""
     result = await session.execute(
-        select(ThrottlingConfig).where(ThrottlingConfig.id == config_id)
+        select(ThrottlingConfig).where(
+            ThrottlingConfig.id == config_id,
+            _workspace_filter(ThrottlingConfig, context.workspace.id),
+        )
     )
     config = result.scalar_one_or_none()
 
@@ -1065,10 +1134,14 @@ async def update_throttling_config(
     config_id: str,
     request: ThrottlingConfigUpdate,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:write")),
 ) -> ThrottlingConfigResponse:
     """Update a throttling config."""
     result = await session.execute(
-        select(ThrottlingConfig).where(ThrottlingConfig.id == config_id)
+        select(ThrottlingConfig).where(
+            ThrottlingConfig.id == config_id,
+            _workspace_filter(ThrottlingConfig, context.workspace.id),
+        )
     )
     config = result.scalar_one_or_none()
 
@@ -1100,10 +1173,14 @@ async def update_throttling_config(
 async def delete_throttling_config(
     config_id: str,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:write")),
 ) -> MessageResponse:
     """Delete a throttling config."""
     result = await session.execute(
-        select(ThrottlingConfig).where(ThrottlingConfig.id == config_id)
+        select(ThrottlingConfig).where(
+            ThrottlingConfig.id == config_id,
+            _workspace_filter(ThrottlingConfig, context.workspace.id),
+        )
     )
     config = result.scalar_one_or_none()
 
@@ -1220,22 +1297,26 @@ async def list_escalation_policies(
     limit: int = Query(default=50, ge=1, le=100),
     active_only: bool = Query(default=False),
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:read")),
 ) -> EscalationPolicyListResponse:
     """List escalation policies."""
-    query = select(EscalationPolicyModel).order_by(
-        EscalationPolicyModel.created_at.desc()
+    base_query = (
+        select(EscalationPolicyModel)
+        .where(_workspace_filter(EscalationPolicyModel, context.workspace.id))
+        .order_by(EscalationPolicyModel.created_at.desc())
     )
 
     if active_only:
-        query = query.where(EscalationPolicyModel.is_active == True)
+        base_query = base_query.where(EscalationPolicyModel.is_active == True)
 
-    query = query.offset(offset).limit(limit)
-    result = await session.execute(query)
+    total_result = await session.execute(base_query)
+    total = len(total_result.scalars().all())
+    result = await session.execute(base_query.offset(offset).limit(limit))
     policies = result.scalars().all()
 
     return EscalationPolicyListResponse(
         items=[_escalation_policy_to_response(p) for p in policies],
-        total=len(policies),
+        total=total,
         offset=offset,
         limit=limit,
     )
@@ -1245,12 +1326,14 @@ async def list_escalation_policies(
 async def create_escalation_policy(
     request: EscalationPolicyCreate,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:write")),
 ) -> EscalationPolicyResponse:
     """Create a new escalation policy."""
     # Convert levels to dict format
     levels = [level.model_dump() for level in request.levels]
 
     policy = EscalationPolicyModel(
+        workspace_id=context.workspace.id,
         name=request.name,
         description=request.description,
         levels=levels,
@@ -1269,10 +1352,14 @@ async def create_escalation_policy(
 async def get_escalation_policy(
     policy_id: str,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:read")),
 ) -> EscalationPolicyResponse:
     """Get an escalation policy by ID."""
     result = await session.execute(
-        select(EscalationPolicyModel).where(EscalationPolicyModel.id == policy_id)
+        select(EscalationPolicyModel).where(
+            EscalationPolicyModel.id == policy_id,
+            _workspace_filter(EscalationPolicyModel, context.workspace.id),
+        )
     )
     policy = result.scalar_one_or_none()
 
@@ -1287,10 +1374,14 @@ async def update_escalation_policy(
     policy_id: str,
     request: EscalationPolicyUpdate,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:write")),
 ) -> EscalationPolicyResponse:
     """Update an escalation policy."""
     result = await session.execute(
-        select(EscalationPolicyModel).where(EscalationPolicyModel.id == policy_id)
+        select(EscalationPolicyModel).where(
+            EscalationPolicyModel.id == policy_id,
+            _workspace_filter(EscalationPolicyModel, context.workspace.id),
+        )
     )
     policy = result.scalar_one_or_none()
 
@@ -1320,10 +1411,14 @@ async def update_escalation_policy(
 async def delete_escalation_policy(
     policy_id: str,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:write")),
 ) -> MessageResponse:
     """Delete an escalation policy."""
     result = await session.execute(
-        select(EscalationPolicyModel).where(EscalationPolicyModel.id == policy_id)
+        select(EscalationPolicyModel).where(
+            EscalationPolicyModel.id == policy_id,
+            _workspace_filter(EscalationPolicyModel, context.workspace.id),
+        )
     )
     policy = result.scalar_one_or_none()
 
@@ -1347,17 +1442,36 @@ async def list_escalation_incidents(
     limit: int = Query(default=50, ge=1, le=100),
     policy_id: str | None = Query(default=None),
     state: str | None = Query(default=None),
+    queue_id: str | None = Query(default=None),
+    assignee_user_id: str | None = Query(default=None),
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:read")),
 ) -> EscalationIncidentListResponse:
     """List escalation incidents."""
-    query = select(EscalationIncidentModel).order_by(
-        EscalationIncidentModel.created_at.desc()
+    query = (
+        select(EscalationIncidentModel)
+        .options(
+            selectinload(EscalationIncidentModel.queue),
+            selectinload(EscalationIncidentModel.assignee_user),
+            selectinload(EscalationIncidentModel.assigned_by_user),
+        )
+        .where(
+            or_(
+                EscalationIncidentModel.workspace_id == context.workspace.id,
+                EscalationIncidentModel.workspace_id.is_(None),
+            )
+        )
+        .order_by(EscalationIncidentModel.created_at.desc())
     )
 
     if policy_id is not None:
         query = query.where(EscalationIncidentModel.policy_id == policy_id)
     if state is not None:
         query = query.where(EscalationIncidentModel.state == state)
+    if queue_id is not None:
+        query = query.where(EscalationIncidentModel.queue_id == queue_id)
+    if assignee_user_id is not None:
+        query = query.where(EscalationIncidentModel.assignee_user_id == assignee_user_id)
 
     query = query.offset(offset).limit(limit)
     result = await session.execute(query)
@@ -1376,10 +1490,22 @@ async def list_active_incidents(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:read")),
 ) -> EscalationIncidentListResponse:
     """List active (non-resolved) escalation incidents."""
     query = (
         select(EscalationIncidentModel)
+        .options(
+            selectinload(EscalationIncidentModel.queue),
+            selectinload(EscalationIncidentModel.assignee_user),
+            selectinload(EscalationIncidentModel.assigned_by_user),
+        )
+        .where(
+            or_(
+                EscalationIncidentModel.workspace_id == context.workspace.id,
+                EscalationIncidentModel.workspace_id.is_(None),
+            )
+        )
         .where(EscalationIncidentModel.state != EscalationStateEnum.RESOLVED.value)
         .order_by(EscalationIncidentModel.created_at.desc())
         .offset(offset)
@@ -1401,10 +1527,23 @@ async def list_active_incidents(
 async def get_escalation_incident(
     incident_id: str,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:read")),
 ) -> EscalationIncidentResponse:
     """Get an escalation incident by ID."""
     result = await session.execute(
-        select(EscalationIncidentModel).where(EscalationIncidentModel.id == incident_id)
+        select(EscalationIncidentModel)
+        .options(
+            selectinload(EscalationIncidentModel.queue),
+            selectinload(EscalationIncidentModel.assignee_user),
+            selectinload(EscalationIncidentModel.assigned_by_user),
+        )
+        .where(
+            EscalationIncidentModel.id == incident_id,
+            or_(
+                EscalationIncidentModel.workspace_id == context.workspace.id,
+                EscalationIncidentModel.workspace_id.is_(None),
+            ),
+        )
     )
     incident = result.scalar_one_or_none()
 
@@ -1420,11 +1559,17 @@ async def acknowledge_incident(
     request: AcknowledgeRequest,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
-    context=Depends(get_control_plane_context),
+    context=Depends(require_permission("incidents:write")),
 ) -> EscalationIncidentResponse:
     """Acknowledge an escalation incident."""
     result = await session.execute(
-        select(EscalationIncidentModel).where(EscalationIncidentModel.id == incident_id)
+        select(EscalationIncidentModel).where(
+            EscalationIncidentModel.id == incident_id,
+            or_(
+                EscalationIncidentModel.workspace_id == context.workspace.id,
+                EscalationIncidentModel.workspace_id.is_(None),
+            ),
+        )
     )
     incident = result.scalar_one_or_none()
 
@@ -1442,7 +1587,7 @@ async def acknowledge_incident(
     actor = context.user.display_name or context.user.email
     incident.state = EscalationStateEnum.ACKNOWLEDGED.value
     incident.acknowledged_by = actor
-    incident.acknowledged_at = datetime.utcnow()
+    incident.acknowledged_at = utc_now()
     incident.add_event(
         from_state=old_state,
         to_state=EscalationStateEnum.ACKNOWLEDGED.value,
@@ -1475,11 +1620,17 @@ async def resolve_incident(
     request: ResolveRequest,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
-    context=Depends(get_control_plane_context),
+    context=Depends(require_permission("incidents:write")),
 ) -> EscalationIncidentResponse:
     """Resolve an escalation incident."""
     result = await session.execute(
-        select(EscalationIncidentModel).where(EscalationIncidentModel.id == incident_id)
+        select(EscalationIncidentModel).where(
+            EscalationIncidentModel.id == incident_id,
+            or_(
+                EscalationIncidentModel.workspace_id == context.workspace.id,
+                EscalationIncidentModel.workspace_id.is_(None),
+            ),
+        )
     )
     incident = result.scalar_one_or_none()
 
@@ -1494,7 +1645,7 @@ async def resolve_incident(
     actor = context.user.display_name or context.user.email
     incident.state = EscalationStateEnum.RESOLVED.value
     incident.resolved_by = actor
-    incident.resolved_at = datetime.utcnow()
+    incident.resolved_at = utc_now()
     incident.next_escalation_at = None
 
     incident.add_event(
@@ -1526,6 +1677,7 @@ async def resolve_incident(
 @router.get("/escalation/stats", response_model=EscalationStats)
 async def get_escalation_stats(
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:read")),
     start_time: datetime | None = Query(
         default=None,
         description="Start of time range filter (inclusive)",
@@ -1549,34 +1701,38 @@ async def get_escalation_stats(
 
     Uses efficient aggregate queries with optional caching and time-range filtering.
     """
-    # Build time range filter
-    time_range = None
-    if start_time or end_time:
-        time_range = TimeRange(start_time=start_time, end_time=end_time)
-
-    # Use StatsAggregator for efficient queries
-    aggregator = StatsAggregator(session, cache_ttl_seconds=cache_ttl_seconds or 30)
-    db_stats = await aggregator.get_escalation_stats(
-        time_range=time_range,
-        use_cache=use_cache,
-        cache_ttl_seconds=cache_ttl_seconds,
+    incidents_query = select(EscalationIncidentModel).where(
+        _workspace_filter(EscalationIncidentModel, context.workspace.id)
     )
+    policies_query = select(EscalationPolicyModel).where(
+        _workspace_filter(EscalationPolicyModel, context.workspace.id)
+    )
+    if start_time is not None:
+        incidents_query = incidents_query.where(EscalationIncidentModel.created_at >= start_time)
+    if end_time is not None:
+        incidents_query = incidents_query.where(EscalationIncidentModel.created_at < end_time)
 
-    # Also get avg_resolution_time from metrics collector for real-time data
-    metrics_stats = await _escalation_metrics.get_stats()
+    incidents_result = await session.execute(incidents_query)
+    incidents = list(incidents_result.scalars().all())
+    policies_result = await session.execute(policies_query)
+    policies = list(policies_result.scalars().all())
+
+    by_state: dict[str, int] = {}
+    resolution_durations: list[float] = []
+    for incident in incidents:
+        by_state[incident.state] = by_state.get(incident.state, 0) + 1
+        if incident.resolved_at is not None:
+            resolution_durations.append((incident.resolved_at - incident.created_at).total_seconds())
+
     avg_resolution_time_minutes = None
-
-    # Prefer database resolution time if available, otherwise use metrics
-    if db_stats.avg_resolution_time_seconds is not None:
-        avg_resolution_time_minutes = db_stats.avg_resolution_time_seconds / 60.0
-    elif metrics_stats.avg_resolution_time > 0:
-        avg_resolution_time_minutes = metrics_stats.avg_resolution_time / 60.0
+    if resolution_durations:
+        avg_resolution_time_minutes = (sum(resolution_durations) / len(resolution_durations)) / 60.0
 
     return EscalationStats(
-        total_incidents=db_stats.total_incidents,
-        by_state=db_stats.by_state,
-        active_count=db_stats.active_count,
-        total_policies=db_stats.total_policies,
+        total_incidents=len(incidents),
+        by_state=by_state,
+        active_count=len([incident for incident in incidents if incident.state != EscalationStateEnum.RESOLVED.value]),
+        total_policies=len(policies),
         avg_resolution_time_minutes=avg_resolution_time_minutes,
     )
 
@@ -1708,7 +1864,7 @@ async def start_scheduler() -> EscalationSchedulerAction:
             success=False,
             message="Scheduler is already running",
             action="start",
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=utc_now().isoformat(),
         )
 
     await scheduler.start()
@@ -1717,7 +1873,7 @@ async def start_scheduler() -> EscalationSchedulerAction:
         success=True,
         message="Escalation scheduler started",
         action="start",
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=utc_now().isoformat(),
     )
 
 
@@ -1734,7 +1890,7 @@ async def stop_scheduler() -> EscalationSchedulerAction:
             success=False,
             message="Scheduler is not running",
             action="stop",
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=utc_now().isoformat(),
         )
 
     await scheduler.stop()
@@ -1743,7 +1899,7 @@ async def stop_scheduler() -> EscalationSchedulerAction:
         success=True,
         message="Escalation scheduler stopped",
         action="stop",
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=utc_now().isoformat(),
     )
 
 
@@ -1761,7 +1917,7 @@ async def trigger_check() -> TriggerCheckResponse:
             success=False,
             message="Scheduler is not running",
             escalations_processed=0,
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=utc_now().isoformat(),
         )
 
     result = await scheduler.trigger_immediate_check()
@@ -1770,7 +1926,7 @@ async def trigger_check() -> TriggerCheckResponse:
         success=result["success"],
         message=result["message"],
         escalations_processed=result.get("escalations_processed", 0),
-        timestamp=result.get("timestamp", datetime.utcnow().isoformat()),
+        timestamp=result.get("timestamp", utc_now().isoformat()),
     )
 
 
@@ -1827,7 +1983,7 @@ async def reset_scheduler_metrics() -> EscalationSchedulerAction:
         success=True,
         message="Scheduler metrics reset",
         action="reset-metrics",
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=utc_now().isoformat(),
     )
 
 
@@ -1843,6 +1999,7 @@ async def export_notification_config(
     include_throttling: bool = Query(default=True, description="Include throttling configs"),
     include_escalation: bool = Query(default=True, description="Include escalation policies"),
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:read")),
 ) -> NotificationConfigBundle:
     """Export all notification configurations as a portable bundle.
 
@@ -1860,7 +2017,7 @@ async def export_notification_config(
     """
     bundle = NotificationConfigBundle(
         version="1.0",
-        exported_at=datetime.utcnow(),
+        exported_at=utc_now(),
         routing_rules=[],
         deduplication_configs=[],
         throttling_configs=[],
@@ -1870,7 +2027,9 @@ async def export_notification_config(
     # Export routing rules
     if include_routing_rules:
         result = await session.execute(
-            select(RoutingRuleModel).order_by(RoutingRuleModel.priority.desc())
+            select(RoutingRuleModel)
+            .where(_workspace_filter(RoutingRuleModel, context.workspace.id))
+            .order_by(RoutingRuleModel.priority.desc())
         )
         rules = result.scalars().all()
         bundle.routing_rules = [_routing_rule_to_response(r) for r in rules]
@@ -1878,7 +2037,9 @@ async def export_notification_config(
     # Export deduplication configs
     if include_deduplication:
         result = await session.execute(
-            select(DeduplicationConfig).order_by(DeduplicationConfig.created_at.desc())
+            select(DeduplicationConfig)
+            .where(_workspace_filter(DeduplicationConfig, context.workspace.id))
+            .order_by(DeduplicationConfig.created_at.desc())
         )
         configs = result.scalars().all()
         bundle.deduplication_configs = [_dedup_config_to_response(c) for c in configs]
@@ -1886,7 +2047,9 @@ async def export_notification_config(
     # Export throttling configs
     if include_throttling:
         result = await session.execute(
-            select(ThrottlingConfig).order_by(ThrottlingConfig.created_at.desc())
+            select(ThrottlingConfig)
+            .where(_workspace_filter(ThrottlingConfig, context.workspace.id))
+            .order_by(ThrottlingConfig.created_at.desc())
         )
         configs = result.scalars().all()
         bundle.throttling_configs = [_throttle_config_to_response(c) for c in configs]
@@ -1894,7 +2057,9 @@ async def export_notification_config(
     # Export escalation policies
     if include_escalation:
         result = await session.execute(
-            select(EscalationPolicyModel).order_by(EscalationPolicyModel.created_at.desc())
+            select(EscalationPolicyModel)
+            .where(_workspace_filter(EscalationPolicyModel, context.workspace.id))
+            .order_by(EscalationPolicyModel.created_at.desc())
         )
         policies = result.scalars().all()
         bundle.escalation_policies = [_escalation_policy_to_response(p) for p in policies]
@@ -1913,6 +2078,7 @@ async def export_notification_config(
 async def preview_notification_config_import(
     bundle: NotificationConfigBundle,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:write")),
 ) -> ConfigImportPreview:
     """Preview import operation to detect conflicts before execution.
 
@@ -1936,7 +2102,10 @@ async def preview_notification_config_import(
     # Check routing rules for conflicts
     for rule in bundle.routing_rules:
         result = await session.execute(
-            select(RoutingRuleModel).where(RoutingRuleModel.id == rule.id)
+            select(RoutingRuleModel).where(
+                RoutingRuleModel.id == rule.id,
+                _workspace_filter(RoutingRuleModel, context.workspace.id),
+            )
         )
         existing = result.scalar_one_or_none()
         if existing:
@@ -1953,7 +2122,10 @@ async def preview_notification_config_import(
     # Check deduplication configs for conflicts
     for config in bundle.deduplication_configs:
         result = await session.execute(
-            select(DeduplicationConfig).where(DeduplicationConfig.id == config.id)
+            select(DeduplicationConfig).where(
+                DeduplicationConfig.id == config.id,
+                _workspace_filter(DeduplicationConfig, context.workspace.id),
+            )
         )
         existing = result.scalar_one_or_none()
         if existing:
@@ -1970,7 +2142,10 @@ async def preview_notification_config_import(
     # Check throttling configs for conflicts
     for config in bundle.throttling_configs:
         result = await session.execute(
-            select(ThrottlingConfig).where(ThrottlingConfig.id == config.id)
+            select(ThrottlingConfig).where(
+                ThrottlingConfig.id == config.id,
+                _workspace_filter(ThrottlingConfig, context.workspace.id),
+            )
         )
         existing = result.scalar_one_or_none()
         if existing:
@@ -1987,7 +2162,10 @@ async def preview_notification_config_import(
     # Check escalation policies for conflicts
     for policy in bundle.escalation_policies:
         result = await session.execute(
-            select(EscalationPolicyModel).where(EscalationPolicyModel.id == policy.id)
+            select(EscalationPolicyModel).where(
+                EscalationPolicyModel.id == policy.id,
+                _workspace_filter(EscalationPolicyModel, context.workspace.id),
+            )
         )
         existing = result.scalar_one_or_none()
         if existing:
@@ -2018,6 +2196,7 @@ async def preview_notification_config_import(
 async def import_notification_config(
     request: ConfigImportRequest,
     session: AsyncSession = Depends(get_session),
+    context=Depends(require_permission("incidents:write")),
 ) -> ConfigImportResult:
     """Import notification configurations from a bundle.
 
@@ -2050,7 +2229,10 @@ async def import_notification_config(
         for rule in bundle.routing_rules:
             try:
                 result = await session.execute(
-                    select(RoutingRuleModel).where(RoutingRuleModel.id == rule.id)
+                    select(RoutingRuleModel).where(
+                        RoutingRuleModel.id == rule.id,
+                        _workspace_filter(RoutingRuleModel, context.workspace.id),
+                    )
                 )
                 existing = result.scalar_one_or_none()
 
@@ -2073,6 +2255,7 @@ async def import_notification_config(
                         new_id = str(uuid.uuid4())
                         new_rule = RoutingRuleModel(
                             id=new_id,
+                            workspace_id=context.workspace.id,
                             name=f"{rule.name} (imported)",
                             rule_config=rule.rule_config,
                             actions=rule.actions,
@@ -2087,6 +2270,7 @@ async def import_notification_config(
                 else:
                     new_rule = RoutingRuleModel(
                         id=rule.id,
+                        workspace_id=context.workspace.id,
                         name=rule.name,
                         rule_config=rule.rule_config,
                         actions=rule.actions,
@@ -2105,7 +2289,10 @@ async def import_notification_config(
         for config in bundle.deduplication_configs:
             try:
                 result = await session.execute(
-                    select(DeduplicationConfig).where(DeduplicationConfig.id == config.id)
+                    select(DeduplicationConfig).where(
+                        DeduplicationConfig.id == config.id,
+                        _workspace_filter(DeduplicationConfig, context.workspace.id),
+                    )
                 )
                 existing = result.scalar_one_or_none()
 
@@ -2126,6 +2313,7 @@ async def import_notification_config(
                         new_id = str(uuid.uuid4())
                         new_config = DeduplicationConfig(
                             id=new_id,
+                            workspace_id=context.workspace.id,
                             name=f"{config.name} (imported)",
                             strategy=config.strategy,
                             policy=config.policy,
@@ -2138,6 +2326,7 @@ async def import_notification_config(
                 else:
                     new_config = DeduplicationConfig(
                         id=config.id,
+                        workspace_id=context.workspace.id,
                         name=config.name,
                         strategy=config.strategy,
                         policy=config.policy,
@@ -2154,7 +2343,10 @@ async def import_notification_config(
         for config in bundle.throttling_configs:
             try:
                 result = await session.execute(
-                    select(ThrottlingConfig).where(ThrottlingConfig.id == config.id)
+                    select(ThrottlingConfig).where(
+                        ThrottlingConfig.id == config.id,
+                        _workspace_filter(ThrottlingConfig, context.workspace.id),
+                    )
                 )
                 existing = result.scalar_one_or_none()
 
@@ -2177,6 +2369,7 @@ async def import_notification_config(
                         new_id = str(uuid.uuid4())
                         new_config = ThrottlingConfig(
                             id=new_id,
+                            workspace_id=context.workspace.id,
                             name=f"{config.name} (imported)",
                             per_minute=config.per_minute,
                             per_hour=config.per_hour,
@@ -2191,6 +2384,7 @@ async def import_notification_config(
                 else:
                     new_config = ThrottlingConfig(
                         id=config.id,
+                        workspace_id=context.workspace.id,
                         name=config.name,
                         per_minute=config.per_minute,
                         per_hour=config.per_hour,
@@ -2209,7 +2403,10 @@ async def import_notification_config(
         for policy in bundle.escalation_policies:
             try:
                 result = await session.execute(
-                    select(EscalationPolicyModel).where(EscalationPolicyModel.id == policy.id)
+                    select(EscalationPolicyModel).where(
+                        EscalationPolicyModel.id == policy.id,
+                        _workspace_filter(EscalationPolicyModel, context.workspace.id),
+                    )
                 )
                 existing = result.scalar_one_or_none()
 
@@ -2231,6 +2428,7 @@ async def import_notification_config(
                         new_id = str(uuid.uuid4())
                         new_policy = EscalationPolicyModel(
                             id=new_id,
+                            workspace_id=context.workspace.id,
                             name=f"{policy.name} (imported)",
                             description=policy.description,
                             levels=policy.levels,
@@ -2244,6 +2442,7 @@ async def import_notification_config(
                 else:
                     new_policy = EscalationPolicyModel(
                         id=policy.id,
+                        workspace_id=context.workspace.id,
                         name=policy.name,
                         description=policy.description,
                         levels=policy.levels,
@@ -2357,7 +2556,7 @@ async def invalidate_stats_cache(
     return CacheInvalidateResponse(
         message=message,
         target=target,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=utc_now().isoformat(),
     )
 
 

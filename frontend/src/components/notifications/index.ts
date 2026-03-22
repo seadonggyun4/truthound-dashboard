@@ -6,6 +6,7 @@ export { RoutingRulesTab } from './RoutingRulesTab'
 export { DeduplicationTab } from './DeduplicationTab'
 export { ThrottlingTab } from './ThrottlingTab'
 export { EscalationTab } from './EscalationTab'
+export { QueuesTab } from './QueuesTab'
 export { WebSocketStatusIndicator, WebSocketStatusDot } from './WebSocketStatus'
 export { ConfigImportExport, type ConfigImportExportProps } from './ConfigImportExport'
 

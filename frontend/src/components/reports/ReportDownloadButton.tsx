@@ -24,13 +24,14 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { str } from '@/lib/intlayer-utils'
 import {
-  downloadValidationReport,
-  getReportLocales,
-  type ReportFormat,
-  type ReportTheme,
-  type ReportLocale,
-  type LocaleInfo,
-} from '@/api/modules/reports'
+  downloadArtifact,
+  generateReportArtifact,
+  getArtifactCapabilities,
+  type ArtifactFormat as ReportFormat,
+  type ArtifactTheme as ReportTheme,
+  type ArtifactLocale as ReportLocale,
+  type ArtifactLocaleInfo as LocaleInfo,
+} from '@/api/modules/artifacts'
 
 export interface ReportDownloadButtonProps {
   validationId: string
@@ -110,8 +111,8 @@ function _notifyListeners() {
 // Fetch once at module load time (runs before any dropdown interaction)
 if (!_dataLoaded) {
   _dataLoaded = true
-  getReportLocales()
-    .then((data) => { _locales = data; _notifyListeners() })
+  getArtifactCapabilities()
+    .then((data) => { _locales = data.locales; _notifyListeners() })
     .catch(() => {})
 }
 
@@ -135,11 +136,12 @@ export function ReportDownloadButton({
   const handleDownload = async (format: ReportFormat, theme?: ReportTheme, locale?: ReportLocale) => {
     setIsDownloading(true)
     try {
-      const blob = await downloadValidationReport(validationId, {
+      const artifact = await generateReportArtifact(validationId, {
         format,
         theme: theme || 'professional',
         locale: locale || selectedLocale,
       })
+      const blob = await downloadArtifact(artifact.id)
 
       // Create download link
       const url = window.URL.createObjectURL(blob)

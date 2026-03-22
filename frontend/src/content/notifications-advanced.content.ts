@@ -15,7 +15,44 @@ const notificationsAdvancedContent = {
       deduplication: t({ en: 'Deduplication', ko: '중복 제거' }),
       throttling: t({ en: 'Throttling', ko: '스로틀링' }),
       escalation: t({ en: 'Escalation', ko: '에스컬레이션' }),
+      queues: t({ en: 'Queues', ko: '큐' }),
       incidents: t({ en: 'Incidents', ko: '인시던트' }),
+    },
+
+    queues: {
+      title: t({ en: 'Incident Queues', ko: '인시던트 큐' }),
+      subtitle: t({
+        en: 'Manage routing queues and responders without leaving the dashboard shell',
+        ko: '대시보드 셸을 유지한 채 라우팅 큐와 대응자를 관리합니다',
+      }),
+      create: t({ en: 'Create Queue', ko: '큐 생성' }),
+      edit: t({ en: 'Edit Queue', ko: '큐 편집' }),
+      empty: t({ en: 'No queues configured yet', ko: '아직 구성된 큐가 없습니다' }),
+      columns: {
+        name: t({ en: 'Queue', ko: '큐' }),
+        members: t({ en: 'Members', ko: '구성원' }),
+        status: t({ en: 'Status', ko: '상태' }),
+      },
+      badges: {
+        default: t({ en: 'Default', ko: '기본' }),
+        active: t({ en: 'Active', ko: '활성' }),
+        inactive: t({ en: 'Inactive', ko: '비활성' }),
+      },
+      form: {
+        name: t({ en: 'Queue Name', ko: '큐 이름' }),
+        description: t({ en: 'Description', ko: '설명' }),
+        defaultQueue: t({ en: 'Default Queue', ko: '기본 큐' }),
+        defaultQueueDescription: t({
+          en: 'Route newly created incidents here by default',
+          ko: '새 인시던트를 기본적으로 이 큐로 라우팅합니다',
+        }),
+        active: t({ en: 'Active Queue', ko: '활성 큐' }),
+        activeDescription: t({
+          en: 'Inactive queues remain visible but stop receiving new assignments',
+          ko: '비활성 큐는 화면에 남아 있지만 새 할당은 받지 않습니다',
+        }),
+        members: t({ en: 'Queue Members', ko: '큐 구성원' }),
+      },
     },
 
     // Routing Rules

@@ -31,10 +31,11 @@ from truthound_dashboard.db import Schedule, Source, TriggerType, get_session
 
 from .maintenance import get_maintenance_manager
 from .notifications.dispatcher import create_dispatcher
-from .services import ValidationService
+from .domains.validations import ValidationService
 from .truthound_adapter import get_adapter
 from .triggers import TriggerFactory, TriggerContext, TriggerEvaluation
 from .tiering import process_tiering_policies
+from truthound_dashboard.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -494,7 +495,7 @@ class ValidationScheduler:
         """
         try:
             trigger = CronTrigger.from_crontab(cron_expression)
-            return trigger.get_next_fire_time(None, datetime.utcnow())
+            return trigger.get_next_fire_time(None, utc_now())
         except Exception:
             return None
 
@@ -546,7 +547,7 @@ class ValidationScheduler:
             return
 
         self._tiering_running = True
-        self._last_tiering_run = datetime.utcnow()
+        self._last_tiering_run = utc_now()
         self._tiering_check_count += 1
         logger.debug("Checking tiering policies")
 
@@ -596,7 +597,7 @@ class ValidationScheduler:
         - Cooldown support (prevents rapid re-triggering)
         """
         self._checker_running = True
-        self._last_checker_run = datetime.utcnow()
+        self._last_checker_run = utc_now()
         logger.debug("Checking data change triggers")
 
         try:
@@ -621,7 +622,7 @@ class ValidationScheduler:
                     return
 
                 # Filter schedules that are due for checking
-                now = datetime.utcnow()
+                now = utc_now()
                 schedules_to_check = []
 
                 for schedule in schedules:
@@ -748,7 +749,7 @@ class ValidationScheduler:
             schedule: Schedule to evaluate.
         """
         schedule_id = schedule.id
-        now = datetime.utcnow()
+        now = utc_now()
 
         # Update check tracking
         self._trigger_check_times[schedule_id] = now
@@ -835,7 +836,7 @@ class ValidationScheduler:
 
             # Skip if recent profile exists (within 1 minute)
             if latest_profile:
-                profile_age = datetime.utcnow() - latest_profile.created_at
+                profile_age = utc_now() - latest_profile.created_at
                 if profile_age.total_seconds() < 60:
                     logger.debug(f"Recent profile exists for source {source_id}")
                     return
@@ -966,7 +967,7 @@ class ValidationScheduler:
         """
         request_id = str(uuid.uuid4())[:8]
         triggered_schedules = []
-        now = datetime.utcnow()
+        now = utc_now()
 
         logger.info(f"Webhook received from '{source}' (request_id={request_id})")
 
@@ -1087,7 +1088,7 @@ class ValidationScheduler:
         Returns:
             Dictionary with monitoring stats and schedule statuses.
         """
-        now = datetime.utcnow()
+        now = utc_now()
         one_hour_ago = now - timedelta(hours=1)
 
         # Count checks and triggers in last hour
@@ -1118,7 +1119,7 @@ class ValidationScheduler:
         Returns:
             List of trigger status dictionaries.
         """
-        now = datetime.utcnow()
+        now = utc_now()
         statuses = []
 
         async with get_session() as session:

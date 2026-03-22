@@ -33,6 +33,7 @@ from .interfaces import (
     ReportOutput,
     ReportThemeType,
 )
+from truthound_dashboard.time import utc_now
 
 if TYPE_CHECKING:
     from truthound_dashboard.db.models import Validation
@@ -97,7 +98,7 @@ class LegacyReportMetadata:
     def generated_at(self) -> Any:
         from datetime import datetime
 
-        return datetime.utcnow()
+        return utc_now()
 
     @property
     def source_name(self) -> str | None:

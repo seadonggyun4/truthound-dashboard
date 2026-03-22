@@ -29,6 +29,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
+from truthound_dashboard.time import utc_now
 
 
 @dataclass
@@ -276,7 +277,7 @@ class ThrottlingMetrics:
 
     def _increment_window_count(self) -> None:
         """Increment the current window count (must be called with lock held)."""
-        now = datetime.utcnow()
+        now = utc_now()
         window_start = self._get_window_start(now)
 
         if self._current_window is None or self._current_window.window_start != window_start:
@@ -298,7 +299,7 @@ class ThrottlingMetrics:
             total_passed = self._total_passed
 
             # Get current window count
-            now = datetime.utcnow()
+            now = utc_now()
             window_start = self._get_window_start(now)
             current_window_count = 0
             if (
@@ -415,7 +416,7 @@ class EscalationMetrics:
             self._incidents[incident_id] = IncidentRecord(
                 incident_id=incident_id,
                 state=initial_state,
-                created_at=datetime.utcnow(),
+                created_at=utc_now(),
             )
 
     async def record_state_change(
@@ -446,7 +447,7 @@ class EscalationMetrics:
             if incident_id in self._incidents:
                 incident = self._incidents[incident_id]
                 incident.state = "resolved"
-                incident.resolved_at = datetime.utcnow()
+                incident.resolved_at = utc_now()
 
                 # Calculate resolution time
                 resolution_time = (

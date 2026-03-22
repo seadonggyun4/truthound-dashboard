@@ -13,6 +13,7 @@ from fastapi import APIRouter
 
 from truthound_dashboard import __version__
 from truthound_dashboard.schemas import BaseSchema
+from truthound_dashboard.time import utc_now
 
 router = APIRouter()
 
@@ -40,7 +41,7 @@ async def health_check() -> HealthResponse:
     return HealthResponse(
         status="ok",
         version=__version__,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=utc_now().isoformat(),
     )
 
 
@@ -73,6 +74,6 @@ async def readiness_check() -> HealthResponse:
     return HealthResponse(
         status="ok" if all_ok else "degraded",
         version=__version__,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=utc_now().isoformat(),
         checks=checks,
     )

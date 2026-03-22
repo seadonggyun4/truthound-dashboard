@@ -61,6 +61,7 @@ from .backends import (
     SchedulerBackendConfig,
     create_scheduler_backend,
 )
+from truthound_dashboard.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -587,7 +588,7 @@ class TimeBasedEscalationStrategy(EscalationStrategy):
         ):
             return False
 
-        return datetime.utcnow() >= incident.next_escalation_at
+        return utc_now() >= incident.next_escalation_at
 
     async def get_next_level(
         self,
@@ -787,7 +788,7 @@ class EscalationSchedulerService:
             func_ref="truthound_dashboard.core.notifications.escalation.scheduler:_check_and_escalate",
             trigger_type="interval",
             trigger_args={"seconds": self.config.check_interval_seconds},
-            next_run_time=datetime.utcnow() + timedelta(
+            next_run_time=utc_now() + timedelta(
                 seconds=self.config.check_interval_seconds
             ),
             state=JobState.PENDING,
@@ -799,11 +800,11 @@ class EscalationSchedulerService:
             if existing:
                 logger.info("Recovered existing escalation checker job")
                 # Update next_run_time if it was in the past
-                if existing.next_run_time and existing.next_run_time < datetime.utcnow():
+                if existing.next_run_time and existing.next_run_time < utc_now():
                     if self._backend.is_misfired(existing):
                         self._misfire_count += 1
                         logger.warning("Escalation checker job misfired, rescheduling")
-                    existing.next_run_time = datetime.utcnow()
+                    existing.next_run_time = utc_now()
                     existing.state = JobState.PENDING
                     await self._backend.update_job(existing)
             else:
@@ -863,7 +864,7 @@ class EscalationSchedulerService:
         This is the main job that runs periodically.
         """
         async with self._lock:
-            self._last_check_at = datetime.utcnow()
+            self._last_check_at = utc_now()
             self._check_count += 1
 
             logger.debug(f"Checking for pending escalations (check #{self._check_count})")
@@ -876,7 +877,7 @@ class EscalationSchedulerService:
                     from sqlalchemy import select
 
                     # Get pending escalations
-                    now = datetime.utcnow()
+                    now = utc_now()
                     query = (
                         select(EscalationIncidentModel)
                         .where(
@@ -903,7 +904,7 @@ class EscalationSchedulerService:
                     await session.commit()
 
                 # Mark job as completed with next run time
-                next_run = datetime.utcnow() + timedelta(
+                next_run = utc_now() + timedelta(
                     seconds=self.config.check_interval_seconds
                 )
                 await self._backend.mark_job_completed(self.DEFAULT_JOB_ID, next_run)
@@ -983,7 +984,7 @@ class EscalationSchedulerService:
             next_escalation_at: datetime | None = None
             if further_level:
                 delay_minutes = further_level.get("delay_minutes", 15)
-                next_escalation_at = datetime.utcnow() + timedelta(minutes=delay_minutes)
+                next_escalation_at = utc_now() + timedelta(minutes=delay_minutes)
 
             # Use model's escalate method for atomic state update
             if not incident.escalate(
@@ -1099,7 +1100,7 @@ class EscalationSchedulerService:
             "success": True,
             "message": f"Processed {escalations_processed} escalations",
             "escalations_processed": escalations_processed,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now().isoformat(),
         }
 
     def get_status(self) -> dict[str, Any]:

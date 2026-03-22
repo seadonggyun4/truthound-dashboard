@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -36,8 +35,8 @@ from truthound_dashboard.schemas.plugins import (
     PluginUninstallResponse,
     PluginUpdateCheckResponse,
 )
-
 from .deps import get_session
+from truthound_dashboard.time import utc_now
 
 router = APIRouter()
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -349,7 +348,7 @@ async def get_plugin_lifecycle(
                 from_state=current_state,
                 to_state=current_state,
                 trigger="observed",
-                timestamp=datetime.utcnow(),
+                timestamp=utc_now(),
                 metadata={},
             )
         ],

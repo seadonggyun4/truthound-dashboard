@@ -21,7 +21,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+
 from .base import Base, TimestampMixin, UUIDMixin
+from truthound_dashboard.time import utc_now
 
 # =============================================================================
 # Schema Evolution Enums
@@ -30,7 +32,6 @@ from .base import Base, TimestampMixin, UUIDMixin
 
 class SchemaChangeType(str, Enum):
     """Type of schema change detected."""
-
     COLUMN_ADDED = "column_added"
     COLUMN_REMOVED = "column_removed"
     TYPE_CHANGED = "type_changed"
@@ -132,13 +133,19 @@ class Source(Base, UUIDMixin, TimestampMixin):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    # Generated reports for this source
-    generated_reports: Mapped[list["GeneratedReport"]] = relationship(
-        "GeneratedReport",
+    artifact_records: Mapped[list["ArtifactRecord"]] = relationship(
+        "ArtifactRecord",
         back_populates="source",
         cascade="all, delete-orphan",
         lazy="selectin",
-        order_by="desc(GeneratedReport.created_at)",
+        order_by="desc(ArtifactRecord.created_at)",
+    )
+    ownership: Mapped["SourceOwnership | None"] = relationship(
+        "SourceOwnership",
+        back_populates="source",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        uselist=False,
     )
     # Anomaly detections for this source
     anomaly_detections: Mapped[list["AnomalyDetection"]] = relationship(
@@ -207,6 +214,42 @@ class Source(Base, UUIDMixin, TimestampMixin):
         """Get the active rule for this source (most recent)."""
         active = self.active_rules
         return active[0] if active else None
+
+    @property
+    def owner_user_id(self) -> str | None:
+        ownership = getattr(self, "ownership", None)
+        return ownership.owner_user_id if ownership is not None else None
+
+    @property
+    def owner_name(self) -> str | None:
+        ownership = getattr(self, "ownership", None)
+        if ownership is None or ownership.owner_user is None:
+            return None
+        return ownership.owner_user.display_name
+
+    @property
+    def team_id(self) -> str | None:
+        ownership = getattr(self, "ownership", None)
+        return ownership.team_id if ownership is not None else None
+
+    @property
+    def team_name(self) -> str | None:
+        ownership = getattr(self, "ownership", None)
+        if ownership is None or ownership.team is None:
+            return None
+        return ownership.team.name
+
+    @property
+    def domain_id(self) -> str | None:
+        ownership = getattr(self, "ownership", None)
+        return ownership.domain_id if ownership is not None else None
+
+    @property
+    def domain_name(self) -> str | None:
+        ownership = getattr(self, "ownership", None)
+        if ownership is None or ownership.domain is None:
+            return None
+        return ownership.domain.name
 
 
 class Rule(Base, UUIDMixin, TimestampMixin):
@@ -392,18 +435,18 @@ class Validation(Base, UUIDMixin):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, nullable=False
     )
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Relationships
     source: Mapped[Source] = relationship("Source", back_populates="validations")
-    generated_reports: Mapped[list["GeneratedReport"]] = relationship(
-        "GeneratedReport",
+    artifact_records: Mapped[list["ArtifactRecord"]] = relationship(
+        "ArtifactRecord",
         back_populates="validation",
         lazy="selectin",
-        order_by="desc(GeneratedReport.created_at)",
+        order_by="desc(ArtifactRecord.created_at)",
     )
 
     @property
@@ -421,7 +464,7 @@ class Validation(Base, UUIDMixin):
     def mark_started(self) -> None:
         """Mark validation as started."""
         self.status = "running"
-        self.started_at = datetime.utcnow()
+        self.started_at = utc_now()
 
     def mark_completed(
         self,
@@ -432,7 +475,7 @@ class Validation(Base, UUIDMixin):
         self.status = "success" if passed else "failed"
         self.passed = passed
         self.result_json = result
-        self.completed_at = datetime.utcnow()
+        self.completed_at = utc_now()
 
         if self.started_at:
             delta = self.completed_at - self.started_at
@@ -442,7 +485,7 @@ class Validation(Base, UUIDMixin):
         """Mark validation as errored."""
         self.status = "error"
         self.error_message = message
-        self.completed_at = datetime.utcnow()
+        self.completed_at = utc_now()
 
         if self.started_at:
             delta = self.completed_at - self.started_at
@@ -560,7 +603,7 @@ class Schedule(Base, UUIDMixin, TimestampMixin):
 
     def mark_run(self, next_run: datetime | None = None) -> None:
         """Mark schedule as run and update next run time."""
-        self.last_run_at = datetime.utcnow()
+        self.last_run_at = utc_now()
         self.next_run_at = next_run
         self.trigger_count += 1
 
@@ -773,7 +816,7 @@ class DataMask(Base, UUIDMixin):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, nullable=False
     )
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -797,7 +840,7 @@ class DataMask(Base, UUIDMixin):
     def mark_started(self) -> None:
         """Mark operation as started."""
         self.status = "running"
-        self.started_at = datetime.utcnow()
+        self.started_at = utc_now()
 
     def mark_completed(
         self,
@@ -806,7 +849,7 @@ class DataMask(Base, UUIDMixin):
         """Mark operation as completed with results."""
         self.status = "success"
         self.result_json = result
-        self.completed_at = datetime.utcnow()
+        self.completed_at = utc_now()
 
         if self.started_at:
             delta = self.completed_at - self.started_at
@@ -816,7 +859,7 @@ class DataMask(Base, UUIDMixin):
         """Mark operation as errored."""
         self.status = "error"
         self.error_message = message
-        self.completed_at = datetime.utcnow()
+        self.completed_at = utc_now()
 
         if self.started_at:
             delta = self.completed_at - self.started_at
@@ -887,7 +930,7 @@ class PIIScan(Base, UUIDMixin):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, nullable=False
     )
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -920,7 +963,7 @@ class PIIScan(Base, UUIDMixin):
     def mark_started(self) -> None:
         """Mark scan as started."""
         self.status = "running"
-        self.started_at = datetime.utcnow()
+        self.started_at = utc_now()
 
     def mark_completed(
         self,
@@ -931,7 +974,7 @@ class PIIScan(Base, UUIDMixin):
         self.status = "success" if not has_violations else "failed"
         self.has_violations = has_violations
         self.result_json = result
-        self.completed_at = datetime.utcnow()
+        self.completed_at = utc_now()
 
         if self.started_at:
             delta = self.completed_at - self.started_at
@@ -941,7 +984,7 @@ class PIIScan(Base, UUIDMixin):
         """Mark scan as errored."""
         self.status = "error"
         self.error_message = message
-        self.completed_at = datetime.utcnow()
+        self.completed_at = utc_now()
 
         if self.started_at:
             delta = self.completed_at - self.started_at
@@ -966,8 +1009,8 @@ class AppSettings(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utc_now,
+        onupdate=utc_now,
         nullable=False,
     )
 
@@ -1002,6 +1045,8 @@ class NotificationChannel(Base, UUIDMixin, TimestampMixin):
     type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     config: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    config_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    credential_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relationships
@@ -1138,7 +1183,7 @@ class NotificationLog(Base, UUIDMixin):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, nullable=False
     )
     sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -1153,13 +1198,13 @@ class NotificationLog(Base, UUIDMixin):
     def mark_sent(self) -> None:
         """Mark notification as successfully sent."""
         self.status = "sent"
-        self.sent_at = datetime.utcnow()
+        self.sent_at = utc_now()
 
     def mark_failed(self, error: str) -> None:
         """Mark notification as failed with error message."""
         self.status = "failed"
         self.error_message = error
-        self.sent_at = datetime.utcnow()
+        self.sent_at = utc_now()
 
 
 # =============================================================================
@@ -1275,7 +1320,7 @@ class SchemaChange(Base, UUIDMixin):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=utc_now,
         nullable=False,
     )
 
@@ -1372,6 +1417,12 @@ class RoutingRuleModel(Base, UUIDMixin, TimestampMixin):
 
     __tablename__ = "routing_rules"
 
+    workspace_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     rule_config: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     actions: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
@@ -1406,12 +1457,19 @@ class DeduplicationConfig(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "deduplication_configs"
 
     __table_args__ = (
+        Index("idx_dedup_config_workspace", "workspace_id"),
         Index("idx_dedup_config_is_active", "is_active"),
         Index("idx_dedup_config_strategy", "strategy"),
         Index("idx_dedup_config_policy", "policy"),
         Index("idx_dedup_config_created_at", "created_at"),
     )
 
+    workspace_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     strategy: Mapped[str] = mapped_column(
         String(20),
@@ -1447,10 +1505,17 @@ class ThrottlingConfig(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "throttling_configs"
 
     __table_args__ = (
+        Index("idx_throttle_config_workspace", "workspace_id"),
         Index("idx_throttle_config_is_active", "is_active"),
         Index("idx_throttle_config_created_at", "created_at"),
     )
 
+    workspace_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     per_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
     per_hour: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -1489,6 +1554,12 @@ class EscalationPolicyModel(Base, UUIDMixin, TimestampMixin):
 
     __tablename__ = "escalation_policies"
 
+    workspace_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     levels: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
@@ -1539,6 +1610,9 @@ class EscalationIncidentModel(Base, UUIDMixin):
         Index("idx_escalation_incidents_policy", "policy_id"),
         Index("idx_escalation_incidents_ref", "incident_ref"),
         Index("idx_escalation_incidents_state", "state"),
+        Index("idx_escalation_incidents_workspace", "workspace_id"),
+        Index("idx_escalation_incidents_queue", "queue_id"),
+        Index("idx_escalation_incidents_assignee", "assignee_user_id"),
         Index("idx_escalation_incidents_created_at", "created_at"),
         Index("idx_escalation_incidents_state_created", "state", "created_at"),
     )
@@ -1549,6 +1623,30 @@ class EscalationIncidentModel(Base, UUIDMixin):
         nullable=False,
         index=True,
     )
+    workspace_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    queue_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("incident_queues.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    assignee_user_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    assigned_by: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    assigned_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     incident_ref: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     state: Mapped[str] = mapped_column(
         String(20),
@@ -1568,12 +1666,12 @@ class EscalationIncidentModel(Base, UUIDMixin):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utc_now,
+        onupdate=utc_now,
         nullable=False,
     )
 
@@ -1581,6 +1679,22 @@ class EscalationIncidentModel(Base, UUIDMixin):
     policy: Mapped[EscalationPolicyModel] = relationship(
         "EscalationPolicyModel",
         back_populates="incidents",
+    )
+    queue: Mapped[Any | None] = relationship(
+        "IncidentQueue",
+        back_populates="incidents",
+        foreign_keys=[queue_id],
+        lazy="selectin",
+    )
+    assignee_user: Mapped[Any | None] = relationship(
+        "User",
+        foreign_keys=[assignee_user_id],
+        lazy="selectin",
+    )
+    assigned_by_user: Mapped[Any | None] = relationship(
+        "User",
+        foreign_keys=[assigned_by],
+        lazy="selectin",
     )
 
     @property
@@ -1647,7 +1761,7 @@ class EscalationIncidentModel(Base, UUIDMixin):
         self.current_level = next_level
         self.escalation_count += 1
         self.next_escalation_at = next_escalation_at
-        self.updated_at = datetime.utcnow()
+        self.updated_at = utc_now()
 
         self.add_event(
             from_state=old_state,
@@ -1671,7 +1785,7 @@ class EscalationIncidentModel(Base, UUIDMixin):
             "to_state": to_state,
             "actor": actor,
             "message": message,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now().isoformat(),
         }
         if self.events is None:
             self.events = []
@@ -1765,13 +1879,13 @@ class SchedulerJob(Base, UUIDMixin):
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=utc_now,
         nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utc_now,
+        onupdate=utc_now,
         nullable=False,
     )
 
@@ -1782,7 +1896,7 @@ class SchedulerJob(Base, UUIDMixin):
             return False
         return (
             self.state in (SchedulerJobState.PENDING.value, SchedulerJobState.MISFIRED.value)
-            and datetime.utcnow() >= self.next_run_time
+            and utc_now() >= self.next_run_time
         )
 
     @property
@@ -1803,8 +1917,8 @@ class SchedulerJob(Base, UUIDMixin):
     def mark_running(self) -> None:
         """Mark job as running."""
         self.state = SchedulerJobState.RUNNING.value
-        self.last_run_time = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.last_run_time = utc_now()
+        self.updated_at = utc_now()
 
     def mark_completed(self, next_run_time: datetime | None = None) -> None:
         """Mark job as completed.
@@ -1819,7 +1933,7 @@ class SchedulerJob(Base, UUIDMixin):
             self.state = SchedulerJobState.COMPLETED.value
         self.retry_count = 0
         self.last_error = None
-        self.updated_at = datetime.utcnow()
+        self.updated_at = utc_now()
 
     def mark_failed(self, error: str, can_retry: bool = True) -> None:
         """Mark job as failed.
@@ -1829,7 +1943,7 @@ class SchedulerJob(Base, UUIDMixin):
             can_retry: Whether job can be retried.
         """
         self.last_error = error
-        self.updated_at = datetime.utcnow()
+        self.updated_at = utc_now()
 
         if can_retry:
             self.state = SchedulerJobState.PENDING.value
@@ -1840,11 +1954,11 @@ class SchedulerJob(Base, UUIDMixin):
     def mark_misfired(self) -> None:
         """Mark job as misfired."""
         self.state = SchedulerJobState.MISFIRED.value
-        self.updated_at = datetime.utcnow()
+        self.updated_at = utc_now()
         if self.job_metadata is None:
             self.job_metadata = {}
         self.job_metadata["misfire_count"] = self.job_metadata.get("misfire_count", 0) + 1
-        self.job_metadata["last_misfire_at"] = datetime.utcnow().isoformat()
+        self.job_metadata["last_misfire_at"] = utc_now().isoformat()
 
 
 # =============================================================================
@@ -2004,7 +2118,7 @@ class LineageEdge(Base, UUIDMixin):
     metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=utc_now,
         nullable=False,
     )
 
@@ -2100,7 +2214,7 @@ class OpenLineageWebhook(Base, UUIDMixin, TimestampMixin):
     def record_success(self) -> None:
         """Record a successful emission."""
         self.success_count += 1
-        self.last_sent_at = datetime.utcnow()
+        self.last_sent_at = utc_now()
         self.last_error = None
 
     def record_failure(self, error: str) -> None:
@@ -2207,7 +2321,7 @@ class AnomalyDetection(Base, UUIDMixin):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, nullable=False
     )
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -2243,7 +2357,7 @@ class AnomalyDetection(Base, UUIDMixin):
     def mark_started(self) -> None:
         """Mark detection as started."""
         self.status = AnomalyDetectionStatus.RUNNING.value
-        self.started_at = datetime.utcnow()
+        self.started_at = utc_now()
 
     def mark_completed(
         self,
@@ -2256,7 +2370,7 @@ class AnomalyDetection(Base, UUIDMixin):
         self.anomaly_count = anomaly_count
         self.anomaly_rate = anomaly_rate
         self.result_json = result
-        self.completed_at = datetime.utcnow()
+        self.completed_at = utc_now()
 
         if self.started_at:
             delta = self.completed_at - self.started_at
@@ -2266,7 +2380,7 @@ class AnomalyDetection(Base, UUIDMixin):
         """Mark detection as errored."""
         self.status = AnomalyDetectionStatus.ERROR.value
         self.error_message = message
-        self.completed_at = datetime.utcnow()
+        self.completed_at = utc_now()
 
         if self.started_at:
             delta = self.completed_at - self.started_at
@@ -2324,7 +2438,7 @@ class AnomalyExplanation(Base, UUIDMixin):
     # Timestamp
     generated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=utc_now,
         nullable=False,
     )
 
@@ -2461,7 +2575,7 @@ class AnomalyBatchJob(Base, UUIDMixin, TimestampMixin):
     def mark_started(self) -> None:
         """Mark batch job as started."""
         self.status = BatchDetectionStatus.RUNNING.value
-        self.started_at = datetime.utcnow()
+        self.started_at = utc_now()
 
     def update_progress(
         self,
@@ -2502,7 +2616,7 @@ class AnomalyBatchJob(Base, UUIDMixin, TimestampMixin):
         else:
             self.status = BatchDetectionStatus.COMPLETED.value
 
-        self.completed_at = datetime.utcnow()
+        self.completed_at = utc_now()
         self.current_source_id = None
 
         if self.started_at:
@@ -2513,7 +2627,7 @@ class AnomalyBatchJob(Base, UUIDMixin, TimestampMixin):
         """Mark batch job as errored."""
         self.status = BatchDetectionStatus.ERROR.value
         self.error_message = message
-        self.completed_at = datetime.utcnow()
+        self.completed_at = utc_now()
         self.current_source_id = None
 
         if self.started_at:
@@ -2523,7 +2637,7 @@ class AnomalyBatchJob(Base, UUIDMixin, TimestampMixin):
     def mark_cancelled(self) -> None:
         """Mark batch job as cancelled."""
         self.status = BatchDetectionStatus.CANCELLED.value
-        self.completed_at = datetime.utcnow()
+        self.completed_at = utc_now()
         self.current_source_id = None
 
         if self.started_at:
@@ -2682,7 +2796,7 @@ class Plugin(Base, UUIDMixin, TimestampMixin):
     def install(self) -> None:
         """Mark plugin as installed."""
         self.status = PluginStatus.INSTALLED.value
-        self.installed_at = datetime.utcnow()
+        self.installed_at = utc_now()
         self.install_count += 1
 
     def enable(self) -> None:
@@ -2710,141 +2824,6 @@ class Plugin(Base, UUIDMixin, TimestampMixin):
             self.rating = total / (self.rating_count + 1)
         self.rating_count += 1
 
-
-class ReportFormatType(str, Enum):
-    """Report output format types."""
-
-    HTML = "html"
-    CSV = "csv"
-    JSON = "json"
-    CUSTOM = "custom"
-
-
-class ReportStatus(str, Enum):
-    """Status of report generation."""
-
-    PENDING = "pending"
-    GENERATING = "generating"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    EXPIRED = "expired"
-
-
-class GeneratedReport(Base, UUIDMixin, TimestampMixin):
-    """Generated report history model.
-
-    Stores metadata and content of generated reports for history tracking,
-    caching, and audit purposes.
-
-    Attributes:
-        id: Unique identifier (UUID).
-        validation_id: Reference to the validation run.
-        source_id: Reference to the data source.
-        name: Human-readable report name.
-        description: Optional description.
-        format: Report output format (html, csv, etc.).
-        theme: Theme used for HTML reports.
-        locale: Language locale used.
-        status: Generation status.
-        file_path: Path to stored report file (if persisted).
-        file_size: Size of the report file in bytes.
-        content_hash: Hash of report content for deduplication.
-        config: Configuration used for generation (JSON).
-        metadata: Additional metadata (JSON).
-        error_message: Error message if generation failed.
-        generation_time_ms: Time taken to generate in milliseconds.
-        expires_at: When the report expires and can be cleaned up.
-        downloaded_count: Number of times the report was downloaded.
-        last_downloaded_at: Last download timestamp.
-    """
-
-    __tablename__ = "generated_reports"
-
-    __table_args__ = (
-        Index("idx_generated_reports_validation", "validation_id"),
-        Index("idx_generated_reports_workspace", "workspace_id"),
-        Index("idx_generated_reports_source", "source_id"),
-        Index("idx_generated_reports_artifact_type", "artifact_type"),
-        Index("idx_generated_reports_status", "status"),
-        Index("idx_generated_reports_format", "format"),
-        Index("idx_generated_reports_created", "created_at"),
-        Index("idx_generated_reports_expires", "expires_at"),
-    )
-
-    validation_id: Mapped[str | None] = mapped_column(
-        String(36),
-        ForeignKey("validations.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    workspace_id: Mapped[str | None] = mapped_column(
-        String(36),
-        ForeignKey("workspaces.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    source_id: Mapped[str | None] = mapped_column(
-        String(36),
-        ForeignKey("sources.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    artifact_type: Mapped[str] = mapped_column(String(50), nullable=False, default="report")
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    format: Mapped[str] = mapped_column(
-        SQLEnum(ReportFormatType), nullable=False, default=ReportFormatType.HTML
-    )
-    theme: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    locale: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
-    status: Mapped[str] = mapped_column(
-        SQLEnum(ReportStatus), nullable=False, default=ReportStatus.PENDING
-    )
-    file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    config: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    report_metadata: Mapped[dict[str, Any] | None] = mapped_column(
-        "metadata", JSON, nullable=True
-    )
-    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    generation_time_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    downloaded_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    last_downloaded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-
-    # Relationships
-    validation: Mapped["Validation | None"] = relationship(
-        "Validation",
-        back_populates="generated_reports",
-    )
-    source: Mapped["Source | None"] = relationship(
-        "Source",
-        back_populates="generated_reports",
-    )
-
-    def increment_download(self) -> None:
-        """Increment download count and update last download timestamp."""
-        self.downloaded_count += 1
-        self.last_downloaded_at = datetime.utcnow()
-
-    def mark_completed(self, file_path: str, file_size: int, generation_time_ms: float) -> None:
-        """Mark report as completed."""
-        self.status = ReportStatus.COMPLETED
-        self.file_path = file_path
-        self.file_size = file_size
-        self.generation_time_ms = generation_time_ms
-
-    def mark_failed(self, error_message: str) -> None:
-        """Mark report as failed."""
-        self.status = ReportStatus.FAILED
-        self.error_message = error_message
-
-    def is_expired(self) -> bool:
-        """Check if report has expired."""
-        if self.expires_at is None:
-            return False
-        return datetime.utcnow() > self.expires_at
 
 # =============================================================================
 # Storage Tiering Models (truthound 1.2.10+)
@@ -3125,7 +3104,7 @@ class TierMigrationHistoryModel(Base, UUIDMixin):
     to_tier_id: Mapped[str] = mapped_column(String(36), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     started_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
+        DateTime, nullable=False, default=utc_now
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     status: Mapped[str] = mapped_column(

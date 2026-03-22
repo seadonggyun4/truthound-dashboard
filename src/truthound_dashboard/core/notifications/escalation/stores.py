@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .models import EscalationIncident, EscalationPolicy, EscalationState
+from truthound_dashboard.time import utc_now
 
 # Optional Redis dependency
 try:
@@ -169,7 +170,7 @@ class InMemoryEscalationStore(BaseEscalationStore):
         with self._lock:
             if not incident.id:
                 incident.id = self._generate_incident_id()
-            incident.updated_at = datetime.utcnow()
+            incident.updated_at = utc_now()
             self._incidents[incident.id] = incident
             return incident.id
 
@@ -205,7 +206,7 @@ class InMemoryEscalationStore(BaseEscalationStore):
 
     def get_pending_escalations(self) -> list[EscalationIncident]:
         """Get incidents due for escalation."""
-        now = datetime.utcnow()
+        now = utc_now()
         active_states = [
             EscalationState.TRIGGERED,
             EscalationState.ESCALATED,
@@ -294,7 +295,7 @@ class SQLiteEscalationStore(BaseEscalationStore):
     def save_policy(self, policy: EscalationPolicy) -> str:
         """Save or update a policy."""
         conn = self._get_connection()
-        now = datetime.utcnow().isoformat()
+        now = utc_now().isoformat()
 
         if not policy.id:
             import uuid
@@ -386,13 +387,13 @@ class SQLiteEscalationStore(BaseEscalationStore):
     def save_incident(self, incident: EscalationIncident) -> str:
         """Save or update an incident."""
         conn = self._get_connection()
-        now = datetime.utcnow().isoformat()
+        now = utc_now().isoformat()
 
         if not incident.id:
             import uuid
             incident.id = str(uuid.uuid4())
 
-        incident.updated_at = datetime.utcnow()
+        incident.updated_at = utc_now()
 
         conn.execute(
             """
@@ -468,7 +469,7 @@ class SQLiteEscalationStore(BaseEscalationStore):
 
     def get_pending_escalations(self) -> list[EscalationIncident]:
         """Get incidents due for escalation."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now().isoformat()
         conn = self._get_connection()
         cursor = conn.execute(
             """
@@ -1135,7 +1136,7 @@ class RedisEscalationStore(BaseEscalationStore):
                 "policy_id": incident.policy_id,
                 "state": incident.state.value,
                 "current_level": incident.current_level,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
             })
             channel = self._get_key(self.CHANNEL_INCIDENT_UPDATE)
             client.publish(channel, message)
@@ -1167,7 +1168,7 @@ class RedisEscalationStore(BaseEscalationStore):
                 "policy_id": incident.policy_id,
                 "state": incident.state.value,
                 "current_level": incident.current_level,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
             })
             channel = self._get_key(self.CHANNEL_INCIDENT_UPDATE)
             await client.publish(channel, message)
@@ -1648,7 +1649,7 @@ class RedisEscalationStore(BaseEscalationStore):
             if not incident.id:
                 incident.id = str(uuid.uuid4())
 
-            incident.updated_at = datetime.utcnow()
+            incident.updated_at = utc_now()
 
             # Use pipeline for atomicity
             pipe = client.pipeline()
@@ -1744,7 +1745,7 @@ class RedisEscalationStore(BaseEscalationStore):
             if not incident.id:
                 incident.id = str(uuid.uuid4())
 
-            incident.updated_at = datetime.utcnow()
+            incident.updated_at = utc_now()
 
             # Use pipeline for atomicity
             pipe = client.pipeline()
@@ -2102,7 +2103,7 @@ class RedisEscalationStore(BaseEscalationStore):
 
         try:
             client = self.client
-            now = datetime.utcnow().timestamp()
+            now = utc_now().timestamp()
 
             # Get incident IDs from pending sorted set where score <= now
             pending_key = self._get_key(self.KEY_INCIDENT_PENDING)
@@ -2140,7 +2141,7 @@ class RedisEscalationStore(BaseEscalationStore):
 
         try:
             client = await self.get_async_client()
-            now = datetime.utcnow().timestamp()
+            now = utc_now().timestamp()
 
             # Get incident IDs from pending sorted set where score <= now
             pending_key = self._get_key(self.KEY_INCIDENT_PENDING)
@@ -2217,7 +2218,7 @@ class RedisEscalationStore(BaseEscalationStore):
 
             # Update incident
             incident.state = new_state
-            incident.updated_at = datetime.utcnow()
+            incident.updated_at = utc_now()
             for key, value in updates.items():
                 if hasattr(incident, key):
                     setattr(incident, key, value)
@@ -2329,7 +2330,7 @@ class RedisEscalationStore(BaseEscalationStore):
 
             # Update incident
             incident.state = new_state
-            incident.updated_at = datetime.utcnow()
+            incident.updated_at = utc_now()
             for key, value in updates.items():
                 if hasattr(incident, key):
                     setattr(incident, key, value)
@@ -2447,7 +2448,7 @@ class RedisEscalationStore(BaseEscalationStore):
         try:
             client = self.client
             max_age = max_age_seconds or self.resolved_ttl
-            cutoff = datetime.utcnow() - timedelta(seconds=max_age)
+            cutoff = utc_now() - timedelta(seconds=max_age)
             cutoff_score = cutoff.timestamp()
 
             # Get resolved incidents created before cutoff
@@ -2487,7 +2488,7 @@ class RedisEscalationStore(BaseEscalationStore):
         try:
             client = await self.get_async_client()
             max_age = max_age_seconds or self.resolved_ttl
-            cutoff = datetime.utcnow() - timedelta(seconds=max_age)
+            cutoff = utc_now() - timedelta(seconds=max_age)
             cutoff_score = cutoff.timestamp()
 
             # Get resolved incidents

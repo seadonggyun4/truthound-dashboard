@@ -96,6 +96,7 @@ export interface ChannelConfigFormProps {
   onChange: (config: ChannelConfig) => void
   onValidChange?: (isValid: boolean) => void
   disabled?: boolean
+  disabledFields?: string[]
   showSecrets?: boolean
   className?: string
 }
@@ -679,6 +680,7 @@ export function ChannelConfigForm({
   onChange,
   onValidChange,
   disabled = false,
+  disabledFields = [],
   showSecrets: initialShowSecrets = false,
   className,
 }: ChannelConfigFormProps) {
@@ -693,6 +695,11 @@ export function ChannelConfigForm({
     let isValid = true
 
     for (const [fieldName, fieldSchema] of Object.entries(schema.fields)) {
+      if (disabled || disabledFields.includes(fieldName)) {
+        newErrors[fieldName] = null
+        continue
+      }
+
       const value = config[fieldName]
 
       // Required check
@@ -743,7 +750,7 @@ export function ChannelConfigForm({
 
     setErrors(newErrors)
     return isValid
-  }, [config, schema.fields])
+  }, [config, disabled, disabledFields, schema.fields])
 
   // Validate on config change
   useEffect(() => {
@@ -787,7 +794,7 @@ export function ChannelConfigForm({
             schema={fieldSchema}
             value={config[fieldName]}
             onChange={(value) => handleFieldChange(fieldName, value)}
-            disabled={disabled}
+            disabled={disabled || disabledFields.includes(fieldName)}
             showSecret={initialShowSecrets || showSecrets[fieldName]}
             onToggleSecret={() => toggleSecretVisibility(fieldName)}
             error={errors[fieldName]}

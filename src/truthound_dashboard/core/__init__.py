@@ -71,11 +71,12 @@ from .cache import (
     get_cache_manager,
     reset_cache,
 )
+from .artifacts import ArtifactService
+from .authz import AuthorizationService
 from .control_plane import (
     AuthService,
     ControlPlaneContext,
     ControlPlaneService,
-    OverviewService,
     SavedViewService,
 )
 from .encryption import (
@@ -142,6 +143,8 @@ from .notifications import (
     create_dispatcher,
     get_dispatcher,
 )
+from .incidents import IncidentQueueService, IncidentService
+from .overview import OverviewService
 from .sampling import (
     DataSampler,
     HeadSamplingStrategy,
@@ -254,6 +257,15 @@ __all__ = [
     "MaskService",
     "get_data_input_from_source",
     "get_async_data_input_from_source",
+    "ArtifactService",
+    "AuthorizationService",
+    "IncidentQueueService",
+    "IncidentService",
+    "AuthService",
+    "ControlPlaneContext",
+    "ControlPlaneService",
+    "SavedViewService",
+    "OverviewService",
     # Adapter
     "TruthoundAdapter",
     "get_adapter",

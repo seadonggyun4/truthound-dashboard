@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any
+from truthound_dashboard.time import utc_now
 
 
 class EscalationState(str, Enum):
@@ -225,8 +226,8 @@ class EscalationIncident:
     acknowledged_at: datetime | None = None
     resolved_by: str | None = None
     resolved_at: datetime | None = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=utc_now)
+    updated_at: datetime = field(default_factory=utc_now)
     next_escalation_at: datetime | None = None
     escalation_count: int = 0
     events: list["EscalationEvent"] = field(default_factory=list)
@@ -265,8 +266,8 @@ class EscalationIncident:
             acknowledged_at=datetime.fromisoformat(data["acknowledged_at"]) if data.get("acknowledged_at") else None,
             resolved_by=data.get("resolved_by"),
             resolved_at=datetime.fromisoformat(data["resolved_at"]) if data.get("resolved_at") else None,
-            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.utcnow(),
-            updated_at=datetime.fromisoformat(data["updated_at"]) if data.get("updated_at") else datetime.utcnow(),
+            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else utc_now(),
+            updated_at=datetime.fromisoformat(data["updated_at"]) if data.get("updated_at") else utc_now(),
             next_escalation_at=datetime.fromisoformat(data["next_escalation_at"]) if data.get("next_escalation_at") else None,
             escalation_count=data.get("escalation_count", 0),
             events=[EscalationEvent.from_dict(e) for e in data.get("events", [])],
@@ -292,7 +293,7 @@ class EscalationEvent:
     level: int = 0
     actor: str | None = None
     message: str = ""
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=utc_now)
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -316,7 +317,7 @@ class EscalationEvent:
             level=data.get("level", 0),
             actor=data.get("actor"),
             message=data.get("message", ""),
-            timestamp=datetime.fromisoformat(data["timestamp"]) if data.get("timestamp") else datetime.utcnow(),
+            timestamp=datetime.fromisoformat(data["timestamp"]) if data.get("timestamp") else utc_now(),
             metadata=data.get("metadata", {}),
         )
 

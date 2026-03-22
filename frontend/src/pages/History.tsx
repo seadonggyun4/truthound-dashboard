@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select'
 import { getSource, type Source } from '@/api/modules/sources'
 import { getValidationHistory, type HistoryResponse } from '@/api/modules/history'
+import { SavedViewBar } from '@/components/control-plane/SavedViewBar'
 import { formatDate } from '@/lib/utils'
 import {
   LineChart,
@@ -140,6 +141,18 @@ export default function History() {
           </Select>
         </div>
       </div>
+
+      <SavedViewBar
+        scope="history"
+        currentFilters={{ source_id: sourceId, period, granularity }}
+        onApply={(filters) => {
+          if (filters.source_id && filters.source_id !== sourceId) {
+            return
+          }
+          setPeriod((filters.period as typeof period) ?? '30d')
+          setGranularity((filters.granularity as typeof granularity) ?? 'daily')
+        }}
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

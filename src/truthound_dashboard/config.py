@@ -102,6 +102,11 @@ class Settings(BaseSettings):
         return self.data_dir / "cache"
 
     @property
+    def artifacts_dir(self) -> Path:
+        """Get artifact storage directory path."""
+        return self.data_dir / "artifacts"
+
+    @property
     def schema_dir(self) -> Path:
         """Get schema storage directory path."""
         return self.data_dir / "schemas"
@@ -110,6 +115,7 @@ class Settings(BaseSettings):
         """Create all required directories if they don't exist."""
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.artifacts_dir.mkdir(parents=True, exist_ok=True)
         self.schema_dir.mkdir(parents=True, exist_ok=True)
 
 

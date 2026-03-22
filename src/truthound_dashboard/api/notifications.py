@@ -16,6 +16,7 @@ Endpoints:
         GET    /notifications/channels/{id}         - Get channel
         PUT    /notifications/channels/{id}         - Update channel
         DELETE /notifications/channels/{id}         - Delete channel
+        POST   /notifications/channels/{id}/credentials/rotate - Rotate stored credentials
         POST   /notifications/channels/{id}/test    - Test channel
         GET    /notifications/channels/types        - Get available types
 
@@ -42,6 +43,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..api.deps import get_session
 from ..core.notifications.dispatcher import create_dispatcher
+from ..core.notifications.serialization import (
+    channel_config_summary,
+    channel_has_stored_secrets,
+    redact_channel_config,
+)
 from ..core.notifications.service import (
     NotificationChannelService,
     NotificationLogService,
@@ -81,6 +87,10 @@ class ChannelResponse(BaseModel):
     type: str
     is_active: bool
     config_summary: str
+    config: dict[str, Any] | None = None
+    config_version: int | None = None
+    has_stored_secrets: bool = False
+    credential_updated_at: str | None = None
     created_at: str
     updated_at: str
 
@@ -187,6 +197,38 @@ class MessageResponse(BaseModel):
     message: str
 
 
+class ChannelCredentialRotateRequest(BaseModel):
+    """Request schema for rotating stored channel credentials."""
+
+    config: dict[str, Any] = Field(
+        ...,
+        description="Secret-bearing config fields to rotate",
+    )
+
+
+def _channel_response(
+    channel: Any,
+    *,
+    include_config: bool = False,
+) -> ChannelResponse:
+    stored_config = channel.config or {}
+    return ChannelResponse(
+        id=channel.id,
+        name=channel.name,
+        type=channel.type,
+        is_active=channel.is_active,
+        config_summary=channel_config_summary(channel.type, stored_config),
+        config=redact_channel_config(channel.type, stored_config) if include_config else None,
+        config_version=channel.config_version,
+        has_stored_secrets=channel_has_stored_secrets(channel.type, stored_config),
+        credential_updated_at=(
+            channel.credential_updated_at.isoformat() if channel.credential_updated_at else None
+        ),
+        created_at=channel.created_at.isoformat(),
+        updated_at=channel.updated_at.isoformat(),
+    )
+
+
 # =============================================================================
 # Channel Endpoints
 # =============================================================================
@@ -219,15 +261,7 @@ async def list_channels(
     )
 
     data = [
-        ChannelResponse(
-            id=c.id,
-            name=c.name,
-            type=c.type,
-            is_active=c.is_active,
-            config_summary=c.get_config_summary(),
-            created_at=c.created_at.isoformat(),
-            updated_at=c.updated_at.isoformat(),
-        )
+        _channel_response(c)
         for c in channels
     ]
 
@@ -251,15 +285,7 @@ async def create_channel(
         )
         await session.commit()
 
-        return ChannelResponse(
-            id=channel.id,
-            name=channel.name,
-            type=channel.type,
-            is_active=channel.is_active,
-            config_summary=channel.get_config_summary(),
-            created_at=channel.created_at.isoformat(),
-            updated_at=channel.updated_at.isoformat(),
-        )
+        return _channel_response(channel, include_config=True)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -276,15 +302,7 @@ async def get_channel(
     if channel is None:
         raise HTTPException(status_code=404, detail="Channel not found")
 
-    return ChannelResponse(
-        id=channel.id,
-        name=channel.name,
-        type=channel.type,
-        is_active=channel.is_active,
-        config_summary=channel.get_config_summary(),
-        created_at=channel.created_at.isoformat(),
-        updated_at=channel.updated_at.isoformat(),
-    )
+    return _channel_response(channel, include_config=True)
 
 
 @router.put("/channels/{channel_id}", response_model=ChannelResponse)
@@ -308,15 +326,7 @@ async def update_channel(
         if channel is None:
             raise HTTPException(status_code=404, detail="Channel not found")
 
-        return ChannelResponse(
-            id=channel.id,
-            name=channel.name,
-            type=channel.type,
-            is_active=channel.is_active,
-            config_summary=channel.get_config_summary(),
-            created_at=channel.created_at.isoformat(),
-            updated_at=channel.updated_at.isoformat(),
-        )
+        return _channel_response(channel, include_config=True)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -335,6 +345,33 @@ async def delete_channel(
         raise HTTPException(status_code=404, detail="Channel not found")
 
     return MessageResponse(message="Channel deleted")
+
+
+@router.post(
+    "/channels/{channel_id}/credentials/rotate",
+    response_model=ChannelResponse,
+)
+async def rotate_channel_credentials(
+    channel_id: str,
+    request: ChannelCredentialRotateRequest,
+    session: AsyncSession = Depends(get_session),
+) -> ChannelResponse:
+    """Rotate secret-bearing credentials for a channel."""
+    service = NotificationChannelService(session)
+
+    try:
+        channel = await service.rotate_credentials(
+            channel_id,
+            config=request.config,
+        )
+        await session.commit()
+
+        if channel is None:
+            raise HTTPException(status_code=404, detail="Channel not found")
+
+        return _channel_response(channel, include_config=True)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/channels/{channel_id}/test", response_model=TestChannelResponse)

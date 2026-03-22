@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from truthound.checkpoint.routing.base import RouteContext
+from truthound_dashboard.time import utc_now
 
 if TYPE_CHECKING:
     from truthound_dashboard.core.notifications.base import NotificationEvent
@@ -34,7 +35,7 @@ class DashboardRouteContext:
 
     event: "NotificationEvent"
     metadata: dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=utc_now)
 
     def get_severity(self) -> str | None:
         """Get event severity if available."""
@@ -122,7 +123,7 @@ class DashboardRoutingResult:
 
     matched_routes: list[str] = field(default_factory=list)
     channel_ids: set[str] = field(default_factory=set)
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=utc_now)
     context: DashboardRouteContext | None = None
 
 

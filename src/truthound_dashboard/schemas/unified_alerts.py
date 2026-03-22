@@ -68,6 +68,14 @@ class UnifiedAlertBase(BaseSchema):
 class UnifiedAlertResponse(UnifiedAlertBase, IDMixin, TimestampMixin):
     """Schema for unified alert response."""
 
+    workspace_id: str | None = Field(None, description="Workspace identifier")
+    queue_id: str | None = Field(None, description="Incident queue identifier")
+    queue_name: str | None = Field(None, description="Incident queue name")
+    assignee_user_id: str | None = Field(None, description="Assigned user identifier")
+    assignee_name: str | None = Field(None, description="Assigned user display name")
+    assigned_at: datetime | None = Field(None, description="When the incident was assigned")
+    assigned_by: str | None = Field(None, description="Who changed the assignment")
+    timeline: list[dict[str, Any]] = Field(default_factory=list, description="Timeline events")
     acknowledged_at: datetime | None = Field(None, description="When acknowledged")
     acknowledged_by: str | None = Field(None, description="Who acknowledged")
     resolved_at: datetime | None = Field(None, description="When resolved")
@@ -204,6 +212,14 @@ class BulkAlertActionRequest(BaseModel):
 
     alert_ids: list[str] = Field(..., description="Alert IDs to act on", min_length=1)
     message: str = Field(default="", description="Optional message")
+
+
+class AssignAlertRequest(BaseModel):
+    """Request to assign or requeue an alert."""
+
+    assignee_user_id: str | None = Field(default=None, description="New assignee user ID")
+    queue_id: str | None = Field(default=None, description="New queue ID")
+    message: str = Field(default="", description="Optional assignment note")
 
 
 class BulkAlertActionResponse(BaseModel):

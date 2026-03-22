@@ -1375,7 +1375,34 @@ export const fallbacks: Record<string, FallbackContent> = {
       "deduplication": "Deduplication",
       "throttling": "Throttling",
       "escalation": "Escalation",
+      "queues": "Queues",
       "incidents": "Incidents"
+    },
+    "queues": {
+      "title": "Incident Queues",
+      "subtitle": "Manage routing queues and responders without leaving the dashboard shell",
+      "create": "Create Queue",
+      "edit": "Edit Queue",
+      "empty": "No queues configured yet",
+      "columns": {
+        "name": "Queue",
+        "members": "Members",
+        "status": "Status"
+      },
+      "badges": {
+        "default": "Default",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "form": {
+        "name": "Queue Name",
+        "description": "Description",
+        "defaultQueue": "Default Queue",
+        "defaultQueueDescription": "Route newly created incidents here by default",
+        "active": "Active Queue",
+        "activeDescription": "Inactive queues remain visible but stop receiving new assignments",
+        "members": "Queue Members"
+      }
     },
     "routing": {
       "title": "Routing Rules",

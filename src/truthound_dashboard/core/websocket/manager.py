@@ -15,6 +15,7 @@ from typing import Any
 from fastapi import WebSocket, WebSocketDisconnect
 
 from .messages import WebSocketMessage, WebSocketMessageType
+from truthound_dashboard.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class WebSocketConnection:
 
     websocket: WebSocket
     connection_id: str
-    connected_at: datetime = field(default_factory=datetime.utcnow)
+    connected_at: datetime = field(default_factory=utc_now)
     rooms: set[str] = field(default_factory=set)
     last_ping: datetime | None = None
     client_info: dict[str, Any] = field(default_factory=dict)
@@ -403,11 +404,11 @@ class WebSocketManager:
 
                 ping_message = WebSocketMessage(
                     type=WebSocketMessageType.PING,
-                    data={"server_time": datetime.utcnow().isoformat()},
+                    data={"server_time": utc_now().isoformat()},
                 )
 
                 for connection in connections:
-                    connection.last_ping = datetime.utcnow()
+                    connection.last_ping = utc_now()
                     await connection.send_message(ping_message)
 
             except asyncio.CancelledError:
@@ -436,7 +437,7 @@ class WebSocketManager:
             await connection.send_message(
                 WebSocketMessage(
                     type=WebSocketMessageType.PONG,
-                    data={"server_time": datetime.utcnow().isoformat()},
+                    data={"server_time": utc_now().isoformat()},
                 )
             )
         else:

@@ -21,7 +21,8 @@ import yaml
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from truthound_dashboard.db import Profile, Rule, Schema, Source
-from truthound_dashboard.core.services import ProfileRepository, RuleRepository
+from truthound_dashboard.core.domains.profiles import ProfileRepository
+from truthound_dashboard.core.domains.rules import RuleRepository
 from truthound_dashboard.schemas.rule_suggestion import (
     ApplyRulesResponse,
     CrossColumnRuleSuggestion,
@@ -36,6 +37,7 @@ from truthound_dashboard.schemas.rule_suggestion import (
     StrictnessLevel,
     SuggestedRule,
 )
+from truthound_dashboard.time import utc_now
 
 
 # Common email pattern
@@ -1810,7 +1812,7 @@ class RuleGeneratorService:
             total_suggestions=total_suggestions,
             high_confidence_count=high_confidence,
             cross_column_count=len(cross_column_suggestions),
-            generated_at=datetime.utcnow(),
+            generated_at=utc_now(),
             strictness=strictness,
             preset=preset,
             categories_included=categories_included,
@@ -1937,7 +1939,7 @@ class RuleGeneratorService:
             rules_dict["_metadata"] = {
                 "name": rule_name,
                 "description": description or f"Auto-generated rules ({len(suggestions)} validators)",
-                "generated_at": datetime.utcnow().isoformat(),
+                "generated_at": utc_now().isoformat(),
                 "rule_count": len(suggestions),
                 "validators": list(set(validators)),
             }
@@ -1964,7 +1966,7 @@ class RuleGeneratorService:
             format=format,
             filename=filename,
             rule_count=len(suggestions),
-            generated_at=datetime.utcnow(),
+            generated_at=utc_now(),
         )
 
     def _to_toml(self, rules_dict: dict[str, Any]) -> str:

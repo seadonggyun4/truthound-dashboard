@@ -8,11 +8,13 @@ from fastapi import APIRouter
 from . import (
     alerts,
     anomaly,
+    artifacts,
     control_plane,
     drift,
     enterprise_sampling,
     health,
     history,
+    incident_queues,
     lineage,
     mask,
     notifications,
@@ -20,7 +22,6 @@ from . import (
     observability,
     plugins,
     profile,
-    reports,
     rule_suggestions,
     rules,
     scan,
@@ -32,7 +33,6 @@ from . import (
     triggers,
     validations,
     validators,
-    versioning,
     websocket,
 )
 
@@ -120,17 +120,9 @@ api_router.include_router(
     tags=["notifications"],
 )
 
-# Report generation endpoints
 api_router.include_router(
-    reports.router,
-    prefix="/reports",
-    tags=["reports"],
-)
-
-# Versioning endpoints
-api_router.include_router(
-    versioning.router,
-    tags=["versioning"],
+    artifacts.router,
+    tags=["artifacts"],
 )
 
 api_router.include_router(
@@ -164,6 +156,10 @@ api_router.include_router(
 api_router.include_router(
     alerts.router,
     tags=["alerts"],
+)
+api_router.include_router(
+    incident_queues.router,
+    tags=["incident-queues"],
 )
 api_router.include_router(
     triggers.router,

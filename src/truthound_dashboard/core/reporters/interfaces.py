@@ -36,6 +36,7 @@ from typing import (
     TypeVar,
     runtime_checkable,
 )
+from truthound_dashboard.time import utc_now
 
 if TYPE_CHECKING:
     pass
@@ -623,7 +624,7 @@ class BaseReporter(ABC, Generic[ConfigT]):
         effective_config = config or self._default_config
 
         # Generate filename
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = utc_now().strftime("%Y%m%d_%H%M%S")
         filename = f"validation_report_{timestamp}{self.file_extension}"
 
         # Render content

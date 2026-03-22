@@ -16,6 +16,7 @@ from ..interfaces import (
     ReportFormatType,
     ReportThemeType,
 )
+from truthound_dashboard.time import utc_now
 
 
 class BuiltinHTMLReporter(BaseReporter[ReporterConfig]):
@@ -261,7 +262,7 @@ body { background: var(--bg-color); color: var(--text-color); }
 
     def _render_footer(self) -> list[str]:
         """Render footer."""
-        timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        timestamp = utc_now().strftime("%Y-%m-%d %H:%M:%S UTC")
         return [
             '<div class="footer">',
             f'<p>Generated at {timestamp}</p>',
