@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+  {% if page and page.file %}
+    {% set is_homepage = page.file.src_uri == "index.md" %}
+    <section class="dashboard-docs-banner {% if is_homepage %}dashboard-docs-banner--hero{% else %}dashboard-docs-banner--compact{% endif %}">
+      <img
+        src="{{ 'assets/brand/truthound-dashboard-banner.png' | url }}"
+        alt="Truthound Dashboard banner"
+        class="dashboard-docs-banner__image"
+      />
+    </section>
+  {% endif %}
+  {{ super() }}
+{% endblock %}

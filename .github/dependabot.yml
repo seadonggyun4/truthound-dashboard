@@ -11,6 +11,13 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    groups:
+      frontend-lint-toolchain:
+        patterns:
+          - "@typescript-eslint/*"
+          - "eslint*"
+          - "typescript"
+          - "@vitejs/*"
 
   - package-ecosystem: github-actions
     directory: /

@@ -25,13 +25,16 @@ settings page.
 3. Confirm the secret encryption setup so `secret_refs` can be persisted and resolved.
 4. Validate notification and queue-related runtime settings if incidents or channel
    delivery are part of the deployment.
-5. Confirm observability settings and any logging or metrics integrations.
+5. Confirm preview-specific defaults so reviewer environments behave like the
+   single-origin application deployment.
+6. Confirm observability settings and any logging or metrics integrations.
 
 ## Expected outputs
 
 - Reproducible configuration across environments.
 - A deployment where sources, notifications, artifacts, and sessions behave
   consistently.
+- Preview environments that do not require split-origin frontend API wiring.
 
 ## Failure modes and troubleshooting
 
@@ -39,6 +42,9 @@ settings page.
   restarted and that the active environment matches the expected one.
 - If only secret-backed features fail, inspect encryption and storage settings before
   assuming application-level bugs.
+- If preview UI requests start failing only in hosted review environments, inspect
+  `VITE_API_URL` first. Canonical preview should leave it unset so the app stays on
+  same-origin `/api/v1`.
 
 ## Related APIs
 
@@ -49,3 +55,12 @@ settings page.
 ## Next steps
 
 Continue with [Security and Secrets](security-and-secrets.md).
+
+## Preview configuration defaults
+
+- Leave `VITE_API_URL` unset for the canonical Render preview deployment.
+- Keep `TRUTHOUND_DATA_DIR` on an ephemeral preview path unless you explicitly need
+  state to persist across preview redeploys.
+- Prefer `TRUTHOUND_LOG_LEVEL=info` in previews so reviewers can inspect runtime
+  behavior without the noise of full debug logging.
+- Use `npm ci` for any frontend install step in CI, Render, or optional Vercel checks.

@@ -4,6 +4,7 @@ site_url: https://truthound.netlify.app/dashboard/
 
 theme:
   name: material
+  custom_dir: docs/overrides
   logo: https://truthound.netlify.app/assets/truthound_icon.png
   favicon: https://truthound.netlify.app/assets/truthound_icon.png
   features:
@@ -20,6 +21,9 @@ markdown_extensions:
       permalink: true
   - pymdownx.details
   - pymdownx.superfences
+
+extra_css:
+  - assets/stylesheets/banner.css
 
 nav:
   - Overview: index.md

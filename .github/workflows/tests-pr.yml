@@ -57,6 +57,14 @@ jobs:
       node-version: "20"
       retention-days: 7
 
+  preview-build:
+    name: preview-build
+    uses: ./.github/workflows/_preview-build.yml
+    with:
+      python-version: "3.11"
+      node-version: "20"
+      retention-days: 7
+
   docs:
     name: docs
     uses: ./.github/workflows/_docs-checks.yml
@@ -73,6 +81,7 @@ jobs:
       - backend-ratchet
       - frontend-node20
       - frontend-ratchet
+      - preview-build
       - docs
     runs-on: ubuntu-latest
     env:
@@ -82,6 +91,7 @@ jobs:
       BACKEND_RATCHET_RESULT: ${{ needs.backend-ratchet.result }}
       FRONTEND_NODE20_RESULT: ${{ needs.frontend-node20.result }}
       FRONTEND_RATCHET_RESULT: ${{ needs.frontend-ratchet.result }}
+      PREVIEW_BUILD_RESULT: ${{ needs.preview-build.result }}
       DOCS_RESULT: ${{ needs.docs.result }}
     steps:
       - name: Checkout
@@ -105,7 +115,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Download workflow artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
@@ -180,6 +190,7 @@ jobs:
               f"- backend-ratchet: `{__import__('os').environ['BACKEND_RATCHET_RESULT']}`",
               f"- frontend-node20: `{__import__('os').environ['FRONTEND_NODE20_RESULT']}`",
               f"- frontend-ratchet: `{__import__('os').environ['FRONTEND_RATCHET_RESULT']}`",
+              f"- preview-build: `{__import__('os').environ['PREVIEW_BUILD_RESULT']}`",
               f"- docs: `{__import__('os').environ['DOCS_RESULT']}`",
               f"- Total collected JUnit tests: `{test_count}`",
               f"- Docs page count: `{docs_page_count}`",

@@ -25,6 +25,7 @@ def test_expected_ci_workflow_files_exist() -> None:
         WORKFLOWS / "_backend-ratchet.yml",
         WORKFLOWS / "_frontend-checks.yml",
         WORKFLOWS / "_frontend-ratchet.yml",
+        WORKFLOWS / "_preview-build.yml",
         WORKFLOWS / "_docs-checks.yml",
         WORKFLOWS / "_security-checks.yml",
         WORKFLOWS / "_secret-integrations.yml",
@@ -33,6 +34,8 @@ def test_expected_ci_workflow_files_exist() -> None:
         CI_MANIFESTS / "backend-mypy-ratchet.txt",
         CI_MANIFESTS / "frontend-eslint-ratchet.txt",
         REPO_ROOT / ".github" / "dependabot.yml",
+        REPO_ROOT / "render.yaml",
+        REPO_ROOT / "scripts" / "build_preview.sh",
     ]
 
     for path in expected:
@@ -57,6 +60,7 @@ def test_required_workflows_support_merge_queue_and_reusable_layout() -> None:
     assert jobs["backend-ratchet"]["uses"] == "./.github/workflows/_backend-ratchet.yml"
     assert jobs["frontend-node20"]["uses"] == "./.github/workflows/_frontend-checks.yml"
     assert jobs["frontend-ratchet"]["uses"] == "./.github/workflows/_frontend-ratchet.yml"
+    assert jobs["preview-build"]["uses"] == "./.github/workflows/_preview-build.yml"
     assert jobs["docs"]["uses"] == "./.github/workflows/_docs-checks.yml"
 
     docs_jobs = docs["jobs"]
@@ -80,6 +84,7 @@ def test_nightly_workflow_has_matrix_advisory_and_secret_jobs() -> None:
     assert jobs["backend-ratchet"]["uses"] == "./.github/workflows/_backend-ratchet.yml"
     assert jobs["frontend"]["uses"] == "./.github/workflows/_frontend-checks.yml"
     assert jobs["frontend-ratchet"]["uses"] == "./.github/workflows/_frontend-ratchet.yml"
+    assert jobs["preview-build"]["uses"] == "./.github/workflows/_preview-build.yml"
     assert jobs["docs"]["uses"] == "./.github/workflows/_docs-checks.yml"
     assert jobs["security-audit"]["uses"] == "./.github/workflows/_security-checks.yml"
     assert jobs["secret-integrations"]["uses"] == "./.github/workflows/_secret-integrations.yml"
@@ -136,3 +141,49 @@ def test_dependabot_targets_python_node_and_actions() -> None:
     assert "pip" in ecosystems
     assert "npm" in ecosystems
     assert "github-actions" in ecosystems
+
+    npm_entry = next(entry for entry in config["updates"] if entry["package-ecosystem"] == "npm")
+    groups = npm_entry["groups"]
+    assert "frontend-lint-toolchain" in groups
+    patterns = set(groups["frontend-lint-toolchain"]["patterns"])
+    assert "@typescript-eslint/*" in patterns
+    assert "eslint*" in patterns
+    assert "typescript" in patterns
+
+
+def test_render_preview_configuration_uses_shared_build_script() -> None:
+    render_config = _load_workflow(REPO_ROOT / "render.yaml")
+    services = render_config["services"]
+
+    assert len(services) == 1
+    service = services[0]
+    assert service["type"] == "web"
+    assert service["runtime"] == "python"
+    assert service["rootDir"] == "."
+    assert service["buildCommand"] == "bash ./scripts/build_preview.sh"
+    assert service["startCommand"] == "truthound-dashboard serve --host 0.0.0.0 --port $PORT --no-browser"
+    assert service["healthCheckPath"] == "/health"
+
+    env_vars = {entry["key"]: entry["value"] for entry in service["envVars"]}
+    assert env_vars["TRUTHOUND_DATA_DIR"] == "/opt/render/project/.preview-data"
+    assert env_vars["TRUTHOUND_LOG_LEVEL"] == "info"
+
+
+def test_preview_build_script_and_vercel_install_are_deterministic() -> None:
+    script = (REPO_ROOT / "scripts" / "build_preview.sh").read_text(encoding="utf-8")
+    vercel = (REPO_ROOT / "frontend" / "vercel.json").read_text(encoding="utf-8")
+
+    assert "npm ci" in script
+    assert "npm run build" in script
+    assert ".venv/bin/python" in script
+    assert "-m pip install ." in script
+    assert "src/truthound_dashboard/static/index.html" in script
+    assert "npm ci" in vercel
+    assert "npm install" not in vercel
+
+
+def test_frontend_typescript_eslint_versions_move_together() -> None:
+    package_json = yaml.safe_load((REPO_ROOT / "frontend" / "package.json").read_text(encoding="utf-8"))
+    dev_dependencies = package_json["devDependencies"]
+
+    assert dev_dependencies["@typescript-eslint/eslint-plugin"] == dev_dependencies["@typescript-eslint/parser"]

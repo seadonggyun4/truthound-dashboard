@@ -86,6 +86,14 @@ jobs:
       node-version: "20"
       retention-days: 30
 
+  preview-build:
+    name: preview-build
+    uses: ./.github/workflows/_preview-build.yml
+    with:
+      python-version: "3.11"
+      node-version: "20"
+      retention-days: 30
+
   backend-advisory-quality:
     name: backend-advisory-quality
     runs-on: ubuntu-latest
@@ -143,7 +151,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Run frontend lint
         shell: bash

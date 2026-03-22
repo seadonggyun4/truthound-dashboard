@@ -100,6 +100,24 @@ def test_readme_preserves_banner_badges_intlayer_and_docs_entrypoints() -> None:
     assert "truthound translate --list-languages" in readme
 
 
+def test_docs_banner_assets_and_overrides_are_present() -> None:
+    mkdocs = yaml.safe_load((REPO_ROOT / "mkdocs.yml").read_text(encoding="utf-8"))
+    overrides_path = REPO_ROOT / "docs" / "overrides" / "main.html"
+    css_path = REPO_ROOT / "docs" / "assets" / "stylesheets" / "banner.css"
+    asset_path = REPO_ROOT / "docs" / "assets" / "brand" / "truthound-dashboard-banner.png"
+
+    assert mkdocs["theme"]["custom_dir"] == "docs/overrides"
+    assert "assets/stylesheets/banner.css" in mkdocs["extra_css"]
+    assert overrides_path.exists()
+    assert css_path.exists()
+    assert asset_path.exists()
+
+    override_text = overrides_path.read_text(encoding="utf-8")
+    assert "dashboard-docs-banner--hero" in override_text
+    assert "dashboard-docs-banner--compact" in override_text
+    assert "assets/brand/truthound-dashboard-banner.png" in override_text
+
+
 def test_docs_information_architecture_matches_maturity_target() -> None:
     nav = _load_nav()
     sections = _top_level_sections(nav)
@@ -246,6 +264,7 @@ def test_ci_docs_page_describes_required_and_advisory_gates() -> None:
         "backend-ratchet",
         "frontend-node20",
         "frontend-ratchet",
+        "preview-build",
         "backend-advisory-quality",
         "frontend-advisory-quality",
         "security-audit",

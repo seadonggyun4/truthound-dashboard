@@ -83,7 +83,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Run pip audit
         shell: bash

@@ -20,22 +20,33 @@ healthy enough to create a session and load the overview.
 ## Step-by-step workflow
 
 1. Install the dashboard package and runtime dependencies.
-2. Configure the state database, artifact storage, and environment variables.
-3. Start the API and any required background services such as schedulers or queue
+2. For review environments, treat Render as the canonical preview surface and serve the
+   FastAPI app together with the bundled SPA from the same origin.
+3. Configure the state database, artifact storage, and environment variables.
+4. Run the shared preview build flow so the frontend bundle is copied into
+   `src/truthound_dashboard/static` before the app starts.
+5. Start the API and any required background services such as schedulers or queue
    workers.
-4. Start or serve the frontend shell.
-5. Create a session and verify overview, observability, artifact generation, and
+6. Create a session and verify overview, observability, artifact generation, and
    incident triage flows.
 
 ## Expected outputs
 
 - A reachable API and frontend shell.
+- A same-origin preview environment where the browser route and `/api/v1` are served by
+  the same FastAPI deployment.
 - Healthy control-plane state storage.
 - Successful session bootstrap and workspace loading.
 - No dependency on removed mock or legacy surfaces.
 
 ## Failure modes and troubleshooting
 
+- If a preview deployment fails during frontend dependency installation, verify that the
+  platform is using `npm ci` and that `@typescript-eslint/eslint-plugin` and
+  `@typescript-eslint/parser` are on the same version family.
+- If preview builds emit `EBADENGINE` warnings for the lint toolchain, move the build
+  environment to a current Node 20 LTS release or Node `22.13+` before treating the
+  preview as stable.
 - If deployment starts but sessions cannot be created, inspect configuration and
   database readiness before checking UI code.
 - If artifacts cannot be generated, validate artifact storage and file permissions.
@@ -53,3 +64,44 @@ healthy enough to create a session and load the overview.
 
 Continue with [Configuration](configuration.md) and
 [State Storage and Migrations](state-storage-and-migrations.md).
+
+## Preview platform defaults
+
+- Canonical reviewer preview: Render full-stack deployment from the repository root.
+- Build command: `./scripts/build_preview.sh`
+- Start command: `truthound-dashboard serve --host 0.0.0.0 --port $PORT --no-browser`
+- Health endpoint: `GET /health`
+- Preview environment defaults:
+  - `TRUTHOUND_DATA_DIR=/opt/render/project/.preview-data`
+  - `TRUTHOUND_LOG_LEVEL=info`
+- Canonical preview does not set `VITE_API_URL`. The frontend defaults to same-origin
+  `/api/v1` requests.
+- Vercel is optional and non-blocking. If you keep it for manual static checks, keep the
+  root at `frontend/` and the install step on `npm ci`.
+
+## Platform settings to update
+
+### Render
+
+- Repository root: `/`
+- Blueprint file: `render.yaml`
+- Build command: `bash ./scripts/build_preview.sh`
+- Start command: `truthound-dashboard serve --host 0.0.0.0 --port $PORT --no-browser`
+- Health check path: `/health`
+- Environment defaults:
+  - `TRUTHOUND_DATA_DIR=/opt/render/project/.preview-data`
+  - `TRUTHOUND_LOG_LEVEL=info`
+- Do not set `VITE_API_URL` for the canonical preview service.
+
+### Vercel
+
+- Remove Vercel from the reviewer-facing preview path. Disable automatic preview
+  deployments or disconnect the app project entirely if Render is the canonical review
+  environment.
+- If you keep Vercel for occasional static verification:
+  - Root directory: `frontend`
+  - Install command: `npm ci`
+  - Build command: the repository `frontend/vercel.json` value
+  - Output directory: `dist`
+  - Keep SPA rewrites enabled
+  - Do not treat `VITE_API_URL` as the primary review configuration

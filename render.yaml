@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: truthound-dashboard-preview
+    runtime: python
+    rootDir: .
+    buildCommand: bash ./scripts/build_preview.sh
+    startCommand: truthound-dashboard serve --host 0.0.0.0 --port $PORT --no-browser
+    healthCheckPath: /health
+    envVars:
+      - key: TRUTHOUND_DATA_DIR
+        value: /opt/render/project/.preview-data
+      - key: TRUTHOUND_LOG_LEVEL
+        value: info

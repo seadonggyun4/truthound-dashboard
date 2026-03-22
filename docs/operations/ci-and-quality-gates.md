@@ -23,8 +23,8 @@ only reflects the results indirectly through product behavior.
 1. Treat `Tests PR` and `Docs` as the required workflows for pull requests, merge queue,
    and direct pushes to `main`.
 2. Let `Tests PR` run a reusable workflow stack: `preflight`, `backend-py311`,
-   `backend-py312`, `backend-ratchet`, `frontend-node20`, `frontend-ratchet`, and
-   `docs`.
+   `backend-py312`, `backend-ratchet`, `frontend-node20`, `frontend-ratchet`,
+   `preview-build`, and `docs`.
 3. Use `preflight` for workflow hygiene rather than product semantics. It runs
    `actionlint`, dependency review on pull requests, and workflow metadata summaries.
 4. Use `backend-py311` and `backend-py312` for the full pytest suite exactly once per
@@ -36,23 +36,25 @@ only reflects the results indirectly through product behavior.
 7. Use `frontend-ratchet` to enforce required `eslint` coverage for the clean
    artifact-facing frontend subtree while the broader frontend lint debt remains
    advisory.
-8. Use the docs workflow for docs regression tests, internal link checks,
+8. Use `preview-build` to run the same root preview script that Render uses so the
+   reviewer environment does not drift from repository truth.
+9. Use the docs workflow for docs regression tests, internal link checks,
    `mkdocs build --strict`, and the post-success docs rebuild hook on `main`.
-9. Use `Tests Nightly` for heavier matrices and advisory debt tracking. Nightly expands
+10. Use `Tests Nightly` for heavier matrices and advisory debt tracking. Nightly expands
    Python to `3.11`, `3.12`, and `3.13`, Node to `20` and `22`, and runs advisory
    `ruff`, `mypy`, `eslint`, security audit, and secret-backed integration smoke.
-10. Use `workflow_dispatch` inputs on nightly runs when you need a narrower matrix or
+11. Use `workflow_dispatch` inputs on nightly runs when you need a narrower matrix or
    when you want to explicitly opt into secret-backed notification or source smoke.
-11. Keep secret-backed jobs off pull requests. They run only on nightly schedules or
+12. Keep secret-backed jobs off pull requests. They run only on nightly schedules or
    manual executions in the `ci-secrets` environment.
-12. Use release verification and CodeQL as monitoring and release assurance workflows,
+13. Use release verification and CodeQL as monitoring and release assurance workflows,
     not as branch-protection gates.
 
 ## Expected outputs
 
 - A green `Tests PR` run with required jobs for workflow hygiene, backend validation,
-  frontend smoke, docs quality, and ratchet enforcement for the clean artifact-focused
-  subtree.
+  frontend smoke, Render-style preview reproducibility, docs quality, and ratchet
+  enforcement for the clean artifact-focused subtree.
 - A green `Docs` run that proves the docs tree can build strictly and only triggers the
   main docs rebuild hook after success on `main`.
 - Uploaded artifacts for every important failure domain:
@@ -106,6 +108,7 @@ Continue with [Security and Secrets](security-and-secrets.md) and
 - `Tests PR / backend-ratchet`
 - `Tests PR / frontend-node20`
 - `Tests PR / frontend-ratchet`
+- `Tests PR / preview-build`
 - `Tests PR / docs`
 - `Docs / docs`
 
@@ -113,6 +116,9 @@ Continue with [Security and Secrets](security-and-secrets.md) and
 
 Nightly tracks advisory quality debt without blocking pull requests.
 
+- `preview-build`
+  This job reruns the shared preview build so Render and CI stay on the same bundle and
+  install contract.
 - `backend-advisory-quality`
   This job runs full `ruff` and full `mypy src`.
 - `frontend-advisory-quality`
@@ -173,4 +179,6 @@ The source of truth for this list lives in:
   CLI smoke check, builds the frontend, and validates docs strictly.
 - `Dependabot`
   Opens weekly update pull requests for Python dependencies, frontend dependencies, and
-  GitHub Actions.
+  GitHub Actions. Frontend lint-tooling updates are grouped so
+  `@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser`, `eslint`, and
+  `typescript` move together.
