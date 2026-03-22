@@ -23,33 +23,70 @@ markdown_extensions:
 
 nav:
   - Overview: index.md
-  - Getting Started: getting-started.md
-  - Architecture: architecture.md
-  - 3.0 Upgrade: migration/3.0.md
+  - Quickstart:
+      - Install and Run: quickstart/install-and-run.md
+      - Start a Session and Choose a Workspace: quickstart/start-a-session.md
+      - Add Your First Source: quickstart/add-your-first-source.md
+      - Run Your First Validation: quickstart/run-your-first-validation.md
+      - Generate Your First Artifact and Data Docs: quickstart/generate-your-first-artifact.md
+      - Triage Your First Incident: quickstart/triage-your-first-incident.md
+  - Concepts:
+      - Architecture: concepts/architecture.md
+      - Core Object Model: concepts/core-object-model.md
+      - Workspaces and Sessions: concepts/workspaces-and-sessions.md
+      - RBAC and Permissions: concepts/rbac-and-permissions.md
+      - Artifact Model: concepts/artifact-model.md
+      - Secrets and Credential Rotation: concepts/secrets-and-credential-rotation.md
+      - Ownership Model: concepts/ownership-model.md
+      - Incident and Queue Model: concepts/incident-and-queue-model.md
   - Guides:
-      - Sources: guides/sources.md
-      - Validations: guides/validations.md
-      - Profile: guides/profile.md
-      - Drift: guides/drift.md
-      - Privacy: guides/privacy.md
-      - Lineage: guides/lineage.md
-      - Checkpoints: guides/checkpoints.md
-      - Reports & Data Docs: guides/reports-datadocs.md
-      - Schema Evolution: guides/schema-evolution.md
-      - Profile Comparison: guides/profile-comparison.md
+      - Source Onboarding: guides/source-onboarding.md
+      - Source Types: guides/source-types.md
+      - Source Credentials: guides/source-credentials.md
+      - Source Ownership: guides/source-ownership.md
+      - Validation Run Model: guides/validation-run-model.md
+      - Rule Management: guides/rule-management.md
+      - Validation Result Details: guides/validation-result-details.md
+      - History and Trends: guides/history-and-trends.md
+      - Profiling and Comparison: guides/profiling-and-comparison.md
       - Rule Suggestions: guides/rule-suggestions.md
-      - Notifications & Triggers: guides/notifications.md
+      - Drift: guides/drift.md
+      - Privacy Scan and Mask: guides/privacy-scan-and-mask.md
+      - Lineage: guides/lineage.md
+      - Schema Evolution: guides/schema-evolution.md
+      - Checkpoints and Notifications: guides/checkpoints-and-notifications.md
       - Incident Workbench: guides/incident-workbench.md
-  - Advanced:
-      - Plugins: advanced/plugins.md
-      - Observability: advanced/observability.md
-      - Storage: advanced/storage.md
-      - Enterprise Sampling: advanced/enterprise-sampling.md
-      - Realtime: advanced/realtime.md
-      - ML: advanced/ml.md
+      - Reports and Data Docs: guides/reports-and-datadocs.md
+      - Plugins: guides/plugins.md
+      - Observability: guides/observability.md
+      - Storage Tiering: guides/storage-tiering.md
+      - Enterprise Sampling: guides/enterprise-sampling.md
+      - Realtime: guides/realtime.md
+      - ML: guides/ml.md
   - Operations:
-      - CI: operations/ci.md
       - Deployment: operations/deployment.md
-      - Troubleshooting: operations/troubleshooting.md
+      - Configuration: operations/configuration.md
+      - CI and Quality Gates: operations/ci-and-quality-gates.md
+      - Security and Secrets: operations/security-and-secrets.md
+      - State Storage and Migrations: operations/state-storage-and-migrations.md
+      - Troubleshooting Overview: operations/troubleshooting-overview.md
+      - Troubleshooting Source Connectivity: operations/troubleshooting-source-connectivity.md
+      - Troubleshooting Artifacts, Alerts, and Incidents: operations/troubleshooting-artifacts-alerts-incidents.md
   - API Reference:
-      - Overview: api-reference/index.md
+      - Overview and Conventions: api-reference/overview-and-conventions.md
+      - Auth and Control Plane: api-reference/auth-and-control-plane.md
+      - Sources and Ownership: api-reference/sources-and-ownership.md
+      - Validations, Profiles, and History: api-reference/validations-profiles-history.md
+      - Drift and Privacy: api-reference/drift-and-privacy.md
+      - Notifications, Alerts, and Queues: api-reference/notifications-alerts-queues.md
+      - Artifacts: api-reference/artifacts.md
+      - Plugins, Lineage, Anomaly, and Observability: api-reference/platform-and-observability.md
+  - Reference:
+      - Source Support Matrix: reference/source-support-matrix.md
+      - Permission Matrix: reference/permission-matrix.md
+      - Saved View Scope Matrix: reference/saved-view-scope-matrix.md
+      - Artifact Capabilities Matrix: reference/artifact-capabilities-matrix.md
+      - Environment Variables and Ports: reference/environment-variables-and-ports.md
+      - CLI Reference: reference/cli-reference.md
+  - Migration:
+      - 3.0 Upgrade: migration/3.0.md

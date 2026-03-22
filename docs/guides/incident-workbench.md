@@ -1,25 +1,64 @@
 # Incident Workbench
 
-The dashboard separates incident configuration from incident execution.
+## What this page covers
 
-## Pages
+This guide is the operator runbook for the Alerts workbench: filtering, queue triage,
+assignment, acknowledgement, resolution, correlation review, and saved-view reuse.
 
-- `/notifications/advanced` manages routing rules, throttling, deduplication,
-  escalation policies, and queue membership
-- `/alerts` is the queue-aware workbench for operators
+## Before you start
 
-## Queue-aware operations
+- Permission to read or write incidents.
+- At least one queue configured in the current workspace.
+- A practical triage model for who owns which incident class.
 
-- filter incidents by queue, assignee, severity, status, and free-text search
-- assign or reassign incidents without leaving the workbench
-- acknowledge and resolve incidents with actor identity coming from the active
-  dashboard session
-- correlate incidents by queue and source to speed up triage
+## UI path or entry point
 
-## Data model
+Open **Alerts** for active triage and **Notifications Advanced** when you need to
+change queue membership or routing defaults.
 
-- queues live in `incident_queues`
-- queue membership lives in `incident_queue_memberships`
-- incidents keep `queue_id`, `assignee_user_id`, `assigned_at`, and
-  `assigned_by`
-- timeline events include assignment and requeue transitions
+## Step-by-step workflow
+
+1. Filter the alert list by severity, status, queue, assignee, or search term.
+2. Apply a saved view if this is a recurring operational slice.
+3. Open the incident detail and review the timeline, correlations, and affected source.
+4. Assign or reassign the incident to a user or queue.
+5. Acknowledge the incident when work starts.
+6. Resolve the incident when remediation is complete and capture a useful message.
+
+```mermaid
+flowchart TD
+  A["Alert enters queue"] --> B["Operator filters backlog"]
+  B --> C["Assign or requeue"]
+  C --> D["Acknowledge"]
+  D --> E["Investigate and remediate"]
+  E --> F["Resolve with message"]
+```
+
+## Expected outputs
+
+- Queue and assignee aware triage across the current workspace.
+- A complete timeline for each operator action.
+- Reusable saved views in the `alerts` scope.
+
+## Failure modes and troubleshooting
+
+- If the backlog is too noisy, use queue and assignee filters before changing incident
+  severity thresholds.
+- If work is duplicated, review acknowledgement habits and queue membership.
+- If the same incidents recur after resolution, compare them with validation history and
+  notification rules before changing queue structure.
+
+## Related APIs
+
+- `GET /alerts`
+- `GET /alerts/{alert_id}`
+- `POST /alerts/{alert_id}/assign`
+- `POST /alerts/{alert_id}/acknowledge`
+- `POST /alerts/{alert_id}/resolve`
+- `GET /incident-queues`
+
+## Next steps
+
+Continue with [Reports and Data Docs](reports-and-datadocs.md) if incident handling
+needs a shareable artifact, or [Notifications, Alerts, and Queues](../api-reference/notifications-alerts-queues.md)
+for contract-level detail.

@@ -75,6 +75,19 @@ Local docs build:
 mkdocs build --strict
 ```
 
+## Docs Entry Points
+
+- Dashboard docs site: [https://truthound.netlify.app/dashboard/](https://truthound.netlify.app/dashboard/)
+- Local docs source: [`docs/`](./docs)
+- Main Truthound docs portal: [https://truthound.netlify.app/](https://truthound.netlify.app/)
+
+Recommended reading order:
+
+1. Quickstart
+2. Concepts
+3. Guides
+4. API Reference
+
 ## Application I18n with Intlayer
 
 Truthound Dashboard keeps its application-level internationalization on
