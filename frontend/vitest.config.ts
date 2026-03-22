@@ -75,12 +75,6 @@ export default defineConfig({
 
     // Pool configuration - use threads for better isolation between test files
     pool: 'threads',
-    poolOptions: {
-      threads: {
-        singleThread: false,
-        isolate: true,
-      },
-    },
 
     // Sequence configuration
     sequence: {

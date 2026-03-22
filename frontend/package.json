@@ -9,7 +9,8 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:smoke": "vitest run src/test/app-routes.smoke.test.tsx --reporter=junit --outputFile=test-results/vitest-junit.xml"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
@@ -50,6 +51,8 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/cytoscape": "^3.21.9",
     "@types/node": "^20.11.5",
     "@types/react": "^18.2.48",
@@ -61,11 +64,13 @@
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "jsdom": "^28.1.0",
     "postcss": "^8.4.33",
     "prettier": "^3.2.4",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.12",
-    "vite-intlayer": "^7.5.10"
+    "vite-intlayer": "^7.5.10",
+    "vitest": "^4.1.0"
   }
 }

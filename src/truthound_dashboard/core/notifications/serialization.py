@@ -7,10 +7,9 @@ allowing the runtime to materialize credentials immediately before use.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, cast
 
 from ..encryption import is_sensitive_field, mask_sensitive_value
-
 from ..secrets import (
     SECRET_HINT_KEY,
     SECRET_REDACTED_KEY,
@@ -25,7 +24,10 @@ def get_channel_schema(channel_type: str) -> dict[str, Any]:
     channel_class = ChannelRegistry.get(channel_type)
     if channel_class is None:
         return {}
-    return channel_class.get_config_schema()
+    schema = channel_class.get_config_schema()
+    if isinstance(schema, dict):
+        return cast(dict[str, Any], schema)
+    return {}
 
 
 def get_channel_secret_fields(channel_type: str) -> set[str]:

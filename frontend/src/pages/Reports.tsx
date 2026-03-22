@@ -14,9 +14,7 @@ import {
   RefreshCw,
   Search,
   Filter,
-  Clock,
   HardDrive,
-  BarChart3,
   Settings,
   ExternalLink,
   AlertCircle,
@@ -69,7 +67,7 @@ import type {
   ArtifactStatistics,
   ArtifactStatus,
 } from '@/api/modules/artifacts'
-import { formatFileSize, formatGenerationTime } from '@/types/reporters'
+import { formatFileSize } from '@/types/reporters'
 
 // Format date for display
 function formatDate(dateStr: string | undefined): string {

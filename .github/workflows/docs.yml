@@ -2,34 +2,39 @@ name: Docs
 
 on:
   pull_request:
-    paths:
-      - "README.md"
-      - "docs/**"
-      - "mkdocs.yml"
-      - "tests/test_docs_surface.py"
-      - "pyproject.toml"
   push:
     branches: [main]
-    paths:
-      - "README.md"
-      - "docs/**"
-      - "mkdocs.yml"
-      - "tests/test_docs_surface.py"
-      - "pyproject.toml"
+  merge_group:
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   docs:
+    name: docs
+    uses: ./.github/workflows/_docs-checks.yml
+    with:
+      retention-days: 7
+
+  deploy-docs-hook:
+    name: deploy-docs-hook
+    needs: docs
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: docs-deploy
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install docs dependencies
-        run: python -m pip install -e ".[docs,dev]"
-      - name: Docs regression tests
-        run: python -m pytest -q tests/test_docs_surface.py -p no:cacheprovider
-      - name: Legacy docs gate
-        run: python -m pytest -q tests/test_enforcement_gates.py -k no_legacy_surface_gate -p no:cacheprovider
-      - name: MkDocs strict build
-        run: python -m mkdocs build --strict
+      - name: Trigger main docs rebuild
+        env:
+          NETLIFY_DOCS_BUILD_HOOK: ${{ secrets.NETLIFY_DOCS_BUILD_HOOK }}
+        run: |
+          if [ -z "${NETLIFY_DOCS_BUILD_HOOK}" ]; then
+            echo "NETLIFY_DOCS_BUILD_HOOK is not configured" >&2
+            exit 1
+          fi
+          curl -fsSL -X POST -d '{}' "${NETLIFY_DOCS_BUILD_HOOK}"

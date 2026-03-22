@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from truthound_dashboard.db import SecretRef
 from truthound_dashboard.time import utc_now
 
-from .encryption import decrypt_value, encrypt_value, is_sensitive_field, mask_sensitive_value
+from .encryption import (
+    decrypt_value,
+    encrypt_value,
+    is_sensitive_field,
+    mask_sensitive_value,
+)
 
 SECRET_REF_KEY = "_secret_ref"
 SECRET_REDACTED_KEY = "_redacted"
@@ -31,8 +36,10 @@ def is_redacted_secret_payload(value: object) -> bool:
 
 
 def get_secret_hint(value: object) -> str:
-    if isinstance(value, dict) and isinstance(value.get(SECRET_HINT_KEY), str):
-        return value[SECRET_HINT_KEY]
+    if isinstance(value, dict):
+        hint = value.get(SECRET_HINT_KEY)
+        if isinstance(hint, str):
+            return hint
     return "***"
 
 
@@ -164,7 +171,7 @@ class LocalEncryptedDbSecretProvider(SecretProvider):
         secret_ref = result.scalar_one_or_none()
         if secret_ref is None:
             return None
-        return decrypt_value(secret_ref.encrypted_value)
+        return cast(str, decrypt_value(secret_ref.encrypted_value))
 
     async def rotate(self, ref_id: str, *, raw_value: str) -> SecretRef | None:
         result = await self.session.execute(
@@ -248,9 +255,7 @@ class LocalEncryptedDbSecretProvider(SecretProvider):
         explicit_secret_fields = secret_fields or set()
         for key, value in config.items():
             secret_name = f"{name_prefix}:{key}"
-            if is_secret_ref_payload(value):
-                persisted[key] = value
-            elif is_redacted_secret_payload(value):
+            if is_secret_ref_payload(value) or is_redacted_secret_payload(value):
                 persisted[key] = value
             elif isinstance(value, dict) and isinstance(value.get("_encrypted"), str):
                 secret_ref = await self.upsert_ref(

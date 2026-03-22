@@ -1,0 +1,89 @@
+name: Reusable Frontend Checks
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        required: true
+        type: string
+      retention-days:
+        required: false
+        type: number
+        default: 7
+
+permissions: read-all
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Type-check frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results
+          npm run type-check 2>&1 | tee test-results/type-check.log
+
+      - name: Build frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build 2>&1 | tee test-results/build.log
+
+      - name: Run route smoke tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run test:smoke 2>&1 | tee test-results/vitest.log
+
+      - name: Upload frontend artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: frontend-node${{ inputs.node-version }}-results
+          path: frontend/test-results
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention-days }}
+
+      - name: Write frontend summary
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          junit_path = Path("frontend/test-results/vitest-junit.xml")
+          tests = failures = errors = skipped = 0
+          if junit_path.exists():
+              root = ET.parse(junit_path).getroot()
+              tests = int(root.attrib.get("tests", 0))
+              failures = int(root.attrib.get("failures", 0))
+              errors = int(root.attrib.get("errors", 0))
+              skipped = int(root.attrib.get("skipped", 0))
+
+          summary = Path(__import__("os").environ["GITHUB_STEP_SUMMARY"])
+          with summary.open("a", encoding="utf-8") as handle:
+              handle.write("### Frontend Check Summary\n")
+              handle.write(f"- Node: `${{{{ inputs.node-version }}}}`\n")
+              handle.write(f"- Route smoke tests: `{tests}`\n")
+              handle.write(f"- Failures: `{failures}`\n")
+              handle.write(f"- Errors: `{errors}`\n")
+              handle.write(f"- Skipped: `{skipped}`\n")
+          PY

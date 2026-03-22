@@ -1,0 +1,20 @@
+name: Release Verification
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  release-verification:
+    name: release-verification
+    uses: ./.github/workflows/_release-verify.yml
+    with:
+      retention-days: 30

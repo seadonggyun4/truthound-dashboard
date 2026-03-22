@@ -5,9 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path as ApiPath, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import Path as ApiPath
 from fastapi.responses import FileResponse, RedirectResponse
 
+from truthound_dashboard.core.control_plane import ControlPlaneContext
+from truthound_dashboard.core.reporters import ReportTheme, get_available_formats
+from truthound_dashboard.core.reporters.registry import get_report_locales
+from truthound_dashboard.db import ArtifactRecord
 from truthound_dashboard.schemas.artifacts import (
     ArtifactCapabilitiesResponse,
     ArtifactGenerateRequest,
@@ -17,15 +22,13 @@ from truthound_dashboard.schemas.artifacts import (
     ArtifactStatistics,
     DataDocsGenerateRequest,
 )
-from truthound_dashboard.core.reporters import ReportTheme, get_available_formats
-from truthound_dashboard.core.reporters.registry import get_report_locales
 
 from .deps import ArtifactServiceDep, ValidationServiceDep, require_permission
 
 router = APIRouter(prefix="/artifacts", tags=["artifacts"])
 
 
-def _artifact_response(artifact: object) -> ArtifactResponse:
+def _artifact_response(artifact: ArtifactRecord) -> ArtifactResponse:
     response = ArtifactResponse.from_model(artifact)
     response.download_url = f"/api/v1/artifacts/{artifact.id}/download"
     return response
@@ -53,7 +56,7 @@ async def get_artifact_capabilities() -> ArtifactCapabilitiesResponse:
 @router.get("", response_model=ArtifactListResponse)
 async def list_artifacts(
     service: ArtifactServiceDep,
-    context=Depends(require_permission("artifacts:read")),
+    context: ControlPlaneContext = Depends(require_permission("artifacts:read")),
     workspace_id: Annotated[str | None, Query()] = None,
     saved_view_id: Annotated[str | None, Query()] = None,
     source_id: Annotated[str | None, Query()] = None,
@@ -97,7 +100,7 @@ async def list_artifacts(
 @router.get("/statistics", response_model=ArtifactStatistics)
 async def get_artifact_statistics(
     service: ArtifactServiceDep,
-    context=Depends(require_permission("artifacts:read")),
+    context: ControlPlaneContext = Depends(require_permission("artifacts:read")),
 ) -> ArtifactStatistics:
     return ArtifactStatistics.model_validate(
         await service.statistics(workspace_id=context.workspace.id)
@@ -108,7 +111,7 @@ async def get_artifact_statistics(
 async def get_artifact(
     artifact_id: Annotated[str, ApiPath()],
     service: ArtifactServiceDep,
-    context=Depends(require_permission("artifacts:read")),
+    context: ControlPlaneContext = Depends(require_permission("artifacts:read")),
 ) -> ArtifactResponse:
     artifact = await service.get_artifact(
         artifact_id=artifact_id,
@@ -123,7 +126,7 @@ async def get_artifact(
 async def delete_artifact(
     artifact_id: Annotated[str, ApiPath()],
     service: ArtifactServiceDep,
-    context=Depends(require_permission("artifacts:write")),
+    context: ControlPlaneContext = Depends(require_permission("artifacts:write")),
 ) -> dict[str, str]:
     deleted = await service.delete_artifact(
         artifact_id=artifact_id,
@@ -137,18 +140,18 @@ async def delete_artifact(
 @router.post("/cleanup", response_model=dict[str, int])
 async def cleanup_expired_artifacts(
     service: ArtifactServiceDep,
-    context=Depends(require_permission("artifacts:write")),
+    context: ControlPlaneContext = Depends(require_permission("artifacts:write")),
 ) -> dict[str, int]:
     deleted = await service.cleanup_expired(workspace_id=context.workspace.id)
     return {"deleted": deleted}
 
 
-@router.get("/{artifact_id}/download")
+@router.get("/{artifact_id}/download", response_model=None)
 async def download_artifact(
     artifact_id: Annotated[str, ApiPath()],
     service: ArtifactServiceDep,
-    context=Depends(require_permission("artifacts:read")),
-):
+    context: ControlPlaneContext = Depends(require_permission("artifacts:read")),
+) -> Response:
     artifact = await service.record_download(
         artifact_id=artifact_id,
         workspace_id=context.workspace.id,
@@ -171,7 +174,7 @@ async def generate_report_artifact(
     payload: ArtifactGenerateRequest,
     service: ArtifactServiceDep,
     validation_service: ValidationServiceDep,
-    context=Depends(require_permission("artifacts:write")),
+    context: ControlPlaneContext = Depends(require_permission("artifacts:write")),
 ) -> ArtifactResponse:
     validation = await validation_service.get_validation(validation_id, with_source=True)
     if validation is None:
@@ -196,7 +199,7 @@ async def generate_datadocs_artifact(
     payload: DataDocsGenerateRequest,
     service: ArtifactServiceDep,
     validation_service: ValidationServiceDep,
-    context=Depends(require_permission("artifacts:write")),
+    context: ControlPlaneContext = Depends(require_permission("artifacts:write")),
 ) -> ArtifactResponse:
     validation = await validation_service.get_validation(validation_id, with_source=True)
     if validation is None:

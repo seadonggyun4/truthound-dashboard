@@ -174,7 +174,5 @@ src/truthound_dashboard/static/assets/*.css
 .vercel
 
 # Test data and results
-test_*.py
 *_test_results.json
 test_results.json
-

@@ -1,0 +1,7 @@
+frontend/src/api/modules/artifacts.ts
+frontend/src/hooks/useArtifacts.ts
+frontend/src/pages/Dashboard.tsx
+frontend/src/pages/Reports.tsx
+frontend/src/pages/Alerts.tsx
+frontend/src/pages/History.tsx
+frontend/src/test/app-routes.smoke.test.tsx

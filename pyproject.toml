@@ -84,6 +84,8 @@ include = [
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+
+[tool.ruff.lint]
 select = [
     "E",      # pycodestyle errors
     "W",      # pycodestyle warnings
@@ -102,7 +104,7 @@ ignore = [
     "ARG002", # unused method argument (needed for interface consistency)
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["truthound_dashboard"]
 
 [tool.pytest.ini_options]

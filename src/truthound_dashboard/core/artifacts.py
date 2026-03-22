@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timedelta
+from collections.abc import Callable
+from datetime import timedelta
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,11 +15,11 @@ from sqlalchemy.orm import selectinload
 from truthound_dashboard.config import get_settings
 from truthound_dashboard.core.reporters import generate_report
 from truthound_dashboard.db import ArtifactRecord, SavedView
-from truthound_dashboard.db.models import Source, Validation
+from truthound_dashboard.db.models import Validation
 from truthound_dashboard.time import utc_now
 
 
-def _load_truthound_datadocs_runtime():
+def _load_truthound_datadocs_runtime() -> tuple[type[Any], Callable[..., str]]:
     try:
         from truthound import ValidationRunResult
         from truthound.datadocs import (
@@ -39,7 +40,7 @@ class ArtifactService:
         self.session = session
         settings = get_settings()
         settings.ensure_directories()
-        self._artifacts_dir = settings.artifacts_dir
+        self._artifacts_dir: Path = settings.artifacts_dir
 
     async def list_artifacts(
         self,
@@ -367,4 +368,4 @@ class ArtifactService:
     def _artifact_path(self, *, artifact_id: str, artifact_type: str, extension: str) -> Path:
         artifact_dir = self._artifacts_dir / artifact_type
         artifact_dir.mkdir(parents=True, exist_ok=True)
-        return artifact_dir / f"{artifact_id}{extension}"
+        return cast(Path, artifact_dir / f"{artifact_id}{extension}")
