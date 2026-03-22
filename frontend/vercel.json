@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm install && rm -rf .intlayer && npx intlayer build && npx tsc && npx vite build --outDir dist",
+  "buildCommand": "npm ci --no-audit --no-fund && rm -rf .intlayer && npx intlayer build && npx tsc && npx vite build --outDir dist",
   "outputDirectory": "dist",
   "framework": null,
   "rewrites": [
