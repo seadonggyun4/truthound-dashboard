@@ -90,7 +90,7 @@ def test_docs_and_readme_drop_stale_product_claims() -> None:
 def test_readme_preserves_banner_badges_intlayer_and_docs_entrypoints() -> None:
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
 
-    assert '<img width="1697" height="847"' in readme
+    assert '<img width="500" src="./Truthoun-dashboard.png"' in readme
     assert "[![PyPI version]" in readme
     assert "[![Powered by Intlayer]" in readme
     assert "## Docs Entry Points" in readme
