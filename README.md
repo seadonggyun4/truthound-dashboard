@@ -1,6 +1,6 @@
 # truthound-dashboard
 
-<img width="1697" height="847" src="./Truthoun-dashboard.png" alt="Truthound Dashboard banner" />
+<img width="500" src="./Truthoun-dashboard.png" alt="Truthound Dashboard banner" />
 
 [![PyPI version](https://img.shields.io/pypi/v/truthound-dashboard.svg)](https://pypi.org/project/truthound-dashboard/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
