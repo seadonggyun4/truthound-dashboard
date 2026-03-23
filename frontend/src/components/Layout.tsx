@@ -548,7 +548,7 @@ export default function Layout() {
 
       {/* Main content */}
       <div
-        className="transition-all duration-200"
+        className="transition-all duration-200 content-ambient"
         style={{ paddingLeft: `var(--sidebar-width, 0px)` }}
       >
         <style>{`@media (min-width: 1024px) { :root { --sidebar-width: ${sidebarWidth}px; } }`}</style>
