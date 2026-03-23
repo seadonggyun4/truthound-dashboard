@@ -87,21 +87,6 @@
     font-feature-settings:
       'rlig' 1,
       'calt' 1;
-    /* Subtle gradient mesh background for glass effects */
-    background-image:
-      radial-gradient(ellipse 80% 50% at 20% 80%, rgba(253, 158, 75, 0.06) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 20%, rgba(147, 130, 220, 0.05) 0%, transparent 60%),
-      radial-gradient(ellipse 50% 60% at 50% 50%, rgba(120, 180, 230, 0.04) 0%, transparent 60%);
-    background-attachment: fixed;
-    background-size: cover;
-  }
-  .dark body,
-  body.dark,
-  .dark {
-    background-image:
-      radial-gradient(ellipse 80% 50% at 20% 80%, rgba(253, 158, 75, 0.03) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 20%, rgba(100, 80, 160, 0.04) 0%, transparent 60%),
-      radial-gradient(ellipse 50% 60% at 50% 50%, rgba(30, 60, 120, 0.05) 0%, transparent 60%);
   }
 }
 
@@ -111,8 +96,39 @@
     background: var(--glass-bg);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-color: var(--glass-border);
+    border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
+  }
+  .glass-subtle {
+    background: var(--glass-bg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--glass-border);
+  }
+
+  /* Content-area ambient gradient (Mica-inspired) */
+  .content-ambient {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .content-ambient::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      radial-gradient(ellipse 70% 50% at 10% 85%, rgba(253, 158, 75, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse 55% 40% at 90% 10%, rgba(147, 130, 220, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse 45% 50% at 55% 45%, rgba(120, 180, 230, 0.05) 0%, transparent 50%);
+  }
+
+  .dark .content-ambient::before {
+    background-image:
+      radial-gradient(ellipse 70% 50% at 10% 85%, rgba(253, 158, 75, 0.05) 0%, transparent 50%),
+      radial-gradient(ellipse 55% 40% at 90% 10%, rgba(100, 80, 160, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse 45% 50% at 55% 45%, rgba(30, 60, 120, 0.10) 0%, transparent 50%);
   }
 }
 

@@ -227,7 +227,7 @@ export default function Layout() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
@@ -240,14 +240,14 @@ export default function Layout() {
       <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'fixed left-0 top-0 bottom-0 z-50 transform bg-card/70 backdrop-blur-xl border-r border-[--glass-border] transition-all duration-200 lg:translate-x-0 flex flex-col h-screen',
+          'fixed left-0 top-0 bottom-0 z-50 transform glass border-r transition-all duration-200 lg:translate-x-0 flex flex-col h-screen',
           sidebarCollapsed ? 'w-16' : 'w-[220px]',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Logo */}
         <div className={cn(
-          'flex h-16 items-center gap-2 border-b border-[--glass-border] flex-shrink-0',
+          'flex h-16 items-center gap-2 border-b border-[var(--glass-border)] flex-shrink-0',
           sidebarCollapsed ? 'justify-center px-2' : 'px-6'
         )}>
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
@@ -521,7 +521,7 @@ export default function Layout() {
         </nav>
 
         {/* Collapse toggle */}
-        <div className="border-t border-[--glass-border] p-2 flex-shrink-0 hidden lg:block">
+        <div className="border-t border-[var(--glass-border)] p-2 flex-shrink-0 hidden lg:block">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -548,13 +548,13 @@ export default function Layout() {
 
       {/* Main content */}
       <div
-        className="transition-all duration-200"
+        className="transition-all duration-200 content-ambient"
         style={{ paddingLeft: `var(--sidebar-width, 0px)` }}
       >
         <style>{`@media (min-width: 1024px) { :root { --sidebar-width: ${sidebarWidth}px; } }`}</style>
         {/* Top bar */}
         <header
-          className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-[--glass-border] bg-background/70 backdrop-blur-xl shadow-sm shadow-black/5 px-6"
+          className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b glass px-6"
         >
           <Button
             variant="ghost"
